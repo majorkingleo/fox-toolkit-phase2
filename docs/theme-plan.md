@@ -459,6 +459,29 @@ pixel-identical (hello and button, 0 differing pixels); with `corner_radius=6`
 the hello corner goes parent `#D4D0C8` -> `(120,117,113)` -> `(40,39,38)` ->
 border `#000000`, and the 8x8 corner region contains 8 distinct colors.
 
+**Progress:** T5 implemented and verified (2026-11-11). `FXTheme` now carries
+font roles (`FONT_UI`, `FONT_SMALL`, `FONT_MONO`, `FONT_TITLE`) and a DPI
+`scale`. Roles default to an empty `FXFontDesc`, which means "inherit the
+application font"; a theme file sets them through `[fonts] ui=...`,
+`small=...`, `mono=...`, `title=...` using the usual
+`face,size,weight,slant,setwidth,encoding,flags` string. `FXApp` owns a cached
+`FXFont` per role and creates it lazily through the existing `FXFont`
+machinery; `getRoleFont()` returns the normal font for roles the theme left
+open, so classic output is unaffected. `FXLabel` takes its font from
+`FONT_UI` (marked with `fontOverride` when the application calls `setFont`),
+and `setTheme()` drops the cached role fonts and relayouts when a role
+description changed. `FXFrame` treats `DEFAULT_PAD` as "the theme's padding",
+so `METRIC_PADDING` drives the interior of labels and buttons. `metric()`
+multiplies length metrics by `scale` and leaves `METRIC_ANIMATION_TIME` alone,
+so a scaled theme does not slow transitions down; the DPI workstream only has
+to call `setScale()` (or write `[display] scale=<percent>`).
+
+Verified on `hello`: classic is 83x28 and still pixel-identical to the
+baseline; `padding=10` gives 99x42; `[fonts] ui=Sans,150` gives 134x38;
+`scale=200` with `padding=4` gives 95x38. The transition demo run against a
+`scale=200` theme still reports `animation_time` as 300 ms and still takes 21
+repaints per leg, confirming that time is not scaled.
+
 **Progress:** R2 focus ring implemented and verified (2026-11-11).
 `FXStyle::drawFocusRing()` draws a rounded ring in `ROLE_FOCUS_RING` using
 `METRIC_FOCUS_WIDTH` when `corner_radius>0`, and keeps the classic dashed

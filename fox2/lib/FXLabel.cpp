@@ -100,6 +100,7 @@ FXLabel::FXLabel(){
   textColor=0;
   hotkey=0;
   hotoff=0;
+  fontOverride=false;
   }
 
 
@@ -109,7 +110,7 @@ FXLabel::FXLabel(FXComposite* p,const FXString& text,FXIcon* ic,FXuint opts,FXin
   hotkey=parseHotKey(string);
   label=stripHotKey(string);
   hotoff=findHotKey(string);
-  font=getApp()->getNormalFont();
+  font=getApp()->getRoleFont(FONT_UI);
   help=text.section('\t',2);
   tip=text.section('\t',1);
   textColor=getApp()->getTheme()->color(ROLE_TEXT);
@@ -117,6 +118,7 @@ FXLabel::FXLabel(FXComposite* p,const FXString& text,FXIcon* ic,FXuint opts,FXin
   addHotKey(hotkey);
   spacing=4;
   flags|=FLAG_ENABLED;
+  fontOverride=false;
   }
 
 
@@ -481,6 +483,7 @@ void FXLabel::setFont(FXFont *fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }
   if(font!=fnt){
     font=fnt;
+    fontOverride=true;
     recalc();
     update();
     }
@@ -502,6 +505,9 @@ void FXLabel::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
   if(!textColorOverride){
     textColor=theme->color(ROLE_TEXT);
+    }
+  if(!fontOverride){
+    font=getApp()->getRoleFont(FONT_UI);
     }
   }
 

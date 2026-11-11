@@ -745,6 +745,9 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   normalFont=new FXFont(this,"helvetica,90");
 #endif
 
+  // Theme font roles inherit the normal font until a theme names one
+  clearElms(roleFonts,FONT_LAST);
+
   // We delete the stock font
   stockFont=normalFont;
 
@@ -4533,6 +4536,7 @@ void FXApp::exit(FXint code){
 // Create application's windows
 void FXApp::create(){
   FXTRACE(TOPIC_CREATION,"%s::create\n",getClassName());
+  FXint i;
 
   // Create visuals
   monoVisual->create();
@@ -4541,6 +4545,11 @@ void FXApp::create(){
   // Create default font
   normalFont->create();
   stockFont->create();
+
+  // Create the fonts of the theme's font roles
+  for(i=0; i<FONT_LAST; i++){
+    if(roleFonts[i]) roleFonts[i]->create();
+    }
 
   // Create wait cursor
   waitCursor->create();
@@ -4582,12 +4591,18 @@ void FXApp::create(){
 // Detach application's windows
 void FXApp::detach(){
   FXTRACE(TOPIC_CREATION,"%s::detach\n",getClassName());
+  FXint i;
 
   root->detach();
 
   // Detach default font
   normalFont->detach();
   stockFont->detach();
+
+  // Detach the fonts of the theme's font roles
+  for(i=0; i<FONT_LAST; i++){
+    if(roleFonts[i]) roleFonts[i]->detach();
+    }
 
   // Detach wait cursor
   waitCursor->detach();
@@ -4637,6 +4652,9 @@ void FXApp::destroy(){
   normalFont->destroy();
   stockFont->destroy();
 
+  // Destroy the fonts of the theme's font roles
+  releaseRoleFonts();
+
   // Destroy wait cursor
   waitCursor->destroy();
 
@@ -4672,6 +4690,35 @@ void FXApp::destroy(){
   // Destroy visuals
   monoVisual->destroy();
   defaultVisual->destroy();
+  }
+
+
+// Destroy and forget the cached theme role fonts
+void FXApp::releaseRoleFonts(){
+  FXint i;
+  for(i=0; i<FONT_LAST; i++){
+    if(roleFonts[i] && roleFonts[i]!=normalFont){
+      roleFonts[i]->destroy();
+      delete roleFonts[i];
+      }
+    roleFonts[i]=nullptr;
+    }
+  }
+
+
+// Return font for the given theme font role; inherits the normal font when the theme leaves the role open
+FXFont* FXApp::getRoleFont(FXint role){
+  const FXFontDesc& desc=theme.font(role);
+
+  // Unknown role or a role the theme did not fill in
+  if(role<0 || FONT_LAST<=role || desc.face[0]==0) return normalFont;
+
+  // Create the font the first time it is asked for
+  if(!roleFonts[role]){
+    roleFonts[role]=new FXFont(this,desc);
+    if(isInitialized()) roleFonts[role]->create();
+    }
+  return roleFonts[role];
   }
 
 
@@ -5747,6 +5794,12 @@ void FXApp::setTheme(const FXTheme& thm){
   for(m=0; m<METRIC_LAST; m++){
     if(theme.metric(m)!=thm.metric(m)) relayout=true;
     }
+  for(m=0; m<FONT_LAST; m++){
+    if(theme.font(m).getFont()!=thm.font(m).getFont()) relayout=true;
+    }
+
+  // The cached role fonts belong to the old theme
+  releaseRoleFonts();
 
   theme=thm;
   borderColor=theme.color(ROLE_BORDER);
@@ -5895,6 +5948,10 @@ FXApp::~FXApp(){
 
   // Release style resources while the display is still open
   style.invalidate();
+
+  // Release the theme role fonts too
+  releaseRoleFonts();
+
   // Close display
   closeDisplay();
 

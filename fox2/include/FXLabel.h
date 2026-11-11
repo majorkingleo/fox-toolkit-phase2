@@ -72,6 +72,7 @@ protected:
   FXint        spacing;         // Icon and label spacing
   FXColor      textColor;       // Text color
   FXbool       textColorOverride=false;  // Text color set explicitly
+  FXbool       fontOverride=false;       // Font set explicitly
   FXHotKey     hotkey;          // Hotkey
   FXint        hotoff;          // Offset in string
 protected:

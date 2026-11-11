@@ -87,6 +87,12 @@ FXFrame::FXFrame(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXin
   hiliteColor=getApp()->getTheme()->color(ROLE_SURFACE_HILITE);
   shadowColor=getApp()->getTheme()->color(ROLE_SURFACE_SHADOW);
   borderColor=getApp()->getTheme()->color(ROLE_BORDER);
+
+  // DEFAULT_PAD means "the theme's default padding"
+  if(pl==DEFAULT_PAD) pl=getApp()->getTheme()->metric(METRIC_PADDING);
+  if(pr==DEFAULT_PAD) pr=getApp()->getTheme()->metric(METRIC_PADDING);
+  if(pt==DEFAULT_PAD) pt=getApp()->getTheme()->metric(METRIC_PADDING);
+  if(pb==DEFAULT_PAD) pb=getApp()->getTheme()->metric(METRIC_PADDING);
   padtop=pt;
   padbottom=pb;
   padleft=pl;

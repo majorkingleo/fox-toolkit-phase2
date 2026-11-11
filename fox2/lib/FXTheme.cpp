@@ -63,6 +63,7 @@ FXTheme::FXTheme(){
 
 // Reset to the classic theme
 void FXTheme::setClassic(){
+  FXint i;
   colors[ROLE_WINDOW_BG]=FXRGB(255,255,255);
   colors[ROLE_SURFACE]=FXRGB(212,208,200);
   colors[ROLE_SURFACE_HILITE]=makeHiliteColor(colors[ROLE_SURFACE]);
@@ -86,6 +87,13 @@ void FXTheme::setClassic(){
   metrics[METRIC_ROW_HEIGHT]=20;
   metrics[METRIC_CORNER_RADIUS]=0;
   metrics[METRIC_ANIMATION_TIME]=0;
+  scale=1.0;
+
+  // Font roles start out as the application font; an empty description
+  // inherits it, and a theme file may name a font per role
+  for(i=0; i<FONT_LAST; i++){
+    fonts[i].setFont(FXString::null);
+    }
   }
 
 
@@ -119,8 +127,13 @@ FXbool FXTheme::load(const FXString& path){
     "padding","margin","border_width","focus_width","spacing",
     "icon_size","small_icon_size","row_height","corner_radius","animation_time"
     };
+  static const FXchar *fontkeys[FONT_LAST]={
+    "ui","small","mono","title"
+    };
   FXSettings settings;
   FXint i;
+  FXint percent;
+  FXString current;
   if(!settings.parseFile(path)) return false;
   for(i=0; i<ROLE_LAST; i++){
     colors[i]=settings.readColorEntry("colors",colorkeys[i],colors[i]);
@@ -128,6 +141,12 @@ FXbool FXTheme::load(const FXString& path){
   for(i=0; i<METRIC_LAST; i++){
     metrics[i]=settings.readIntEntry("metrics",metrickeys[i],metrics[i]);
     }
+  for(i=0; i<FONT_LAST; i++){
+    current=fonts[i].getFont();
+    fonts[i].setFont(FXString(settings.readStringEntry("fonts",fontkeys[i],current.text())));
+    }
+  percent=settings.readIntEntry("display","scale",FXint(scale*100.0));
+  scale=FXdouble(percent)/100.0;
   return true;
   }
 
@@ -164,10 +183,13 @@ void FXTheme::setColor(FXint role,FXColor clr){
   }
 
 
-// Return value of given metric
+// Return value of given metric, scaled for the display DPI
 FXint FXTheme::metric(FXint subject) const {
   if(subject<0 || METRIC_LAST<=subject) return 0;
-  return metrics[subject];
+
+  // Transitions are timed in milliseconds, not measured in pixels
+  if(subject==METRIC_ANIMATION_TIME) return metrics[subject];
+  return FXint(metrics[subject]*scale+0.5);
   }
 
 
@@ -176,6 +198,26 @@ void FXTheme::setMetric(FXint subject,FXint value){
   if(0<=subject && subject<METRIC_LAST){
     metrics[subject]=value;
     }
+  }
+
+
+// Return description of given font role
+const FXFontDesc& FXTheme::font(FXint role) const {
+  return fonts[(0<=role && role<FONT_LAST)?role:FONT_UI];
+  }
+
+
+// Change description of given font role
+void FXTheme::setFont(FXint role,const FXFontDesc& desc){
+  if(0<=role && role<FONT_LAST){
+    fonts[role]=desc;
+    }
+  }
+
+
+// Change DPI scale applied to length metrics
+void FXTheme::setScale(FXdouble s){
+  scale=(0.0<s)?s:1.0;
   }
 
 }

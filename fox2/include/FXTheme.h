@@ -25,6 +25,10 @@
 #include "fxdefs.h"
 #endif
 
+#ifndef FXFONT_H
+#include "FXFont.h"
+#endif
+
 namespace FX {
 
 
@@ -80,15 +84,27 @@ enum {
   };
 
 
+/// Font roles
+enum {
+  FONT_UI,                /// Interface font
+  FONT_SMALL,             /// Annotation and hint font
+  FONT_MONO,              /// Fixed pitch font
+  FONT_TITLE,             /// Heading font
+  FONT_LAST
+  };
+
+
 /**
-* A theme holds semantic colors and metrics, resolved centrally by the
-* application so that widgets do not repeat palette assumptions.  The
+* A theme holds semantic colors, metrics and font roles, resolved centrally
+* by the application so that widgets do not repeat palette assumptions.  The
 * classic theme reproduces the default FOX palette exactly.
 */
 class FXAPI FXTheme {
 protected:
   FXColor colors[ROLE_LAST];    // Base color for each role
   FXint   metrics[METRIC_LAST]; // Value for each metric
+  FXFontDesc fonts[FONT_LAST];  // Description for each font role
+  FXdouble scale;               // DPI scale for length metrics
 public:
 
   /// Construct classic theme
@@ -100,11 +116,23 @@ public:
   /// Change color of given role
   void setColor(FXint role,FXColor clr);
 
-  /// Return value of given metric
+  /// Return value of given metric, scaled for the display DPI
   FXint metric(FXint subject) const;
 
   /// Change value of given metric
   void setMetric(FXint subject,FXint value);
+
+  /// Return description of given font role
+  const FXFontDesc& font(FXint role) const;
+
+  /// Change description of given font role
+  void setFont(FXint role,const FXFontDesc& desc);
+
+  /// Return DPI scale applied to length metrics
+  FXdouble getScale() const { return scale; }
+
+  /// Change DPI scale applied to length metrics
+  void setScale(FXdouble s);
 
   /// Recompute colors derived from base roles
   void updateDerived();

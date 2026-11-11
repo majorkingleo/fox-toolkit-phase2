@@ -196,6 +196,7 @@ private:
   FXSignal        *signals;             // Array of signal records
   FXint            signalreceived;      // Latest signal received
   FXFont          *normalFont;          // Normal font
+  FXFont          *roleFonts[FONT_LAST];// Fonts for the theme's font roles
   FXFont          *stockFont;           // Stock font
   FXMutex          appMutex;            // Application wide mutex
   FXEvent          event;               // Event
@@ -389,6 +390,9 @@ protected:
 
 protected:
 
+  /// Destroy and forget the cached theme role fonts
+  void releaseRoleFonts();
+
   /// Return true if an event arrives within blocking nanoseconds
   virtual FXbool getNextEvent(FXRawEvent& ev,FXTime blocking=forever);
 
@@ -486,6 +490,9 @@ public:
 
   /// Return default font
   FXFont* getNormalFont() const { return normalFont; }
+
+  /// Return font for the given theme font role; inherits the normal font when the theme leaves the role open
+  FXFont* getRoleFont(FXint role);
 
   /// Begin of wait-cursor block; wait-cursor blocks may be nested.
   void beginWaitCursor();
