@@ -69,6 +69,9 @@ public:
   /// Change theme
   void setTheme(FXTheme* thm){ theme=thm; }
 
+  /// Drop cached chrome resources after a theme change
+  virtual void invalidate();
+
   /// Return theme
   FXTheme* getTheme() const { return theme; }
 

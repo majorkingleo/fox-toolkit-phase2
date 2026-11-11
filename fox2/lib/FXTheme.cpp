@@ -21,6 +21,9 @@
 #include "xincs.h"
 #include "fxver.h"
 #include "fxdefs.h"
+#include "FXString.h"
+#include "FXStringDictionary.h"
+#include "FXSettings.h"
 #include "FXColors.h"
 #include "FXTheme.h"
 
@@ -54,6 +57,12 @@ static FXColor mixColor(FXColor col1,FXColor col2,FXint percent){
 
 // Construct classic theme
 FXTheme::FXTheme(){
+  setClassic();
+  }
+
+
+// Reset to the classic theme
+void FXTheme::setClassic(){
   colors[ROLE_WINDOW_BG]=FXRGB(255,255,255);
   colors[ROLE_SURFACE]=FXRGB(212,208,200);
   colors[ROLE_SURFACE_HILITE]=makeHiliteColor(colors[ROLE_SURFACE]);
@@ -76,6 +85,49 @@ FXTheme::FXTheme(){
   metrics[METRIC_SMALL_ICON_SIZE]=12;
   metrics[METRIC_ROW_HEIGHT]=20;
   metrics[METRIC_CORNER_RADIUS]=0;
+  }
+
+
+// Switch to the dark preset
+void FXTheme::setDark(){
+  setClassic();
+  colors[ROLE_WINDOW_BG]=FXRGB(32,32,32);
+  colors[ROLE_SURFACE]=FXRGB(45,45,45);
+  colors[ROLE_SURFACE_HILITE]=makeHiliteColor(colors[ROLE_SURFACE]);
+  colors[ROLE_SURFACE_SHADOW]=makeShadowColor(colors[ROLE_SURFACE]);
+  colors[ROLE_TEXT]=FXRGB(235,235,235);
+  colors[ROLE_BORDER]=FXRGB(20,20,20);
+  colors[ROLE_SELECTION_BG]=FXRGB(60,110,190);
+  colors[ROLE_SELECTION_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_MENU_SEL_BG]=FXRGB(60,110,190);
+  colors[ROLE_MENU_SEL_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_TOOLTIP_BG]=FXRGB(60,60,45);
+  colors[ROLE_TOOLTIP_TEXT]=FXRGB(240,240,240);
+  updateDerived();
+  }
+
+
+// Load theme from an INI file
+FXbool FXTheme::load(const FXString& path){
+  static const FXchar *colorkeys[ROLE_LAST]={
+    "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
+    "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
+    "tooltip_bg","tooltip_text","accent","focus_ring"
+    };
+  static const FXchar *metrickeys[METRIC_LAST]={
+    "padding","margin","border_width","focus_width","spacing",
+    "icon_size","small_icon_size","row_height","corner_radius"
+    };
+  FXSettings settings;
+  FXint i;
+  if(!settings.parseFile(path)) return false;
+  for(i=0; i<ROLE_LAST; i++){
+    colors[i]=settings.readColorEntry("colors",colorkeys[i],colors[i]);
+    }
+  for(i=0; i<METRIC_LAST; i++){
+    metrics[i]=settings.readIntEntry("metrics",metrickeys[i],metrics[i]);
+    }
+  return true;
   }
 
 

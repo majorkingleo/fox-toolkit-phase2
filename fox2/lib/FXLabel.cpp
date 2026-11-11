@@ -491,7 +491,17 @@ void FXLabel::setFont(FXFont *fnt){
 void FXLabel::setTextColor(FXColor clr){
   if(clr!=textColor){
     textColor=clr;
+    textColorOverride=true;
     update();
+    }
+  }
+
+
+// Re-apply theme colors unless the application overrode them
+void FXLabel::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  if(!textColorOverride){
+    textColor=theme->color(ROLE_TEXT);
     }
   }
 

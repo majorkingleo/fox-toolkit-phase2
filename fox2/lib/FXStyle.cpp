@@ -67,6 +67,11 @@ FXStyle::FXStyle(FXTheme* thm):theme(thm){
   }
 
 
+// Drop cached chrome resources after a theme change
+void FXStyle::invalidate(){
+  }
+
+
 // Draw border rectangle
 void FXStyle::drawBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
   dc.setForeground(theme->color(ROLE_BORDER));

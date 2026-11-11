@@ -62,6 +62,7 @@ protected:
   FXColor hiliteColor;  // Highlight color
   FXColor shadowColor;  // Shadow color
   FXColor borderColor;  // Border color
+  FXbool  colorsOverride=false; // Colors set explicitly
   FXint   padtop;       // Top padding
   FXint   padbottom;    // Bottom padding
   FXint   padleft;      // Left padding
@@ -143,6 +144,9 @@ public:
 
   /// Get border color
   FXColor getBorderColor() const { return borderColor; }
+
+  /// Re-apply theme colors unless the application overrode them
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Change base gui color
   void setBaseColor(FXColor clr);

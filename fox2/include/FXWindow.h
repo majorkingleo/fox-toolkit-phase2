@@ -32,6 +32,7 @@ namespace FX {
 class FXIcon;
 class FXBitmap;
 class FXCursor;
+class FXTheme;
 class FXRegion;
 class FXDCWindow;
 class FXComposite;
@@ -149,6 +150,7 @@ protected:
   FXint             xpos;               // Window X Position
   FXint             ypos;               // Window Y Position
   FXColor           backColor;          // Window background color
+  FXbool            backColorOverride=false;  // Back color set explicitly
   FXString          tag;                // Help tag
   FXuint            flags;              // Window state flags
   FXuint            options;            // Window options
@@ -834,6 +836,9 @@ public:
 
   /// Get background color
   FXColor getBackColor() const { return backColor; }
+
+  /// Re-apply theme colors to this window
+  virtual void applyTheme(FXTheme* theme);
 
   /// Does save-unders
   virtual FXbool doesSaveUnder() const;

@@ -430,6 +430,22 @@ bevel helpers, all drawing from theme roles. `FXButton::onPaint` now collects
 `hello` and `button` remain pixel-identical (0 differing pixels) and no
 `getApp()->get*Color()` calls remain in the migrated files.
 
+**Progress:** T3 implemented and verified (2026-11-11). `FXTheme::setClassic()`,
+`setDark()`, and `load(path)` (INI through `FXSettings`) added; `FXApp::init()`
+reads the `SETTINGS`/`theme` registry entry and accepts `classic`, `dark`, or a
+`.foxtheme` path. Verified: classic is still pixel-identical to the original
+baseline, `dark` renders surface `#2D2D2D`, and a custom `.foxtheme` with
+`surface=#336699` renders exactly `#336699`.
+
+**Progress:** T4 implemented and verified (2026-11-11). `FXApp::setTheme()`
+invalidates style caches, re-applies theme colors through a recursive
+`FXWindow::applyTheme()` walk, repaints every window, and relayouts when metrics
+change. Explicit widget color setters (`setBackColor`, `setBaseColor`,
+`setHiliteColor`, `setShadowColor`, `setBorderColor`, `setTextColor`) mark the
+value as overridden, so application customization survives a theme change.
+Verified on a live window: classic `#D4D0C8` switches to dark `#2D2D2D` with
+52% of pixels changing, while both examples stay pixel-identical at startup.
+
 ### Step details
 
 Each step ends with: build, run the named example, and check the acceptance

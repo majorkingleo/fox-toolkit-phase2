@@ -71,6 +71,7 @@ protected:
   FXString     tip;             // Tooltip
   FXint        spacing;         // Icon and label spacing
   FXColor      textColor;       // Text color
+  FXbool       textColorOverride=false;  // Text color set explicitly
   FXHotKey     hotkey;          // Hotkey
   FXint        hotoff;          // Offset in string
 protected:
@@ -147,6 +148,9 @@ public:
 
   /// Set the current text color
   void setTextColor(FXColor clr);
+
+  /// Re-apply theme colors unless the application overrode them
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Set the current text-justification mode.
   void setJustify(FXuint mode);

@@ -216,6 +216,20 @@ void FXFrame::drawDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,F
   }
 
 
+// Re-apply theme colors unless the application overrode them
+void FXFrame::applyTheme(FXTheme* theme){
+  if(!backColorOverride){
+    backColor=theme->color(ROLE_SURFACE);
+    }
+  if(!colorsOverride){
+    baseColor=theme->color(ROLE_SURFACE);
+    hiliteColor=theme->color(ROLE_SURFACE_HILITE);
+    shadowColor=theme->color(ROLE_SURFACE_SHADOW);
+    borderColor=theme->color(ROLE_BORDER);
+    }
+  }
+
+
 // Draw border
 void FXFrame::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
   getApp()->getStyle()->drawFrame(dc,x,y,w,h,options);
@@ -257,6 +271,7 @@ FXuint FXFrame::getFrameStyle() const {
 void FXFrame::setBaseColor(FXColor clr){
   if(clr!=baseColor){
     baseColor=clr;
+    colorsOverride=true;
     update();
     }
   }
@@ -266,6 +281,7 @@ void FXFrame::setBaseColor(FXColor clr){
 void FXFrame::setHiliteColor(FXColor clr){
   if(clr!=hiliteColor){
     hiliteColor=clr;
+    colorsOverride=true;
     update();
     }
   }

@@ -28,6 +28,9 @@
 namespace FX {
 
 
+class FXString;
+
+
 /// Semantic color roles
 enum {
   ROLE_WINDOW_BG,         /// Window background
@@ -104,6 +107,15 @@ public:
 
   /// Recompute colors derived from base roles
   void updateDerived();
+
+  /// Reset to the classic theme
+  void setClassic();
+
+  /// Switch to the dark preset
+  void setDark();
+
+  /// Load theme from an INI file; returns true if the file parsed
+  FXbool load(const FXString& path);
   };
 
 }

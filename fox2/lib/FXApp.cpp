@@ -4245,7 +4245,7 @@ static void getSystemFont(FXFontDesc& fontdesc){
 // Initialize application and optionally open display
 void FXApp::init(int& argc,char** argv,FXbool connect){
   const FXchar *fontspec=nullptr;
-  const FXchar *style=nullptr;
+  const FXchar *istyle=nullptr;
   const FXchar *dpy=":0.0";
   const FXchar *str=nullptr;
   FXuint maxcols=0;
@@ -4334,7 +4334,7 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
     // Input style
     if(FXString::compare(argv[j],"-is")==0){
       if(++j>=argc){ fxwarning("%s:init: missing argument for -is.\n",getClassName()); ::exit(1); }
-      style=argv[j];
+      istyle=argv[j];
       j++;
       continue;
       }
@@ -4472,6 +4472,19 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   // Refresh theme from the palette
   refreshTheme();
 
+  // Load theme selection: "classic", "dark", or a .foxtheme path
+  FXString themename=registry.readStringEntry("SETTINGS","theme",nullptr);
+  if(themename=="dark"){
+    theme.setDark();
+    setTheme(theme);
+    }
+  else if(!themename.empty() && themename!="classic"){
+    FXTheme loaded;
+    if(loaded.load(themename)){
+      setTheme(loaded);
+      }
+    }
+
   // Maximum number of colors to allocate
   maxcolors=registry.readUIntEntry("SETTINGS","maxcolors",maxcolors);
 
@@ -4482,7 +4495,7 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   inputstyle=registry.readStringEntry("SETTINGS","inputstyle",inputstyle);
 
   // Command line takes precedence
-  if(style) inputstyle=style;
+  if(istyle) inputstyle=istyle;
 
   // Set maximum number of colors in default visual to be nice to legacy
   // Motif applications which don't handle color allocation gracefully.
@@ -5727,6 +5740,14 @@ void FXApp::setScrollBarSize(FXint size){
 
 // Change theme; updates the default palette colors
 void FXApp::setTheme(const FXTheme& thm){
+  FXbool relayout=false;
+  FXint m;
+
+  // Relayout when metrics or font roles changed
+  for(m=0; m<METRIC_LAST; m++){
+    if(theme.metric(m)!=thm.metric(m)) relayout=true;
+    }
+
   theme=thm;
   borderColor=theme.color(ROLE_BORDER);
   baseColor=theme.color(ROLE_SURFACE);
@@ -5740,6 +5761,32 @@ void FXApp::setTheme(const FXTheme& thm){
   tipbackColor=theme.color(ROLE_TOOLTIP_BG);
   selMenuTextColor=theme.color(ROLE_MENU_SEL_TEXT);
   selMenuBackColor=theme.color(ROLE_MENU_SEL_BG);
+
+  themeChanged();
+  if(relayout){
+    FXWindow *win;
+    for(win=(root?root->getFirst():nullptr); win; win=win->getNext()){
+      win->recalc();
+      }
+    }
+  }
+
+
+// Recursively re-apply the theme and repaint each window
+static void applyThemeToTree(FXWindow* win,FXTheme* theme){
+  while(win){
+    win->applyTheme(theme);
+    win->update();
+    if(win->getFirst()) applyThemeToTree(win->getFirst(),theme);
+    win=win->getNext();
+    }
+  }
+
+
+// Repaint all windows after a theme change
+void FXApp::themeChanged(){
+  style.invalidate();
+  if(root) applyThemeToTree(root->getFirst(),&theme);
   }
 
 

@@ -870,6 +870,9 @@ public:
   /// Refresh theme colors from the default palette
   void refreshTheme();
 
+  /// Repaint and relayout all windows after a theme change
+  void themeChanged();
+
   /// Get number of existing windows
   FXuint getWindowCount() const { return windowCount; }
 

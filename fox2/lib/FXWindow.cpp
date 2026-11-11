@@ -1830,9 +1830,15 @@ void FXWindow::setDragCursor(FXCursor* cur){
 
 
 // Set window background
+// Re-apply theme colors to this window
+void FXWindow::applyTheme(FXTheme*){
+  }
+
+
 void FXWindow::setBackColor(FXColor clr){
   if(clr!=backColor){
     backColor=clr;
+    backColorOverride=true;
 //    if(xid){
 //#ifdef WIN32
 //      // FIXME //
