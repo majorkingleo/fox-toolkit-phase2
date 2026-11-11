@@ -340,15 +340,15 @@ This machine already has useful corpora for the GTK path:
 
 ### Supported sources and what to read
 
-| Priority | Source | Fields to import | Notes |
+| Priority | Source | Fields to import | Status |
 |---|---|---|---|
-| 1 (first) | GTK 3/4 CSS | `@define-color` names; `color`, `background-color`, `border-color`, `border-width`, `border-radius`, `padding`, `font`, `box-shadow` (as a shadow spec), `linear-gradient` (as a two-stop gradient) | Primary target: Adwaita/Breeze CSS; parse declarations only, ignore images, complex shadow stacks, animations, and layout |
-| 2 (first) | GTK 2 `gtkrc` | `bg[NORMAL/SELECTED/INSENSITIVE]`, `fg[...]`, `base[...]`, `text[...]`, `font_name` | Fallback for older GTK themes; same scanner family as the CSS path |
-| later | KDE `.colors` | `[Colors:Window]` BackgroundNormal/ForegroundNormal, `[Colors:View]`, `[Colors:Button]`, `[Colors:Selection]`, `[Colors:Tooltip]`, `[General]` fonts | Plain INI, easy to add, but deferred until GTK import is stable |
-| later | Qt QSS | same properties as CSS; `QPalette` roles if a palette dump is available | Reuses the CSS scanner |
-| later | Xresources | `*background`, `*foreground`, `*highlightColor`, cursor theme | Simple `key: value` scan; low value until requested |
+| 1 (first) | GTK 3/4 CSS | `@define-color` names; `color`, `background-color`, `border-color`, `border-width`, `border-radius`, `padding`, `font`, `box-shadow` (as a shadow spec), `linear-gradient` (as a two-stop gradient) | **Done (T6)**; parse declarations only, ignore images, complex shadow stacks, animations, and layout |
+| 2 (first) | GTK 2 `gtkrc` | `bg[NORMAL/SELECTED/INSENSITIVE]`, `fg[...]`, `base[...]`, `text[...]`, `font_name` | **Done (T6)**; named colors and the UI font are read, style blocks are skipped |
+| 3 | KDE `.colors` | `[Colors:Window]` BackgroundNormal/ForegroundNormal, `[Colors:View]`, `[Colors:Button]`, `[Colors:Selection]`, `[Colors:Tooltip]`, `[General]` fonts | **Done**; section-keyed INI, `r,g,b` triplets, QFont strings |
+| — | Qt QSS | same properties as CSS; `QPalette` roles if a palette dump is available | **Left open for later**: reuses the CSS scanner, but no Qt palette source is exercised on this machine yet |
+| — | Xresources | `*background`, `*foreground`, `*highlightColor`, cursor theme | **Left open for later**: simple `key: value` scan, low value until requested |
 | n/a | Windows | `GetSysColor()` roles, accent color, `SystemParametersInfo` fonts | Handled by the existing `GetSysColor` seed in `FXApp.cpp`, not the importer |
-| n/a | GNOME/portal | `color-scheme` preference only (`prefer-light`/`prefer-dark`) | Selects the built-in light or dark preset, not a full theme |
+| n/a | GNOME/portal | `color-scheme` preference only (`prefer-light`/`prefer-dark`) | **Done (T8)**: selects the built-in light or dark preset, not a full theme |
 
 ### Role mapping for GTK-named colors
 
@@ -408,12 +408,20 @@ any external file:
 | T6 | `hello` | `fxthemeimport` for **GTK only**: GTK 3/4 CSS subset first, then GTK 2 `gtkrc`. One parser shared by the CLI tool and the runtime loader. Includes radius/border/gradient/shadow values | Importing Breeze and Adwaita GTK CSS produces valid theme files with a summary |
 | T7 | `hello` | Theme cache: serialize resolved themes via `FXStream`, key on source path+size+mtime+importer version, re-import on mismatch or corruption | Second startup loads the theme without parsing CSS; stale or corrupt cache regenerates silently |
 | T8 | `hello` | Portal/`gsettings` detection for light/dark selection | `prefer-dark` selects `fox-dark` without configuration |
-| later | — | KDE `.colors`, Qt QSS, Xresources importers | Deferred until the GTK import path is stable and the cache exists |
+| KDE | `hello` | `.colors` importer (`[Colors:*]` sections, `r,g,b` triplets, QFont strings) | Breeze Light/Dark and Emerald convert with no warnings and render correctly |
+| — | — | **Left open: Qt QSS and Xresources importers** | Not started; see the status list below |
 
 Order matters: T1–T4 deliver a working theme system with zero visual change;
 R1–R3 then deliver the modern rendering; T5 depends on the DPI coordinate
 policy; T6 is independent once T3 exists; T7 makes T6 cheap at startup; T8 is
-independent of both. KDE, Qt, and Xresources importers wait until after T7.
+independent of both. The KDE importer was picked up after T7 because the cache
+and the GTK path were stable by then; Qt QSS and Xresources stay left open.
+
+**Status summary (2026-11-11):** T1, T2, T3, T4, T5, T6, T7, T8, R1, R2
+(focus ring only) and R3 are done and verified, as is the KDE `.colors`
+importer. Still open: the **Qt QSS** and **Xresources** importers, and the
+**R2 popup shadow**, which needs `FXPopup.cpp` in the `fox2` closure before it
+can be exercised.
 
 **Progress:** T1 implemented and verified (2026-11-11). `include/FXTheme.h` and
 `lib/FXTheme.cpp` added; `FXApp` owns a theme, mirrors it to and from the
@@ -773,10 +781,30 @@ Two constraints apply to the verification scripts in `tmp/`:
    current theme.
 3. Verify `hello` honors a `prefer-dark` preference without a config file.
 
-#### Later — KDE, Qt, Xresources
+#### Remaining importers — Qt QSS and Xresources (left open)
 
-Reuse the T6 parser and role mapping once GTK import and the cache are stable;
-KDE `.colors` first (plain INI), then Qt QSS, then Xresources.
+Reuse the T6 parser and role mapping; the KDE `.colors` importer below landed
+first and is the reference for how a new format plugs in.
+
+**Left open for later (not started):**
+
+- **Qt QSS.** Same declaration syntax as CSS, so `FXCSS::loadCSS()` is already
+  most of the reader; what is missing is a color source, since QSS files rarely
+  carry a palette. Two options when this is picked up: parse `*.qss` for
+  `background-color`/`color`/`border-radius` exactly like GTK CSS, or read the
+  palette from a Qt settings dump (`QPalette` names such as
+  `Window`/`WindowText`/`Base`/`Highlight`) and map those onto the roles. Ship
+  it only with a corpus that can be verified the way the GTK and KDE paths
+  were.
+- **Xresources.** A `key: value` scan for `*background`, `*foreground`,
+  `*highlightColor`, `*cursorTheme`, `*font`, plus `Xft.dpi` as a scale hint.
+  Low value on its own because it describes one application's palette rather
+  than a theme, so it is worth doing only when a user asks for it.
+
+Both formats are already dispatching-friendly: `FXCSS::load()` picks the reader
+by suffix and `FXApp::init()` treats any non-`.foxtheme` path as an external
+source to import and cache, so adding a loader plus an `apply*()` mapping is
+enough — no changes to the CLI, the cache or the runtime.
 
 **Progress — KDE `.colors` done (2026-11-11).** The first "later" importer
 landed early because the cache and the GTK path are now stable.
