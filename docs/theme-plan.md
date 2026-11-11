@@ -446,6 +446,19 @@ value as overridden, so application customization survives a theme change.
 Verified on a live window: classic `#D4D0C8` switches to dark `#2D2D2D` with
 52% of pixels changing, while both examples stay pixel-identical at startup.
 
+**Progress:** R1 implemented and verified (2026-11-11). `FXStyle` probes XRender
+(depth >= 24 plus `XRenderQueryExtension`), builds antialiased corner masks once
+per radius (4x4 supersampled coverage in an 8-bit A8 picture), and composites
+the border and face colors through them; without XRender it falls back to the
+existing hard-edged `fillRoundRectangle`/`drawRoundRectangle`. Because FOX
+creates every window with `background_pixel=0`, the state carries the parent's
+background color and the rounded shape fills under itself first, so corners show
+the parent instead of black. Masks are freed by `invalidate()` and released in
+`~FXApp` while the display is still open. Verified: classic rendering stays
+pixel-identical (hello and button, 0 differing pixels); with `corner_radius=6`
+the hello corner goes parent `#D4D0C8` -> `(120,117,113)` -> `(40,39,38)` ->
+border `#000000`, and the 8x8 corner region contains 8 distinct colors.
+
 ### Step details
 
 Each step ends with: build, run the named example, and check the acceptance

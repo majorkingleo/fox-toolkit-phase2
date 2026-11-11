@@ -358,6 +358,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   st.options=options;
   st.back=backColor;
   st.text=textColor;
+  st.parentBack=getParent()?getParent()->getBackColor():backColor;
 
   // Draw the chrome; the classic style leaves the content area unchanged
   getApp()->getStyle()->drawButton(dc,0,0,width,height,st);

@@ -49,6 +49,7 @@ struct FXButtonState {
   FXuint options;     /// Frame options of the widget
   FXColor back;       /// Background color of the widget
   FXColor text;       /// Text color of the widget
+  FXColor parentBack; /// Background color of the parent
   };
 
 
@@ -60,7 +61,22 @@ struct FXButtonState {
 */
 class FXAPI FXStyle {
 protected:
-  FXTheme *theme;     // Colors and metrics to draw with
+  struct FXCornerMask;
+  FXTheme *theme;                 // Colors and metrics to draw with
+  FXbool   xrender;               // XRender compositing available
+  FXbool   xrenderChecked;        // Capability already probed
+  void    *dpy;                   // Display used for the mask cache
+  FXCornerMask *masks;            // Cached corner masks by radius
+protected:
+
+  /// Probe whether the drawable supports antialiased compositing
+  FXbool hasXRender(FXDCWindow& dc);
+
+  /// Return cached corner mask for the given radius
+  FXCornerMask* getMask(FXint radius);
+
+  /// Draw an antialiased rounded rectangle; returns false if unsupported
+  FXbool drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth);
 public:
 
   /// Construct style for the given theme

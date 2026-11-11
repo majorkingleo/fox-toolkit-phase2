@@ -5893,6 +5893,8 @@ FXApp::~FXApp(){
   FXTimer *t;
   FXChore *c;
 
+  // Release style resources while the display is still open
+  style.invalidate();
   // Close display
   closeDisplay();
 
