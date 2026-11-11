@@ -421,7 +421,43 @@ and the GTK path were stable by then; Qt QSS and Xresources stay left open.
 (focus ring only) and R3 are done and verified, as is the KDE `.colors`
 importer. Still open: the **Qt QSS** and **Xresources** importers, and the
 **R2 popup shadow**, which needs `FXPopup.cpp` in the `fox2` closure before it
-can be exercised.
+can be exercised. The order in which the remainder is taken up is fixed below.
+
+**Next steps after the core (agreed 2026-11-11).** The theme core is complete
+enough to stop migrating widgets for its own sake. The remaining work is
+ordered so that each item is runtime-verifiable on this machine and does not
+collide with the DPI workstream:
+
+1. **Wire the theme data that is parsed but unused.** `METRIC_SPACING`,
+   `METRIC_ICON_SIZE`, `METRIC_SMALL_ICON_SIZE` and `METRIC_ROW_HEIGHT` are
+   stored, imported and serialized, but no widget reads them; the same is true
+   of the `FONT_SMALL`, `FONT_MONO` and `FONT_TITLE` roles. Give `FXLabel` and
+   `FXButton` the small and mono roles, let packing consume `METRIC_SPACING`,
+   and let row-shaped controls honour `METRIC_ROW_HEIGHT`. Acceptance: with
+   Breeze imported, a control's height lands in the 24-28 px band the design
+   checklist asks for, and a theme setting `[fonts] small=...` changes only the
+   small text while `hello` stays pixel-identical under the classic theme.
+2. **Finish the seam by migrating the last chrome consumers** —
+   `FXTextField`, `FXScrollBar`, `FXToolTip`, `FXMenuPane`. Bringing
+   `FXPopup.cpp` into the `fox2` closure is what unblocks the deferred popup
+   shadow, so this step pays for itself twice. Acceptance: each widget draws
+   through `FXStyle`, and classic output stays pixel-identical.
+3. **R2 popup shadow** — the cached 9-slice tile, now with a real consumer
+   (`FXPopup`/`FXMenuPane` inflated by the shadow margin, children offset).
+   Acceptance: no per-paint allocation, a shadow under menus and tooltips, and
+   themes that ask for no shadow are unchanged.
+
+Deliberately after that, in no fixed order: gradients in `FXStyle` (the
+`FXDC`/`FXImage` primitives already exist), per-state colour overrides in
+`FXTheme`, `.foxtheme.json`, and the Qt QSS and Xresources importers. None of
+them blocks the DPI or platform-seam workstreams.
+
+**Why not migrate more widgets first:** `FXTextField` and `FXScrollBar` are
+exactly the widgets the Windows DPI workstream will re-geometry
+(`WM_DPICHANGED` relayout, DPI-keyed caches, hit testing). Migrating them once,
+after the coordinate policy is fixed, avoids doing the same edit twice and keeps
+the classic pixel-identity guarantee meaningful. That is why step 2 above stops
+at the four remaining chrome consumers instead of sweeping the whole widget set.
 
 **Progress:** T1 implemented and verified (2026-11-11). `include/FXTheme.h` and
 `lib/FXTheme.cpp` added; `FXApp` owns a theme, mirrors it to and from the

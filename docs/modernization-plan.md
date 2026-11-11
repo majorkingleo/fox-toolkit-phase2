@@ -37,6 +37,40 @@ precede every workstream below:
 Workstreams 1–5 are later phases applied on top of the working `fox2/` base,
 not on `fox-1.7.95/`.
 
+## Baseline and compatibility policy (step 1 result)
+
+These decisions were made and verified while executing the theme workstream;
+they gate every later phase.
+
+- **The baseline is a measurement, not an opinion.** `tests/hello` and
+  `tests/button` must stay pixel-identical (0 differing pixels under
+  `compare -metric AE`) to the `fox-1.7.95` build whenever the classic theme is
+  selected. Every phase so far has been accepted on that basis.
+- **Geometry changes only when a theme asks for one.** The classic theme keeps
+  `DEFAULT_PAD` (2), border width 1, corner radius 0 and `animation_time` 0, so
+  nothing moves by default. Non-default metrics (`padding`, `border_width`,
+  `corner_radius`) and font roles may change widget geometry, and `setTheme()`
+  must relayout when they do. `DEFAULT_PAD` is now interpreted as "the theme's
+  default padding", which is the single hook that applications inherit.
+- **No silent reinterpretation of coordinates.** Logical units stay opt-in: the
+  theme carries a `scale` (default 1.0, settable with `[display] scale=<percent>`)
+  and `FXTheme::metric()` is the single conversion point. Pixel behaviour is
+  unchanged until the DPI workstream sets the scale.
+- **Colour compatibility runs through the palette mirror.** `setTheme()` still
+  copies roles into the twelve legacy palette fields, so code calling
+  `getBaseColor()`/`getForeColor()` keeps working while widgets migrate to
+  `theme->color(role,state)`. Explicit `setBackColor()`-style calls on a widget
+  win over the theme and survive a theme change.
+- **Supported platforms for the ported subset.** Linux/X11 is the
+  runtime-verified target. The Windows paths stay behind `#ifdef WIN32` and are
+  cross-build only on this machine. Wayland/Xwayland restricts pointer synthesis
+  and window capture, so GUI verification uses in-process observation rather
+  than screenshots.
+- **Hard-coded chrome still to migrate:** `FXTextField`, `FXScrollBar`,
+  `FXToolTip`, and `FXMenuPane`/`FXPopup` (the last two are not yet in the
+  `fox2` closure). Everything else in the current closure draws through
+  `FXStyle`.
+
 ## Current architecture and constraints
 
 FOX already separates application code from operating-system window APIs at the
@@ -420,15 +454,20 @@ the FOX event loop, and document the compositor versions tested.
 
 ## Recommended sequencing
 
-0. **Base phases**: rebuild the unmodified `fox-1.7.95/` (baseline), then copy
-   the basic subset into `fox2/` and get a minimal window-with-button example
-   compiling and running. All later steps operate on `fox2/`.
-1. **Baseline and compatibility policy**: inventory hard-coded drawing
-   assumptions, test platforms, decide geometry compatibility and supported
-   Windows versions.
-2. **Theme tokens**: add semantic palette and metrics with current-look
-   defaults; migrate common controls. Execute the phases in
-   `docs/theme-plan.md`.
+Status as of 2026-11-11: step 0 done, step 1 done (policy recorded above),
+step 2 core done with a defined remainder, step 3 next.
+
+0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
+   baseline, the minimal subset was copied into `fox2/` with Autotools, and
+   `hello` runs. All later steps operate on `fox2/`.
+1. **Baseline and compatibility policy** — done; see the section above.
+2. **Theme tokens** — core done: semantic colours, metrics, font roles, DPI
+   scale, `.foxtheme` loading, runtime switching, antialiased corners, rounded
+   focus ring, hover/pressed transitions, GTK/GTK 2/KDE importers, theme cache,
+   and desktop light/dark detection. The remainder is consumer wiring and the
+   last chrome consumers, ordered in `docs/theme-plan.md` under "Next steps
+   after the core"; it is deliberately sequenced so the widgets the DPI
+   workstream will re-geometry are migrated once, not twice.
 3. **Windows DPI**: enable and verify per-monitor awareness, then implement
    centralized scaling and runtime DPI transitions. Reuse theme metrics.
 4. **Internal platform seam**: extract and validate narrow Windows/X11
