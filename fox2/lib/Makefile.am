@@ -90,6 +90,7 @@ FXStyle.cpp \
 FXTheme.cpp \
 FXCSS.cpp \
 FXThemeCache.cpp \
+FXDesktopSettings.cpp \
 fxpriv.h
 
 EXTRA_DIST = \

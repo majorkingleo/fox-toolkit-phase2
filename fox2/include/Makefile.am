@@ -87,6 +87,7 @@ FXTheme.h \
 FXStyle.h \
 FXCSS.h \
 FXThemeCache.h \
+FXDesktopSettings.h \
 FXThread.h \
 FXToolBarGrip.h \
 FXToolBar.h \

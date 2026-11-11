@@ -555,6 +555,37 @@ at `/usr/share/themes/Breeze` writes the cache once, does not rewrite it on the
 second run, and renders `#EFF0F1` at 91x34 both times with 0 differing pixels.
 Classic stays pixel-identical.
 
+**Progress:** T8 implemented and verified (2026-11-11). `include/FXDesktopSettings.h`
+and `lib/FXDesktopSettings.cpp` read the desktop's light/dark preference without
+linking a desktop library. The checks run cheapest first and every failure
+falls through: `$GTK_THEME` (a name containing `dark`), then
+`gtk-application-prefer-dark-theme` in `$XDG_CONFIG_HOME/gtk-4.0/settings.ini`
+and `gtk-3.0/settings.ini`, then `[General] ColorScheme` in `kdeglobals`, and
+finally `gsettings get org.gnome.desktop.interface color-scheme` through a
+bounded `popen()` read on POSIX only. The result is `SCHEME_DARK`,
+`SCHEME_LIGHT` or `SCHEME_UNKNOWN`, and `getColorSchemeName()` reports which
+source decided it. `FXApp::init()` now treats an absent `SETTINGS/theme` entry,
+and the explicit value `auto`, as "follow the desktop": a dark preference
+selects the built-in dark preset, and an explicit `classic`, `dark` or theme
+path still wins.
+
+Verified with a check program (9 assertions, all passing) covering no
+configuration, `GTK_THEME=Adwaita-dark` (dark), `GTK_THEME=Adwaita` (no hint,
+unknown), the GTK settings file in both directions, GTK 4 taking precedence
+over GTK 3, `kdeglobals` with `BreezeDark`/`BreezeLight`/`Oxygen`, and this
+desktop (light, from the GTK 4 settings file). With an isolated `HOME`, `hello`
+renders the dark surface `#2D2D2D` when the desktop prefers dark and the classic
+`#D4D0C8` when it prefers light, an explicit `classic` overrides a dark
+preference, and `auto` follows it. Classic stays pixel-identical.
+
+**FOX quirk found while implementing T8:** `FXString::toInt()` reports failure
+for the string `"0"`, because `__strtoll()` consumes the leading zero looking
+for an `0x`/`0b` prefix and then finds no digits. `FXSettings::readIntEntry()`
+therefore returns its default for a value of `0`. The desktop adapter reads the
+GTK preference as text and compares strings instead of relying on `toInt`; other
+code should avoid `toInt()` on values that may be exactly `0` until the number
+parser is addressed.
+
 **Progress:** R2 focus ring implemented and verified (2026-11-11).
 `FXStyle::drawFocusRing()` draws a rounded ring in `ROLE_FOCUS_RING` using
 `METRIC_FOCUS_WIDTH` when `corner_radius>0`, and keeps the classic dashed
