@@ -88,6 +88,7 @@ fxwuquantize.cpp \
 fxxbmio.cpp \
 FXStyle.cpp \
 FXTheme.cpp \
+FXCSS.cpp \
 fxpriv.h
 
 EXTRA_DIST = \

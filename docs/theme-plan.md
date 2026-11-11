@@ -482,6 +482,45 @@ baseline; `padding=10` gives 99x42; `[fonts] ui=Sans,150` gives 134x38;
 `scale=200` theme still reports `animation_time` as 300 ms and still takes 21
 repaints per leg, confirming that time is not scaled.
 
+**Progress:** T6 implemented and verified (2026-11-11). `include/FXCSS.h` and
+`lib/FXCSS.cpp` hold one reader for both jobs: it strips comments and quotes,
+collects `@define-color` entries and resolves chains of `@name` indirections
+(bounded to 8 hops), parses selector lists with pseudo classes into a
+selector-keyed declaration table, and understands `#rgb`, `#rrggbb`,
+`#rrggbbaa`, `rgb()`, `rgba()` (alpha ignored) and a small set of CSS color
+names. Lengths accept `px`, `mm`, `cm`, `pt` and `em` and are converted at the
+nominal 96 dpi, which keeps imports independent of the machine. GTK 2 `gtkrc`
+files are read with the same storage: `gtk-color-scheme = "name:#rrggbb"` lines
+become named colors and `font_name` becomes the `FONT_UI` role. At-rules with
+no color content (`@keyframes`, `@import`, `@binding-set`, `@font-face`) are
+skipped silently; anything else is reported as a warning.
+
+Role mapping is GTK-name based: `theme_bg_color`/`bg_color` -> `SURFACE`,
+`theme_base_color` -> `WINDOW_BG`, `theme_fg_color`/`theme_text_color` ->
+`TEXT`, `theme_selected_*` -> `SELECTION_*` and `MENU_SEL_*`,
+`insensitive_fg_color` -> `TEXT_DISABLED`, `borders`/`border_color` ->
+`BORDER`, `tooltip_*` -> `TOOLTIP_*`, `accent_*` -> `ACCENT`. Raised and
+sunken edges are derived from the imported surface with `makeHiliteColor()`
+and `makeShadowColor()`. Metrics come from the rule that names `button`:
+`border-radius`, `border-width`, `padding` and `outline-width`, with zero
+values skipped because GTK resets properties in more specific rules.
+
+`tools/fxthemeimport.cpp` (new `tools/` subdirectory) writes the resolved
+theme as `.foxtheme` plus a human-readable summary, and exits with status 2
+when warnings were seen. The runtime loader in `FXApp::init()` falls back to
+the same reader when the registry `SETTINGS/theme` value points at a GTK theme
+directory or style sheet instead of a `.foxtheme`.
+
+Verified with the corpora on this machine: Breeze GTK 3 (837 rules, 0
+warnings, padding 6, border 1, radius 5 from `1.25mm`), Breeze GTK 4 (781
+rules, 0 warnings, padding 5, radius 5), Breeze-Dark GTK 3 and the Breeze
+`gtkrc` (surface `#EFF0F1`, text `#232629`, selection `#3DAEE9`, border
+`#BCBDBF`, tooltip `#F7F7F7`, 0 warnings). End to end, `hello` renders 91x34
+with face `#EFF0F1` from the generated file, and pointing the registry straight
+at `/usr/share/themes/Breeze` gives a pixel-identical result (0 differing
+pixels), while `/usr/share/themes/Breeze-Dark` gives face `#202326`. Classic
+stays pixel-identical.
+
 **Progress:** R2 focus ring implemented and verified (2026-11-11).
 `FXStyle::drawFocusRing()` draws a rounded ring in `ROLE_FOCUS_RING` using
 `METRIC_FOCUS_WIDTH` when `corner_radius>0`, and keeps the classic dashed

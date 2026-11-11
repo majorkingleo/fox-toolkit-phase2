@@ -100,6 +100,7 @@
 #include "FXWindow.h"
 #include "FXTheme.h"
 #include "FXStyle.h"
+#include "FXCSS.h"
 #include "FXApp.h"
 #include "FXGIFIcon.h"
 #include "FXRegion.h"

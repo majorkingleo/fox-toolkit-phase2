@@ -18,6 +18,7 @@
 /include/fxver.h
 /include/stamp-h1
 /lib/Makefile.in
+/tools/Makefile.in
 /tests/Makefile.in
 *.lo
 *.la

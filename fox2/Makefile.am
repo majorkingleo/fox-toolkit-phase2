@@ -2,6 +2,6 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = include lib tests
+SUBDIRS = include lib tools tests
 
 EXTRA_DIST = LICENSE LICENSE_ADDENDUM

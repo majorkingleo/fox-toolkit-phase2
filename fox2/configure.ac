@@ -380,5 +380,6 @@ AC_CONFIG_FILES([Makefile
 include/Makefile
 include/fxver.h
 lib/Makefile
+tools/Makefile
 tests/Makefile])
 AC_OUTPUT

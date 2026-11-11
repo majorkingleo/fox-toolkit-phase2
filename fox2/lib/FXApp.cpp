@@ -55,6 +55,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXCSS.h"
 #include "FXLabel.h"
 #include "FXButton.h"
 #include "FXComposite.h"
@@ -4475,7 +4476,8 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   // Refresh theme from the palette
   refreshTheme();
 
-  // Load theme selection: "classic", "dark", or a .foxtheme path
+  // Load theme selection: "classic", "dark", a .foxtheme file, or a GTK
+  // theme directory/style sheet which is imported on the spot
   FXString themename=registry.readStringEntry("SETTINGS","theme",nullptr);
   if(themename=="dark"){
     theme.setDark();
@@ -4485,6 +4487,14 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
     FXTheme loaded;
     if(loaded.load(themename)){
       setTheme(loaded);
+      }
+    else if(themename.find(".foxtheme")<0){
+      FXCSS css;
+      if(css.load(themename)){
+        loaded.setClassic();
+        css.apply(loaded);
+        setTheme(loaded);
+        }
       }
     }
 
