@@ -85,6 +85,7 @@ void FXTheme::setClassic(){
   metrics[METRIC_SMALL_ICON_SIZE]=12;
   metrics[METRIC_ROW_HEIGHT]=20;
   metrics[METRIC_CORNER_RADIUS]=0;
+  metrics[METRIC_ANIMATION_TIME]=0;
   }
 
 
@@ -116,7 +117,7 @@ FXbool FXTheme::load(const FXString& path){
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
-    "icon_size","small_icon_size","row_height","corner_radius"
+    "icon_size","small_icon_size","row_height","corner_radius","animation_time"
     };
   FXSettings settings;
   FXint i;

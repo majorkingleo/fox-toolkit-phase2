@@ -71,11 +71,21 @@ class FXAPI FXButton : public FXLabel {
   FXDECLARE(FXButton)
 protected:
   FXuchar  state;
+  FXColor  animColor;           // Current animated face color
+  FXColor  animFrom;            // Face color the transition started from
+  FXColor  animTarget;          // Target face color
+  FXTime   animStart;           // Start time of the transition
+  FXbool   animating;           // Animation is running
 protected:
   FXButton();
 private:
   FXButton(const FXButton&);
   FXButton& operator=(const FXButton&);
+public:
+  enum{
+    ID_ANIMATE=FXWindow::ID_LAST,
+    ID_LAST
+    };
 public:
   long onPaint(FXObject*,FXSelector,void*);
   long onUpdate(FXObject*,FXSelector,void*);
@@ -95,6 +105,11 @@ public:
   long onCmdSetValue(FXObject*,FXSelector,void*);
   long onCmdSetIntValue(FXObject*,FXSelector,void*);
   long onCmdGetIntValue(FXObject*,FXSelector,void*);
+  long onAnimate(FXObject*,FXSelector,void*);
+protected:
+
+  /// Aim the face-color animation at the given hover state
+  void updateAnimatedColor(FXbool hover);
 public:
 
   /// Construct button with text and icon
@@ -123,6 +138,12 @@ public:
 
   /// Get the button style flags
   FXuint getButtonStyle() const;
+
+  /// Re-apply theme colors, stopping any running animation
+  virtual void applyTheme(FXTheme* theme) override;
+
+  /// Destructor
+  virtual ~FXButton();
 
   };
 

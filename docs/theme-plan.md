@@ -473,11 +473,52 @@ children. `FXPopup.cpp` is not in the `fox2` closure at all yet (only
 validate against. The 9-slice shadow-tile cache will land together with popup
 support rather than as an unexercised code path.
 
+**Progress:** R3 implemented and verified (2026-11-11). `FXTheme` gained
+`METRIC_ANIMATION_TIME` (classic default 0, parsed from `[metrics]`
+`animation_time`). `FXButton` keeps `animColor`/`animFrom`/`animTarget`/
+`animStart`/`animating`; `updateAnimatedColor(hover)` aims the face color at
+`theme->color(ROLE_SURFACE,ACTIVE|HOVER)` while hovered and back at `backColor`
+otherwise, and starts a 15 ms `ID_ANIMATE` timer. `onAnimate()` computes
+`alpha=(now-animStart)/(animation_time*1e6)`, blends `animFrom`->`animTarget`
+linearly, and snaps plus stops when `alpha>=1`.
+
+Two defects were found and fixed while verifying:
+
+- **The timer never repeated.** FOX timers are one-shot; `onAnimate()` returned
+  1 without re-arming, so exactly one step ran and then nothing. It now calls
+  `addTimeout()` again for the next step and only returns 0 when the transition
+  completes.
+- **`underCursor()` is stale in `onLeave`.** `FXApp::enterWindow()` sets
+  `cursorWindow` *before* dispatching `SEL_ENTER`, but `FXApp::leaveWindow()`
+  dispatches `SEL_LEAVE` *before* clearing it, so `underCursor()` is still true
+  inside `onLeave()`. The hover state is therefore passed in explicitly as
+  `updateAnimatedColor(FXbool hover)` instead of being read from the app.
+
+Verified with a paint-counting `FXButton` subclass driven by synthetic crossing
+events (Xwayland cannot warp the pointer): with `animation_time=300` the face
+color ramps `#D4D0C8`->`#D7D3CC` over ~21 repaints and stops at ~295 ms, the
+fade back ramps to `#D4D0C8` and stops the same way, and the 500 ms quiet window
+afterwards sees 0 repaints; with `animation_time=0` and with the classic preset
+there is no timer and a single repaint. Classic rendering stays pixel-identical
+(hello and button, 0 differing pixels).
+
 ### Step details
 
 Each step ends with: build, run the named example, and check the acceptance
-column. Visual steps (`T1`, `T2`, `R1`, `R2`) require a screenshot or pixel
-comparison against the pre-change build.
+column. Visual steps (`T1`, `T2`, `R1`, `R2`, `R3`) require a screenshot or
+pixel comparison against the pre-change build.
+
+Two constraints apply to the verification scripts in `tmp/`:
+
+- The development session runs on KDE Wayland with Xwayland, so `XWarpPointer`
+  cannot move the real pointer and `import -window <title>` is unreliable. Steps
+  that need hover must synthesize the crossing event (`XSendEvent` with
+  `EnterNotify`, `mode=NotifyNormal`, `detail=NotifyAncestor`) and steps that
+  need a click must synthesize `ButtonPress`/`ButtonRelease`.
+- `FXWindow::update()` queues a client-side repaint, so X `Expose` events are
+  not a usable repaint signal. Count paints in-process by subclassing the widget
+  and hooking `SEL_PAINT`; a subclass may also read the protected animation
+  fields to check the blend.
 
 #### T1 — theme skeleton, colors only
 

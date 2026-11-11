@@ -75,6 +75,7 @@ enum {
   METRIC_SMALL_ICON_SIZE, /// Small icon size
   METRIC_ROW_HEIGHT,      /// Default row height
   METRIC_CORNER_RADIUS,   /// Corner radius
+  METRIC_ANIMATION_TIME,  /// State transition time in milliseconds
   METRIC_LAST
   };
 

@@ -30,12 +30,16 @@
 #include "FXElement.h"
 #include "FXMetaClass.h"
 #include "FXHash.h"
+#include "FXAutoThreadStorageKey.h"
+#include "FXRunnable.h"
+#include "FXThread.h"
 #include "FXStream.h"
 #include "FXString.h"
 #include "FXStringDictionary.h"
 #include "FXSettings.h"
 #include "FXRegistry.h"
 #include "FXEvent.h"
+#include "FXThread.h"
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
@@ -44,6 +48,10 @@
 #include "FXIcon.h"
 #include "FXShell.h"
 #include "FXButton.h"
+
+
+// Interval between two face-color animation steps, in nanoseconds
+#define ANIM_TICK 15000000LL
 
 
 /*
@@ -90,6 +98,7 @@ FXDEFMAP(FXButton) FXButtonMap[]={
   FXMAPFUNC(SEL_COMMAND,FXButton::ID_SETVALUE,FXButton::onCmdSetValue),
   FXMAPFUNC(SEL_COMMAND,FXButton::ID_SETINTVALUE,FXButton::onCmdSetIntValue),
   FXMAPFUNC(SEL_COMMAND,FXButton::ID_GETINTVALUE,FXButton::onCmdGetIntValue),
+  FXMAPFUNC(SEL_TIMEOUT,FXButton::ID_ANIMATE,FXButton::onAnimate),
   };
 
 
@@ -100,6 +109,11 @@ FXIMPLEMENT(FXButton,FXLabel,FXButtonMap,ARRAYNUMBER(FXButtonMap))
 // Deserialization
 FXButton::FXButton(){
   state=STATE_UP;
+  animColor=0;
+  animFrom=0;
+  animTarget=0;
+  animStart=0;
+  animating=false;
   }
 
 
@@ -108,6 +122,11 @@ FXButton::FXButton(FXComposite* p,const FXString& text,FXIcon* ic,FXObject* tgt,
   target=tgt;
   message=sel;
   state=STATE_UP;
+  animColor=backColor;
+  animFrom=backColor;
+  animTarget=backColor;
+  animStart=0;
+  animating=false;
   if(options&BUTTON_INITIAL){
     setInitial(true);
     setDefault(true);
@@ -218,6 +237,7 @@ long FXButton::onEnter(FXObject* sender,FXSelector sel,void* ptr){
   if(isEnabled()){
     if((flags&FLAG_PRESSED) && (state!=STATE_ENGAGED)) setState(STATE_DOWN);
     if(options&BUTTON_TOOLBAR) update();
+    updateAnimatedColor(true);
     }
   return 1;
   }
@@ -229,6 +249,7 @@ long FXButton::onLeave(FXObject* sender,FXSelector sel,void* ptr){
   if(isEnabled()){
     if((flags&FLAG_PRESSED) && (state!=STATE_ENGAGED)) setState(STATE_UP);
     if(options&BUTTON_TOOLBAR) update();
+    updateAnimatedColor(false);
     }
   return 1;
   }
@@ -244,6 +265,7 @@ long FXButton::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
     if(state!=STATE_ENGAGED) setState(STATE_DOWN);
     flags|=FLAG_PRESSED;
     flags&=~FLAG_UPDATE;
+    updateAnimatedColor(underCursor());
     return 1;
     }
   return 0;
@@ -260,6 +282,7 @@ long FXButton::onLeftBtnRelease(FXObject*,FXSelector,void* ptr){
     if(target && target->tryHandle(this,FXSEL(SEL_LEFTBUTTONRELEASE,message),ptr)) return 1;
     if(state!=STATE_ENGAGED) setState(STATE_UP);
     if(click && target){ target->tryHandle(this,FXSEL(SEL_COMMAND,message),(void*)(FXuval)1); }
+    updateAnimatedColor(underCursor());
     return 1;
     }
   return 0;
@@ -356,7 +379,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   st.toolbar=(options&BUTTON_TOOLBAR)!=0;
   st.border=border;
   st.options=options;
-  st.back=backColor;
+  st.back=animating?animColor:backColor;
   st.text=textColor;
   st.parentBack=getParent()?getParent()->getBackColor():backColor;
 
@@ -408,6 +431,87 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
       }
     }
   return 1;
+  }
+
+
+// Aim the face-color animation at the given hover state
+void FXButton::updateAnimatedColor(FXbool hover){
+  FXTheme *theme=getApp()->getTheme();
+  FXint msec=theme->metric(METRIC_ANIMATION_TIME);
+  FXColor target=backColor;
+
+  // Transition only when the theme asks for it
+  if(0<msec && isEnabled() && hover){
+    target=theme->color(ROLE_SURFACE,(state==STATE_DOWN)?THEME_STATE_ACTIVE:THEME_STATE_HOVER);
+    }
+
+  // Nothing to do if the target did not change
+  if(target==animTarget) return;
+
+  // Retarget from wherever the face color is right now
+  animTarget=target;
+  animFrom=animColor;
+  animStart=FXThread::time();
+
+  // Start the timer if the transition is not already running
+  if(!animating){
+    animating=true;
+    getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_ANIMATE),ANIM_TICK);
+    }
+  }
+
+
+// Step the face color toward its target
+long FXButton::onAnimate(FXObject*,FXSelector,void*){
+  FXint msec=getApp()->getTheme()->metric(METRIC_ANIMATION_TIME);
+  FXdouble alpha=1.0;
+  FXint r1,g1,b1,r2,g2,b2;
+
+  // Progress of the transition, 0..1
+  if(0<msec) alpha=FXdouble(FXThread::time()-animStart)/FXdouble(msec*1000000LL);
+
+  // Complete: snap to the target color and stop the timer
+  if(alpha>=1.0){
+    animColor=animTarget;
+    animating=false;
+    update();
+    return 0;
+    }
+
+  r1=FXREDVAL(animFrom);
+  g1=FXGREENVAL(animFrom);
+  b1=FXBLUEVAL(animFrom);
+  r2=FXREDVAL(animTarget);
+  g2=FXGREENVAL(animTarget);
+  b2=FXBLUEVAL(animTarget);
+  animColor=FXRGB(r1+FXint(alpha*(r2-r1)),g1+FXint(alpha*(g2-g1)),b1+FXint(alpha*(b2-b1)));
+  update();
+
+  // Timers are one-shot, so arm the next step
+  getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_ANIMATE),ANIM_TICK);
+  return 1;
+  }
+
+
+// Re-apply theme colors, stopping any running animation
+void FXButton::applyTheme(FXTheme* theme){
+  FXLabel::applyTheme(theme);
+  if(animating){
+    getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_ANIMATE));
+    animating=false;
+    }
+  animColor=backColor;
+  animFrom=backColor;
+  animTarget=backColor;
+  }
+
+
+// Destructor
+FXButton::~FXButton(){
+  if(animating){
+    getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_ANIMATE));
+    animating=false;
+    }
   }
 
 
