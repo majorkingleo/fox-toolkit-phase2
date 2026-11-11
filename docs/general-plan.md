@@ -20,6 +20,25 @@ The later modernization workstreams live in `docs/modernization-plan.md`.
 - Deliverable: a build log plus a short note of the configure options and any
   required system dependencies.
 
+### Phase 1 result (2026-11-11)
+
+- Out-of-tree build in `tmp/build-fox1/` so `fox-1.7.95/` stays unmodified.
+- Toolchain: GCC 16.2.1, GNU Make 4.4.1, Autoconf 2.73, Automake 1.19.
+- `../fox-1.7.95/configure` with default options: exit 0.
+- `make -j24`: exit 0 in ~40 s; produced `lib/.libs/libFOX-1.7.so.0.0.95`
+  (7.3 MB) plus the tests and example programs.
+- Warnings only, no errors. Dominant one: ~2300
+  `-Wdeprecated-enum-enum-conversion` from flag combinations of the unnamed
+  enums, then enum arithmetic, `%lld` format mismatches, and a few unused
+  parameters.
+- Detected and enabled: X11, Xext, Xrender, Xcursor, Xrandr, Xfixes, Xi, XShm,
+  Xshape, Xft, fontconfig, freetype, JPEG, JXL, PNG (via zlib), TIFF, zlib,
+  bzip2, lzma, CUPS, OpenGL/GLU/GLX.
+- Not enabled by default: WebP and JPEG 2000 (opt-in via `--enable-webp` /
+  `--enable-jp2`, needing `libwebp` / `openjpeg2`). No other library is
+  required.
+
+
 ## Phase 2 — Copy basic parts into fox2
 
 - Create the `fox2/` tree and copy only what is required to compile and run a
