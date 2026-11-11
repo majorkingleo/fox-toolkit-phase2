@@ -25,6 +25,10 @@
 #include "FXObject.h"
 #endif
 
+#ifndef FXTHEME_H
+#include "FXTheme.h"
+#endif
+
 namespace FX {
 
 
@@ -224,6 +228,7 @@ private:
   FXColor          tipbackColor;        // Tooltip background color
   FXColor          selMenuTextColor;    // Select foreground color in menus
   FXColor          selMenuBackColor;    // Select background color in menus
+  FXTheme          theme;               // Semantic colors and metrics
   FXCursor        *waitCursor;          // Current wait cursor
   FXuint           waitCount;           // Number of times wait cursor was called
   FXuint           windowCount;         // Number of windows
@@ -845,6 +850,16 @@ public:
   void setTipbackColor(FXColor color);
   void setSelMenuTextColor(FXColor color);
   void setSelMenuBackColor(FXColor color);
+
+  /// Return theme
+  FXTheme* getTheme(){ return &theme; }
+  const FXTheme* getTheme() const { return &theme; }
+
+  /// Change theme; updates the default palette colors
+  void setTheme(const FXTheme& thm);
+
+  /// Refresh theme colors from the default palette
+  void refreshTheme();
 
   /// Get number of existing windows
   FXuint getWindowCount() const { return windowCount; }

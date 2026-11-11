@@ -72,6 +72,7 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSystem.h \
+FXTheme.h \
 FXTextCodec.h \
 FXTextField.h \
 FXThread.h \

@@ -4469,6 +4469,9 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   selMenuTextColor=registry.readColorEntry("SETTINGS","selmenutextcolor",selforeColor);
   selMenuBackColor=registry.readColorEntry("SETTINGS","selmenubackcolor",selbackColor);
 
+  // Refresh theme from the palette
+  refreshTheme();
+
   // Maximum number of colors to allocate
   maxcolors=registry.readUIntEntry("SETTINGS","maxcolors",maxcolors);
 
@@ -5722,66 +5725,117 @@ void FXApp::setScrollBarSize(FXint size){
   }
 
 
+// Change theme; updates the default palette colors
+void FXApp::setTheme(const FXTheme& thm){
+  theme=thm;
+  borderColor=theme.color(ROLE_BORDER);
+  baseColor=theme.color(ROLE_SURFACE);
+  hiliteColor=theme.color(ROLE_SURFACE_HILITE);
+  shadowColor=theme.color(ROLE_SURFACE_SHADOW);
+  backColor=theme.color(ROLE_WINDOW_BG);
+  foreColor=theme.color(ROLE_TEXT);
+  selforeColor=theme.color(ROLE_SELECTION_TEXT);
+  selbackColor=theme.color(ROLE_SELECTION_BG);
+  tipforeColor=theme.color(ROLE_TOOLTIP_TEXT);
+  tipbackColor=theme.color(ROLE_TOOLTIP_BG);
+  selMenuTextColor=theme.color(ROLE_MENU_SEL_TEXT);
+  selMenuBackColor=theme.color(ROLE_MENU_SEL_BG);
+  }
+
+
+// Refresh theme colors from the default palette
+void FXApp::refreshTheme(){
+  theme.setColor(ROLE_BORDER,borderColor);
+  theme.setColor(ROLE_SURFACE,baseColor);
+  theme.setColor(ROLE_SURFACE_HILITE,hiliteColor);
+  theme.setColor(ROLE_SURFACE_SHADOW,shadowColor);
+  theme.setColor(ROLE_WINDOW_BG,backColor);
+  theme.setColor(ROLE_TEXT,foreColor);
+  theme.setColor(ROLE_SELECTION_TEXT,selforeColor);
+  theme.setColor(ROLE_SELECTION_BG,selbackColor);
+  theme.setColor(ROLE_TOOLTIP_TEXT,tipforeColor);
+  theme.setColor(ROLE_TOOLTIP_BG,tipbackColor);
+  theme.setColor(ROLE_MENU_SEL_TEXT,selMenuTextColor);
+  theme.setColor(ROLE_MENU_SEL_BG,selMenuBackColor);
+  theme.updateDerived();
+  }
+
+
 // Change border color
 void FXApp::setBorderColor(FXColor color){
   borderColor=color;
+  theme.setColor(ROLE_BORDER,color);
   }
 
 // Change base color
 void FXApp::setBaseColor(FXColor color){
   baseColor=color;
+  theme.setColor(ROLE_SURFACE,color);
+  theme.updateDerived();
   }
 
 // Change highlight color
 void FXApp::setHiliteColor(FXColor color){
   hiliteColor=color;
+  theme.setColor(ROLE_SURFACE_HILITE,color);
   }
 
 // Change shadow color
 void FXApp::setShadowColor(FXColor color){
   shadowColor=color;
+  theme.setColor(ROLE_SURFACE_SHADOW,color);
   }
 
 // Change background color
 void FXApp::setBackColor(FXColor color){
   backColor=color;
+  theme.setColor(ROLE_WINDOW_BG,color);
   }
 
 // Change foreground color
 void FXApp::setForeColor(FXColor color){
   foreColor=color;
+  theme.setColor(ROLE_TEXT,color);
+  theme.updateDerived();
   }
 
 // Change selected foreground color
 void FXApp::setSelforeColor(FXColor color){
   selforeColor=color;
+  theme.setColor(ROLE_SELECTION_TEXT,color);
   }
 
 // Change selected background color
 void FXApp::setSelbackColor(FXColor color){
   selbackColor=color;
+  theme.setColor(ROLE_SELECTION_BG,color);
+  theme.updateDerived();
   }
 
 // Change tip foreground color
 void FXApp::setTipforeColor(FXColor color){
   tipforeColor=color;
+  theme.setColor(ROLE_TOOLTIP_TEXT,color);
   }
 
 // Change tip background color
 void FXApp::setTipbackColor(FXColor color){
   tipbackColor=color;
+  theme.setColor(ROLE_TOOLTIP_BG,color);
   }
 
 
 // Change selected menu text color
 void FXApp::setSelMenuTextColor(FXColor color){
   selMenuTextColor=color;
+  theme.setColor(ROLE_MENU_SEL_TEXT,color);
   }
 
 
 // Change selected menu back color
 void FXApp::setSelMenuBackColor(FXColor color){
   selMenuBackColor=color;
+  theme.setColor(ROLE_MENU_SEL_BG,color);
   }
 
 

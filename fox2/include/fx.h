@@ -97,6 +97,7 @@
 #include "FXImage.h"
 #include "FXIcon.h"
 #include "FXWindow.h"
+#include "FXTheme.h"
 #include "FXApp.h"
 #include "FXGIFIcon.h"
 #include "FXRegion.h"

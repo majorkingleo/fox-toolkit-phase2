@@ -405,6 +405,12 @@ R1–R3 then deliver the modern rendering; T5 depends on the DPI coordinate
 policy; T6 is independent once T3 exists; T7 makes T6 cheap at startup; T8 is
 independent of both. KDE, Qt, and Xresources importers wait until after T7.
 
+**Progress:** T1 implemented and verified (2026-11-11). `include/FXTheme.h` and
+`lib/FXTheme.cpp` added; `FXApp` owns a theme, mirrors it to and from the
+palette, and keeps it in sync from the twelve palette setters. `hello` is
+pixel-identical to the Phase 3 build (0 differing pixels) and the role/palette
+consistency check passes.
+
 ### Step details
 
 Each step ends with: build, run the named example, and check the acceptance

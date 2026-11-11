@@ -57,6 +57,7 @@ fxstrtod.cpp \
 fxstrtoll.cpp \
 fxstrtoull.cpp \
 FXSystem.cpp \
+FXTheme.cpp \
 FXTextCodec.cpp \
 FXThread.cpp \
 FXTopWindow.cpp \
