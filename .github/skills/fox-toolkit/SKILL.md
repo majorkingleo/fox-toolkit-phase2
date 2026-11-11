@@ -280,3 +280,116 @@ For a change:
 4. Rebuild the smallest affected target, then run an appropriate GUI example
    or focused validation. Distinguish a compile check from runtime GUI
    verification.
+
+## Known glitches and gotchas
+
+Traps that cost real debugging time. All were reproduced in the `fox2/` port,
+and all of them are origin code paths, not port artefacts. Each entry gives the
+symptom, the cause with its source location, and the workaround.
+
+### Value parsing and numbers
+
+- **`toInt()` rejects the string `"0"`.** `FXString("0").toInt(10,&ok)` returns
+  0 with `ok=false`. Cause: `__strtoll()` in `lib/fxstrtoll.cpp` consumes a
+  leading `0` while looking for an `0x`/`0b` prefix, then finds no digits left
+  and reports failure. Consequence: `FXSettings::readIntEntry()` returns its
+  *default* for any entry whose value is `0`, which silently breaks tri-state
+  settings. Workaround: read the entry as a string
+  (`readStringEntry`) and compare, or supply a default that cannot be confused
+  with a real value.
+- **`FXString::mid()` needs a length.** There is no `mid(pos)` overload, only
+  `mid(pos,n)`; also no `count(ch)` and no `endsWith()`. Use `right(n)`,
+  `after(ch)`, `before(ch)`, or count characters yourself.
+
+### Timers and events
+
+- **`addTimeout()` fires once.** FOX timers are one-shot. Returning 1 from the
+  `SEL_TIMEOUT` handler does *not* repeat it, and a handler that forgets to
+  re-arm produces exactly one step (a hover fade that never fades, for
+  example). Workaround: call `getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,id),ns)`
+  again from inside the handler, and return 0 only when finished.
+- **There is no `FXApp::getTick()`.** For elapsed-time math use
+  `FXThread::time()`, which returns nanoseconds in `FXTime`.
+- **`update()` does not generate X `Expose` events.** `FXWindow::update()`
+  forwards to `FXApp::addRepaint()`, a client-side repaint queue that the
+  event loop paints directly (see `lib/FXWindow.cpp`, `lib/FXApp.cpp`). Any
+  test that waits for `Expose` to prove a repaint will hang. Workaround:
+  subclass the widget, map `SEL_PAINT`, and count paint calls in-process.
+- **`underCursor()` is stale inside `onLeave`.** `FXApp::enterWindow()` sets
+  `cursorWindow` *before* dispatching `SEL_ENTER`, but `FXApp::leaveWindow()`
+  dispatches `SEL_LEAVE` *before* clearing it, so `underCursor()` is still true
+  while the leave handler runs. Do not read hover state there; pass the new
+  state into the code that needs it.
+- **Crossing pairs drive both enter and leave.** Real pointer crossings are
+  processed on the `EnterNotify` branch, which computes
+  `commonAncestor(window,cursorWindow)` and emits the leave for the old window
+  before the enter for the new one. Sending a bare `LeaveNotify` to a child
+  dispatches nothing, because `leaveWindow()` is called with the child's own
+  parent as the ancestor. To simulate "pointer left a child", send an
+  `EnterNotify` for the parent instead.
+
+### Memory and buffers
+
+- **`FXFREE()` takes the address of the pointer.** The macro is
+  `(FX::fxfree((void**)(ptr)))` and `fxfree()` frees `*ptr`, so `FXFREE(buffer)`
+  frees whatever the first bytes of the buffer happen to look like and then
+  aborts with `free(): invalid pointer`. Use `FXFREE(&buffer)`, and note that
+  `FXMALLOC(&buffer,type,count)` also takes the address and returns `FXbool`.
+- **`FXMemoryStream::takeBuffer()` reports capacity, not content.** It returns
+  `endptr-begptr`, which is the whole buffer size, so a written-out file is
+  padded with uninitialised bytes. Take the byte count from `position()`
+  before draining the stream, or keep ownership with `FXMALLOC` and let the
+  stream use an external buffer (`open(FXStreamSave,buffer,size,false)`).
+
+### Windows, drawing, resources
+
+- **Every window is created with `background_pixel=0`.** Anything the toolkit
+  does not paint stays black. Rounded or otherwise non-rectangular shapes must
+  fill their own rect with the parent's background color before drawing, or
+  the corners come out black.
+- **`FXTopWindow::create()` does not map the window.** `FXApp::create()` builds
+  the X windows but nothing appears until `show()`. Consequence: a window that
+  was never shown makes `FXDCWindow::readPixel()`/`XGetImage()` fail with
+  `BadMatch (invalid parameter attributes)` because the drawable is not
+  viewable.
+- **`FXStat::statFile()` reports a directory as "not a file".** Code that
+  stamps or validates a *directory* (mtime/size caching, for example) always
+  fails because `isFile()` is false. Resolve a directory to the file that will
+  actually be read before stat-ing it.
+- **A generic INI reader accepts any INI file.** `FXTheme::load()` parses a KDE
+  `.colors` file successfully and yields a theme with every key unmatched, so
+  "try INI, fall back to import on failure" silently produces defaults.
+  Dispatch on the file suffix or on content, and treat parse success as
+  unrelated to "the right format was read".
+
+### Building extensions
+
+- **Include order matters.** `FXStream.h` needs `FXHash.h` (which needs
+  `FXElement.h`); `FXDir.h` needs `FXIO.h`; `FXThread.h` needs
+  `FXAutoThreadStorageKey.h` and `FXRunnable.h`. Copy the prologue of an
+  existing implementation that already uses the class (`lib/FXSettings.cpp` for
+  settings/streams) instead of inventing one.
+- **`FXStream` has no `FXString` operators in 1.7.95.** Serialize strings as a
+  length plus raw bytes, and bound the length on read because the input may be
+  untrusted.
+- **Layout changes break stale binaries.** After adding members to `FXApp`,
+  `FXTheme` or other core classes, helper programs built against the old
+  library abort with `FXApp::init: bad arguments.` (garbage `argc`/`argv`).
+  Rebuild every helper, not just the library.
+
+### Verifying GUI behaviour on KDE Wayland
+
+The development desktop runs KWin with Xwayland, which limits what a test can
+do to a running application:
+
+- `XWarpPointer` does not move the real pointer, so no crossing events arrive
+  and hover-driven code never runs. Synthesize the crossing instead:
+  `XSendEvent` with `EnterNotify`, `mode=NotifyNormal`,
+  `detail=NotifyAncestor`, `send_event=True`. For a click, send
+  `ButtonPress`/`ButtonRelease` the same way.
+- `import -window <title>` and root captures are unreliable here; prefer
+  reading pixels in-process (`FXDCWindow::readPixel`) or comparing the few
+  properties the test actually cares about.
+- Runs may be slower than the timer budget suggests; sample with intervals
+  well below the animation time and assert on ordering and termination rather
+  than on exact frame counts.
