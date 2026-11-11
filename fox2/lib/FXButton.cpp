@@ -39,6 +39,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXShell.h"
 #include "FXButton.h"
@@ -343,102 +345,22 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   // Start drawing
   FXDCWindow dc(this,ev);
 
-  // Got a border at all?
-  if(options&(FRAME_RAISED|FRAME_SUNKEN)){
+  // Collect the state the style needs
+  FXButtonState st;
+  st.enabled=isEnabled();
+  st.hover=underCursor();
+  st.down=(state==STATE_DOWN);
+  st.engaged=(state==STATE_ENGAGED);
+  st.focused=hasFocus();
+  st.defaulted=isDefault();
+  st.toolbar=(options&BUTTON_TOOLBAR)!=0;
+  st.border=border;
+  st.options=options;
+  st.back=backColor;
+  st.text=textColor;
 
-    // Toolbar style
-    if(options&BUTTON_TOOLBAR){
-
-      // Enabled and cursor inside, and up
-      if(isEnabled() && underCursor() && (state==STATE_UP)){
-        dc.setForeground(backColor);
-        dc.fillRectangle(border,border,width-border*2,height-border*2);
-        if(options&FRAME_THICK) drawDoubleRaisedRectangle(dc,0,0,width,height);
-        else drawRaisedRectangle(dc,0,0,width,height);
-        }
-
-      // Enabled and cursor inside and down
-      else if(isEnabled() && underCursor() && (state==STATE_DOWN)){
-        dc.setForeground(backColor);
-        dc.fillRectangle(border,border,width-border*2,height-border*2);
-        if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,0,0,width,height);
-        else drawSunkenRectangle(dc,0,0,width,height);
-        }
-
-      // Enabled and checked
-      else if(isEnabled() && (state==STATE_ENGAGED)){
-        dc.setForeground(hiliteColor);
-        dc.fillRectangle(border,border,width-border*2,height-border*2);
-        if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,0,0,width,height);
-        else drawSunkenRectangle(dc,0,0,width,height);
-        }
-
-      // Disabled or unchecked or not under cursor
-      else{
-        dc.setForeground(backColor);
-        dc.fillRectangle(0,0,width,height);
-        }
-      }
-
-    // Normal style
-    else{
-
-      // Default
-      if(isDefault()){
-
-        // Draw in up state if disabled or up
-        if(!isEnabled() || (state==STATE_UP)){
-          dc.setForeground(backColor);
-          dc.fillRectangle(border+1,border+1,width-border*2-1,height-border*2-1);
-          if(options&FRAME_THICK) drawDoubleRaisedRectangle(dc,1,1,width-1,height-1);
-          else drawRaisedRectangle(dc,1,1,width-1,height-1);
-          }
-
-        // Draw sunken if enabled and either checked or pressed
-        else{
-          if(state==STATE_ENGAGED) dc.setForeground(hiliteColor); else dc.setForeground(backColor);
-          dc.fillRectangle(border,border,width-border*2-1,height-border*2-1);
-          if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,0,0,width-1,height-1);
-          else drawSunkenRectangle(dc,0,0,width-1,height-1);
-          }
-
-        // Black default border
-        drawBorderRectangle(dc,0,0,width,height);
-        }
-
-      // Non-Default
-      else{
-
-        // Draw in up state if disabled or up
-        if(!isEnabled() || (state==STATE_UP)){
-          dc.setForeground(backColor);
-          dc.fillRectangle(border,border,width-border*2,height-border*2);
-          if(options&FRAME_THICK) drawDoubleRaisedRectangle(dc,0,0,width,height);
-          else drawRaisedRectangle(dc,0,0,width,height);
-          }
-
-        // Draw sunken if enabled and either checked or pressed
-        else{
-          if(state==STATE_ENGAGED) dc.setForeground(hiliteColor); else dc.setForeground(backColor);
-          dc.fillRectangle(border,border,width-border*2,height-border*2);
-          if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,0,0,width,height);
-          else drawSunkenRectangle(dc,0,0,width,height);
-          }
-        }
-      }
-    }
-
-  // No borders
-  else{
-    if(isEnabled() && (state==STATE_ENGAGED)){
-      dc.setForeground(hiliteColor);
-      dc.fillRectangle(0,0,width,height);
-      }
-    else{
-      dc.setForeground(backColor);
-      dc.fillRectangle(0,0,width,height);
-      }
-    }
+  // Draw the chrome; the classic style leaves the content area unchanged
+  getApp()->getStyle()->drawButton(dc,0,0,width,height,st);
 
   // Place text & icon
   if(!label.empty()){
@@ -467,7 +389,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
       }
     if(hasFocus()){
-      dc.drawFocusRectangle(border+1,border+1,width-2*border-2,height-2*border-2);
+      getApp()->getStyle()->drawFocusRing(dc,border+1,border+1,width-2*border-2,height-2*border-2);
       }
     }
 
@@ -478,9 +400,9 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
       }
     if(!label.empty()){
       dc.setFont(font);
-      dc.setForeground(hiliteColor);
+      dc.setForeground(getApp()->getTheme()->color(ROLE_SURFACE_HILITE));
       drawLabel(dc,label,hotoff,tx+1,ty+1,tw,th);
-      dc.setForeground(shadowColor);
+      dc.setForeground(getApp()->getTheme()->color(ROLE_SURFACE_SHADOW));
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
       }
     }

@@ -38,6 +38,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXFrame.h"
 
 /*
@@ -80,11 +82,11 @@ FXFrame::FXFrame(){
 // Create child frame window
 FXFrame::FXFrame(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FXWindow(p,opts,x,y,w,h){
   flags|=FLAG_SHOWN;
-  backColor=getApp()->getBaseColor();
-  baseColor=getApp()->getBaseColor();
-  hiliteColor=getApp()->getHiliteColor();
-  shadowColor=getApp()->getShadowColor();
-  borderColor=getApp()->getBorderColor();
+  backColor=getApp()->getTheme()->color(ROLE_SURFACE);
+  baseColor=getApp()->getTheme()->color(ROLE_SURFACE);
+  hiliteColor=getApp()->getTheme()->color(ROLE_SURFACE_HILITE);
+  shadowColor=getApp()->getTheme()->color(ROLE_SURFACE_SHADOW);
+  borderColor=getApp()->getTheme()->color(ROLE_BORDER);
   padtop=pt;
   padbottom=pb;
   padleft=pl;
@@ -216,15 +218,7 @@ void FXFrame::drawDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,F
 
 // Draw border
 void FXFrame::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
-  switch(options&FRAME_MASK){
-    case FRAME_LINE: drawBorderRectangle(dc,x,y,w,h); break;
-    case FRAME_SUNKEN: drawSunkenRectangle(dc,x,y,w,h); break;
-    case FRAME_RAISED: drawRaisedRectangle(dc,x,y,w,h); break;
-    case FRAME_GROOVE: drawGrooveRectangle(dc,x,y,w,h); break;
-    case FRAME_RIDGE: drawRidgeRectangle(dc,x,y,w,h); break;
-    case FRAME_SUNKEN|FRAME_THICK: drawDoubleSunkenRectangle(dc,x,y,w,h); break;
-    case FRAME_RAISED|FRAME_THICK: drawDoubleRaisedRectangle(dc,x,y,w,h); break;
-    }
+  getApp()->getStyle()->drawFrame(dc,x,y,w,h,options);
   }
 
 

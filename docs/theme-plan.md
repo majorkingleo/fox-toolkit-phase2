@@ -223,13 +223,23 @@ native system control — not for a native theme.
 
 ### Contract
 
-`FXStyle` is owned by `FXTheme` and holds the cached chrome resources. It draws
-the chrome and returns the content rectangle, so rounded corners and borders
-never disturb text/icon layout:
+`FXApp` owns one `FXStyle` (`getStyle()`); `FXTheme` stays pure data. The style
+holds the cached chrome resources. It draws the chrome and returns the content
+rectangle, so rounded corners and borders never disturb text/icon layout:
 
 ```cpp
 struct FXButtonState {
-  FXbool pressed,engaged,enabled,hover,focused,defaulted,toolbar;
+  FXbool enabled;    // Widget is enabled
+  FXbool hover;      // Pointer is inside the widget
+  FXbool down;       // Button is pressed
+  FXbool engaged;    // Button is engaged or checked
+  FXbool focused;    // Widget has keyboard focus
+  FXbool defaulted;  // Widget is the default button
+  FXbool toolbar;    // Toolbar style button
+  FXint  border;     // Border width of the widget
+  FXuint options;    // Frame options of the widget
+  FXColor back;      // Background color of the widget
+  FXColor text;      // Text color of the widget
   };
 
 // Chrome: background/gradient, rounded border, shadow, focus ring.
@@ -410,6 +420,15 @@ independent of both. KDE, Qt, and Xresources importers wait until after T7.
 palette, and keeps it in sync from the twelve palette setters. `hello` is
 pixel-identical to the Phase 3 build (0 differing pixels) and the role/palette
 consistency check passes.
+
+**Progress:** T2 implemented and verified (2026-11-11). `tests/button` and its
+closure (18 sources, 10 headers) are in `fox2`. `include/FXStyle.h` and
+`lib/FXStyle.cpp` provide `drawButton`, `drawFrame`, `drawFocusRing`, and the
+bevel helpers, all drawing from theme roles. `FXButton::onPaint` now collects
+`FXButtonState` and delegates; `FXFrame::drawFrame` delegates to the style;
+`FXLabel` and `FXFrame` take their default colors from theme roles. Both
+`hello` and `button` remain pixel-identical (0 differing pixels) and no
+`getApp()->get*Color()` calls remain in the migrated files.
 
 ### Step details
 

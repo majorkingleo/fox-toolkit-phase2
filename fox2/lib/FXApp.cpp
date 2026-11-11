@@ -479,7 +479,7 @@ FXIMPLEMENT(FXApp,FXObject,FXAppMap,ARRAYNUMBER(FXAppMap))
 
 
 // Initialize application object
-FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor){
+FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),theme(),style(&theme){
   FXTRACE(TOPIC_CONSTRUCT,"FXApp::FXApp %p\n",this);
 
   // Initialize private platform independent data

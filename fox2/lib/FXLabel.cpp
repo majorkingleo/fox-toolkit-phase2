@@ -41,6 +41,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXAccelTable.h"
 #include "FXIcon.h"
 #include "FXLabel.h"
@@ -111,7 +112,7 @@ FXLabel::FXLabel(FXComposite* p,const FXString& text,FXIcon* ic,FXuint opts,FXin
   font=getApp()->getNormalFont();
   help=text.section('\t',2);
   tip=text.section('\t',1);
-  textColor=getApp()->getForeColor();
+  textColor=getApp()->getTheme()->color(ROLE_TEXT);
   icon=ic;
   addHotKey(hotkey);
   spacing=4;

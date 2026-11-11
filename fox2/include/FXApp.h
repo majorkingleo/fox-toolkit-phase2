@@ -29,6 +29,10 @@
 #include "FXTheme.h"
 #endif
 
+#ifndef FXSTYLE_H
+#include "FXStyle.h"
+#endif
+
 namespace FX {
 
 
@@ -229,6 +233,7 @@ private:
   FXColor          selMenuTextColor;    // Select foreground color in menus
   FXColor          selMenuBackColor;    // Select background color in menus
   FXTheme          theme;               // Semantic colors and metrics
+  FXStyle          style;               // Chrome renderer for the theme
   FXCursor        *waitCursor;          // Current wait cursor
   FXuint           waitCount;           // Number of times wait cursor was called
   FXuint           windowCount;         // Number of windows
@@ -854,6 +859,10 @@ public:
   /// Return theme
   FXTheme* getTheme(){ return &theme; }
   const FXTheme* getTheme() const { return &theme; }
+
+  /// Return style renderer for the theme
+  FXStyle* getStyle(){ return &style; }
+  const FXStyle* getStyle() const { return &style; }
 
   /// Change theme; updates the default palette colors
   void setTheme(const FXTheme& thm);
