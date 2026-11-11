@@ -459,6 +459,20 @@ pixel-identical (hello and button, 0 differing pixels); with `corner_radius=6`
 the hello corner goes parent `#D4D0C8` -> `(120,117,113)` -> `(40,39,38)` ->
 border `#000000`, and the 8x8 corner region contains 8 distinct colors.
 
+**Progress:** R2 focus ring implemented and verified (2026-11-11).
+`FXStyle::drawFocusRing()` draws a rounded ring in `ROLE_FOCUS_RING` using
+`METRIC_FOCUS_WIDTH` when `corner_radius>0`, and keeps the classic dashed
+`drawFocusRectangle` at radius 0. Verified on a live window: focusing a rounded
+button changes 4.5% of its pixels and leaves ~1660 accent `#0A246A` pixels.
+
+**R2 shadow deferred, with reason.** A drop shadow must be drawn *outside* the
+widget rect, but a FOX popup/menu window is exactly widget-sized, so a shadow
+requires inflating every popup window by the shadow margin and offsetting its
+children. `FXPopup.cpp` is not in the `fox2` closure at all yet (only
+`FXMenuPane.h`, `FXToolTip`, and `FXStatusBar` are), so there is no consumer to
+validate against. The 9-slice shadow-tile cache will land together with popup
+support rather than as an unexercised code path.
+
 ### Step details
 
 Each step ends with: build, run the named example, and check the acceptance
@@ -530,10 +544,12 @@ comparison against the pre-change build.
 
 #### R2 — shadows and rounded focus ring
 
-1. Add a 9-slice RGBA shadow-tile cache keyed by `(radius,blur,alpha)` and draw
-   it under popups/menus; without XRender, degrade to two stepped rings.
-2. Replace the dashed `drawFocusRectangle` with a rounded accent ring inset by
-   `focusWidth`, plus an optional translucent halo.
+1. Focus ring (done): rounded ring in `ROLE_FOCUS_RING` at `METRIC_FOCUS_WIDTH`
+   when `corner_radius>0`; classic dashed rectangle otherwise.
+2. Shadow (deferred): cached 9-slice shadow tile under popups/menus. A shadow
+   lies outside the widget rect, so popup windows must first be inflated by the
+   shadow margin and their children offset; that work belongs with the popup/
+   menu build-out, since `FXPopup.cpp` is not in the closure yet.
 3. Verify on `button` (frames, tooltip, status bar) with no per-paint
    allocation.
 

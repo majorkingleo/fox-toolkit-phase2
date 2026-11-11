@@ -189,6 +189,21 @@ void FXStyle::drawDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,F
 
 // Draw keyboard focus ring
 void FXStyle::drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS);
+  FXint width=FXMAX(theme->metric(METRIC_FOCUS_WIDTH),1);
+  FXint r;
+
+  // Rounded ring in the accent color for themed controls
+  if(0<radius){
+    r=FXMIN(radius,FXMIN(w,h)/2);
+    dc.setForeground(theme->color(ROLE_FOCUS_RING));
+    dc.setLineWidth(width);
+    dc.drawRoundRectangle(x+width/2,y+width/2,w-width,h-width,r*2,r*2);
+    dc.setLineWidth(1);
+    return;
+    }
+
+  // Classic dashed rectangle
   dc.setForeground(theme->color(ROLE_TEXT));
   dc.drawFocusRectangle(x,y,w,h);
   }
