@@ -94,9 +94,18 @@ its own event loop, input model, rendering, accessibility, and process/security
 boundary. Keep browser transport and protocol in an optional server/frontend
 target, not in the default `libFOX` dependency graph.
 
+The browser is selected at **compile time**, not at run time: the application is
+compiled for the browser target instead of a native backend. **A dual-mode X11 +
+browser binary is explicitly not planned** and must not be designed for. Each
+binary contains exactly one frontend.
+
 ## Workstreams
 
 ### 1. Theme system
+
+The detailed realization plan, including importing colors, metrics, and fonts
+from GTK, KDE, Qt, Xresources, and native desktop settings, is in
+`docs/theme-plan.md`.
 
 #### Proposed model
 
@@ -260,6 +269,11 @@ presentation seams exist. The C++ FOX application remains authoritative for
 application state and command handling; the browser is a presentation/input
 client, not a second application implementation.
 
+**Build model:** a browser build is its own compile-time configuration. The
+application is compiled for the browser target, and one binary never serves both
+X11 and a browser. Dual-mode X11 + browser builds are out of scope; the frontend
+is selected at configure time like any other backend.
+
 There are two plausible rendering strategies:
 
 1. **Remote drawing surface**: serialize FOX drawing operations and assets to a
@@ -303,6 +317,8 @@ and native dialogs will work in the first version.
 - Disconnecting a browser does not corrupt or deadlock the application.
 - Native builds and cross-compilation remain unchanged when the prototype is
   disabled.
+- A browser build contains no X11 adapter code and an X11 build contains no
+  browser transport; each configuration links exactly one frontend.
 - Known limitations and security assumptions are explicit.
 
 ### 5. Wayland-native adapter (pre-scope)
@@ -411,13 +427,15 @@ the FOX event loop, and document the compositor versions tested.
    assumptions, test platforms, decide geometry compatibility and supported
    Windows versions.
 2. **Theme tokens**: add semantic palette and metrics with current-look
-   defaults; migrate common controls.
+   defaults; migrate common controls. Execute the phases in
+   `docs/theme-plan.md`.
 3. **Windows DPI**: enable and verify per-monitor awareness, then implement
    centralized scaling and runtime DPI transitions. Reuse theme metrics.
 4. **Internal platform seam**: extract and validate narrow Windows/X11
    operations one at a time; update all build systems and cross-build checks.
 5. **Browser prototype**: compare drawing-surface versus semantic-widget
-   transport on a small demo before committing to a production protocol.
+   transport on a small demo before committing to a production protocol. Ship it
+   as a separate build configuration, not as a run-time mode of the X11 build.
 6. **Additional native backend**: execute the Wayland pre-scope (workstream 5)
    against the stable seam, then define production protocol, rendering, and
    packaging goals from its results.

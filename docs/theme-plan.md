@@ -1,0 +1,588 @@
+# FOX theme realization plan
+
+Companion to `docs/modernization-plan.md` (workstream 1). This is the detailed
+plan for making `fox2` themeable, including importing colors, metrics, fonts,
+and rendering style data (radius, borders, gradients, shadows) from existing
+sources such as GTK, KDE, Qt, and the native desktop.
+
+## Goals
+
+- One semantic theme model resolved centrally by `FXApp`, not per widget.
+- Byte-for-byte compatibility with today's look by default (the classic FOX
+  palette stays the default theme).
+- Light, dark, and custom themes, switchable at runtime.
+- Import colors/metrics/fonts from existing desktop themes instead of asking
+  users to hand-write a FOX theme.
+- No new mandatory dependency for the native build.
+
+## Examples used for validation
+
+Two examples drive every phase, always in this order: `hello` first, `button`
+second.
+
+- **`tests/hello` (first example)** — one `FXMainWindow` with a single
+  `FXButton` that quits on `FXApp::ID_QUIT`. It exercises `FXApp` init, a
+  top-level window, a button, and the event loop. It is already inside the
+  `fox2` closure and is the pixel-compare target for T1 and T2.
+- **`tests/button` (second example)** — a button-tweaking dialog. Besides
+  several `FXButton` instances with different styles and icon/text
+  justification, it uses `FXToolTip`, `FXStatusBar`, `FXVerticalFrame`,
+  `FXVerticalSeparator`, `FXHorizontalFrame`, `FXGroupBox`, `FXCheckButton`,
+  `FXRadioButton`, and `FXGIFIcon`. It exercises hover/pressed/checked states,
+  frames, and layout, so it becomes the visual target once the chrome seam
+  (T2) and the modern rendering (R1-R3) land. It is not in the minimal closure
+  yet: Phase 3 adds `tests/button.cpp` and its closure before T2 uses it.
+
+## What exists today (verified in the sources)
+
+FOX 1.7.95 has no CSS or theme engine, but it already has the two pieces this
+plan builds on:
+
+- **Twelve application palette colors** in `FXApp`
+  (`include/FXApp.h:822-847`):
+  `borderColor`, `baseColor`, `hiliteColor`, `shadowColor`, `backColor`,
+  `foreColor`, `selforeColor`, `selbackColor`, `tipforeColor`, `tipbackColor`,
+  `selMenuTextColor`, `selMenuBackColor`, each with a `get*Color()` and
+  `set*Color(FXColor)` pair.
+- **Defaults** (`lib/FXApp.cpp:755-766`): `border #000000`, `base #D4D0C8`,
+  `back #FFFFFF`, `fore #000000`, `selfore #FFFFFF`, `selback #0A246A`,
+  `tipback #FFFFE1`, `tipfore #000000`; `hilite`/`shadow` are derived from
+  `base` via `makeHiliteColor()`/`makeShadowColor()`. The Windows path instead
+  seeds the palette from `GetSysColor()` (`lib/FXApp.cpp:4402-4409`).
+- **Persistence** through the registry, section `SETTINGS`, keys
+  `bordercolor`, `basecolor`, `hilitecolor`, `shadowcolor`, `backcolor`,
+  `forecolor`, `selforecolor`, `selbackcolor`, `tipforecolor`, `tipbackcolor`
+  (`lib/FXApp.cpp:4459-4468`).
+- **Parsers already in the toolkit**: `FXSettings`/`FXRegistry` (INI),
+  `FXJSON*`, `FXXML*`, and 576 named constants in `FXColors.h`.
+- **Drawing primitives** (`include/FXDC.h`, `lib/FXDCWindow.cpp`):
+  `fillRectangle`, `fillRoundRectangle`/`drawRoundRectangle` (Windows
+  `RoundRect`; X11 `XFillArcs`+`XFillRectangles`/`XDrawArcs`+`XDrawSegments`,
+  **hard-edged, not antialiased**), `fillVerticalGradient`/
+  `fillHorizontalGradient` (X11: software scanline interpolation capped at 128
+  bands; Windows: `GradientFill`), `drawFocusRectangle`, `drawIconShaded`,
+  `drawIconSunken`, plus arcs, ellipses, and polygon fills.
+- **Alpha support**: `FXImage::hasAlpha()` and `blend(FXColor)`, the
+  `IMAGE_ALPHA*` flags, and `xincs.h` already includes
+  `X11/extensions/Xrender.h` (Xft text is antialiased). A
+  `XRenderCreateLinearGradient` path exists in `FXDCWindow.cpp` but is disabled
+  with `#if 0` in favor of the scanline loop.
+- **Timing**: `FXApp::addTimeout()`/`removeTimeout()`/`addChore()` plus the
+  `animSpeed`/`blinkSpeed` settings, enough for state transitions.
+
+The widgets in the `fox2` subset already draw from the palette
+(`getApp()->getBaseColor()`, `getHiliteColor()`, `getShadowColor()`,
+`getSelbackColor()`, `getForeColor()`, `getBorderColor()`), so the migration
+surface is small at the current subset size.
+
+## Theme model
+
+### Semantic roles
+
+Add `include/FXTheme.h` with a role enum. Every role has a legacy counterpart,
+so mapping is mechanical and reversible:
+
+| Role | Legacy source |
+|---|---|
+| `WindowBg` | `backColor` |
+| `Surface` | `baseColor` |
+| `SurfaceHilite` | `hiliteColor` |
+| `SurfaceShadow` | `shadowColor` |
+| `Text` | `foreColor` |
+| `TextDisabled` | derived: `foreColor` blended toward `baseColor` |
+| `Border` | `borderColor` |
+| `SelectionBg` | `selbackColor` |
+| `SelectionText` | `selforeColor` |
+| `MenuSelectionBg` / `MenuSelectionText` | `selMenuBackColor` / `selMenuTextColor` |
+| `TooltipBg` / `TooltipText` | `tipbackColor` / `tipforeColor` |
+| `Accent` | `selbackColor` (new role, same default) |
+| `FocusRing` | `Accent` (new role) |
+
+State variants are resolved by `FXTheme` from the base roles rather than stored
+individually: `Normal`, `Hover`, `Active`, `Disabled`, `Selected`, `Focused`.
+A theme may override any state explicitly; otherwise the role is derived
+(darken/lighten by a fixed amount, blend toward `Surface` for `Disabled`).
+
+### Metrics
+
+Also in `FXTheme`, in logical units (see the DPI workstream):
+
+`padding`, `margin`, `borderWidth`, `focusWidth`, `spacing`, `iconSize`,
+`smallIconSize`, `rowHeight`, `cornerRadius` (advisory; FOX draws rectangles).
+
+### Fonts, assets, and surface style
+
+Font roles: `Normal`, `Bold`, `Small`, `Monospace`, plus `titleFont`. Resolved as
+`FXFontDesc` strings and created through the existing `FXFont` machinery, so the
+Xft/fontconfig cache keeps working. Assets: icon theme name and hint sizes;
+FOX-drawn artwork stays untouched.
+
+Colors alone do not produce a modern look, so the theme also carries renderable
+style data per role:
+
+- `borderWidth` and `borderColor` (a 1 px hairline is the modern default),
+- `cornerRadius` (4-6 px is the useful range),
+- `gradient` (two stops plus direction, or none for flat fills),
+- `shadow` (offset, blur budget, color, alpha) for popups, menus, and dialogs,
+- `focusRing` (width, color, optional halo alpha),
+- `stateDelta` (how far `Hover`/`Active`/`Pressed` shift the base color),
+- `animationTime` in milliseconds; 0 disables transitions.
+
+Each of these has a concrete rendering path in the next section; none of them is
+left as decorative data that FOX silently ignores.
+
+### Ownership and API
+
+```
+FXTheme* theme = app.getTheme();          // never null; default theme
+FXColor bg   = theme->color(FXTheme::WindowBg);
+FXColor bgD  = theme->color(FXTheme::WindowBg, FXTheme::Disabled);
+FXint pad    = theme->metric(FXTheme::Padding);
+```
+
+- `FXApp` owns one `FXTheme`; `getTheme()` returns the default theme when the
+  application never sets one, so existing code and applications are unaffected.
+- `setTheme()` copies values into the palette so legacy `get*Color()` callers
+  keep working during migration.
+- Widget code migrates from `getApp()->getBaseColor()` to
+  `getApp()->getTheme()->color(Surface)`. Until a widget is migrated, the palette
+  mirror keeps both paths consistent.
+
+## Modern look and feel (rendering)
+
+Where the toolkit stands today, and the path for each visual element:
+
+| Element | Today | Plan |
+|---|---|---|
+| Flat fills, 1 px borders | supported (`fillRectangle`) | use directly |
+| Vertical/horizontal gradients | supported: X11 scanline (≤128 bands), Windows `GradientFill` | use directly; enable the disabled XRender gradient path behind a capability check to remove banding |
+| Rounded corners | supported but aliased (core X11 arcs) | antialias by compositing through an XRender mask, with a cached 9-slice corner-bitmap fallback |
+| Soft shadows | no primitive | cached 9-slice RGBA shadow via XRender composite; degrade to 2-3 stepped rings without XRender |
+| Focus ring | dashed `drawFocusRectangle` | rounded accent ring (stroke plus optional translucent halo) |
+| Hover/pressed states | static colors only | color data plus timer-driven interpolation (`addTimeout`, `animationTime`) |
+| Text rendering | antialiased via Xft | unchanged |
+| Alpha widgets/overlays | `FXImage` alpha and `blend()` | add ARGB32 picture compositing for correct alpha over any background |
+
+Implementation notes:
+
+1. **Antialiased corners.** Rasterize the existing hard-edged arcs once into an
+   alpha mask per `(radius,width,height)` bucket, then `XRenderComposite` it.
+   Cache by radius and DPI scale; never regenerate per paint. Without XRender,
+   blit the cached mask through `FXImage` alpha instead.
+2. **Shadows.** Pre-render one RGBA shadow tile per `(radius,blur,alpha)` bucket
+   (cheap box blur over a rounded rect) and draw it 9-sliced, so paint cost is
+   constant regardless of window size.
+3. **Gradients.** Keep the working scanline loop; optionally enable the existing
+   `#if 0` `XRenderCreateLinearGradient` code so banding disappears on
+   render-capable servers.
+4. **Focus ring and states.** Stroke a rounded ring inset by `focusWidth`, or
+   composite a translucent halo. `Hover`/`Active`/`Pressed` interpolate from the
+   base color over `animationTime` with a repeating timeout; zero disables
+   animation entirely.
+5. **Cost discipline.** Every derived resource is cached and keyed by
+   role/radius/scale; no per-paint allocation and no per-paint parsing.
+
+Checklist to validate against Adwaita/Breeze expectations:
+
+- 4-6 px corner radius on containers and controls, 1 px hairline borders.
+- Surfaces flat or with a 4-8% lightness gradient; no 3D bevel.
+- Focus ring visible at 2 px with a soft halo; keyboard focus always visible.
+- Disabled content blended about 45% toward the surface, not grayed-out text.
+- 4 px spacing grid, 24-28 px control height, 16 px default icon size.
+- Hover/pressed feedback in 120-150 ms; no hard color jumps.
+- Dark theme conveys elevation with slightly lighter surfaces, not borders alone.
+
+## Widget rendering seam
+
+Decision: a theme does **not** replace widget classes. One `FXButton` class keeps
+its behavior and all 18 of its message handlers; only chrome drawing moves behind
+a style object. `onPaint` stays where it is, collects state, and delegates.
+
+### Why not the alternatives
+
+- **Theme logic inline in `onPaint`** — every widget re-implements radius,
+  gradient, shadow, and focus drawing; six widgets produce six dialects, and an
+  imported theme cannot vary any of it.
+- **`FXThemeButton : FXButton`, instantiated per theme** — the 18 handlers and
+  the `STATE_UP`/`STATE_DOWN`/`STATE_ENGAGED` machine live in the base anyway.
+  Applications construct `new FXButton(...)` everywhere, so either every call
+  site becomes a theme-aware factory or applications stop being theme-neutral.
+  Runtime theme switching would then require destroying and recreating widgets,
+  losing focus, scroll position, and children. `FXDECLARE`/`FXIMPLEMENT` class
+  names feed `getClassName()`, `isMemberOf()`, and serialized layouts, so widget
+  identity must not change per theme. Each theme class also adds sources to the
+  build and to the closure.
+- **`FXButton` as a wrapper owning an inner themed widget** — breaks
+  `setTarget()`/`setSelector()` wiring, focus and hotkey routing,
+  `getFirst()`/`cast<FXButton>()` semantics, and doubles both widget count and
+  event dispatches per control.
+
+The subclass/wrapper approach becomes appropriate only where the interaction
+model itself differs — a browser-presented control (workstream 4) or a genuine
+native system control — not for a native theme.
+
+### Contract
+
+`FXStyle` is owned by `FXTheme` and holds the cached chrome resources. It draws
+the chrome and returns the content rectangle, so rounded corners and borders
+never disturb text/icon layout:
+
+```cpp
+struct FXButtonState {
+  FXbool pressed,engaged,enabled,hover,focused,defaulted,toolbar;
+  };
+
+// Chrome: background/gradient, rounded border, shadow, focus ring.
+// Returns the rectangle available for icon and label.
+FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXButtonState& state);
+```
+
+The state struct carries no widget types, so `FXStyle` depends only on `FXDC`
+and colors and cannot create dependency cycles with the widgets.
+
+| Chrome (`FXStyle`) | Content (widget) |
+|---|---|
+| background fill or gradient | icon placement, shaded/sunken disabled icon |
+| rounded border, hairline | label layout, alignment, margins |
+| hover/pressed color deltas | hotkey underline via `drawLabel` |
+| focus ring | press-shift offset |
+| default-button ring | state derived from `SEL_UPDATE` |
+
+Rules:
+
+- Hit testing stays rectangular; visual corners do not change the clickable area.
+- The classic style calls the existing `drawRaisedRectangle` /
+  `drawSunkenRectangle` helpers, keeping T1/T2 pixel-identical.
+- Chrome resources are cached in the style, keyed by role, radius, and DPI scale.
+- `FXButton::onPaint` remains `virtual`, so applications can still subclass a
+  widget and draw fully custom chrome.
+
+The same seam covers `FXFrame` (panel chrome), `FXTextField` (rounded input with
+inset border), and later `FXScrollBar`, `FXMenuPane`, and `FXToolTip` (the shadow
+consumers).
+
+## Theme file format
+
+Two equivalent inputs, same schema:
+
+- `.foxtheme` INI, read with `FXSettings` (already in the subset, no new code):
+  ```
+  [colors]
+  window_bg=#FFFFFF
+  surface=#D4D0C8
+  selection_bg=#0A246A
+  [metrics]
+  padding=2
+  border_width=1
+  [fonts]
+  normal=helvetica-100
+  ```
+- `.foxtheme.json` via `FXJSON` for generated themes with per-state overrides.
+
+Loading rules: unknown keys warn but do not fail; missing roles fall back to the
+default theme; `setTheme()` stores the source path in the registry so the choice
+persists like the current palette keys.
+
+## Importing existing themes
+
+A converter tool (proposed `fox2/tools/fxthemeimport`, built on `FXSettings` +
+a small tokenizer) reads an external theme and writes `.foxtheme`.
+
+**Scope of the first importer: GTK only.** GTK 3/4 CSS is the most complete
+color-and-style description available on Linux desktops and covers Adwaita,
+Breeze, and most community themes, followed by GTK 2 `gtkrc` for older themes.
+KDE `.colors`, Qt QSS, and Xresources importers are explicitly deferred until
+the GTK path works end to end; they reuse the same parser and role mapping, so
+they stay cheap to add later.
+
+### How a theme reaches the application
+
+Three delivery modes share one parser, so behavior stays identical:
+
+1. **Direct import at startup** (default when no cache exists): parse the GTK
+   theme into `FXTheme` and resolve roles in memory.
+2. **Offline conversion**: the same code exposed as the `fxthemeimport` CLI, run
+   by a packager, a developer, or the user ahead of time and writing a
+   `.foxtheme`. This is the answer when startup parsing is undesirable or fails
+   on a particular theme: convert once, ship or install the result, and the
+   application only ever loads a simple INI file.
+3. **Theme cache**: after any successful import the resolved theme is serialized
+   to a cache file, so later startups skip the parser entirely.
+   - Location: the per-user configuration directory already used by the
+     registry, one cache file per source theme.
+   - Key: source path, source size, source mtime, importer version, and schema
+     version. Any mismatch means re-import and rewrite.
+   - Load path: `stat()` the source, validate the cache header, deserialize with
+     `FXStream`; on corrupt, stale, or unreadable cache, delete it and fall back
+     to a fresh import.
+   - The cache is untrusted input: bounded sizes, a validated magic/version
+     header, and no unbounded allocations.
+   - Failure policy: if cache and import both fail, fall back to `fox-classic`
+     and warn once instead of refusing to start.
+
+This machine already has useful corpora for the GTK path:
+
+- primary: `/usr/share/themes/Breeze/gtk-3.0/gtk.css` and `gtk-4.0/gtk.css`
+- primary: `/usr/share/themes/Breeze/gtk-2.0/gtkrc`, plus `Breeze-Dark`
+- later: `/usr/share/color-schemes/*.colors` (KDE schemes: Emerald, EmeraldDark, …)
+- later: `gsettings get org.gnome.desktop.interface color-scheme` (currently
+  `prefer-light`) and, on Wayland/Flatpak systems, the settings portal
+
+### Supported sources and what to read
+
+| Priority | Source | Fields to import | Notes |
+|---|---|---|---|
+| 1 (first) | GTK 3/4 CSS | `@define-color` names; `color`, `background-color`, `border-color`, `border-width`, `border-radius`, `padding`, `font`, `box-shadow` (as a shadow spec), `linear-gradient` (as a two-stop gradient) | Primary target: Adwaita/Breeze CSS; parse declarations only, ignore images, complex shadow stacks, animations, and layout |
+| 2 (first) | GTK 2 `gtkrc` | `bg[NORMAL/SELECTED/INSENSITIVE]`, `fg[...]`, `base[...]`, `text[...]`, `font_name` | Fallback for older GTK themes; same scanner family as the CSS path |
+| later | KDE `.colors` | `[Colors:Window]` BackgroundNormal/ForegroundNormal, `[Colors:View]`, `[Colors:Button]`, `[Colors:Selection]`, `[Colors:Tooltip]`, `[General]` fonts | Plain INI, easy to add, but deferred until GTK import is stable |
+| later | Qt QSS | same properties as CSS; `QPalette` roles if a palette dump is available | Reuses the CSS scanner |
+| later | Xresources | `*background`, `*foreground`, `*highlightColor`, cursor theme | Simple `key: value` scan; low value until requested |
+| n/a | Windows | `GetSysColor()` roles, accent color, `SystemParametersInfo` fonts | Handled by the existing `GetSysColor` seed in `FXApp.cpp`, not the importer |
+| n/a | GNOME/portal | `color-scheme` preference only (`prefer-light`/`prefer-dark`) | Selects the built-in light or dark preset, not a full theme |
+
+### Role mapping for GTK-named colors
+
+| GTK name | FOX role |
+|---|---|
+| `theme_bg_color` | `WindowBg` |
+| `theme_fg_color` | `Text` |
+| `theme_base_color` | `Surface` |
+| `theme_text_color` | `Text` (widget text) |
+| `theme_selected_bg_color` | `SelectionBg` |
+| `theme_selected_fg_color` | `SelectionText` |
+| `insensitive_bg_color` / `insensitive_fg_color` | `Surface`, `TextDisabled` |
+| `borders` | `Border` |
+| `unfocused_bg_color` / `unfocused_fg_color` | `WindowBg`, `TextDisabled` |
+| `theme_unfocused_selected_bg_color` | `SelectionBg` (inactive variant) |
+
+Missing roles are derived from what the source does provide: `SurfaceHilite` and
+`SurfaceShadow` from `Surface` via the existing `makeHiliteColor()` /
+`makeShadowColor()`; `Tooltip*` from `Surface`/`Text` if unspecified; `Accent`
+from `SelectionBg`.
+
+### Import constraints
+
+- Import **values, including style data**: radius, border widths, gradient
+  stops, and shadow specifications are imported and rendered where FOX has a
+  path for them. Only behavior with no rendering path (source-defined
+  animations, image-based decorations, blur beyond the shadow budget) is
+  reported as approximated or ignored, per declaration, in the import summary.
+- Never overwrite the default theme file; write a new name derived from the
+  source (`breeze-dark.foxtheme`).
+- Report a summary (roles imported, roles derived, style data imported,
+  unsupported declarations).
+- Do not parse untrusted theme files without bounds; cap file size and token
+  lengths.
+
+## Built-in presets
+
+Ship two presets generated from the current palette, so dark mode works without
+any external file:
+
+- `fox-classic` — today's exact defaults (regression baseline).
+- `fox-dark` — dark counterparts derived by inverting lightness on the classic
+  palette, keeping the same role structure.
+
+## Phases
+
+| Phase | Example | Work | Acceptance |
+|---|---|---|---|
+| T1 | `hello` | Add `FXTheme` with colors only; map roles to the existing palette; palette mirroring | `hello` renders identically to the Phase 3 build (pixel-compare) |
+| T2 | `hello`, `button` | Migrate subset widgets (`FXFrame`, `FXLabel`, `FXButton`) to the `FXStyle` seam | Same pixel output; no `getApp()->get*Color()` left in migrated files; `onPaint` only collects state and delegates |
+| T3 | `hello` | Add `.foxtheme` INI loading through `FXSettings`, plus `fox-dark` preset | Theme switch at startup changes colors; registry remembers the choice |
+| T4 | `hello` | Runtime switching: repaint, cache invalidation, relayout on metric change | Switching on a live window updates all widgets |
+| R1 | `hello` | Antialiased rounded corners in `FXStyle`: cached alpha masks + XRender composite, bitmap fallback, `hasXRender` capability check | Corners of a 6 px-radius button show no stepping at 100/150/200% |
+| R2 | `button` | Shadow 9-slice cache and rounded focus ring | Popup/menu shadow and focus ring render without per-paint allocation |
+| R3 | `button` | Hover/pressed interpolation via `addTimeout` and `animationTime` | Color transitions complete in the configured time and stop cleanly on leave |
+| T5 | `hello` | Metrics and font roles; DPI-aware units | Padding/border from theme; text sizes follow font roles |
+| T6 | `hello` | `fxthemeimport` for **GTK only**: GTK 3/4 CSS subset first, then GTK 2 `gtkrc`. One parser shared by the CLI tool and the runtime loader. Includes radius/border/gradient/shadow values | Importing Breeze and Adwaita GTK CSS produces valid theme files with a summary |
+| T7 | `hello` | Theme cache: serialize resolved themes via `FXStream`, key on source path+size+mtime+importer version, re-import on mismatch or corruption | Second startup loads the theme without parsing CSS; stale or corrupt cache regenerates silently |
+| T8 | `hello` | Portal/`gsettings` detection for light/dark selection | `prefer-dark` selects `fox-dark` without configuration |
+| later | — | KDE `.colors`, Qt QSS, Xresources importers | Deferred until the GTK import path is stable and the cache exists |
+
+Order matters: T1–T4 deliver a working theme system with zero visual change;
+R1–R3 then deliver the modern rendering; T5 depends on the DPI coordinate
+policy; T6 is independent once T3 exists; T7 makes T6 cheap at startup; T8 is
+independent of both. KDE, Qt, and Xresources importers wait until after T7.
+
+### Step details
+
+Each step ends with: build, run the named example, and check the acceptance
+column. Visual steps (`T1`, `T2`, `R1`, `R2`) require a screenshot or pixel
+comparison against the pre-change build.
+
+#### T1 — theme skeleton, colors only
+
+1. Add `include/FXTheme.h`: role enum and state enum as plain enums inside
+   `namespace FX` (no `enum class`); twelve color fields initialized from the
+   classic defaults; `FXColor color(FXint role,FXint state=Normal) const;` and a
+   `FXint metric(FXint m) const;` stub returning the current hard-coded values.
+2. Add `lib/FXTheme.cpp`: default constructor fills the classic palette; derive
+   `Hilite`/`Shadow` from `Surface` with the existing `makeHiliteColor()` /
+   `makeShadowColor()`; `Disabled` blends `Text` toward `Surface` by ~45%.
+3. In `FXApp`: add a `FXTheme theme;` member, `FXTheme* getTheme()`, and
+   initialize it after the palette is set up; `setTheme()` copies the theme
+   colors into the existing palette fields so legacy `get*Color()` callers stay
+   correct.
+4. Add both files to `lib/Makefile.am`, rebuild, run `hello`, and pixel-compare
+   with the Phase 3 build.
+
+#### T2 — the FXStyle seam
+
+1. Add `include/FXStyle.h` and `lib/FXStyle.cpp`: a `FXStyle` that references
+   its `FXTheme` and provides `drawButton`, `drawFrame`, and `drawFocusRing`
+   with the `FXButtonState` contract from the rendering-seam section.
+2. Implement the classic style by calling the existing
+   `drawRaisedRectangle`/`drawSunkenRectangle`/`drawDoubleRaisedRectangle`
+   helpers, so output stays byte-identical.
+3. Refactor `FXButton::onPaint` to collect state, call `style->drawButton`,
+   then lay out icon and label inside the returned content rectangle; keep
+   `drawLabel`, hotkey underline, and press-shift in the widget.
+4. Refactor `FXFrame::onPaint` to call `style->drawFrame`; leave `FXLabel`
+   chrome-free but switch its colors to `theme->color(Text)` /
+   `theme->color(TextDisabled)`.
+5. Add `tests/button.cpp` and its closure first (Phase 3), then verify both
+   examples are pixel-identical.
+
+#### T3 — INI themes and presets
+
+1. Implement `FXTheme::load(const FXString& path)` with `FXSettings`: map
+   `[colors]` keys to roles, warn on unknown keys, leave missing roles at their
+   defaults. `[metrics]`/`[fonts]` are parsed but ignored until T5.
+2. Add built-in `fox-classic` (today's defaults) and `fox-dark` (lightness
+   inverted per role).
+3. In `FXApp`, read a `theme` registry entry at startup: a path loads a
+   `.foxtheme`, `dark` selects `fox-dark`, anything else falls back to
+   `fox-classic`.
+4. Run `hello` with `fox-dark` and confirm the registry remembers the choice.
+
+#### T4 — runtime switching
+
+1. `setTheme()` copies roles into the palette mirror, invalidates all `FXStyle`
+   caches, and marks every top-level window dirty for a coalesced repaint.
+2. If metrics changed, relayout; if font roles changed, recreate the affected
+   `FXFont`s; use one `addTimeout` to coalesce the repaint.
+3. Verify switching on a live `hello` updates every widget, leaks no resources,
+   and does not relayout in a loop.
+
+#### R1 — antialiased rounded corners
+
+1. Add a capability check (`hasXRender`) and a per-`(radius,scale)` alpha-mask
+   cache in `FXStyle`; rasterize the hard arcs once, then `XRenderComposite`
+   with the cached mask, falling back to `FXImage` alpha blit.
+2. Use the mask in `drawButton`/`drawFrame` only when `cornerRadius>0`.
+3. Verify a 6 px-radius button shows no stepping at 100/150/200%, and the
+   non-XRender fallback still renders.
+
+#### R2 — shadows and rounded focus ring
+
+1. Add a 9-slice RGBA shadow-tile cache keyed by `(radius,blur,alpha)` and draw
+   it under popups/menus; without XRender, degrade to two stepped rings.
+2. Replace the dashed `drawFocusRectangle` with a rounded accent ring inset by
+   `focusWidth`, plus an optional translucent halo.
+3. Verify on `button` (frames, tooltip, status bar) with no per-paint
+   allocation.
+
+#### R3 — hover/pressed transitions
+
+1. Store the widget's current and target colors; on `SEL_ENTER`/`SEL_LEAVE`
+   drive interpolation with a repeating `addTimeout` over `animationTime`;
+   finalize and free the timer on leave.
+2. `animationTime=0` disables transitions entirely.
+3. Verify transitions complete within the budget and stop cleanly when the
+   pointer leaves.
+
+#### T5 — metrics and font roles
+
+1. Implement `FXTheme::metric()` with `[metrics]` keys (padding, margin,
+   borderWidth, focusWidth, spacing, iconSize, smallIconSize, rowHeight,
+   cornerRadius).
+2. Resolve font roles to `FXFontDesc` and create the fonts through the existing
+   `FXFont` machinery.
+3. Multiply logical metrics by the DPI scale helper at the single conversion
+   point from the DPI workstream.
+4. Verify padding/border and font role changes appear in `hello`.
+
+#### T6 — GTK-only importer
+
+1. Add a shared parser in the library (e.g. `lib/fxcss.cpp`): comments, strings,
+   `@define-color`, a declaration subset, and pseudo-class selectors mapped to
+   states; add the same tokenizer as the core of `tools/fxthemeimport.cpp`.
+2. Add the GTK 2 `gtkrc` scanner (`bg[]`, `fg[]`, `base[]`, `text[]`,
+   `font_name`).
+3. Apply the GTK-named-color role table and the derivation rules.
+4. The CLI writes `.foxtheme` plus a summary; the runtime loader uses the same
+   parser when no cache exists.
+5. Verify Breeze GTK 3/4 CSS and the Breeze `gtkrc` convert cleanly with no
+   warnings.
+
+#### T7 — theme cache
+
+1. Serialize a resolved `FXTheme` with `FXStream` into a cache file carrying a
+   magic/version header.
+2. Key on source path, size, mtime, importer version, and schema version;
+   validate all of them before use, with bounded sizes.
+3. On cache miss/corruption/staleness, delete the cache and re-import; if both
+   fail, fall back to `fox-classic` with a single warning.
+4. Verify the second startup loads without invoking the parser, and that a
+   touched source file or bumped importer version triggers regeneration.
+
+#### T8 — light/dark preference
+
+1. Read `org.gnome.desktop.interface color-scheme` (or the equivalent portal
+   setting) once at startup.
+2. Map `prefer-dark` to `fox-dark`; `prefer-light` and absent values keep the
+   current theme.
+3. Verify `hello` honors a `prefer-dark` preference without a config file.
+
+#### Later — KDE, Qt, Xresources
+
+Reuse the T6 parser and role mapping once GTK import and the cache are stable;
+KDE `.colors` first (plain INI), then Qt QSS, then Xresources.
+
+
+## Validation
+
+- Pixel comparison of the classic theme against the Phase 3 build
+  (screenshot diff, tolerance zero): `hello` for T1, `hello` and `button` for T2.
+- Light/dark matrix on `hello` and `button`:
+  normal, hover, active, disabled, selected, focused.
+- Import round-trip: convert `Breeze` and `Breeze-Dark` GTK 3/4 CSS and the
+  Breeze `gtkrc`; confirm all required roles resolve and loads emit no warnings.
+- Cache: hit, miss, truncated/corrupt, and stale-source cases (touch the CSS or
+  bump the importer version) each behave correctly; a cache hit must not invoke
+  the CSS parser.
+- Runtime switch on a live window: no stale colors, no leaked resources, no
+  relayout loops.
+- Rendering quality: corner antialiasing inspected at 100/150/200% scale, both
+  with and without XRender; shadow tile reuse confirmed (no per-paint
+  allocation); focus ring visible on every focusable control.
+- Animation: hover/press transitions measured against `animationTime`, and
+  verified to stop and free timers when the pointer leaves.
+
+## Risks and open decisions
+
+- **Antialiasing fidelity:** core X11 arcs are aliased. Smooth corners depend on
+  an XRender-backed path (with a cached-bitmap fallback), so quality varies by
+  server capability; report which path is active in diagnostics.
+- **Cost of soft shadows:** blurring per paint would be too slow; the plan is
+  strictly cached 9-slice tiles, and the shadow blur budget is part of the theme
+  schema so imports cannot request pathological values.
+- **Cache staleness and trust:** a cache keyed only by path goes stale. Key on
+  path, size, mtime, importer version, and schema version, and treat the cache as
+  untrusted input with a validated header and bounded allocations.
+- **Startup cost:** GTK themes such as Breeze and Adwaita contain thousands of
+  rules. Parsing at startup is the fallback path; once the cache exists, the
+  common case must not touch the parser at all.
+- **Importer scope:** GTK ships first because it is the richest available source;
+  KDE and Qt follow only after the GTK path and cache are proven, so early
+  effort is not spread across formats.
+- **Fidelity of imported themes:** GTK themes describe widgets, not roles.
+  Several roles will be derived rather than imported; document that per source.
+- **Custom-drawn widgets:** artwork stays owner-drawn; the theme supplies
+  defaults only.
+- **Performance:** role lookups must stay inline and cheap; no per-paint
+  allocation or string parsing.
+- **API surface:** `FXTheme` becomes public; decide early whether it is exported
+  (`FXAPI`) and whether role values are `enum` constants (house style: plain
+  `enum` inside `namespace FX`, no `enum class`).

@@ -96,10 +96,11 @@ The later modernization workstreams live in `docs/modernization-plan.md`.
 Once the base implementation builds and runs, apply the workstreams described
 in `docs/modernization-plan.md`:
 
-1. Theme system.
+1. Theme system (detailed in `docs/theme-plan.md`).
 2. Windows DPI awareness and scaling.
 3. Compile-time platform and presentation seams.
-4. Browser thin-client prototype.
+4. Browser thin-client prototype (separate compile-time build target; a
+   dual-mode X11 + browser binary is not planned).
 5. Wayland-native adapter (pre-scope).
 
 ## Ground rules
