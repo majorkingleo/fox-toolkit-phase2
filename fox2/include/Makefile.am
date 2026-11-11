@@ -1,0 +1,89 @@
+## Process this file with automake to produce Makefile.in
+
+foxincludedir=$(includedir)/fox-1.7
+
+foxinclude_HEADERS = \
+fx.h \
+FX88591Codec.h \
+FXAccelTable.h \
+FXApp.h \
+FXArray.h \
+fxascii.h \
+FXAutoThreadStorageKey.h \
+FXBitmap.h \
+FXButton.h \
+FXCallback.h \
+fxchar.h \
+FXColors.h \
+FXComposeContext.h \
+FXComposite.h \
+FXCursor.h \
+FXDC.h \
+FXDCWindow.h \
+FXDebugTarget.h \
+fxdefs.h \
+FXDialogBox.h \
+FXDir.h \
+FXDLL.h \
+FXDockBar.h \
+FXDockHandler.h \
+FXDrawable.h \
+FXElement.h \
+fxendian.h \
+FXEvent.h \
+FXException.h \
+FXFile.h \
+FXFont.h \
+FXFrame.h \
+FXGIFIcon.h \
+FXHash.h \
+FXIcon.h \
+FXId.h \
+FXImage.h \
+FXIODevice.h \
+FXIO.h \
+fxkeys.h \
+FXLabel.h \
+FXMainWindow.h \
+fxmath.h \
+FXMenuPane.h \
+FXMessageBox.h \
+FXMetaClass.h \
+FXMutex.h \
+FXObject.h \
+FXPacker.h \
+FXPath.h \
+FXPerformance.h \
+FXPipe.h \
+FXPoint.h \
+FXPopup.h \
+FXProcess.h \
+FXRectangle.h \
+FXRegion.h \
+FXRegistry.h \
+FXRootWindow.h \
+FXRunnable.h \
+FXSettings.h \
+FXShell.h \
+FXSize.h \
+FXStat.h \
+FXStatusLine.h \
+FXStream.h \
+FXStringDictionary.h \
+FXString.h \
+FXSystem.h \
+FXTextCodec.h \
+FXTextField.h \
+FXThread.h \
+FXToolBarGrip.h \
+FXToolBar.h \
+FXTopWindow.h \
+FXTranslator.h \
+fxunicode.h \
+FXUTF16Codec.h \
+fxver.h \
+FXVisual.h \
+FXWindow.h \
+xincs.h
+
+EXTRA_DIST = fxver.h.in

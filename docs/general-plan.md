@@ -58,6 +58,18 @@ The later modernization workstreams live in `docs/modernization-plan.md`.
 - All copied C++ must follow the FOX formatting rules (2-space indent, tight
   operators, `if(`-style braces, `Type* p`, etc.).
 
+### Phase 2 result (2026-11-11)
+
+- Subset chosen mechanically, not by guesswork: the minimal object closure of
+  `tests/hello.cpp` was computed from the Phase 1 object files
+  (`tmp/phase2-closure.sh`), giving **58 of 391** library sources.
+- `fox2/` now holds 82 headers (the 81-header closure plus a regenerated
+  trimmed `fx.h`), 58 `.cpp` files, 46 cursor `.xbm` assets, and a trimmed
+  Autotools skeleton (`configure.ac`, top `Makefile.am`, `include/`,
+  `lib/`, `tests/`).
+- Build skeleton is Autotools only: `autoreconf -fi`, out-of-tree
+  `configure`, `make`. Generated files are listed in `fox2/.gitignore`.
+
 ## Phase 3 — Start the basic implementation in fox2
 
 - Make the copied subset compile, then make `hello` run: a window shows and the
@@ -66,6 +78,18 @@ The later modernization workstreams live in `docs/modernization-plan.md`.
   or testing.
 - Grow the subset incrementally, one widget or feature at a time, rebuilding
   and re-running the example after each step.
+
+### Phase 3 result (2026-11-11)
+
+- `autoreconf -fi` + `configure` + `make -j24` in `tmp/build-fox2/`: exit 0 in
+  5 s, 28 warnings, no errors.
+- Artifacts: `libFOX-1.7.so.0.0.95` (1.47 MB, versus 7.3 MB for the full
+  library) and `tests/hello`.
+- `tests/hello` starts on `DISPLAY=:0` and stays in its event loop (killed by
+  a 3 s timeout, exit 124), so the widget tree, event dispatch, and X11
+  backend all work in the reduced build.
+- Next increments: add widgets and controls one at a time (each addition pulls
+  its own closure), then start the modernization workstreams.
 
 ## Later phases (modernization)
 
