@@ -86,6 +86,7 @@ FXTextField.h \
 FXTheme.h \
 FXStyle.h \
 FXCSS.h \
+FXThemeCache.h \
 FXThread.h \
 FXToolBarGrip.h \
 FXToolBar.h \

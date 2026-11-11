@@ -12,8 +12,9 @@ using namespace FX;
 
 // Print usage
 static void usage(const char* program){
-  std::fprintf(stderr,"usage: %s [-o output.foxtheme] [-n name] source\n",program);
+  std::fprintf(stderr,"usage: %s [-c] [-o output.foxtheme] [-n name] source\n",program);
   std::fprintf(stderr,"  source is a GTK theme directory, a gtk.css, or a gtkrc\n");
+  std::fprintf(stderr,"  -c  use the theme cache, importing and storing on a miss\n");
   }
 
 
@@ -28,6 +29,8 @@ int main(int argc,char* argv[]){
   const char* output=nullptr;
   const char* name=nullptr;
   const char* source=nullptr;
+  FXbool usecache=false;
+  FXbool parsed=false;
   FXTheme theme;
   FXCSS css;
   FXString text;
@@ -42,6 +45,9 @@ int main(int argc,char* argv[]){
     else if(std::strcmp(argv[i],"-n")==0 && (i+1)<argc){
       name=argv[++i];
       }
+    else if(std::strcmp(argv[i],"-c")==0){
+      usecache=true;
+      }
     else if(argv[i][0]=='-'){
       usage(argv[0]);
       return 1;
@@ -55,19 +61,30 @@ int main(int argc,char* argv[]){
     return 1;
     }
 
-  // Read the source theme
-  if(!css.load(source)){
-    std::fprintf(stderr,"fxthemeimport: cannot read '%s'\n",source);
-    return 1;
+  // Resolve the source: from the cache when possible, otherwise by importing
+  theme.setClassic();
+  if(usecache && FXThemeCache::fetch(source,theme)){
+    std::printf("cache       : hit %s\n",FXThemeCache::location(source).text());
+    }
+  else{
+    if(!css.load(source)){
+      std::fprintf(stderr,"fxthemeimport: cannot read '%s'\n",source);
+      return 1;
+      }
+    theme.setClassic();
+    css.apply(theme);
+    parsed=true;
+    if(usecache){
+      bool stored=FXThemeCache::store(source,theme);
+      std::printf("cache       : miss, imported%s\n",stored?" and stored":"");
+      }
     }
 
-  // Resolve it and report what was found
-  theme.setClassic();
-  css.apply(theme);
-
-  std::printf("source      : %s\n",css.getSource().text());
-  std::printf("rules       : %d\n",css.getRules());
-  std::printf("warnings    : %d\n",css.getWarnings());
+  std::printf("source      : %s\n",parsed?css.getSource().text():source);
+  if(parsed){
+    std::printf("rules       : %d\n",css.getRules());
+    std::printf("warnings    : %d\n",css.getWarnings());
+    }
   std::printf("colors:\n");
   showColor("window_bg",theme,ROLE_WINDOW_BG);
   showColor("surface",theme,ROLE_SURFACE);
@@ -87,11 +104,9 @@ int main(int argc,char* argv[]){
   std::printf("  %-20s %d\n","focus_width",theme.metric(METRIC_FOCUS_WIDTH));
   std::printf("  %-20s %d\n","corner_radius",theme.metric(METRIC_CORNER_RADIUS));
   std::printf("  %-20s %s\n","font_ui",theme.font(FONT_UI).getFont().text());
-
   // Write the theme file when asked
   if(output){
-    text=css.write(name?name:"imported");
-    file.open(output,FXIO::Writing);
+    text=theme.describe(name?name:"imported",source);    file.open(output,FXIO::Writing);
     if(!file.isOpen()){
       std::fprintf(stderr,"fxthemeimport: cannot write '%s'\n",output);
       return 1;

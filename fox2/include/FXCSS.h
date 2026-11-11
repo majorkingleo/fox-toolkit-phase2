@@ -86,9 +86,6 @@ public:
   /// Map the GTK colors and metrics onto the given theme
   void apply(FXTheme& theme) const;
 
-  /// Serialize the resolved theme to .foxtheme text
-  FXString write(const FXString& name) const;
-
   /// Number of unsupported constructs encountered
   FXint getWarnings() const { return warnings; }
 

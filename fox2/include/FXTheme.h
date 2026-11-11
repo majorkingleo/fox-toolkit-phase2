@@ -32,6 +32,9 @@
 namespace FX {
 
 
+class FXStream;
+
+
 class FXString;
 
 
@@ -145,6 +148,15 @@ public:
 
   /// Load theme from an INI file; returns true if the file parsed
   FXbool load(const FXString& path);
+
+  /// Save theme to a stream
+  void save(FXStream& store) const;
+
+  /// Load theme from a stream
+  void load(FXStream& store);
+
+  /// Return the theme as .foxtheme INI text
+  FXString describe(const FXString& name,const FXString& source) const;
   };
 
 }

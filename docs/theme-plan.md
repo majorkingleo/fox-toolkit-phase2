@@ -521,6 +521,40 @@ at `/usr/share/themes/Breeze` gives a pixel-identical result (0 differing
 pixels), while `/usr/share/themes/Breeze-Dark` gives face `#202326`. Classic
 stays pixel-identical.
 
+**Progress:** T7 implemented and verified (2026-11-11). `include/FXThemeCache.h`
+and `lib/FXThemeCache.cpp` serialize a resolved theme with `FXMemoryStream`
+under a `FXTCMAGIC` header carrying the schema version, the importer version,
+the source path, its size and its modification time. Cache files live in
+`$XDG_CACHE_HOME/fox/themes` (falling back to `~/.cache`), one per source,
+named from the source basename plus a hash of the full path. A theme
+*directory* is resolved to the style sheet that will actually be read
+(`gtk-3.0/gtk.css`, then `gtk-4.0`, then `gtk-2.0/gtkrc`) before stamping, so
+editing that file invalidates the entry. `FXTheme` gained `save`/`load`
+(FXStream, with the font strings length-checked to 1 KB) and `describe()`,
+which produces the `.foxtheme` text from a resolved theme rather than from the
+parser, so a cached theme serializes identically to an imported one.
+
+Failure policy is "cache never blocks startup": the file is bounded to 64 KB
+before reading, every mismatch (magic, schema, importer, path, size, mtime,
+truncated or garbled body) deletes the cache and returns a miss, and the caller
+re-imports; the buffer is allocated with `FXMALLOC` and released with
+`FXFREE(&ptr)` (the macro takes the address of the pointer, not the pointer).
+`fxthemeimport` grew `-c` to fill and use the cache, and
+`FXThemeCache::getHits()`/`getMisses()` make the behaviour observable.
+
+Verified by a dedicated check program (22 assertions, all passing): cold miss
+and no cache file, store + hit, fetched theme equal to the imported one (colors,
+metrics, fonts, scale), a hit that survives the source being replaced by
+unparseable bytes of the same size and mtime — proving a hit does not parse —
+then a newer mtime invalidating, a garbled cache and a truncated cache both
+missing and being deleted with the theme falling back to classic, and a bumped
+importer version forcing a re-import. End to end, `fxthemeimport -c` reports a
+miss on the first Breeze run and a hit on the second with byte-identical output
+(and no `rules`/`warnings` lines, since nothing was parsed), and `hello` pointed
+at `/usr/share/themes/Breeze` writes the cache once, does not rewrite it on the
+second run, and renders `#EFF0F1` at 91x34 both times with 0 differing pixels.
+Classic stays pixel-identical.
+
 **Progress:** R2 focus ring implemented and verified (2026-11-11).
 `FXStyle::drawFocusRing()` draws a rounded ring in `ROLE_FOCUS_RING` using
 `METRIC_FOCUS_WIDTH` when `corner_radius>0`, and keeps the classic dashed
