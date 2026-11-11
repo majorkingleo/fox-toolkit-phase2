@@ -1,6 +1,6 @@
 ---
 name: fox-toolkit
-description: Understand, use, extend, and debug the FOX 1.7.95 C++ GUI toolkit in this repository. Use when working with FOX applications, widgets, event/message handlers, layouts, data targets, or library internals.
+description: Understand, use, extend, and debug the FOX 1.7.95 C++ GUI toolkit in this repository. Use when working with FOX applications, widgets, event/message handlers, layouts, data targets, or library internals, or when writing FOX code that must match the library's formatting and coding conventions.
 ---
 
 # FOX Toolkit: How It Works
@@ -126,6 +126,138 @@ machine-independent serialization. For a subclass that must serialize its
 state, follow the `FXObject::save()`/`load()` conventions and inspect the
 streaming operators and examples before changing the serialized format.
 
+## Code formatting and coding rules
+
+These conventions were extracted from the existing `include/` and `lib/`
+sources; the parenthesised counts show which variant dominates in the tree.
+Follow them when adding or changing FOX code, including the ported copy under
+`fox2/`. Never reformat a file to a different style than the one it already
+uses.
+
+### Language level and idioms
+
+- Target the C++11-era dialect the library already uses: `nullptr` (~3055 uses)
+  instead of `NULL` (~286 legacy leftovers).
+- Mark every overriding virtual with `override` (~1457) and keep the redundant
+  `virtual` in front of it (~1436 sites), as in
+  `virtual void create() override;` and `virtual FXbool canFocus() const override;`.
+- Do not introduce `enum class`, `constexpr`, or `auto` (0 / 0 / ~49 uses).
+  Plain `enum` inside `namespace FX` and explicit types are the house style.
+- Suppress copying the classic way: declare the copy constructor and
+  `operator=` `private` and leave them undefined (~444 / ~366 headers). The
+  tree contains no `= delete`; match the file you edit.
+- Keep platform differences inside `#ifdef WIN32`, `HAVE_*`, and similar
+  conditionals, the way `FXApp.cpp`, `FXWindow.cpp`, and `xincs.h` do.
+- C-style casts still dominate (~2303), but newer headers use
+  `static_cast`/`reinterpret_cast` (~84 / ~131). Match the surrounding file,
+  prefer the named casts in new code, and never mass-convert.
+
+### FOX scalar types
+
+Use FOX's typedefs from `include/fxdefs.h` rather than raw built-in types in
+declarations that are part of the API/ABI or that must stay platform-neutral:
+`FXchar`, `FXuchar`, `FXbool`, `FXshort`, `FXushort`, `FXint`, `FXuint`,
+`FXlong`, `FXulong`, `FXfloat`, `FXdouble`, `FXival`, `FXuval`, `FXptr`,
+`FXTime`, `FXColor`, `FXSelector`, `FXInputHandle`.
+
+- `FXint`/`FXuint` for widget coordinates, sizes, and colors;
+  `FXival`/`FXuval` for element counts, indices, and offsets in containers.
+- `FXbool` for predicate returns (not `int`); `FXString` rather than `char*`.
+
+### Naming
+
+- Classes and public types: `FX` + UpperCamel (`FXButton`, `FXDataTarget`).
+- Member functions are lowerCamel verb phrases (`setButtonStyle`,
+  `getDefaultWidth`, `create`, `layout`). Message handlers are `on` + the
+  message (`onPaint`, `onLeftBtnPress`, `onCmdGetIntValue`, `onQueryTip`).
+- Data members are plain lowerCamel with no prefix and no trailing underscore
+  (`flags`, `options`, `target`, `message`, `headPos`); the tree uses no `m_`
+  and no `_` suffixes at all.
+- Locals are deliberately terse: `p`, `tgt`, `sel`, `opts`, `x`, `y`, `w`, `h`,
+  `pl`..`pb`, `dc`, `ic`, `src`, `pos`, `num`.
+- Enumerators are UPPER_SNAKE, unprefixed, and used unqualified inside
+  `namespace FX` (`BUTTON_TOOLBAR`, `SLIDER_HORIZONTAL`, `STATE_UP`). Macros are
+  upper case too (`FXMAPFUNC`, `FXTRACE`, `DEFAULT_PAD`, `ARRAYNUMBER`).
+- Message IDs are `ID_` + UPPER_SNAKE: the first one is
+  `BaseClass::ID_LAST` and the enum closes with a bare `ID_LAST`.
+
+### Indentation and braces
+
+- Two spaces per level, spaces only. Do not add tabs; only a handful of stray
+  tabs survive, mostly in enum alignment and comment columns.
+- Opening brace stays on the statement line, and the closing brace is indented
+  to the statement rather than to the block:
+
+  ```
+  void FXButton::setState(FXuint s){
+    if(state!=s){
+      state=s;
+      update();
+      }
+    }
+  ```
+
+- Class, `enum`, and message-map closing braces follow the same rule
+  (`  };`); a namespace closes with `}` in column 0.
+- Control keywords take no space before the parenthesis: `if(`, `for(`,
+  `while(`, `switch(` (~17208 vs 78 for `if(`). Use `else{` and `else if(`.
+- Single-statement bodies omit braces:
+  `if(options&BUTTON_DEFAULT) setDefault(true);`
+- Message tables keep that shape:
+
+  ```
+  FXDEFMAP(FXButton) FXButtonMap[]={
+    FXMAPFUNC(SEL_PAINT,0,FXButton::onPaint),
+    ...
+    };
+  FXIMPLEMENT(FXButton,FXLabel,FXButtonMap,ARRAYNUMBER(FXButtonMap))
+  ```
+
+### Expression spacing
+
+- No spaces around assignment, comparison, or arithmetic operators:
+  `state=STATE_UP;`, `if(state!=s)`, `if((n-m)>0)` (~3713 tight assignments
+  versus 39 spaced ones).
+- Flag tests stay bare: `if(options&BUTTON_INITIAL)`,
+  `if(!(options&SLIDER_VERTICAL))`.
+- Parameters are comma-separated with no following space and defaults use a
+  tight `=`:
+  `FXButton(FXComposite* p,const FXString& text,FXIcon* ic=nullptr,FXObject* tgt=nullptr,FXSelector sel=0,FXuint opts=BUTTON_NORMAL,...)`.
+- `for` headers keep a space after each semicolon:
+  `for(i=0; i<=max; i++)`.
+- `*` and `&` bind to the type: `FXComposite* p`, `const FXString& text`,
+  `void* data` (majority; older files sometimes write `FXComposite *p`).
+- In declarations, type and name are aligned in columns with a trailing `//`
+  comment; enumerators align their `=` and end with a `///` comment:
+
+  ```
+  FXint         headPos;                  // Head position
+  FXColor       slotColor;                // Color of slot the head moves in
+  ```
+
+### Files, comments, and includes
+
+- Headers start with the license banner, then `#ifndef FXNAME_H` /
+  `#define FXNAME_H`. Dependent headers are included as
+  `#ifndef DEP_H` / `#include "Dep.h"` / `#endif`. No `#pragma once`.
+- A `.cpp` includes `"xincs.h"` first, then the `fx*.h` internals, then the
+  `FX*.h` headers, with the class's own header last, followed by
+  `using namespace FX;` and `namespace FX { ... }`.
+- Every public declaration gets a `///` one-liner; each class gets a
+  `/** ... */` block describing behaviour; implementation functions get a `//`
+  line above them. Do not add Doxygen `@param`/`@return` tags (0 uses).
+- Major implementation blocks are separated by the 81-column line
+  `/*******************************************************************************/`.
+- Use `FXTRACE(TOPIC_...,...)` for diagnostics (~1345 calls; common topics are
+  `TOPIC_DETAIL`, `TOPIC_DEBUG`, `TOPIC_CONSTRUCT`, `TOPIC_CREATION`,
+  `TOPIC_EVENT`).
+- Files end with a newline. Trailing whitespace already exists in the tree: do
+  not add more, but do not mass-clean it either.
+- Long parameter lists are kept on a single line even when they exceed the
+  usual width; do not introduce new wrapping.
+- There is no `.clang-format` or `.editorconfig` in the project. Match the file
+  being edited by hand.
+
 ## Build and verification workflow
 
 The documented Unix build is `./configure` followed by `make`; optional
@@ -139,7 +271,8 @@ dependencies are available.
 For a change:
 
 1. Check the public declaration in `include/` and its implementation in
-   `lib/`; preserve the existing FOX naming, selector, and ownership patterns.
+   `lib/`; preserve the existing FOX naming, selector, and ownership patterns,
+   and follow the formatting rules in the section above.
 2. Find existing usage in `tests/` and the relevant topic in `doc/` before
    adding a new mechanism.
 3. Update the example/build declarations if adding a test or demo, and update

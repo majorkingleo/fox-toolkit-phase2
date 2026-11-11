@@ -21,6 +21,22 @@ The goals are:
 This is a proposal, not a commitment to preserve every internal ABI. Public API
 and serialization changes should be versioned and reviewed separately.
 
+## Base phases (do these first)
+
+The master plan in `docs/general-plan.md` defines two base phases that must
+precede every workstream below:
+
+1. **Rebuild the old library** — configure and build the unmodified
+   `fox-1.7.95/` to capture a verified baseline (commands, options, warnings,
+   result).
+2. **Copy basic parts and start the basic implementation** — create `fox2/`,
+   copy the minimal subset needed for a window with a button, make it compile,
+   and get the `hello` example running. All changes happen in `fox2/`; the
+   original tree stays read-only except for debugging/testing.
+
+Workstreams 1–5 are later phases applied on top of the working `fox2/` base,
+not on `fox-1.7.95/`.
+
 ## Current architecture and constraints
 
 FOX already separates application code from operating-system window APIs at the
@@ -388,6 +404,9 @@ the FOX event loop, and document the compositor versions tested.
 
 ## Recommended sequencing
 
+0. **Base phases**: rebuild the unmodified `fox-1.7.95/` (baseline), then copy
+   the basic subset into `fox2/` and get a minimal window-with-button example
+   compiling and running. All later steps operate on `fox2/`.
 1. **Baseline and compatibility policy**: inventory hard-coded drawing
    assumptions, test platforms, decide geometry compatibility and supported
    Windows versions.
