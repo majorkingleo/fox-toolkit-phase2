@@ -778,6 +778,43 @@ Two constraints apply to the verification scripts in `tmp/`:
 Reuse the T6 parser and role mapping once GTK import and the cache are stable;
 KDE `.colors` first (plain INI), then Qt QSS, then Xresources.
 
+**Progress — KDE `.colors` done (2026-11-11).** The first "later" importer
+landed early because the cache and the GTK path are now stable.
+`FXCSS::loadKdeColors()` reads a KDE color scheme into the same declaration
+store, using the bracket-quoted section names (`[Colors:Window]`, ...) as
+selectors, and `applyKde()` maps them onto the roles:
+`[Colors:Window] BackgroundNormal` -> `SURFACE`, `[Colors:View]
+BackgroundNormal` -> `WINDOW_BG`, `[Colors:Window] ForegroundNormal` ->
+`TEXT`, `ForegroundInactive` -> `TEXT_DISABLED`, `BackgroundAlternate` ->
+`BORDER` (a hairline one step off the surface), `[Colors:Selection]` ->
+`SELECTION_*`/`MENU_SEL_*`/`ACCENT`, `[Colors:Button] DecorationFocus` ->
+`FOCUS_RING`, `[Colors:Tooltip]` -> `TOOLTIP_*`, and `[General] font` ->
+`FONT_UI`. KDE writes colors as `r,g,b` triplets, so `lookupTriplet()` was
+added next to the CSS color parser, and the QFont string
+(`family,pointsize,pixelsize,stylehint,weight,italic,...`) is converted to an
+`FXFontDesc` (weight >= 600 becomes bold, italic flag becomes italic).
+`FXCSS::load()` dispatches on the `.colors` suffix, so the CLI, the runtime
+loader and the cache all accept KDE schemes without extra flags.
+
+Verified on this machine: `BreezeLight.colors` gives surface `#EFF0F1`, text
+`#232629`, selection `#3DAEE9`, tooltip `#F7F7F7`, border `#E3E5E7`;
+`BreezeDark.colors` gives surface `#202326`, text `#FCFCFC`, border `#292C30`;
+`Emerald.colors` gives surface `#FFFFFF`, text `#010101`, selection `#0A246A`.
+All three import with 0 warnings. Rendering `hello` with the imported light and
+dark schemes gives face `#EFF0F1` and `#202326`, and pointing the registry
+straight at `/usr/share/color-schemes/BreezeLight.colors` renders `#EFF0F1`
+through the runtime import path.
+
+One runtime bug was found and fixed here: `FXTheme::load()` (the INI reader)
+succeeds on a `.colors` file because it *is* an INI file, so the old
+"try INI first, import on failure" order silently produced a classic theme.
+`FXApp::init()` now dispatches on the `.foxtheme` suffix first and treats every
+other path as an external source to import and cache. The KDE border choice
+(`BackgroundAlternate`, `#E3E5E7`) is lighter than what the GTK stylesheet
+reports (`#C6C8C9`); both are valid hairlines for the same surface, and the
+difference is expected because KDE themes draw their frames, not their
+backgrounds.
+
 
 ## Validation
 

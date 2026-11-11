@@ -198,6 +198,19 @@ FXColor FXCSS::lookupColor(const FXString& name,FXint depth) const {
   }
 
 
+// Store one declaration under the given selector
+void FXCSS::addDeclaration(const FXString& selector,const FXString& key,const FXString& value){
+  FXString entry;
+  if(selector.empty() || key.empty() || value.empty()) return;
+  entry=rules.at(selector);
+  if(!entry.empty()) entry.append(';');
+  entry.append(key);
+  entry.append(':');
+  entry.append(value);
+  rules.insert(selector,entry);
+  }
+
+
 // Store the declarations of one rule
 void FXCSS::parseDeclarations(const FXString& selector,const FXString& body){
   FXString clean=selector;
@@ -222,12 +235,7 @@ void FXCSS::parseDeclarations(const FXString& selector,const FXString& body){
     key=decl.left(colon).trim();
     value=decl.mid(colon+1,decl.length()-colon-1).trim();
     if(key.empty() || value.empty()) continue;
-    FXString entry=rules.at(clean);
-    if(!entry.empty()) entry.append(';');
-    entry.append(key);
-    entry.append(':');
-    entry.append(value);
-    rules.insert(clean,entry);
+    addDeclaration(clean,key,value);
     }
   if(!rules.at(clean).empty()) ruleno++;
   }
@@ -394,6 +402,44 @@ FXbool FXCSS::loadGtkrc(const FXString& path){
   }
 
 
+// Read a KDE color scheme; sections become selectors, keys become declarations
+FXbool FXCSS::loadKdeColors(const FXString& path){
+  FXFile file(path,FXIO::Reading);
+  FXString text;
+  FXString line;
+  FXString section;
+  FXint start=0;
+  FXint stop;
+  FXint equal;
+  if(!file.isOpen()) return false;
+  text.length(file.size());
+  file.readBlock(text.text(),text.length());
+  file.close();
+  source=path;
+  while(start<text.length()){
+    stop=text.find('\n',start);
+    if(stop<0) stop=text.length();
+    line=text.mid(start,stop-start).trim();
+    start=stop+1;
+    if(line.empty() || line[0]=='#' || line[0]==';') continue;
+
+    // Section header; the brackets stay part of the selector
+    if(line[0]=='['){
+      FXint close=line.find(']');
+      section=(0<close)?line.mid(0,close+1):line;
+      continue;
+      }
+
+    // Key=Value
+    equal=line.find('=');
+    if(equal<=0) continue;
+    addDeclaration(section,line.left(equal).trim(),line.mid(equal+1,line.length()-equal-1).trim());
+    }
+  ruleno++;
+  return true;
+  }
+
+
 // Read either format
 FXbool FXCSS::load(const FXString& path){
   // A theme directory: prefer GTK 3, then GTK 4, then GTK 2
@@ -401,6 +447,7 @@ FXbool FXCSS::load(const FXString& path){
   if(readable(path+"/gtk-4.0/gtk.css")) return loadCSS(path+"/gtk-4.0/gtk.css");
   if(readable(path+"/gtk-2.0/gtkrc"))  return loadGtkrc(path+"/gtk-2.0/gtkrc");
   if(path.right(5)=="gtkrc") return loadGtkrc(path);
+  if(path.right(7)==".colors") return loadKdeColors(path);
   return loadCSS(path);
   }
 
@@ -483,6 +530,88 @@ FXint FXCSS::length(const FXString& match,const FXString& prop,FXint def) const 
   }
 
 
+// Resolve an "r,g,b" triplet, as KDE color schemes write them
+FXColor FXCSS::lookupTriplet(const FXString& text) const {
+  FXbool ok=false;
+  FXint r=text.section(',',0).trim().toInt(10,&ok);
+  FXint g;
+  FXint b;
+  if(!ok) return 0;
+  g=text.section(',',1).trim().toInt(10,&ok);
+  if(!ok) return 0;
+  b=text.section(',',2).trim().toInt(10,&ok);
+  if(!ok) return 0;
+  return FXRGB(FXCLAMP(0,r,255),FXCLAMP(0,g,255),FXCLAMP(0,b,255));
+  }
+
+
+// Map a KDE color scheme onto the theme
+void FXCSS::applyKde(FXTheme& theme) const {
+  FXString value;
+  FXColor clr;
+
+  // Window and view colors
+  value=property("[Colors:Window]","BackgroundNormal");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_SURFACE,clr); }
+  value=property("[Colors:View]","BackgroundNormal");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_WINDOW_BG,clr); }
+  value=property("[Colors:Window]","ForegroundNormal");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_TEXT,clr); }
+  value=property("[Colors:Window]","ForegroundInactive");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_TEXT_DISABLED,clr); }
+
+  // A hairline drawn as the alternate surface color, or derived below
+  value=property("[Colors:Window]","BackgroundAlternate");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_BORDER,clr); }
+
+  // Selection, accent and the focus decoration
+  value=property("[Colors:Selection]","BackgroundNormal");
+  if(!value.empty()){
+    clr=lookupTriplet(value);
+    if(clr){
+      theme.setColor(ROLE_SELECTION_BG,clr);
+      theme.setColor(ROLE_MENU_SEL_BG,clr);
+      theme.setColor(ROLE_ACCENT,clr);
+      }
+    }
+  value=property("[Colors:Selection]","ForegroundNormal");
+  if(!value.empty()){
+    clr=lookupTriplet(value);
+    if(clr){
+      theme.setColor(ROLE_SELECTION_TEXT,clr);
+      theme.setColor(ROLE_MENU_SEL_TEXT,clr);
+      }
+    }
+  value=property("[Colors:Button]","DecorationFocus");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_FOCUS_RING,clr); }
+
+  // Tooltips
+  value=property("[Colors:Tooltip]","BackgroundNormal");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_TOOLTIP_BG,clr); }
+  value=property("[Colors:Tooltip]","ForegroundNormal");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_TOOLTIP_TEXT,clr); }
+
+  // Fonts are written as QFont strings: family,pointsize,pixelsize,stylehint,weight,italic,...
+  value=property("[General]","font");
+  if(!value.empty()){
+    FXFontDesc desc;
+    FXString face=value.section(',',0).trim();
+    FXint points=value.section(',',1).trim().toInt(10);
+    FXint weight=value.section(',',4).trim().toInt(10);
+    FXint italic=value.section(',',5).trim().toInt(10);
+    desc.setFont(FXString::value("%s,%d",face.text(),(0<points)?points*10:0));
+    if(600<=weight) desc.weight=FXFont::Bold;
+    if(0<italic) desc.slant=FXFont::Italic;
+    theme.setFont(FONT_UI,desc);
+    }
+
+  // Raised and sunken edges follow the imported surface
+  theme.setColor(ROLE_SURFACE_HILITE,makeHiliteColor(theme.color(ROLE_SURFACE)));
+  theme.setColor(ROLE_SURFACE_SHADOW,makeShadowColor(theme.color(ROLE_SURFACE)));
+  theme.updateDerived();
+  }
+
+
 // Map the GTK colors and metrics onto the theme
 void FXCSS::apply(FXTheme& theme) const {
   static const FXchar* surfaces[]={ "theme_bg_color","bg_color","theme_bg" };
@@ -545,6 +674,9 @@ void FXCSS::apply(FXTheme& theme) const {
 
   // Recompute the colors derived from the base roles
   theme.updateDerived();
+
+  // KDE color schemes carry their colors under section/key names
+  applyKde(theme);
   }
 
 }

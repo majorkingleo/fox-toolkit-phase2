@@ -4494,10 +4494,15 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
     }
   else if(themename!="classic"){
     FXTheme loaded;
-    if(loaded.load(themename)){
-      setTheme(loaded);
+
+    // A .foxtheme file is read directly; anything else is an external source
+    // (GTK style sheet, gtkrc or KDE color scheme) which is imported and cached
+    if(themename.right(9)==".foxtheme"){
+      if(loaded.load(themename)){
+        setTheme(loaded);
+        }
       }
-    else if(themename.find(".foxtheme")<0){
+    else{
       if(!FXThemeCache::fetch(themename,loaded)){
         FXCSS css;
         if(css.load(themename)){

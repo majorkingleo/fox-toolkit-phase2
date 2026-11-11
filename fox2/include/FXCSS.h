@@ -52,10 +52,13 @@ protected:
   FXint       ruleno;           // Number of rules parsed
 protected:
   FXColor lookupColor(const FXString& name,FXint depth) const;
+  FXColor lookupTriplet(const FXString& text) const;
+  void addDeclaration(const FXString& selector,const FXString& key,const FXString& value);
   void parseDeclarations(const FXString& selector,const FXString& body);
   void parseBlock(const FXString& text,FXint& pos);
   void parseDefine(const FXString& text,FXint& pos);
   FXbool addColor(const FXString& name,const FXString& value);
+  void applyKde(FXTheme& theme) const;
   void warn(const FXchar* format,...) const;
 public:
 
@@ -67,6 +70,9 @@ public:
 
   /// Read a GTK 2 gtkrc
   FXbool loadGtkrc(const FXString& path);
+
+  /// Read a KDE color scheme
+  FXbool loadKdeColors(const FXString& path);
 
   /// Read either format, picked by the file name
   FXbool load(const FXString& path);
