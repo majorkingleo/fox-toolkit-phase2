@@ -417,6 +417,105 @@ void FXApp::repaint(){
   }
 
 
+// Begin of wait-cursor block; wait-cursor blocks may be nested.
+void FXApp::beginWaitCursor(){
+  if(initialized){
+    if(waitCount==0){
+      if(!waitCursor->id()){ fxerror("%s::beginWaitCursor: wait cursor not created yet.\n",getClassName()); }
+      FXWindow* child;
+      FXASSERT(display);
+      child=getRootWindow()->getFirst();
+      while(child){
+        if(child->id()){
+          XDefineCursor((Display*)display,child->id(),waitCursor->id());
+          if(child->getFirst()){child=child->getFirst();continue;}
+          }
+        while(!child->getNext()&&child->getParent()){child=child->getParent();}
+        child=child->getNext();
+        }
+      if(mouseGrabWindow){
+        XChangeActivePointerGrab((Display*)display,(ButtonPressMask|ButtonReleaseMask|PointerMotionMask|EnterWindowMask|LeaveWindowMask),waitCursor->id(),CurrentTime);
+        }
+      XFlush((Display*)display);
+      }
+    waitCount++;
+    }
+  }
+
+
+// End of wait-cursor block
+void FXApp::endWaitCursor(){
+  if(initialized){
+    if(waitCount==0) return;
+    waitCount--;
+    if(waitCount==0){
+      if(!waitCursor->id()){ fxerror("%s::endWaitCursor: wait cursor not created yet.\n",getClassName()); }
+      FXWindow* child;
+      child=getRootWindow()->getFirst();
+      while(child){
+        if(child->id()){
+          XDefineCursor((Display*)display,child->id(),child->getDefaultCursor()->id());
+          if(child->getFirst()){child=child->getFirst();continue;}
+          }
+        while(!child->getNext()&&child->getParent()){child=child->getParent();}
+        child=child->getNext();
+        }
+      if(mouseGrabWindow){
+        XChangeActivePointerGrab((Display*)display,(ButtonPressMask|ButtonReleaseMask|PointerMotionMask|EnterWindowMask|LeaveWindowMask),mouseGrabWindow->getDragCursor()->id(),CurrentTime);
+        }
+      XFlush((Display*)display);
+      }
+    }
+  }
+
+
+// Change to a new wait cursor
+void FXApp::setWaitCursor(FXCursor *cur){
+  if(initialized){
+    if(!cur){ fxerror("%s::setWaitCursor: NULL wait cursor.\n",getClassName()); }
+    if(waitCursor!=cur){
+      waitCursor=cur;
+      if(waitCount){
+        if(!waitCursor->id()){ fxerror("%s::setWaitCursor: wait cursor not created yet.\n",getClassName()); }
+        FXWindow* child;
+        child=getRootWindow()->getFirst();
+        while(child){
+          if(child->id()){
+            XDefineCursor((Display*)display,child->id(),waitCursor->id());
+            if(child->getFirst()){child=child->getFirst();continue;}
+            }
+          while(!child->getNext()&&child->getParent()){child=child->getParent();}
+          child=child->getNext();
+          }
+        XFlush((Display*)display);
+        }
+      }
+    }
+  }
+
+
+// Register DND type
+FXDragType FXApp::registerDragType(const FXString& name) const {
+  if(initialized){
+    return (FXDragType)XInternAtom((Display*)display,name.text(),0);
+    }
+  return 0;
+  }
+
+
+// Get name of registered drag type
+FXString FXApp::getDragTypeName(FXDragType type) const {
+  if(initialized){
+    FXString result;
+    FXchar *name=XGetAtomName((Display*)display,type);
+    result.assign(name);
+    XFree(name);
+    return result;
+    }
+  return FXString::null;
+  }
+
+
 }
 
 #endif

@@ -406,6 +406,75 @@ FXival CALLBACK FXApp::wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam
   }
 
 
+// Begin of wait-cursor block; wait-cursor blocks may be nested.
+void FXApp::beginWaitCursor(){
+  if(initialized){
+    if(waitCount==0){
+      if(!waitCursor->id()){ fxerror("%s::beginWaitCursor: wait cursor not created yet.\n",getClassName()); }
+      SetCursor((HCURSOR)waitCursor->id());
+      }
+    waitCount++;
+    }
+  }
+
+
+// End of wait-cursor block
+void FXApp::endWaitCursor(){
+  if(initialized){
+    if(waitCount==0) return;
+    waitCount--;
+    if(waitCount==0){
+      if(!waitCursor->id()){ fxerror("%s::endWaitCursor: wait cursor not created yet.\n",getClassName()); }
+      if(cursorWindow){
+        SetCursor((HCURSOR)cursorWindow->getDefaultCursor()->id());
+        }
+      }
+    }
+  }
+
+
+// Change to a new wait cursor
+void FXApp::setWaitCursor(FXCursor *cur){
+  if(initialized){
+    if(!cur){ fxerror("%s::setWaitCursor: NULL wait cursor.\n",getClassName()); }
+    if(waitCursor!=cur){
+      waitCursor=cur;
+      if(waitCount){
+        if(!waitCursor->id()){ fxerror("%s::setWaitCursor: wait cursor not created yet.\n",getClassName()); }
+        SetCursor((HCURSOR)waitCursor->id());
+        }
+      }
+    }
+  }
+
+
+// Register DND type
+FXDragType FXApp::registerDragType(const FXString& name) const {
+  if(initialized){
+    return RegisterClipboardFormatA(name.text());
+    }
+  return 0;
+  }
+
+
+// Get name of registered drag type
+FXString FXApp::getDragTypeName(FXDragType type) const {
+  if(initialized){
+    FXString result;
+    if(0xC000<=type && type<=0xFFFF){
+      FXchar buffer[256];
+      GetClipboardFormatNameA(type,buffer,sizeof(buffer));
+      result.assign(buffer);
+      }
+    else{
+      result.assign("WIN32_DEFAULT_TYPE");
+      }
+    return result;
+    }
+  return FXString::null;
+  }
+
+
 }
 
 #endif

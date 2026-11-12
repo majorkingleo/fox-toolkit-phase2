@@ -252,6 +252,23 @@ message to `FXApp::dispatchEvent()` — now lives in `FXApp_win32.cpp` instead o
 - X11 build is unaffected (the thunk is Windows-only) and still reports
   `unknown/0/0/1.00`.
 
+## Seam 6: wait cursor and drag types
+
+Done. Five small application operations that each carried a platform branch are
+now whole members in the platform modules.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `FXApp::beginWaitCursor()`/`endWaitCursor()`/`setWaitCursor()` via `SetCursor()`, `registerDragType()` via `RegisterClipboardFormatA()`, `getDragTypeName()` via `GetClipboardFormatNameA()` |
+| X11 module | `FXApp_x11.cpp`: the same three cursor functions walking the widget tree with `XDefineCursor()` and `XChangeActivePointerGrab()`, `registerDragType()` via `XInternAtom()`, `getDragTypeName()` via `XGetAtomName()` |
+| Portable core | `FXApp::setDefaultCursor()` stays; the wait-cursor counter and nesting logic stay inside the moved members |
+
+### Verification
+
+- X11 and cross builds compile; `hello`, `button` and `dpi` run with unchanged
+  DPI values.
+- Statement order of the moved bodies matches the former `#else`/`#if` arms.
+
 ## Next seams, in order
 
 1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`
