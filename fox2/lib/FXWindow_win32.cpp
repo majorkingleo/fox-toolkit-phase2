@@ -125,6 +125,45 @@ int FXWindow::ReleaseDC(FXID hdc) const {
 const void* FXWindow::GetClass() const { return TEXT("FXWindow"); }
 
 
+// Move, resize or both
+void fxplatformPlaceWindow(void*,FXID window,FXint x,FXint y,FXint w,FXint h,FXint,FXint,FXbool,FXuint placement){
+  UINT flags=SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER;
+  if(!(placement&PLACEMENT_X)) flags|=SWP_NOMOVE;
+  if(!(placement&(PLACEMENT_W|PLACEMENT_H))) flags|=SWP_NOSIZE;
+  SetWindowPos((HWND)window,nullptr,x,y,w,h,flags);
+  }
+
+
+// Map or unmap
+void fxplatformShowWindow(void*,FXID window,FXint,FXint,FXbool shown){
+  ShowWindow((HWND)window,shown?SW_SHOWNOACTIVATE:SW_HIDE);
+  }
+
+
+// Reparent under a new parent
+void fxplatformReparentWindow(void*,FXID window,FXID parent){
+  SetParent((HWND)window,(HWND)parent);
+  }
+
+
+// Raise or lower in the stacking order
+void fxplatformRaiseWindow(void*,FXID window,FXbool raised){
+  SetWindowPos((HWND)window,raised?HWND_TOP:HWND_BOTTOM,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
+  }
+
+
+// Release the mouse grab, restoring the cursor
+void fxplatformReleaseMouseGrab(void*,FXID cursor){
+  ReleaseCapture();
+  if(cursor) SetCursor((HCURSOR)cursor);
+  }
+
+
+// Release the keyboard grab
+void fxplatformReleaseKeyboardGrab(void*,FXTime){
+  }
+
+
 }
 
 #endif

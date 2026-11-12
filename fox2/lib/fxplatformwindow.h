@@ -87,6 +87,40 @@ extern void fxplatformAttachWindow(const FXWindowCreateInfo& info,FXID window);
 extern void fxplatformDestroyWindow(void* display,FXID window,FXID shell,FXID colormap,FXID xdndaware);
 
 
+/// Parts of the placement that fxplatformPlaceWindow() applies
+enum {
+  PLACEMENT_X=1,                // New x coordinate
+  PLACEMENT_Y=2,                // New y coordinate
+  PLACEMENT_W=4,                // New width
+  PLACEMENT_H=8                 // New height
+  };
+
+
+/// Move, resize or both.  The old size and the shown state decide whether a
+/// zero-sized window is unmapped and mapped again.
+extern void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXint h,FXint oldw,FXint oldh,FXbool shown,FXuint placement);
+
+
+/// Map or unmap a native window; mapping needs a positive size.
+extern void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown);
+
+
+/// Reparent a native window under a new parent.
+extern void fxplatformReparentWindow(void* display,FXID window,FXID parent);
+
+
+/// Raise or lower a native window in the stacking order.
+extern void fxplatformRaiseWindow(void* display,FXID window,FXbool raised);
+
+
+/// Release the mouse grab, restoring the cursor.
+extern void fxplatformReleaseMouseGrab(void* display,FXID cursor);
+
+
+/// Release the keyboard grab.
+extern void fxplatformReleaseKeyboardGrab(void* display,FXTime time);
+
+
 }
 
 #endif

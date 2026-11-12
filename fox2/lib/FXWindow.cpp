@@ -1982,11 +1982,7 @@ void FXWindow::move(FXint x,FXint y){
 
       // Similar as for position(), we have to generate protocol
       // here so as to make the display reflect reality...
-#ifdef WIN32
-      SetWindowPos((HWND)xid,nullptr,x,y,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
-#else
-      XMoveWindow((Display*)getApp()->getDisplay(),xid,x,y);
-#endif
+      fxplatformPlaceWindow(getApp()->getDisplay(),xid,x,y,width,height,width,height,shown(),PLACEMENT_X|PLACEMENT_Y);
       if(flags&FLAG_DIRTY) layout();
       }
     }
@@ -2010,19 +2006,7 @@ void FXWindow::position(FXint x,FXint y,FXint w,FXint h){
       // Alas, we have to generate some protocol here even if the placement
       // as recorded in the widget hasn't actually changed.  This is because
       // there are ways to change the placement w/o going through position()!
-#ifdef WIN32
-      SetWindowPos((HWND)xid,nullptr,x,y,w,h,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
-#else
-      if(0<w && 0<h){
-        if(shown() && (ow<=0 || oh<=0)){
-          XMapWindow((Display*)getApp()->getDisplay(),xid);
-          }
-        XMoveResizeWindow((Display*)getApp()->getDisplay(),xid,x,y,w,h);
-        }
-      else if(0<ow && 0<oh){
-        XUnmapWindow((Display*)getApp()->getDisplay(),xid);
-        }
-#endif
+      fxplatformPlaceWindow(getApp()->getDisplay(),xid,x,y,w,h,ow,oh,shown(),PLACEMENT_X|PLACEMENT_Y|PLACEMENT_W|PLACEMENT_H);
 
       // We don't have to layout the interior of this widget unless
       // the size has changed or it was marked as dirty:- this is
@@ -2046,19 +2030,7 @@ void FXWindow::resize(FXint w,FXint h){
     if(xid){
 
       // Similar as for position(), we have to generate protocol here..
-#ifdef WIN32
-      SetWindowPos((HWND)xid,nullptr,0,0,w,h,SWP_NOMOVE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
-#else
-      if(0<w && 0<h){
-        if(shown() && (ow<=0 || oh<=0)){
-          XMapWindow((Display*)getApp()->getDisplay(),xid);
-          }
-        XResizeWindow((Display*)getApp()->getDisplay(),xid,w,h);
-        }
-      else if(0<ow && 0<oh){
-        XUnmapWindow((Display*)getApp()->getDisplay(),xid);
-        }
-#endif
+      fxplatformPlaceWindow(getApp()->getDisplay(),xid,xpos,ypos,w,h,ow,oh,shown(),PLACEMENT_W|PLACEMENT_H);
 
       // And of course the size has changed so layout is needed
       layout();
@@ -2156,11 +2128,7 @@ void FXWindow::show(){
   if(!shown()){
     flags|=FLAG_SHOWN;
     if(xid){
-#ifdef WIN32
-      ShowWindow((HWND)xid,SW_SHOWNOACTIVATE);
-#else
-      if(0<width && 0<height) XMapWindow((Display*)getApp()->getDisplay(),xid);
-#endif
+      fxplatformShowWindow(getApp()->getDisplay(),xid,width,height,true);
       }
     }
   }
@@ -2173,31 +2141,16 @@ void FXWindow::hide(){
     killFocus();
     flags&=~FLAG_SHOWN;
     if(xid){
-#ifdef WIN32
       if(getApp()->mouseGrabWindow==this){
-        ReleaseCapture();
-        SetCursor((HCURSOR)defaultCursor->id());
+        fxplatformReleaseMouseGrab(getApp()->getDisplay(),defaultCursor?(FXID)defaultCursor->id():0);
         handle(this,FXSEL(SEL_UNGRABBED,0),&getApp()->event);
         getApp()->mouseGrabWindow=nullptr;
         }
       if(getApp()->keyboardGrabWindow==this){
+        fxplatformReleaseKeyboardGrab(getApp()->getDisplay(),getApp()->event.time);
         getApp()->keyboardGrabWindow=nullptr;
         }
-      ShowWindow((HWND)xid,SW_HIDE);
-#else
-      if(getApp()->mouseGrabWindow==this){
-        XUngrabPointer((Display*)getApp()->getDisplay(),CurrentTime);
-        XFlush((Display*)getApp()->getDisplay());
-        handle(this,FXSEL(SEL_UNGRABBED,0),&getApp()->event);
-        getApp()->mouseGrabWindow=nullptr;
-        }
-      if(getApp()->keyboardGrabWindow==this){
-        XUngrabKeyboard((Display*)getApp()->getDisplay(),getApp()->event.time);
-        XFlush((Display*)getApp()->getDisplay());
-        getApp()->keyboardGrabWindow=nullptr;
-        }
-      XUnmapWindow((Display*)getApp()->getDisplay(),xid);
-#endif
+      fxplatformShowWindow(getApp()->getDisplay(),xid,width,height,false);
       }
     }
   }
@@ -2256,13 +2209,7 @@ void FXWindow::reparent(FXWindow* father,FXWindow* other){
 
       // Hook up to new window in server too
       if(xid && parent->id()){
-#ifdef WIN32
-        SetParent((HWND)xid,(HWND)parent->id());
-#else
-        // See remarks in FXToolBarGrip
-        XReparentWindow((Display*)getApp()->getDisplay(),xid,parent->id(),0,0);
-        XFlush((Display*)getApp()->getDisplay());
-#endif
+        fxplatformReparentWindow(getApp()->getDisplay(),xid,(FXID)parent->id());
         }
       }
 
@@ -2339,11 +2286,7 @@ void FXWindow::disable(){
 // Raise (but do not activate!)
 void FXWindow::raise(){
   if(xid){
-#ifdef WIN32
-    SetWindowPos((HWND)xid,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
-#else
-    XRaiseWindow((Display*)getApp()->getDisplay(),xid);
-#endif
+    fxplatformRaiseWindow(getApp()->getDisplay(),xid,true);
     }
   }
 
@@ -2351,11 +2294,7 @@ void FXWindow::raise(){
 // Lower
 void FXWindow::lower(){
   if(xid){
-#ifdef WIN32
-    SetWindowPos((HWND)xid,HWND_BOTTOM,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
-#else
-    XLowerWindow((Display*)getApp()->getDisplay(),xid);
-#endif
+    fxplatformRaiseWindow(getApp()->getDisplay(),xid,false);
     }
   }
 

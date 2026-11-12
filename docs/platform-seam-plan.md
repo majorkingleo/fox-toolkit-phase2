@@ -160,19 +160,51 @@ because X11 has no window classes.
 - Only `FXWindow_x11.cpp` is compiled on Linux and only `FXWindow_win32.cpp` on
   Windows and in the cross build.
 
+## Seam 2: placement and visibility
+
+Done. Show, hide, move, position, resize, reparent, raise and lower now go
+through the same module pair as creation.
+
+| Part | Location |
+| --- | --- |
+| Internal contract | `fxplatformwindow.h`: `fxplatformPlaceWindow()`, `fxplatformShowWindow()`, `fxplatformReparentWindow()`, `fxplatformRaiseWindow()`, and `fxplatformReleaseMouseGrab()`/`fxplatformReleaseKeyboardGrab()` for the grab that must be released before an unmap |
+| Windows module | `FXWindow_win32.cpp`: one `SetWindowPos()` with `SWP_NOMOVE`/`SWP_NOSIZE` derived from the placement flags, `ShowWindow()`, `SetParent()`, `HWND_TOP`/`HWND_BOTTOM`, `ReleaseCapture()` plus cursor restore |
+| X11 module | `FXWindow_x11.cpp`: `XMoveWindow()`, `XResizeWindow()`, `XMoveResizeWindow()`, map/unmap around zero-sized windows, `XReparentWindow()` with flush, `XRaiseWindow()`/`XLowerWindow()`, `XUngrabPointer()`/`XUngrabKeyboard()` |
+| Portable core | `FXWindow::move()`, `position()`, `resize()`, `show()`, `hide()`, `reparent()`, `raise()`, `lower()` keep the bookkeeping and call the seam |
+
+The old-size and shown-state arguments to `fxplatformPlaceWindow()` preserve the
+X11 rule that a zero-sized window is unmapped and mapped again when it grows;
+Windows ignores them.
+
+Deliberately left in `FXWindow.cpp` for now:
+
+- `enable()` and `disable()`, which change the input state and belong with the
+  event seam,
+- `scroll()`, which is a drawing operation,
+- pointer and keyboard *grab* acquisition, only the release ahead of an unmap
+  moved here.
+
+### Verification
+
+- Linux/X11: `hello`, `button` and `dpi` run; the captured screenshots are
+  byte-identical to the ones from seam 1, so nothing moved on screen.
+- Cross build plus Wine: `hello`, `button` and `dpi` run; DPI values unchanged.
+- `FXWindow.cpp` contains no `SetWindowPos`, `ShowWindow`, `SetParent`,
+  `XMoveWindow`, `XResizeWindow`, `XMoveResizeWindow`, `XMapWindow`,
+  `XUnmapWindow`, `XReparentWindow`, `XRaiseWindow` or `XLowerWindow`.
+
 ## Next seams, in order
 
-1. **Placement and visibility** (`FXWindow.cpp`). Move show/hide, move, position,
-   resize, reparent, raise and lower next to the creation seam.
-2. **Event queue and message translation** (`FXApp.cpp`). Move `dispatchEvent`
+1. **Event queue and message translation** (`FXApp.cpp`). Move `dispatchEvent`
    and `WM_*` handling, including `WM_DPICHANGED`, next to the window seam. This
    is what enables per-window metrics, because the window's monitor DPI arrives
-   with these messages.
-3. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
+   with these messages. The enable/disable input state and the grab acquisition
+   belong here as well.
+2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
-4. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
+3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
    `FXIODevice`). Large but self-contained; split only when a feature needs it.
-5. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+4. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.

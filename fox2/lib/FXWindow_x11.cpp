@@ -224,6 +224,76 @@ const void* FXWindow::GetClass() const {
   return nullptr;
   }
 
+
+// Move, resize or both
+void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXint h,FXint oldw,FXint oldh,FXbool shown,FXuint placement){
+  Display* dpy=(Display*)display;
+  if(placement&(PLACEMENT_W|PLACEMENT_H)){
+    if(0<w && 0<h){
+      if(shown && (oldw<=0 || oldh<=0)){
+        XMapWindow(dpy,window);
+        }
+      if(placement&PLACEMENT_X)
+        XMoveResizeWindow(dpy,window,x,y,w,h);
+      else
+        XResizeWindow(dpy,window,w,h);
+      }
+    else if(0<oldw && 0<oldh){
+      XUnmapWindow(dpy,window);
+      }
+    }
+  else if(placement&(PLACEMENT_X|PLACEMENT_Y)){
+    XMoveWindow(dpy,window,x,y);
+    }
+  }
+
+
+// Map or unmap
+void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown){
+  Display* dpy=(Display*)display;
+  if(shown){
+    if(0<w && 0<h) XMapWindow(dpy,window);
+    }
+  else{
+    XUnmapWindow(dpy,window);
+    }
+  }
+
+
+// Reparent under a new parent
+void fxplatformReparentWindow(void* display,FXID window,FXID parent){
+  Display* dpy=(Display*)display;
+  // See remarks in FXToolBarGrip
+  XReparentWindow(dpy,window,parent,0,0);
+  XFlush(dpy);
+  }
+
+
+// Raise or lower in the stacking order
+void fxplatformRaiseWindow(void* display,FXID window,FXbool raised){
+  Display* dpy=(Display*)display;
+  if(raised)
+    XRaiseWindow(dpy,window);
+  else
+    XLowerWindow(dpy,window);
+  }
+
+
+// Release the mouse grab
+void fxplatformReleaseMouseGrab(void* display,FXID){
+  Display* dpy=(Display*)display;
+  XUngrabPointer(dpy,CurrentTime);
+  XFlush(dpy);
+  }
+
+
+// Release the keyboard grab
+void fxplatformReleaseKeyboardGrab(void* display,FXTime time){
+  Display* dpy=(Display*)display;
+  XUngrabKeyboard(dpy,time);
+  XFlush(dpy);
+  }
+
 }
 
 #endif
