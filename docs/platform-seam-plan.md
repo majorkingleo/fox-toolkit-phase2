@@ -238,13 +238,28 @@ is needed in `fxplatform.h`.
   DPI values.
 - The moved bodies are the exact arms of the former `#if defined(WIN32)` blocks.
 
+## Seam 5: the Windows window procedure
+
+Done. `FXival CALLBACK FXApp::wndproc()` — the static thunk that forwards each
+message to `FXApp::dispatchEvent()` — now lives in `FXApp_win32.cpp` instead of
+`FXApp.cpp`. It is the entry point of message translation, so it goes first; the
+`WM_*` handling it feeds is still in the core.
+
+### Verification
+
+- Cross build compiles and the Wine smoke test runs `hello`, `button` and `dpi`
+  with per-monitor-v2, system DPI 96 and window DPI 96.
+- X11 build is unaffected (the thunk is Windows-only) and still reports
+  `unknown/0/0/1.00`.
+
 ## Next seams, in order
 
-1. **Message translation** (`FXApp.cpp`). `dispatchEvent()` and the `WM_*`
-   handling including `WM_DPICHANGED` and `WM_DPICHANGED_AFTERPARENT`, which is
-   what makes per-window metrics real; the enable/disable input state and grab
-   acquisition belong here as well. The Windows arm is ~1900 lines, so it needs
-   its own sub-steps: `wndproc()` first, then the `WM_*` groups.
+1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`
+   and the `WM_*` handling including `WM_DPICHANGED` and
+   `WM_DPICHANGED_AFTERPARENT`, which is what makes per-window metrics real; the
+   enable/disable input state and grab acquisition belong here as well. The arm
+   is ~1900 lines, so it has to be taken in groups (paint and configure first,
+   then pointer and keyboard, then DPI and DND).
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,

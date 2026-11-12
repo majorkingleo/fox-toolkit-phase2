@@ -399,6 +399,13 @@ void FXApp::repaint(){
   }
 
 
+// This window procedure is a static member function of class FXApp.
+// Its sole purpose is to forward the message info on to FXApp::dispatchEvent().
+FXival CALLBACK FXApp::wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam){
+  return app->dispatchEvent(hwnd,iMsg,wParam,lParam);
+  }
+
+
 }
 
 #endif

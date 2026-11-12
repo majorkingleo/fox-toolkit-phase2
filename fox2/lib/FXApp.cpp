@@ -4291,13 +4291,6 @@ long FXApp::onCmdHover(FXObject*,FXSelector,void*){
 
 #if defined(WIN32)
 
-// This window procedure is a static member function of class FXApp.
-// Its sole purpose is to forward the message info on to FXApp::dispatchEvent().
-FXival CALLBACK FXApp::wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam){
-  return app->dispatchEvent(hwnd,iMsg,wParam,lParam);
-  }
-
-
 #ifndef WM_SYNCPAINT
 #define WM_SYNCPAINT 0x0088
 #endif
