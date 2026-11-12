@@ -116,7 +116,9 @@ back to make's built-in rule and fail.
 
 Options: `--opengl` (enable GL, needs Mesa), `--static` (static library
 instead of the DLL), `--debug` / `--release`, `--jobs=N`, `--clean`,
-`--run` (start `hello` for 3 s and treat the timeout as success).
+`--fast` (skip `autoreconf`/`configure` when `configure.ac`, a `Makefile.am`
+or the configure options did not change), and `--run` (start `hello` for 3 s
+and treat the timeout as success).
 
 ## MinGW patch
 

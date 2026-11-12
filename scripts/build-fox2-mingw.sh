@@ -15,6 +15,7 @@
 #   --release  compile with -O2 -DNDEBUG
 #   --jobs=N   parallel jobs (default: 12)
 #   --clean    delete the build directory first
+#   --fast     skip autoreconf/configure when their inputs did not change
 #   --run      run hello and the DPI diagnostic after building
 #   -h|--help  show this help
 #
@@ -29,10 +30,11 @@ jobs=12
 with_opengl=no
 build_type=
 clean=no
+fast=no
 run_test=no
 
 usage(){
-  sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -41,6 +43,7 @@ while [ $# -gt 0 ]; do
     --debug)    build_type=debug ;;
     --release)  build_type=release ;;
     --clean)    clean=yes ;;
+    --fast)     fast=yes ;;
     --run)      run_test=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
@@ -95,17 +98,45 @@ run(){
   "$@" 2>&1 | tee -a "$LOG"
   }
 
-echo "==> regenerating build system in $SRC"
-( cd -- "$SRC" && autoreconf -fi ) >"$BUILD/autoreconf.log" 2>&1 || {
-  echo "error: autoreconf failed, see $BUILD/autoreconf.log" >&2
-  tail -n 20 "$BUILD/autoreconf.log" >&2
-  exit 1
+# The generated configure is stale when its autotools inputs are newer
+needs_autoreconf(){
+  [ -x "$SRC/configure" ] || return 0
+  [ "$SRC/configure.ac" -nt "$SRC/configure" ] && return 0
+  [ "$SRC/aclocal.m4" -nt "$SRC/configure" ] && return 0
+  [ -n "$(find "$SRC" -name 'Makefile.am' -newer "$SRC/configure" -print -quit)" ] && return 0
+  return 1
   }
+
+# The build directory is stale when configure or any Makefile.in is newer
+needs_configure(){
+  [ -f "$BUILD/Makefile" ] || return 0
+  [ -f "$BUILD/.configure-options" ] || return 0
+  [ "$(cat "$BUILD/.configure-options")" != "${opts[*]}" ] && return 0
+  [ "$SRC/configure" -nt "$BUILD/Makefile" ] && return 0
+  [ -n "$(find "$SRC" -name 'Makefile.in' -newer "$BUILD/Makefile" -print -quit)" ] && return 0
+  return 1
+  }
+
+if [ "$fast" = yes ] && ! needs_autoreconf; then
+  echo "==> autoreconf skipped (configure is up to date)"
+else
+  echo "==> autoreconf"
+  ( cd -- "$SRC" && autoreconf -fi ) >"$BUILD/autoreconf.log" 2>&1 || {
+    echo "error: autoreconf failed, see $BUILD/autoreconf.log" >&2
+    tail -n 20 "$BUILD/autoreconf.log" >&2
+    exit 1
+    }
+  fi
 
 cd -- "$BUILD"
 
-echo "==> configure"
-run "$SRC/configure" "${opts[@]}"
+if [ "$fast" = yes ] && ! needs_configure; then
+  echo "==> configure skipped (build directory is up to date)"
+else
+  echo "==> configure: $SRC/configure ${opts[*]}"
+  run "$SRC/configure" "${opts[@]}"
+  printf '%s\n' "${opts[*]}" >"$BUILD/.configure-options"
+  fi
 
 echo "==> build library"
 run make -j"$jobs" -C lib
@@ -130,7 +161,7 @@ if [ "$run_test" = yes ]; then
     fi
   echo
   echo "==> running the DPI diagnostic"
-  ( cd tests && PATH="$BUILD/lib/.libs:$PATH" timeout 10 ./dpi.exe ) || true
+  ( cd tests && PATH="$BUILD/lib/.libs:$PATH" timeout 10 ./dpi.exe simulate ) || true
   fi
 
 echo

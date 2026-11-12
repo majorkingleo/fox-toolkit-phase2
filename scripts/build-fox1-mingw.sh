@@ -18,6 +18,7 @@
 #   --release      compile with -O2 -DNDEBUG
 #   --jobs=N       parallel jobs (default: 12)
 #   --clean        delete the build and scratch source directories first
+#   --fast         skip autoreconf/configure when their inputs did not change
 #   --run          start tests/hello for 3 s after the build
 #   -h|--help      show this help
 #
@@ -34,10 +35,11 @@ with_opengl=no
 shared=yes
 build_type=
 clean=no
+fast=no
 run_test=no
 
 usage(){
-  sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -47,6 +49,7 @@ while [ $# -gt 0 ]; do
     --debug)    build_type=debug ;;
     --release)  build_type=release ;;
     --clean)    clean=yes ;;
+    --fast)     fast=yes ;;
     --run)      run_test=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
@@ -85,14 +88,39 @@ mkdir -p -- "$BUILD"
 # The shipped configure/Makefile.in were generated with libtool 2.4.6 while
 # MSYS2 ships 2.6.2; libtool refuses to work with that mismatch. Regenerate
 # the build system in a scratch copy so the original tree stays untouched.
-echo "==> preparing autotools sources in $AUTOSRC"
+echo "==> syncing autotools sources to $AUTOSRC"
 mkdir -p -- "$AUTOSRC"
-cp -a "$SRC/." "$AUTOSRC/"
-( cd -- "$AUTOSRC" && autoreconf -fi ) >"$BUILD/autoreconf.log" 2>&1 || {
-  echo "error: autoreconf failed, see $BUILD/autoreconf.log" >&2
-  tail -n 20 "$BUILD/autoreconf.log" >&2
-  exit 1
+cp -au "$SRC/." "$AUTOSRC/"
+
+# The generated configure is stale when its autotools inputs are newer
+needs_autoreconf(){
+  [ -x "$AUTOSRC/configure" ] || return 0
+  [ "$AUTOSRC/configure.ac" -nt "$AUTOSRC/configure" ] && return 0
+  [ "$AUTOSRC/aclocal.m4" -nt "$AUTOSRC/configure" ] && return 0
+  [ -n "$(find "$AUTOSRC" -name 'Makefile.am' -newer "$AUTOSRC/configure" -print -quit)" ] && return 0
+  return 1
   }
+
+# The build directory is stale when configure or any Makefile.in is newer
+needs_configure(){
+  [ -f "$BUILD/Makefile" ] || return 0
+  [ -f "$BUILD/.configure-options" ] || return 0
+  [ "$(cat "$BUILD/.configure-options")" != "${opts[*]}" ] && return 0
+  [ "$AUTOSRC/configure" -nt "$BUILD/Makefile" ] && return 0
+  [ -n "$(find "$AUTOSRC" -name 'Makefile.in' -newer "$BUILD/Makefile" -print -quit)" ] && return 0
+  return 1
+  }
+
+if [ "$fast" = yes ] && ! needs_autoreconf; then
+  echo "==> autoreconf skipped (configure is up to date)"
+else
+  echo "==> autoreconf"
+  ( cd -- "$AUTOSRC" && autoreconf -fi ) >"$BUILD/autoreconf.log" 2>&1 || {
+    echo "error: autoreconf failed, see $BUILD/autoreconf.log" >&2
+    tail -n 20 "$BUILD/autoreconf.log" >&2
+    exit 1
+    }
+  fi
 
 # WIN32 selects the Win32 backend in xincs.h/fxdefs.h and defines the FXID,
 # FXEvent and FXnchar layout. lib/Makefile.am adds it for the library only,
@@ -126,8 +154,13 @@ run(){
 
 cd -- "$BUILD"
 
-echo "==> configure: $AUTOSRC/configure ${opts[*]}"
-run "$AUTOSRC/configure" "${opts[@]}"
+if [ "$fast" = yes ] && ! needs_configure; then
+  echo "==> configure skipped (build directory is up to date)"
+else
+  echo "==> configure: $AUTOSRC/configure ${opts[*]}"
+  run "$AUTOSRC/configure" "${opts[@]}"
+  printf '%s\n' "${opts[*]}" >"$BUILD/.configure-options"
+  fi
 
 echo "==> build reswrap (host utility, generates icons.cpp)"
 run make -j"$jobs" -C utils

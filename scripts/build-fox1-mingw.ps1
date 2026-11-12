@@ -5,6 +5,7 @@
 #   .\scripts\build-fox1-mingw.ps1 -OpenGL          # enable GL (needs Mesa)
 #   .\scripts\build-fox1-mingw.ps1 -Static          # static library
 #   .\scripts\build-fox1-mingw.ps1 -Clean -Run      # clean, build, run hello
+#   .\scripts\build-fox1-mingw.ps1 -Fast            # skip autotools when unchanged
 #
 # If script execution is blocked by the PowerShell policy, run:
 #   powershell -ExecutionPolicy Bypass -File .\scripts\build-fox1-mingw.ps1
@@ -14,6 +15,7 @@ param(
   [switch]$OpenGL,
   [switch]$Static,
   [switch]$Clean,
+  [switch]$Fast,
   [switch]$Run,
   [string]$Jobs
 )
@@ -47,6 +49,7 @@ $buildArgs = @()
 if ($OpenGL) { $installArgs += '--opengl'; $buildArgs += '--opengl' }
 if ($Static) { $buildArgs += '--static' }
 if ($Clean) { $buildArgs += '--clean' }
+if ($Fast) { $buildArgs += '--fast' }
 if ($Run) { $buildArgs += '--run' }
 if ($Jobs) { $buildArgs += "--jobs=$Jobs" }
 
