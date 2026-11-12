@@ -8,6 +8,11 @@ lib_LTLIBRARIES = libFOX-1.7.la
 libFOX_1_7_la_LIBADD  = $(X_LIBS) $(X_PRE_LIBS) $(X_BASE_LIBS) $(X_EXTRA_LIBS) $(GL_LIBS)
 libFOX_1_7_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) -export-dynamic -no-undefined
 
+if COND_OSWINDOWS
+AM_CXXFLAGS += -DFOXDLL -DFOXDLL_EXPORTS -DWIN32 -DNDEBUG -D_WINDOWS -DUNICODE -D_USRDLL -D_CRT_SECURE_NO_WARNINGS
+libFOX_1_7_la_LDFLAGS += -lcomctl32 -lwsock32 -limm32 -lmsimg32
+endif
+
 libFOX_1_7_la_SOURCES = \
 FX88591Codec.cpp \
 FXAccelTable.cpp \
@@ -42,21 +47,25 @@ FXId.cpp \
 FXImage.cpp \
 FXIO.cpp \
 FXIODevice.cpp \
+fxkeyboard.cpp \
 fxkeysym.cpp \
 FXLabel.cpp \
 FXMainWindow.cpp \
 FXMemoryStream.cpp \
+FXMenuPane.cpp \
 FXMetaClass.cpp \
 FXMutex.cpp \
 FXObject.cpp \
 FXPacker.cpp \
 FXPath.cpp \
 FXPipe.cpp \
+FXPopup.cpp \
 fxprintf.cpp \
 fxpriv.cpp \
 FXProcess.cpp \
 FXRadioButton.cpp \
 FXRectangle.cpp \
+FXRegion.cpp \
 FXRegistry.cpp \
 FXRootWindow.cpp \
 fxscanf.cpp \
