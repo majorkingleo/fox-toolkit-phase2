@@ -193,13 +193,36 @@ Deliberately left in `FXWindow.cpp` for now:
   `XMoveWindow`, `XResizeWindow`, `XMoveResizeWindow`, `XMapWindow`,
   `XUnmapWindow`, `XReparentWindow`, `XRaiseWindow` or `XLowerWindow`.
 
+## Seam 3: private event records and the event peek
+
+Done. This is the first half of the event seam.
+
+| Part | Location |
+| --- | --- |
+| Private records | `fox2/lib/fxapppriv.h`: `FXCBSpec`, `FXTimer`, `FXSignal`, `FXChore`, `FXInput`, `FXRepaint`, `FXHandles`, `FXInvocation` — the types behind the opaque declarations in `FXApp.h`, with the platform handle table in `FXHandles` |
+| Windows module | `FXApp_win32.cpp`: `FXApp::peekEvent()` using `PeekMessage(PM_NOREMOVE)` after the refresher, chore and timer checks |
+| X11 module | `FXApp_x11.cpp`: `FXApp::peekEvent()` using `XEventsQueued`, the same pending checks and a zero-timeout `pselect` on the display connection |
+
+The records had to move first: they are declared as opaque types in `FXApp.h`
+and defined in `FXApp.cpp`, so a platform module could not touch `timers`,
+`chores`, `handles` or `repaints` without them.
+
+### Verification
+
+- X11 and cross builds compile; `hello`, `button` and `dpi` run, DPI values are
+  unchanged.
+- The moved `peekEvent()` bodies are textually identical to the originals
+  (`diff` against `HEAD`), so this step cannot change behavior.
+- `hello`/`button` screenshots vary slightly between two runs of the same
+  binary (cursor or paint timing), `dpi` is stable; the committed screenshots
+  are therefore left untouched.
+
 ## Next seams, in order
 
-1. **Event queue and message translation** (`FXApp.cpp`). Move `dispatchEvent`
-   and `WM_*` handling, including `WM_DPICHANGED`, next to the window seam. This
-   is what enables per-window metrics, because the window's monitor DPI arrives
-   with these messages. The enable/disable input state and the grab acquisition
-   belong here as well.
+1. **The rest of the event queue and message translation** (`FXApp.cpp`).
+   `getNextEvent()` for both platforms (timers, signals, I/O handles, event
+   compression), then `dispatchEvent()` and the `WM_*` handling including
+   `WM_DPICHANGED`, the enable/disable input state and grab acquisition.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,

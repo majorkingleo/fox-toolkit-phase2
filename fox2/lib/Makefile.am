@@ -110,7 +110,7 @@ else
 libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXWindow_x11.cpp
 endif
 
-noinst_HEADERS = fxplatform.h fxplatformwindow.h
+noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h
 
 EXTRA_DIST = \
 blank_mask.xbm \

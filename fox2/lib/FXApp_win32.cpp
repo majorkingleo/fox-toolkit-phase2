@@ -20,6 +20,7 @@
 ********************************************************************************/
 #include "xincs.h"
 #include "fx.h"
+#include "fxapppriv.h"
 #include "fxplatform.h"
 
 #if defined(WIN32)
@@ -201,6 +202,29 @@ FXint fxplatformGetWindowDPI(FXID window){
       }
     }
   return 0;
+  }
+
+
+// Peek for event
+FXbool FXApp::peekEvent(){
+  if(initialized){
+    MSG msg;
+
+    // Still need GUI update
+    if(refresher) return true;
+
+    // Outstanding chores
+    if(chores) return true;
+
+    // Timers are due?
+    if(timers){
+      if(timers->due <= FXThread::time()) return true;
+      }
+
+    // Other events due?
+    return PeekMessage(&msg,nullptr,0,0,PM_NOREMOVE)!=0;
+    }
+  return false;
   }
 
 
