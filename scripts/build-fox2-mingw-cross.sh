@@ -26,6 +26,7 @@ SRC="$ROOT/fox2"
 BUILD="$ROOT/tmp/build-fox2-cross"
 LOG="$BUILD/build.log"
 HOST=x86_64-w64-mingw32
+SYSROOT=${MINGW_SYSROOT:-/usr/x86_64-w64-mingw32}
 
 jobs=$(nproc 2>/dev/null || echo 4)
 with_opengl=no
@@ -152,10 +153,20 @@ cd -- "$BUILD"
 
 if [ "$fast" = yes ] && ! needs_configure; then
   echo "==> configure skipped (build directory is up to date)"
+  reconfigured=no
 else
   echo "==> configure: $SRC/configure ${opts[*]}"
   run "$SRC/configure" "${opts[@]}"
   printf '%s\n' "${opts[*]}" >"$BUILD/.configure-options"
+  reconfigured=yes
+  fi
+
+# Compiler and linker flags end up inside the object files and the DLL, and
+# make does not rebuild them when the flags change; start over in that case.
+if [ "$reconfigured" = yes ]; then
+  echo "==> cleaning objects (configure was rerun)"
+  run make -C lib clean
+  run make -C tests clean
   fi
 
 # The Win32 backend must be selected.  --without-x disables X detection, but
@@ -187,9 +198,11 @@ if [ "$run_test" = yes ]; then
     WINEPREFIX="$ROOT/tmp/wineprefix"
     fi
   export WINEPREFIX
+  # The import libraries link against the MinGW runtime DLLs, which wine has
+  # to find next to our own DLL.
   export WINEDEBUG="${WINEDEBUG:--all}"
   export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=}"
-  export WINEPATH="$BUILD/lib/.libs"
+  export WINEPATH="$BUILD/lib/.libs;$SYSROOT/bin"
   if [ ! -d "$WINEPREFIX" ]; then
     echo
     echo "==> initializing the Wine prefix in $WINEPREFIX"
@@ -208,7 +221,14 @@ if [ "$run_test" = yes ]; then
     elif [ "$rc" -eq 0 ]; then
       echo "note: $prog exited on its own"
     else
-      echo "warning: $prog exited with status $rc, see $BUILD/$prog.wine.log" >&2
+      echo "warning: $prog exited with status $rc" >&2
+      echo "         retrying with Wine diagnostics" >&2
+      rc=0
+      timeout "$run_seconds" env WINEDEBUG= wine "$exe" >>"$BUILD/$prog.wine.log" 2>&1 || rc=$?
+      tail -n 20 "$BUILD/$prog.wine.log" >&2
+      if [ "$rc" -eq 124 ]; then
+        echo "$prog reached its event loop with diagnostics; runtime DLLs were missing before"
+      fi
       fi
     done
   fi

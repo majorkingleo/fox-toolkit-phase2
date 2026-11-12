@@ -82,6 +82,18 @@ Windows (`scripts/build-fox2-mingw.sh`):
   `DPI awareness: policy=permonitorv2 effective=4` from the Windows module.
 - Only `FXApp_win32.cpp` is compiled on Windows; `FXApp_x11.cpp` is not.
 
+Linux host, cross build (`scripts/build-fox2-mingw-cross.sh --run`):
+
+- `autoreconf -fi` plus `--host=x86_64-w64-mingw32 --without-x` builds
+  `libFOX-1.7-0.dll`, the import library and `hello`, `button`, `dpi`;
+  `X_BASE_LIBS` is reduced to the Win32 libraries and `FXApp_win32.cpp` is the
+  module compiled in.
+- Wine starts all three programs. `dpi` reports per-monitor-v2, system DPI 96
+  and window DPI 96 — the same values as the native Windows session.
+- The binaries import the MinGW runtime DLLs, so `WINEPATH` carries both the
+  library directory and `/usr/x86_64-w64-mingw32/bin`; a failing start is
+  retried once with Wine diagnostics.
+
 Linux/X11 (`scripts/build-fox2-linux.sh`):
 
 - `autoreconf -fi` plus an out-of-tree build in `tmp/build-fox2-linux`

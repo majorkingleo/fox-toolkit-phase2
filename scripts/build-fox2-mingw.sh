@@ -142,10 +142,20 @@ cd -- "$BUILD"
 
 if [ "$fast" = yes ] && ! needs_configure; then
   echo "==> configure skipped (build directory is up to date)"
+  reconfigured=no
 else
   echo "==> configure: $SRC/configure ${opts[*]}"
   run "$SRC/configure" "${opts[@]}"
   printf '%s\n' "${opts[*]}" >"$BUILD/.configure-options"
+  reconfigured=yes
+  fi
+
+# Compiler and linker flags end up inside the object files and the DLL, and
+# make does not rebuild them when the flags change; start over in that case.
+if [ "$reconfigured" = yes ]; then
+  echo "==> cleaning objects (configure was rerun)"
+  run make -C lib clean
+  run make -C tests clean
   fi
 
 echo "==> build library"
