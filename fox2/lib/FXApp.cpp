@@ -58,6 +58,7 @@
 #include "FXCSS.h"
 #include "FXThemeCache.h"
 #include "FXDesktopSettings.h"
+#include "fxplatform.h"
 #include "FXLabel.h"
 #include "FXButton.h"
 #include "FXComposite.h"
@@ -1372,159 +1373,12 @@ const FXchar *const windowTypeAtoms[14]={
 
 /*******************************************************************************/
 
-#if defined(WIN32)
-
-// DPI awareness functions are resolved dynamically; older Windows versions
-// and older SDK's do not provide them.
-#if defined(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE)
-
-typedef BOOL (WINAPI *SETPROCESSDPIAWARENESSCONTEXTFUNC)(DPI_AWARENESS_CONTEXT value);
-typedef HRESULT (WINAPI *SETPROCESSDPIAWARENESSFUNC)(int value);
-typedef DPI_AWARENESS_CONTEXT (WINAPI *GETTHREADDPIAWARENESSCONTEXTFUNC)();
-typedef DPI_AWARENESS (WINAPI *GETAWARENESSFROMDPIAWARENESSCONTEXTFUNC)(DPI_AWARENESS_CONTEXT value);
-typedef BOOL (WINAPI *AREDPIAWARENESSCONTEXTSEQUALFUNC)(DPI_AWARENESS_CONTEXT a,DPI_AWARENESS_CONTEXT b);
-
-// Establish the requested process DPI awareness before any window is created.
-// The requested policy may be "permonitorv2" (default), "permonitor",
-// "system", or "unaware".  If the function is not available, fall back to
-// older API's; if the process is already aware (manifest), keep that state.
-// Returns the effective awareness level, which may differ from the request.
-static FXint applyDPIAwareness(const FXString& policy){
-  SETPROCESSDPIAWARENESSCONTEXTFUNC setprocesscontext=nullptr;
-  SETPROCESSDPIAWARENESSFUNC setprocessawareness=nullptr;
-  GETTHREADDPIAWARENESSCONTEXTFUNC getthreadcontext=nullptr;
-  GETAWARENESSFROMDPIAWARENESSCONTEXTFUNC getawareness=nullptr;
-  AREDPIAWARENESSCONTEXTSEQUALFUNC arecontextsequal=nullptr;
-  DPI_AWARENESS_CONTEXT context=nullptr;
-  FXint awareness=DPIAWARENESS_UNKNOWN;
-  FXint wanted=DPIAWARENESS_PER_MONITOR_V2;
-  HMODULE user32dll=GetModuleHandleA("user32.dll");
-  HMODULE shcoredll=LoadLibraryA("shcore.dll");
-  if(user32dll){
-    setprocesscontext=(SETPROCESSDPIAWARENESSCONTEXTFUNC)GetProcAddress(user32dll,"SetProcessDpiAwarenessContext");
-    getthreadcontext=(GETTHREADDPIAWARENESSCONTEXTFUNC)GetProcAddress(user32dll,"GetThreadDpiAwarenessContext");
-    getawareness=(GETAWARENESSFROMDPIAWARENESSCONTEXTFUNC)GetProcAddress(user32dll,"GetAwarenessFromDpiAwarenessContext");
-    arecontextsequal=(AREDPIAWARENESSCONTEXTSEQUALFUNC)GetProcAddress(user32dll,"AreDpiAwarenessContextsEqual");
-    }
-  if(shcoredll){
-    setprocessawareness=(SETPROCESSDPIAWARENESSFUNC)GetProcAddress(shcoredll,"SetProcessDpiAwareness");
-    }
-
-  // Parse requested policy
-  if(policy=="unaware"){
-    wanted=DPIAWARENESS_UNAWARE;
-    }
-  else if(policy=="system"){
-    wanted=DPIAWARENESS_SYSTEM;
-    }
-  else if(policy=="permonitor"){
-    wanted=DPIAWARENESS_PER_MONITOR;
-    }
-  else if(policy!="permonitorv2" && policy!="auto" && !policy.empty()){
-    fxwarning("DPI awareness: unknown policy '%s', using permonitorv2.\n",policy.text());
-    }
-
-  // Select matching awareness context
-  switch(wanted){
-    case DPIAWARENESS_PER_MONITOR_V2:
-      context=DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2;
-      break;
-    case DPIAWARENESS_PER_MONITOR:
-      context=DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE;
-      break;
-    case DPIAWARENESS_SYSTEM:
-      context=DPI_AWARENESS_CONTEXT_SYSTEM_AWARE;
-      break;
-    default:
-      context=DPI_AWARENESS_CONTEXT_UNAWARE;
-      break;
-    }
-
-  // Apply, with fallbacks for older Windows versions
-  if(!(setprocesscontext && setprocesscontext(context))){
-    if((wanted==DPIAWARENESS_PER_MONITOR_V2 || wanted==DPIAWARENESS_PER_MONITOR) && setprocessawareness){
-      setprocessawareness(2);           // PROCESS_PER_MONITOR_DPI_AWARE
-      }
-    else if(wanted!=DPIAWARENESS_UNAWARE){
-      SetProcessDPIAware();
-      }
-    }
-
-  // Report what the process actually got
-  if(getthreadcontext && getawareness){
-    DPI_AWARENESS_CONTEXT current=getthreadcontext();
-    switch(getawareness(current)){
-      case DPI_AWARENESS_UNAWARE:
-        awareness=DPIAWARENESS_UNAWARE;
-        break;
-      case DPI_AWARENESS_SYSTEM_AWARE:
-        awareness=DPIAWARENESS_SYSTEM;
-        break;
-      case DPI_AWARENESS_PER_MONITOR_AWARE:
-        awareness=DPIAWARENESS_PER_MONITOR;
-        break;
-      default:
-        awareness=DPIAWARENESS_UNKNOWN;
-        break;
-      }
-    if(awareness==DPIAWARENESS_PER_MONITOR && wanted==DPIAWARENESS_PER_MONITOR_V2 && arecontextsequal && arecontextsequal(current,DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)){
-      awareness=DPIAWARENESS_PER_MONITOR_V2;
-      }
-    }
-  else{
-    awareness=wanted;                   // Cannot verify; assume request
-    }
-
-  if(awareness!=DPIAWARENESS_UNKNOWN && awareness<wanted){
-    fxwarning("DPI awareness: requested %d but effective level is %d.\n",wanted,awareness);
-    }
-  FXTRACE(TOPIC_DETAIL,"DPI awareness: policy=%s effective=%d\n",policy.text(),awareness);
-
-  if(shcoredll) FreeLibrary(shcoredll);
-  return awareness;
-  }
-
-#else
-
-// No DPI awareness context API available; fall back to system awareness
-static FXint applyDPIAwareness(const FXString&){
-  SetProcessDPIAware();
-  return DPIAWARENESS_SYSTEM;
-  }
-
-#endif
-
-typedef UINT (WINAPI *GETDPIFORSYSTEMFUNC)();
-typedef UINT (WINAPI *GETDPIFORWINDOWFUNC)(HWND hwnd);
-
-// Return the system DPI.
-static FXint getSystemDPI(){
-  HMODULE user32dll=GetModuleHandleA("user32.dll");
-  if(user32dll){
-    GETDPIFORSYSTEMFUNC getdpiforsystem=(GETDPIFORSYSTEMFUNC)GetProcAddress(user32dll,"GetDpiForSystem");
-    if(getdpiforsystem){
-      UINT dpi=getdpiforsystem();
-      if(dpi) return (FXint)dpi;
-      }
-    }
-  HDC dc=GetDC(nullptr);
-  FXint dpi=dc?GetDeviceCaps(dc,LOGPIXELSY):96;
-  if(dc) ReleaseDC(nullptr,dc);
-  return dpi>0?dpi:96;
-  }
-
 // Return the DPI of the monitor a native window is on, or 0 if unknown
 FXint FXApp::getWindowDPI(FXID hwnd) const {
-  HMODULE user32dll=GetModuleHandleA("user32.dll");
-  if(user32dll && hwnd){
-    GETDPIFORWINDOWFUNC getdpiforwindow=(GETDPIFORWINDOWFUNC)GetProcAddress(user32dll,"GetDpiForWindow");
-    if(getdpiforwindow){
-      UINT dpivalue=getdpiforwindow((HWND)hwnd);
-      if(dpivalue) return (FXint)dpivalue;
-      }
-    }
-  return dpi;
+  FXint value=fxplatformGetWindowDPI(hwnd);
+  return value>0?value:dpi;
   }
+
 
 // Recursively record the DPI of a window and its descendants
 void FXApp::applyWindowDPI(FXWindow* window,FXint dpivalue){
@@ -1534,15 +1388,6 @@ void FXApp::applyWindowDPI(FXWindow* window,FXint dpivalue){
     applyWindowDPI(child,dpivalue);
     }
   }
-
-#else
-
-// No native window DPI on this platform
-FXint FXApp::getWindowDPI(FXID) const {
-  return 0;
-  }
-
-#endif
 
 
 // Return the factor applied to font descriptions; fonts already follow the
@@ -4602,8 +4447,8 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   // Establish DPI awareness before any metrics are queried or windows are
   // created.  The policy is configurable in the registry as
   // [SETTINGS] dpiawareness=permonitorv2|permonitor|system|unaware.
-  dpiawareness=applyDPIAwareness(FXString(registry.readStringEntry("SETTINGS","dpiawareness","permonitorv2")));
-  dpi=getSystemDPI();
+  dpiawareness=fxplatformSetDPIAwareness(FXString(registry.readStringEntry("SETTINGS","dpiawareness","permonitorv2")));
+  dpi=fxplatformGetSystemDPI();
 
   // Get font face and metrics
   FXFontDesc fontdesc;

@@ -309,6 +309,18 @@ native window/drawing types opaque outside the selected platform module.
    integration. Do not claim Wayland support merely because the abstraction
    exists.
 
+#### Pilot result
+
+The first seam is extracted and verified: DPI awareness, system DPI and
+per-window DPI live behind `lib/fxplatform.h`, implemented in
+`FXApp_win32.cpp` (dynamic resolution with fallbacks) and `FXApp_x11.cpp`
+(no-op). `Makefile.am` compiles exactly one module. `FXApp.cpp` keeps the
+public `DPIAWARENESS_*` enum, the app-DPI fallback and the widget-tree DPI walk;
+`WM_DPICHANGED` handling stays there until the event-translation seam is moved.
+`tests/dpi` output is unchanged, `hello` still runs, and the FXTRACE build
+traces the awareness result from the platform module. Inventory, rules and the
+ordered next seams are in `docs/platform-seam-plan.md`.
+
 #### Acceptance criteria
 
 - Existing native behavior and examples pass without requiring runtime plugin
@@ -479,9 +491,9 @@ the FOX event loop, and document the compositor versions tested.
 
 Status as of 2026-11-12: step 0 done on Linux/X11 and Windows/MinGW, step 1
 done (policy recorded above), step 2 core done with a defined remainder,
-step 3 in progress — awareness, scale wiring, DPI-change handling, the
-hit-test audit, and per-monitor font realization are done; per-window metrics,
-icon/bitmap caches, and real 150/200% validation next.
+step 3 core done — awareness, scale wiring, DPI-change handling, the hit-test
+audit, per-monitor font realization and the first platform seam are done;
+per-window metrics, icon/bitmap caches, and real 150/200% validation next.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
    baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was
@@ -504,8 +516,11 @@ icon/bitmap caches, and real 150/200% validation next.
    per-window metrics, which the platform seam (step 4) must provide. Next are
    per-window metrics, DPI-aware icon/bitmap caches, and validation on real
    150/200% monitors. Reuse theme metrics.
-4. **Internal platform seam**: extract and validate narrow Windows/X11
-   operations one at a time; update all build systems and cross-build checks.
+4. **Internal platform seam**: started. DPI awareness and DPI queries are
+   extracted behind `lib/fxplatform.h` and verified on Windows/minGW; see
+   `docs/platform-seam-plan.md` for the inventory and the ordered next seams
+   (window creation, event translation, font realization, services, drawing).
+   X11 modules still need a Linux build and run.
 5. **Browser prototype**: compare drawing-surface versus semantic-widget
    transport on a small demo before committing to a production protocol. Ship it
    as a separate build configuration, not as a run-time mode of the X11 build.

@@ -103,6 +103,15 @@ FXThemeCache.cpp \
 FXDesktopSettings.cpp \
 fxpriv.h
 
+# Platform seam: exactly one implementation is compiled into the library
+if COND_OSWINDOWS
+libFOX_1_7_la_SOURCES += FXApp_win32.cpp
+else
+libFOX_1_7_la_SOURCES += FXApp_x11.cpp
+endif
+
+noinst_HEADERS = fxplatform.h
+
 EXTRA_DIST = \
 blank_mask.xbm \
 blank.xbm \
