@@ -56,14 +56,16 @@ private:
   FXLabel       *awarenessLabel;        // Process awareness
   FXLabel       *dpiLabel;              // System and window DPI
   FXLabel       *sizeLabel;             // Window size
+  FXLabel       *clickLabel;            // Hit-testing readout
+  FXint          clicks;                // Sample button clicks
 private:
   DPITest(const DPITest&);
   DPITest& operator=(const DPITest&);
 public:
-  DPITest():app(nullptr),window(nullptr),slider(nullptr),scaleLabel(nullptr),awarenessLabel(nullptr),dpiLabel(nullptr),sizeLabel(nullptr){}
+  DPITest():app(nullptr),window(nullptr),slider(nullptr),scaleLabel(nullptr),awarenessLabel(nullptr),dpiLabel(nullptr),sizeLabel(nullptr),clickLabel(nullptr),clicks(0){}
   void setApplication(FXApp* a,FXMainWindow* w){ app=a; window=w; }
-  void setWidgets(FXSlider* s,FXLabel* sl,FXLabel* aw,FXLabel* dp,FXLabel* sz){
-    slider=s; scaleLabel=sl; awarenessLabel=aw; dpiLabel=dp; sizeLabel=sz;
+  void setWidgets(FXSlider* s,FXLabel* sl,FXLabel* aw,FXLabel* dp,FXLabel* sz,FXLabel* ck){
+    slider=s; scaleLabel=sl; awarenessLabel=aw; dpiLabel=dp; sizeLabel=sz; clickLabel=ck;
     }
   void update();
 public:
@@ -73,6 +75,7 @@ public:
     ID_INCREASE,                        // Increase by one step
     ID_RESET,                           // Back to 100%
     ID_AUTO,                            // Follow the monitor DPI
+    ID_SAMPLE,                          // Sample button click
     ID_LAST
     };
 public:
@@ -81,6 +84,7 @@ public:
   long onCmdIncrease(FXObject*,FXSelector,void*);
   long onCmdReset(FXObject*,FXSelector,void*);
   long onCmdAuto(FXObject*,FXSelector,void*);
+  long onCmdSample(FXObject*,FXSelector,void*);
   };
 
 
@@ -91,6 +95,7 @@ FXDEFMAP(DPITest) DPITestMap[]={
   FXMAPFUNC(SEL_COMMAND,DPITest::ID_INCREASE,DPITest::onCmdIncrease),
   FXMAPFUNC(SEL_COMMAND,DPITest::ID_RESET,DPITest::onCmdReset),
   FXMAPFUNC(SEL_COMMAND,DPITest::ID_AUTO,DPITest::onCmdAuto),
+  FXMAPFUNC(SEL_COMMAND,DPITest::ID_SAMPLE,DPITest::onCmdSample),
   };
 
 
@@ -162,6 +167,14 @@ long DPITest::onCmdAuto(FXObject*,FXSelector,void*){
   }
 
 
+// Sample button clicked; proves the hit target moved and scaled with the UI
+long DPITest::onCmdSample(FXObject*,FXSelector,void*){
+  clicks++;
+  clickLabel->setText(FXString::value("Button clicks: %d  (hit test at %d%%)",clicks,FXint(app->getDisplayScale()*100.0+0.5)));
+  return 1;
+  }
+
+
 // Entry point
 int main(int argc,char* argv[]){
   FXApp application("DPITest","FoxTest");
@@ -171,6 +184,7 @@ int main(int argc,char* argv[]){
   FXLabel *awarenessLabel;
   FXLabel *dpiLabel;
   FXLabel *sizeLabel;
+  FXLabel *clickLabel;
   FXVerticalFrame *content;
   FXVerticalFrame *info;
   FXHorizontalFrame *scaleRow;
@@ -205,13 +219,14 @@ int main(int argc,char* argv[]){
   new FXButton(buttonRow,"Auto",nullptr,&tester,DPITest::ID_AUTO,FRAME_RAISED|FRAME_THICK|BUTTON_NORMAL);
 
   sample=new FXGroupBox(content,"Sample",GROUPBOX_TITLE_LEFT|FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  new FXButton(sample,"A button",nullptr,nullptr,0,BUTTON_NORMAL|LAYOUT_LEFT);
+  new FXButton(sample,"Click me",nullptr,&tester,DPITest::ID_SAMPLE,BUTTON_NORMAL|LAYOUT_LEFT);
   new FXLabel(sample,"Text and padding follow the theme scale.",nullptr,LABEL_NORMAL|LAYOUT_FILL_X);
 
+  clickLabel=new FXLabel(content,"Button clicks: 0",nullptr,LABEL_NORMAL|LAYOUT_FILL_X);
   sizeLabel=new FXLabel(content,"",nullptr,LABEL_NORMAL|LAYOUT_FILL_X);
 
   tester.setApplication(&application,main);
-  tester.setWidgets(slider,scaleLabel,awarenessLabel,dpiLabel,sizeLabel);
+  tester.setWidgets(slider,scaleLabel,awarenessLabel,dpiLabel,sizeLabel,clickLabel);
 
   application.create();
   main->show(PLACEMENT_SCREEN);

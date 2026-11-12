@@ -259,9 +259,11 @@ Display scale (`[display] scale=auto|<percent>`), per-window DPI storage with
 `FXWindow::scale()`/`unscale()`, runtime `WM_DPICHANGED` handling (DPI update,
 theme/font relayout, suggested rectangle), and an interactive
 slider/preset-button DPI test app are implemented and verified, including a
-simulated 144-DPI transition and manual 70–150% scaling. Remaining:
-input/geometry boundary audit, icons and per-window fonts, and validation on
-real 150/200% monitors — tracked in `docs/dpi-plan.md`.
+simulated 144-DPI transition and manual 70–150% scaling. The device-pixel
+input/hit-test audit is complete and clicks are verified at 100% and 150%.
+Remaining: per-window fonts for mixed-DPI monitors, DPI-aware icon/bitmap
+caches, and validation on real 150/200% monitors — tracked in
+`docs/dpi-plan.md`.
 
 ### 3. Compile-time platform and presentation seams
 
@@ -473,8 +475,9 @@ the FOX event loop, and document the compositor versions tested.
 
 Status as of 2026-11-12: step 0 done on Linux/X11 and Windows/MinGW, step 1
 done (policy recorded above), step 2 core done with a defined remainder,
-step 3 in progress — awareness, scale wiring, and DPI-change handling done;
-boundary audit, fonts/caches, and real 150/200% validation next.
+step 3 in progress — awareness, scale wiring, DPI-change handling, and the
+hit-test audit are done; per-window fonts/icons and real 150/200% validation
+next.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
    baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was
@@ -490,9 +493,10 @@ boundary audit, fonts/caches, and real 150/200% validation next.
    workstream will re-geometry are migrated once, not twice.
 3. **Windows DPI**: process awareness (per-monitor-v2 with policy and runtime
    verification), `[display] scale=auto|<percent>`, per-window DPI helpers, and
-   `WM_DPICHANGED` handling are done and recorded in `docs/dpi-plan.md`; next
-   are the input/geometry boundary audit, DPI-aware font/icon caches, and
-   validation on real 150/200% monitors. Reuse theme metrics.
+   `WM_DPICHANGED` handling are done and recorded in `docs/dpi-plan.md`; the
+   device-pixel input/hit-test audit is complete. Next are per-window fonts
+   for mixed-DPI monitors, DPI-aware icon/bitmap caches, and validation on
+   real 150/200% monitors. Reuse theme metrics.
 4. **Internal platform seam**: extract and validate narrow Windows/X11
    operations one at a time; update all build systems and cross-build checks.
 5. **Browser prototype**: compare drawing-surface versus semantic-widget

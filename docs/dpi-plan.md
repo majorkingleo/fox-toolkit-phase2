@@ -147,18 +147,24 @@ from `fox-1.7.95/` and registered in `lib/Makefile.am`:
 tree (`-DFOXDLL -DFOXDLL_EXPORTS -DWIN32 ...` and `-lmsimg32`), so the DLL
 exports symbols and links `AlphaBlend`.
 
+## Step 4 — input and geometry boundary audit (current regime)
+
+Layout and input are both in device pixels, so no conversion is applied:
+
+- `WM_*` mouse coordinates become `FXEvent` window/root coordinates unchanged;
+  `findWindowAt()`, `containsChild()` and widget hit testing use the same
+  values.
+- Drag/drop positions, wheel scrolling and text measurement are device-based
+  as well.
+- The interactive test proves alignment: the sample button answers clicks at
+  100% and 150% (`screenshots/tests/fox2/win32/dpi-clicks.png` and
+  `dpi-clicks-150.png`).
+
+Moving application-supplied geometry to logical units remains an opt-in
+compatibility decision; if taken, `FXWindow::scale()`/`unscale()` is the single
+conversion point at these boundaries.
+
 ## Remaining work
-
-### 4. Input and geometry boundary audit
-
-- Window placement and client size, pointer coordinates, hit testing,
-  drag/drop, scroll increments, text measurement, border widths, cursors, and
-  image/icon sizing must all go through the same `scale()`/`unscale()` pair.
-- Normalize input to logical space before dispatch; never mix device and
-  logical values in one computation. Today both sides are device pixels, so
-  no conversion is applied and hit testing stays aligned.
-- Decide whether application-supplied geometry becomes logical units
-  (opt-in) or stays in device pixels.
 
 ### 5. DPI-aware caches and fonts
 
@@ -184,9 +190,9 @@ exports symbols and links `AlphaBlend`.
 | Simulated 144-DPI transition | verified (`tests/dpi simulate`) |
 | Interactive 70–150% scaling | verified (`tests/dpi`, screenshots) |
 | 150% theme scale (manual) | verified (`[display] scale=150`) |
+| Pointer hit testing at 100% and 150% | verified (`dpi-clicks*.png`) |
 | 150% / 200% real monitor | not yet run (this machine is 96 DPI) |
 | Mixed-DPI monitor move | code path in place, not measured |
-| Pointer hit testing | device-pixel regime unchanged; verify with logical mode |
 | X11 build unaffected | unchanged code paths |
 
 ## Open decisions
