@@ -72,6 +72,8 @@ in `fox-1.7.95/windows` build the original tree. When a Windows project for
 
 ### Verification
 
+Windows (`scripts/build-fox2-mingw.sh`):
+
 - `hello` and `button` build and run; `hello` stays in its event loop.
 - `tests/dpi simulate`: per-monitor-v2, system DPI 96, scale 1.00, 96-DPI
   window, then 1.50 and 780x480 at 144 DPI, then back to 1.00 and 520x320 —
@@ -79,8 +81,29 @@ in `fox-1.7.95/windows` build the original tree. When a Windows project for
 - `--enable-foxtrace` build compiles and traces
   `DPI awareness: policy=permonitorv2 effective=4` from the Windows module.
 - Only `FXApp_win32.cpp` is compiled on Windows; `FXApp_x11.cpp` is not.
+
+Linux/X11 (`scripts/build-fox2-linux.sh`):
+
+- `autoreconf -fi` plus an out-of-tree build in `tmp/build-fox2-linux`
+  succeeds; only `FXApp_x11.cpp` is compiled, `FXApp_win32.cpp` is not.
+- The library exports the three seam functions from the X11 module:
+  `FX::fxplatformSetDPIAwareness(FXString const&)`,
+  `FX::fxplatformGetSystemDPI()`, `FX::fxplatformGetWindowDPI(unsigned long)`.
+- `hello`, `button` and `dpi` build and stay in their event loops.
+- `dpi` reports `process awareness: 0 (unknown)`, `system DPI: 0`,
+  `window DPI (FOX): 0`, `theme scale: 1.00` — the documented X11 behavior;
+  the display scale comes from `[display] scale=` instead.
 - `FXApp.cpp` no longer contains any DPI API typedef, function pointer or
   platform include for this operation.
+
+Portability fixes needed by the X11 build (behavior-neutral):
+
+- `FXApp::applyWindowDPI()` is portable tree walking, so its declaration moved
+  out of the `#if defined(WIN32)` block in `include/FXApp.h`; the enclosing
+  `#ifdef WIN32` blocks became `#if defined(WIN32)` per the porting rules.
+- The two seam calls in `FXApp::init()` moved ahead of the Windows-only block,
+  so both modules are exercised; X11 returns unknown/0 and `init()` behaves as
+  before.
 
 ## Next seams, in order
 
@@ -102,8 +125,10 @@ Do not start a later seam before the earlier one is accepted on both builds.
 
 ## Constraints
 
-- This machine builds and runs only the Windows backend. X11 modules are moved
-  mechanically and must be compiled and run on Linux before their seam is
-  considered accepted.
+- Two builds gate every seam step: the Win32 backend with
+  `scripts/build-fox2-mingw.sh` on Windows, and the X11 backend with
+  `scripts/build-fox2-linux.sh` on Linux. A step is accepted only when both
+  compile and their test programs run; X11 modules must not be checked in
+  unbuilt.
 - Keep DPI behavior identical while extracting; `tests/dpi` output and the
   session log are the comparison.

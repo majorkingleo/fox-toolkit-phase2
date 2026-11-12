@@ -4442,13 +4442,14 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   // Read the registry
   registry.read();
 
-#if defined(WIN32)
-
   // Establish DPI awareness before any metrics are queried or windows are
   // created.  The policy is configurable in the registry as
   // [SETTINGS] dpiawareness=permonitorv2|permonitor|system|unaware.
+  // Platforms without process DPI awareness return unknown and no system DPI.
   dpiawareness=fxplatformSetDPIAwareness(FXString(registry.readStringEntry("SETTINGS","dpiawareness","permonitorv2")));
   dpi=fxplatformGetSystemDPI();
+
+#if defined(WIN32)
 
   // Get font face and metrics
   FXFontDesc fontdesc;

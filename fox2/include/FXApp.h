@@ -266,7 +266,7 @@ private:
   static FXApp    *app;                 // Application pointer
 
   // Platform dependent private stuff
-#ifdef WIN32
+#if defined(WIN32)
 
   FXushort         ddeTargets;          // DDE targets atom
   FXushort         ddeAtom;             // DDE Exchange Atom
@@ -395,8 +395,8 @@ private:
   FXdouble getFontScale() const;
   void applyFontScale();
   void setThemeScale(FXdouble scale);
-#ifdef WIN32
   static void applyWindowDPI(FXWindow* window,FXint dpivalue);
+#if defined(WIN32)
   static FXival CALLBACK wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
 protected:
   virtual FXival dispatchEvent(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
