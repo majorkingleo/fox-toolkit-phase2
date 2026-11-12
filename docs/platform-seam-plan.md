@@ -13,7 +13,8 @@ operations in order.
   inverse in `fox2/lib/Makefile.am`); one implementation is compiled per build.
   No plugins, no runtime loading.
 - Internal contracts live in private headers and never use platform types. Only
-  `FXID`, `FXint`, `FXString` and value structs cross the seam.
+  `FXID`, `FXint`, `FXString` and value structs cross the seam; platform handles
+  travel as opaque `void*` or as `FXID`, never as `HWND`, `Display*` or `XID`.
 - Public headers stay free of operating-system handles.
 - Platform files follow the repository naming rule: `<Class>_win32.cpp`,
   `<Class>_x11.cpp`, shared behavior in `<Class>.cpp`.
@@ -117,11 +118,52 @@ Portability fixes needed by the X11 build (behavior-neutral):
   so both modules are exercised; X11 returns unknown/0 and `init()` behaves as
   before.
 
+## Seam 1: native window creation, attaching and destruction
+
+Done. The operation is the native window handle itself; everything else about a
+window stays where it is for now.
+
+| Part | Location |
+| --- | --- |
+| Internal contract | `fox2/lib/fxplatformwindow.h`: `FXWindowCreateInfo`, `fxplatformCreateWindow()`, `fxplatformAttachWindow()`, `fxplatformDestroyWindow()` |
+| Windows module | `fox2/lib/FXWindow_win32.cpp`: frame style from the shell, top-window and override-redirect flags, parent/owner selection, XDND property, initial show state, `SetParent()` on attach, `GetDC()`/`ReleaseDC()`/`GetClass()` |
+| X11 module | `fox2/lib/FXWindow_x11.cpp`: event masks, colormap, gravity, save-under and override-redirect attributes, transient-for hint, `WM_COLORMAP_WINDOWS` bookkeeping, initial map, `GetClass()` returning null |
+| Moved out of the core | the X11 event mask macros to `fxpriv.h`; `addColormapWindows()` and `remColormapWindows()` into the X11 module |
+| Portable core | `FXWindow::create()`, `attach()` and `destroy()` fill the descriptor, keep the DPI sample with `applyTheme()`, the xid hash and the ownership flag |
+
+The descriptor carries only `FXID`, `FXint`, `FXString`-free values and the
+opaque handles the platform already owns: display, instance, window class and
+user data. `FXVisual` is referenced by pointer and read through its public
+`getVisual()`/`getDepth()` accessors.
+
+Deliberately left in `FXWindow.cpp` for now:
+
+- show, hide, move, position, resize, reparent, raise and lower, which belong to
+  the placement step,
+- cursor handling and window shape,
+- `scale()`/`unscale()`, which already use the DPI sampled here,
+- drag-and-drop handling, which belongs to the event-translation seam.
+
+`GetClass()` is now declared for both platforms; it existed only on Windows
+because X11 has no window classes.
+
+### Verification
+
+- Linux/X11 build: `hello`, `button` and `dpi` build and stay in their event
+  loops; `dpi` still reports `unknown`, system DPI 0, window DPI 0, scale 1.00.
+  Screenshots are in `screenshots/tests/fox2/x11/`.
+- Cross build plus Wine: `hello`, `button` and `dpi` build and run;
+  `dpi` still reports per-monitor-v2, system DPI 96 and window DPI 96.
+- `FXWindow.cpp` contains no `CreateWindowEx`, `XCreateWindow`, `DestroyWindow`,
+  `XDestroyWindow`, `DefaultColormap` or `SetParent`; only `reparent()` keeps a
+  placement block, which the next step removes.
+- Only `FXWindow_x11.cpp` is compiled on Linux and only `FXWindow_win32.cpp` on
+  Windows and in the cross build.
+
 ## Next seams, in order
 
-1. **Native window creation and shell styles** (`FXWindow.cpp`). Smallest of the
-   remaining window operations and the prerequisite for monitor-aware geometry:
-   creation, show/hide, placement, cursor and frame style.
+1. **Placement and visibility** (`FXWindow.cpp`). Move show/hide, move, position,
+   resize, reparent, raise and lower next to the creation seam.
 2. **Event queue and message translation** (`FXApp.cpp`). Move `dispatchEvent`
    and `WM_*` handling, including `WM_DPICHANGED`, next to the window seam. This
    is what enables per-window metrics, because the window's monitor DPI arrives

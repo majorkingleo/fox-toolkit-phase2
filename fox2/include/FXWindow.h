@@ -169,14 +169,11 @@ public:
 protected:
   virtual FXbool doesOverrideRedirect() const;
 protected:
-#ifdef WIN32
+#if defined(WIN32)
   virtual FXID GetDC() const;
   virtual int ReleaseDC(FXID) const;
-  virtual const void* GetClass() const;
-#else
-  void addColormapWindows();
-  void remColormapWindows();
 #endif
+  virtual const void* GetClass() const;
 protected:
   FXWindow();
   FXWindow(FXApp* a,FXVisual *vis);

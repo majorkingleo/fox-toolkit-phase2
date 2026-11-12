@@ -62,6 +62,7 @@
 #include "FXTextField.h"
 #include "FX88591Codec.h"
 #include "FXUTF16Codec.h"
+#include "fxplatformwindow.h"
 #include "fxpriv.h"
 
 /*
@@ -99,26 +100,6 @@
 #define TOPIC_KEYBOARD  1009
 #define TOPIC_MOUSE     1010
 #define TOPIC_EVENT     1011
-
-#ifndef WIN32
-
-// Basic events
-#define BASIC_EVENT_MASK   (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask)
-//#define BASIC_EVENT_MASK   (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask|VisibilityChangeMask)
-
-// Additional events for shell widget events
-#define SHELL_EVENT_MASK   (FocusChangeMask|StructureNotifyMask)
-
-// Additional events for enabled widgets
-#define ENABLED_EVENT_MASK (ButtonPressMask|ButtonReleaseMask|PointerMotionMask)
-
-// These events are grabbed for mouse grabs
-#define GRAB_EVENT_MASK    (ButtonPressMask|ButtonReleaseMask|PointerMotionMask|EnterWindowMask|LeaveWindowMask)
-
-// Do not propagate mask
-#define NOT_PROPAGATE_MASK (KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|ButtonMotionMask)
-
-#endif
 
 // Side layout modes
 #define LAYOUT_SIDE_MASK (LAYOUT_SIDE_LEFT|LAYOUT_SIDE_RIGHT|LAYOUT_SIDE_TOP|LAYOUT_SIDE_BOTTOM)
@@ -1159,58 +1140,6 @@ nxt:if(win==this) break;
 
 /*******************************************************************************/
 
-
-#ifndef WIN32
-
-// Add this window to the list of colormap windows
-void FXWindow::addColormapWindows(){
-  Window windows[2],*windowsReturn,*windowList;
-  int countReturn,i;
-
-  // Check to see if there is already a property
-  Status status=XGetWMColormapWindows((Display*)getApp()->getDisplay(),getShell()->id(),&windowsReturn,&countReturn);
-
-  // If no property, just create one
-  if(!status){
-    windows[0]=id();
-    windows[1]=getShell()->id();
-    XSetWMColormapWindows((Display*)getApp()->getDisplay(),getShell()->id(),windows,2);
-    }
-
-  // There was a property, add myself to the beginning
-  else{
-    windowList=(Window*)malloc((sizeof(Window))*(countReturn+1));
-    windowList[0]=id();
-    for(i=0; i<countReturn; i++) windowList[i+1]=windowsReturn[i];
-    XSetWMColormapWindows((Display*)getApp()->getDisplay(),getShell()->id(),windowList,countReturn+1);
-    XFree((char*)windowsReturn);
-    free(windowList);
-    }
-  }
-
-
-// Remove it from colormap windows
-void FXWindow::remColormapWindows(){
-  Window *windowsReturn;
-  int countReturn,i;
-  Status status=XGetWMColormapWindows((Display*)getApp()->getDisplay(),getShell()->id(),&windowsReturn,&countReturn);
-  if(status){
-    for(i=0; i<countReturn; i++){
-      if(windowsReturn[i]==id()){
-        for(i++; i<countReturn; i++) windowsReturn[i-1]=windowsReturn[i];
-        XSetWMColormapWindows((Display*)getApp()->getDisplay(),getShell()->id(),windowsReturn,countReturn-1);
-        break;
-        }
-      }
-    XFree((char*)windowsReturn);
-    }
-  }
-
-#endif
-
-
-/*******************************************************************************/
-
 // Create X window
 void FXWindow::create(){
   if(!xid){
@@ -1235,169 +1164,50 @@ void FXWindow::create(){
       // Create drag cursor
       if(dragCursor) dragCursor->create();
 
-#ifdef WIN32
-      // Most windows use these style bits
-      DWORD dwStyle=WS_CHILD|WS_VISIBLE|WS_CLIPSIBLINGS|WS_CLIPCHILDREN;
-      DWORD dwExStyle=WS_EX_NOPARENTNOTIFY;
-      HWND hParent=(HWND)parent->id();
-      if(isShell()){
-        if(isMemberOf(FXMETACLASS(FXTopWindow))){
-          dwStyle=WS_OVERLAPPEDWINDOW|WS_CLIPSIBLINGS|WS_CLIPCHILDREN;
-          }
-        else if(doesOverrideRedirect()){
-          // To control window placement or control decoration, a window manager
-          // often needs to redirect map or configure requests. Popup windows, however,
-          // often need to be mapped without a window manager getting in the way.
-          dwStyle=WS_POPUP|WS_CLIPSIBLINGS|WS_CLIPCHILDREN;
-          dwExStyle=WS_EX_TOOLWINDOW;
-          }
-        else{
-          // Other top-level shell windows (like dialogs)
-          dwStyle=WS_POPUP|WS_CAPTION|WS_CLIPSIBLINGS|WS_CLIPCHILDREN;
-          dwExStyle=WS_EX_DLGMODALFRAME|WS_EX_TOOLWINDOW;
-          }
-        if(owner) hParent=(HWND)owner->id();
-        }
-
-      FXSTATIC_ASSERT(sizeof(FXID)>=sizeof(HWND));
+      // Describe the native window; the platform module owns the frame style
+      FXWindowCreateInfo info;
+      info.display=getApp()->getDisplay();
+      info.instance=getApp()->getDisplay();
+      info.classname=GetClass();
+      info.userdata=this;
+      info.parent=(FXID)parent->id();
+      info.owner=owner?(FXID)owner->id():0;
+      info.ownershell=owner?(FXID)owner->getShell()->id():0;
+      info.shell=isShell()?0:(FXID)getShell()->id();
+      info.colormap=(FXID)visual->colormap;
+      info.cursor=defaultCursor?(FXID)defaultCursor->id():0;
+      info.xdndaware=(FXID)getApp()->xdndAware;
+      info.x=xpos;
+      info.y=ypos;
+      info.w=width;
+      info.h=height;
+      info.visual=visual;
+      info.flags=0;
+      if(isShell()) info.flags|=WINDOWINFO_SHELL;
+      if(isMemberOf(FXMETACLASS(FXTopWindow))) info.flags|=WINDOWINFO_TOPWINDOW;
+      if(doesOverrideRedirect()) info.flags|=WINDOWINFO_OVERRIDEREDIRECT;
+      if(doesSaveUnder()) info.flags|=WINDOWINFO_SAVEUNDER;
+      if(isEnabled()) info.flags|=WINDOWINFO_ENABLED;
+      if(shown()) info.flags|=WINDOWINFO_SHOWN;
 
       // Create this window
-      xid=CreateWindowEx(dwExStyle,(TCHAR*)GetClass(),nullptr,dwStyle,xpos,ypos,FXMAX(width,1),FXMAX(height,1),hParent,nullptr,(HINSTANCE)getApp()->getDisplay(),this);
+      xid=fxplatformCreateWindow(info);
 
       // Uh-oh, we failed
       if(!xid){ throw FXWindowException("unable to create window."); }
 
-      // Remember the DPI of the monitor this window is on
-      dpi=getApp()->getWindowDPI(xid);
-      if(!dpi) dpi=96;
+      // Remember the DPI of the monitor this window is on; platforms without
+      // per-window DPI report nothing, leaving it unknown.
+      FXint wdpi=getApp()->getWindowDPI(xid);
+      if(wdpi>0){
+        dpi=wdpi;
 
-      // Realize fonts for this window's monitor
-      applyTheme(getApp()->getTheme());
+        // Realize fonts for this window's monitor
+        applyTheme(getApp()->getTheme());
+        }
 
       // Store for xid to C++ object mapping
       getApp()->hash.insert((FXptr)xid,this);
-
-      // We put the XdndAware property on all toplevel windows, so that
-      // when dragging, we need to search no further than the toplevel window.
-      if(isShell()){
-        HANDLE propdata=(HANDLE)XDND_PROTOCOL_VERSION;
-        SetProp((HWND)xid,(LPCTSTR)MAKELONG(getApp()->xdndAware,0),propdata);
-        }
-
-      // To keep it on top
-      //SetWindowPos((HWND)xid,HWND_TOPMOST,xpos,ypos,FXMAX(width,1),FXMAX(height,1),0);
-
-      // Disable if not enabled (FIXME this does not work)
-      if(!isEnabled()){
- //       EnableWindow((HWND)xid,false);
-        }
-
-      // Show if it was supposed to be.  Apparently, initial state
-      // is neither shown nor hidden, so an explicit hide is needed.
-      // Patch thanks to "Glenn Shen" <shen@hks.com>
-      if(shown())
-        ShowWindow((HWND)xid,SW_SHOWNOACTIVATE);
-      else
-        ShowWindow((HWND)xid,SW_HIDE);
-
-#else                   // X11
-
-      XSetWindowAttributes wattr;
-      unsigned long mask=(CWBackPixmap|CWWinGravity|CWBitGravity|CWBorderPixel|CWEventMask|CWDontPropagate|CWOverrideRedirect|CWSaveUnder|CWColormap);
-
-      // Events for normal windows
-      wattr.event_mask=BASIC_EVENT_MASK;
-
-      // Events for shell windows
-      if(isShell()) wattr.event_mask|=SHELL_EVENT_MASK;
-
-      // If enabled, turn on some more events
-      if(isEnabled()) wattr.event_mask|=ENABLED_EVENT_MASK;
-
-      // For input methods
-//#ifndef NO_XIM
-//      if(getApp()->xic){
-//        long filterevents=0;
-//        XGetICValues((XIC)getApp()->xic,XNFilterEvents,&filterevents,nullptr);
-//        wattr.event_mask|=filterevents;
-//        }
-//#endif
-
-      // FOX will not propagate events to ancestor windows
-      wattr.do_not_propagate_mask=NOT_PROPAGATE_MASK;
-
-      // Obtain colormap
-      wattr.colormap=visual->colormap;
-
-      // This is needed for OpenGL
-      wattr.border_pixmap=None;
-      wattr.border_pixel=0;
-
-      // Background
-      //wattr.background_pixmap=ParentRelative;
-      wattr.background_pixmap=None;
-      wattr.background_pixel=0;
-
-      // Preserving content during resize will be faster:- not turned
-      // on yet as we will have to recode all widgets to decide when to
-      // repaint or not to repaint the display when resized...
-      wattr.bit_gravity=NorthWestGravity;
-      wattr.bit_gravity=ForgetGravity;
-
-      // The window gravity is NorthWestGravity, which means
-      // if a child keeps same position relative to top/left
-      // of its parent window, nothing extra work is incurred.
-      wattr.win_gravity=NorthWestGravity;
-
-      // Determine override redirect
-      wattr.override_redirect=doesOverrideRedirect();
-
-      // Backing store/planes/pixel not passed
-      wattr.backing_store=0;
-      wattr.backing_planes=0;
-      wattr.backing_pixel=0;
-
-      // Determine save-unders
-      wattr.save_under=doesSaveUnder();
-
-      // Set cursor
-      if(defaultCursor){
-        wattr.cursor=defaultCursor->id();
-        mask|=CWCursor;
-        }
-
-      FXSTATIC_ASSERT(sizeof(FXID)>=sizeof(Window));
-
-      // Finally, create the window
-      xid=XCreateWindow((Display*)getApp()->getDisplay(),parent->id(),xpos,ypos,FXMAX(width,1),FXMAX(height,1),0,visual->depth,InputOutput,(Visual*)visual->visual,mask,&wattr);
-
-      // Uh-oh, we failed
-      if(!xid){ throw FXWindowException("unable to create window."); }
-
-      // Store for xid to C++ object mapping
-      getApp()->hash.insert((FXptr)xid,this);
-
-      // We put the XdndAware property on all toplevel windows, so that
-      // when dragging, we need to search no further than the toplevel window.
-      if(isShell()){
-        Atom propdata=(Atom)XDND_PROTOCOL_VERSION;
-        XChangeProperty((Display*)getApp()->getDisplay(),xid,getApp()->xdndAware,XA_ATOM,32,PropModeReplace,(unsigned char*)&propdata,1);
-        }
-
-      // If window is a shell and it has an owner, make it stay on top of the owner
-      if(isShell() && owner){
-        XSetTransientForHint((Display*)getApp()->getDisplay(),xid,owner->getShell()->id());
-        }
-
-      // If colormap different, set WM_COLORMAP_WINDOWS property properly
-      if(visual->colormap!=DefaultColormap((Display*)getApp()->getDisplay(),DefaultScreen((Display*)getApp()->getDisplay()))){
-        addColormapWindows();
-        }
-
-      // Show if it was supposed to be
-      if(shown() && 0<width && 0<height) XMapWindow((Display*)getApp()->getDisplay(),xid);
-
-#endif
       flags|=FLAG_OWNED;
       }
     }
@@ -1437,35 +1247,29 @@ void FXWindow::attach(FXID w){
       // Store for xid to C++ object mapping
       getApp()->hash.insert((FXptr)xid,this);
 
-#ifdef WIN32
+      // Take over the foreign window
+      FXWindowCreateInfo info;
+      info.display=getApp()->getDisplay();
+      info.instance=getApp()->getDisplay();
+      info.classname=GetClass();
+      info.userdata=this;
+      info.parent=(FXID)parent->id();
+      info.owner=0;
+      info.ownershell=0;
+      info.shell=isShell()?0:(FXID)getShell()->id();
+      info.colormap=(FXID)visual->colormap;
+      info.cursor=defaultCursor?(FXID)defaultCursor->id():0;
+      info.xdndaware=(FXID)getApp()->xdndAware;
+      info.x=xpos;
+      info.y=ypos;
+      info.w=width;
+      info.h=height;
+      info.visual=visual;
+      info.flags=0;
+      if(isShell()) info.flags|=WINDOWINFO_SHELL;
+      if(isEnabled()) info.flags|=WINDOWINFO_ENABLED;
+      fxplatformAttachWindow(info,xid);
 
-      // Reparent under what WE think the parent is
-      SetParent((HWND)xid,(HWND)parent->id());
-
-#else
-
-      XSetWindowAttributes wattr;
-      unsigned long mask=(CWEventMask|CWDontPropagate);
-
-      // Set event mask
-      wattr.event_mask=BASIC_EVENT_MASK;
-      if(isEnabled()) wattr.event_mask|=ENABLED_EVENT_MASK;
-
-      // Events that should not propagate
-      wattr.do_not_propagate_mask=NOT_PROPAGATE_MASK;
-
-      // Set cursor
-      if(defaultCursor){
-        wattr.cursor=defaultCursor->id();
-        mask|=CWCursor;
-        }
-
-      // Change window attributes
-      XChangeWindowAttributes((Display*)getApp()->getDisplay(),xid,mask,&wattr);
-
-      // Reparent window
-      XReparentWindow((Display*)getApp()->getDisplay(),xid,parent->id(),0,0);
-#endif
       flags&=~FLAG_OWNED;
       }
     }
@@ -1514,28 +1318,7 @@ void FXWindow::destroy(){
 
       // Its our own window, so destroy it
       if(flags&FLAG_OWNED){
-#ifdef WIN32
-        // Delete the XdndAware property
-        if(isShell()){
-          RemoveProp((HWND)xid,(LPCTSTR)MAKELONG(getApp()->xdndAware,0));
-          }
-
-        // Zap the window
-        DestroyWindow((HWND)xid);
-#else
-        // If colormap different, set WM_COLORMAP_WINDOWS property properly
-        if(visual->colormap!=DefaultColormap((Display*)getApp()->getDisplay(),DefaultScreen((Display*)getApp()->getDisplay()))){
-          remColormapWindows();
-          }
-
-        // Delete the XdndAware property
-        if(isShell()){
-          XDeleteProperty((Display*)getApp()->getDisplay(),xid,getApp()->xdndAware);
-          }
-
-        // Delete the window
-        XDestroyWindow((Display*)getApp()->getDisplay(),xid);
-#endif
+        fxplatformDestroyWindow(getApp()->getDisplay(),xid,(FXID)getShell()->id(),(FXID)visual->colormap,(FXID)getApp()->xdndAware);
         }
       }
 
@@ -1549,25 +1332,6 @@ void FXWindow::destroy(){
     xid=0;
     }
   }
-
-
-#ifdef WIN32
-
-// Get this window's device context
-FXID FXWindow::GetDC() const {
-  return ::GetDC((HWND)xid);
-  }
-
-
-// Release it
-int FXWindow::ReleaseDC(FXID hdc) const {
-  return ::ReleaseDC((HWND)xid,(HDC)hdc);
-  }
-
-// Window class
-const void* FXWindow::GetClass() const { return TEXT("FXWindow"); }
-
-#endif
 
 
 /*******************************************************************************/

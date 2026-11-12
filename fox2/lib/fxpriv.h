@@ -85,6 +85,22 @@ extern HANDLE fxrecvdata(HANDLE hMap,FXuchar*& data,FXuint& size);
 #else ////////////////////////////// Unix ///////////////////////////////////////
 
 
+// Basic events
+#define BASIC_EVENT_MASK   (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask)
+
+// Additional events for shell widget events
+#define SHELL_EVENT_MASK   (FocusChangeMask|StructureNotifyMask)
+
+// Additional events for enabled widgets
+#define ENABLED_EVENT_MASK (ButtonPressMask|ButtonReleaseMask|PointerMotionMask)
+
+// These events are grabbed for mouse grabs
+#define GRAB_EVENT_MASK    (ButtonPressMask|ButtonReleaseMask|PointerMotionMask|EnterWindowMask|LeaveWindowMask)
+
+// Do not propagate mask
+#define NOT_PROPAGATE_MASK (KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|ButtonMotionMask)
+
+
 // X11 helpers
 extern Atom fxsendrequest(Display *display,Window window,Atom selection,Atom prop,Atom type,FXuint time);
 extern Atom fxsendreply(Display *display,Window window,Atom selection,Atom prop,Atom target,FXuint time);
