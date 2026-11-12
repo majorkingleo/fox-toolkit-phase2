@@ -372,8 +372,8 @@ typedef cpuset_t   cpu_set_t;
 #define SEEK_END 2
 #endif
 
-// Remove crap
-#ifdef VOID
+// Remove crap; MinGW COM headers pulled in by libjpeg still need VOID
+#if defined(VOID) && !defined(__MINGW32__)
 #undef VOID
 #endif
 
