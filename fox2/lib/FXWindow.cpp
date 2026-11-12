@@ -1271,6 +1271,9 @@ void FXWindow::create(){
       dpi=getApp()->getWindowDPI(xid);
       if(!dpi) dpi=96;
 
+      // Realize fonts for this window's monitor
+      applyTheme(getApp()->getTheme());
+
       // Store for xid to C++ object mapping
       getApp()->hash.insert((FXptr)xid,this);
 

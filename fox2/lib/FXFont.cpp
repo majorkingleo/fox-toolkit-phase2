@@ -205,8 +205,12 @@ void* FXFont::match(const FXString& wantfamily,const FXString& wantforge,FXuint 
   // Hang on to this for text metrics functions
   dc=CreateCompatibleDC(nullptr);
 
+  // Font resolution; an explicit monitor DPI or the screen DC
+  if(res<=0) res=GetDeviceCaps((HDC)dc,LOGPIXELSY);
+  if(res<=0) res=96;
+
   // Now fill in the fields
-  lf.lfHeight=-MulDiv(wantsize,GetDeviceCaps((HDC)dc,LOGPIXELSY),720);
+  lf.lfHeight=-MulDiv(wantsize,res,720);
   lf.lfWidth=0;
   if(wanthints&FXFont::Rotatable){
     lf.lfEscapement=(angle*10)/64;
@@ -278,7 +282,7 @@ void* FXFont::match(const FXString& wantfamily,const FXString& wantforge,FXuint 
   // Get actual face name
   GetTextFaceA((HDC)dc,sizeof(buffer),buffer);
   actualName=buffer;
-  actualSize=MulDiv(((TEXTMETRIC*)font)->tmHeight,720,GetDeviceCaps((HDC)dc,LOGPIXELSY));
+  actualSize=MulDiv(((TEXTMETRIC*)font)->tmHeight,720,res);
   actualWeight=((TEXTMETRIC*)font)->tmWeight/10;
   actualSlant=((TEXTMETRIC*)font)->tmItalic?FXFont::Italic:FXFont::Straight;
   actualSetwidth=0;
@@ -1057,6 +1061,7 @@ FXFont::FXFont(){
   hints=0;
   flags=0;
   angle=0;
+  resolution=0;
   font=nullptr;
 #ifdef WIN32
   dc=nullptr;
@@ -1080,6 +1085,7 @@ FXFont::FXFont(FXApp* a,const FXString& string):FXId(a){
   hints=0;
   flags=0;
   angle=0;
+  resolution=0;
   font=nullptr;
 #ifdef WIN32
   dc=nullptr;
@@ -1104,6 +1110,7 @@ FXFont::FXFont(FXApp* a,const FXString& face,FXuint size,FXuint weight,FXuint sl
   hints=(h&~FXFont::X11);          // System-independent method
   flags=0;
   angle=0;
+  resolution=0;
   font=nullptr;
 #ifdef WIN32
   dc=nullptr;
@@ -1127,6 +1134,7 @@ FXFont::FXFont(FXApp* a,const FXFontDesc& fontdesc):FXId(a),wantedName(fontdesc.
   hints=fontdesc.flags;
   flags=0;
   angle=0;
+  resolution=0;
   font=nullptr;
 #ifdef WIN32
   dc=nullptr;
@@ -1164,7 +1172,7 @@ void FXFont::create(){
       // Try to match with specified family and foundry
       if(!family.empty()){
         family=getApp()->reg().readStringEntry("FONTSUBSTITUTIONS",family.text(),family.text());
-        font=match(family,FXString::null,wantedSize,wantedWeight,wantedSlant,wantedSetwidth,wantedEncoding,hints,100);
+        font=match(family,FXString::null,wantedSize,wantedWeight,wantedSlant,wantedSetwidth,wantedEncoding,hints,resolution);
         }
 
       // Uh-oh, we failed

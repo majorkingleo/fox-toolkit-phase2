@@ -173,16 +173,32 @@ conversion point at these boundaries.
 
 ## Remaining work
 
-### 5. DPI-aware caches and fonts
+### 5. DPI-aware caches and fonts (partly done)
 
 - Normal and role fonts are rescaled and rebuilt when the display scale
   changes; application font overrides are preserved through the base
   description.
-- Remaining: per-window font realization for mixed-DPI monitors, and keying
-  icons/bitmaps by DPI so a 96-DPI bitmap is not reused on a 192-DPI monitor.
-  `FXFont::match()` currently derives the pixel height from a screen-compatible
-  DC (`CreateCompatibleDC(nullptr)`), so a per-window font needs an explicit
-  monitor DPI passed into font creation, plus a cache keyed by `(role,dpi)`.
+- Per-window font realization is in place:
+  - `FXFont` carries an explicit `resolution` (dots per inch). `match()` uses
+    it for `lf.lfHeight` and for `actualSize`, falling back to
+    `GetDeviceCaps(LOGPIXELSY)` and then 96 when it is 0.
+  - `FXApp` keeps a cache of font sets keyed by DPI (`FXApp::FXFontSet`), each
+    holding a normal font and one font per theme role.
+    `getRoleFont(role,dpi)` and `getNormalFont(dpi)` return the font realized
+    for that monitor; passing 0 or the system DPI returns the global fonts.
+  - `FXWindow::create()` records its monitor DPI and re-applies the theme, so
+    labels realize the font for the monitor they were created on; `FXLabel`
+    asks for `getRoleFont(FONT_UI,getWindowDPI())` at construction and on theme
+    changes.
+- Caveat confirmed by measurement: realizing a font per monitor DPI does not
+  by itself change physical text size, because the point size is divided by
+  `dpi/96` while layout metrics are still scaled by the global display scale,
+  so the DPI cancels. **True mixed-DPI rendering additionally needs
+  per-window metrics** (theme metrics and layout for each window's monitor),
+  which belongs to the platform-seam workstream that owns window layout.
+- Still open: keying icons/bitmaps by DPI. The current subset has no icon or
+  bitmap cache users, so nothing is reused across monitors yet; when icons are
+  wired in, cache them as `(image,dpi)` and rebuild on DPI change.
 
 ### 6. Validation
 
@@ -203,7 +219,8 @@ conversion point at these boundaries.
 | 200% theme scale (manual) | verified (`dpi-200.png`) |
 | Pointer hit testing at 100% and 150% | verified (`dpi-clicks*.png`) |
 | 150% / 200% real monitor | not yet run (this machine is 96 DPI) |
-| Mixed-DPI monitor move | code path in place, not measured |
+| Per-monitor font realization | implemented, exercised by `tests/dpi simulate`; no physical size change without per-window metrics |
+| Mixed-DPI monitor move | font cache path in place, not measured |
 | X11 build unaffected | unchanged code paths |
 
 ## Open decisions

@@ -208,6 +208,8 @@ private:
   FXFont          *normalFont;          // Normal font
   FXFont          *roleFonts[FONT_LAST];// Fonts for the theme's font roles
   FXFontDesc       basefontdesc;        // Unscaled normal font description
+  struct FXFontSet;                     // Fonts realized for another monitor
+  FXFontSet       *fontsets;            // Fonts realized for other DPIs
   FXFont          *stockFont;           // Stock font
   FXMutex          appMutex;            // Application wide mutex
   FXEvent          event;               // Event
@@ -511,6 +513,12 @@ public:
 
   /// Return font for the given theme font role; inherits the normal font when the theme leaves the role open
   FXFont* getRoleFont(FXint role);
+
+  /// Return the role font realized for a given DPI; 0 uses the system DPI
+  FXFont* getRoleFont(FXint role,FXint dpivalue);
+
+  /// Return the normal font realized for a given DPI; 0 uses the system DPI
+  FXFont* getNormalFont(FXint dpivalue);
 
   /// Begin of wait-cursor block; wait-cursor blocks may be nested.
   void beginWaitCursor();

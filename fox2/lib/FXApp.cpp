@@ -525,6 +525,7 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   dpiawareness=DPIAWARENESS_UNKNOWN;      // DPI awareness not established
   dpi=0;                                  // DPI not determined
   dpiautoscale=false;                     // Do not follow the DPI yet
+  fontsets=nullptr;                       // No per-DPI font sets
 
   // Clear sticky mod state
   stickyMods=0;
@@ -4945,8 +4946,18 @@ void FXApp::destroy(){
   }
 
 
+// Fonts realized for a monitor with a different DPI
+struct FXApp::FXFontSet {
+  FXint      dpi;                       // Monitor DPI
+  FXFont    *normal;                    // Normal font for this DPI
+  FXFont    *roles[FONT_LAST];          // Role fonts for this DPI
+  FXFontSet *next;                      // Next font set
+  };
+
+
 // Destroy and forget the cached theme role fonts
 void FXApp::releaseRoleFonts(){
+  FXFontSet *set,*nextset;
   FXint i;
   for(i=0; i<FONT_LAST; i++){
     if(roleFonts[i] && roleFonts[i]!=normalFont){
@@ -4955,6 +4966,15 @@ void FXApp::releaseRoleFonts(){
       }
     roleFonts[i]=nullptr;
     }
+  for(set=fontsets; set; set=nextset){
+    nextset=set->next;
+    if(set->normal){ set->normal->destroy(); delete set->normal; }
+    for(i=0; i<FONT_LAST; i++){
+      if(set->roles[i]){ set->roles[i]->destroy(); delete set->roles[i]; }
+      }
+    delete set;
+    }
+  fontsets=nullptr;
   }
 
 
@@ -4974,6 +4994,63 @@ FXFont* FXApp::getRoleFont(FXint role){
     if(isInitialized()) roleFonts[role]->create();
     }
   return roleFonts[role];
+  }
+
+
+// Return the role font realized for a given DPI
+FXFont* FXApp::getRoleFont(FXint role,FXint dpivalue){
+  FXFontDesc desc;
+  FXFontSet *set;
+  FXdouble factor;
+  FXint i;
+  if(dpivalue<=0 || dpivalue==dpi) return getRoleFont(role);
+  desc=theme.font(role);
+  if(role<0 || FONT_LAST<=role || desc.face[0]==0) return getNormalFont(dpivalue);
+  for(set=fontsets; set && set->dpi!=dpivalue; set=set->next){}
+  if(!set){
+    set=new FXFontSet;
+    set->dpi=dpivalue;
+    set->normal=nullptr;
+    for(i=0; i<FONT_LAST; i++) set->roles[i]=nullptr;
+    set->next=fontsets;
+    fontsets=set;
+    }
+  if(!set->roles[role]){
+    factor=theme.getScale()/(FXdouble(dpivalue)/96.0);
+    if(desc.size) desc.size=FXint(FXdouble(desc.size)*factor+0.5);
+    set->roles[role]=new FXFont(this,desc);
+    set->roles[role]->setResolution(dpivalue);
+    if(isInitialized()) set->roles[role]->create();
+    }
+  return set->roles[role];
+  }
+
+
+// Return the normal font realized for a given DPI
+FXFont* FXApp::getNormalFont(FXint dpivalue){
+  FXFontDesc desc;
+  FXFontSet *set;
+  FXdouble factor;
+  FXint i;
+  if(dpivalue<=0 || dpivalue==dpi) return normalFont;
+  for(set=fontsets; set && set->dpi!=dpivalue; set=set->next){}
+  if(!set){
+    set=new FXFontSet;
+    set->dpi=dpivalue;
+    set->normal=nullptr;
+    for(i=0; i<FONT_LAST; i++) set->roles[i]=nullptr;
+    set->next=fontsets;
+    fontsets=set;
+    }
+  if(!set->normal){
+    desc=basefontdesc;
+    factor=theme.getScale()/(FXdouble(dpivalue)/96.0);
+    if(desc.size) desc.size=FXint(FXdouble(desc.size)*factor+0.5);
+    set->normal=new FXFont(this,desc);
+    set->normal->setResolution(dpivalue);
+    if(isInitialized()) set->normal->create();
+    }
+  return set->normal;
   }
 
 

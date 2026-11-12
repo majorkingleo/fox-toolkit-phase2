@@ -110,7 +110,7 @@ FXLabel::FXLabel(FXComposite* p,const FXString& text,FXIcon* ic,FXuint opts,FXin
   hotkey=parseHotKey(string);
   label=stripHotKey(string);
   hotoff=findHotKey(string);
-  font=getApp()->getRoleFont(FONT_UI);
+  font=getApp()->getRoleFont(FONT_UI,getWindowDPI());
   help=text.section('\t',2);
   tip=text.section('\t',1);
   textColor=getApp()->getTheme()->color(ROLE_TEXT);
@@ -507,7 +507,7 @@ void FXLabel::applyTheme(FXTheme* theme){
     textColor=theme->color(ROLE_TEXT);
     }
   if(!fontOverride){
-    font=getApp()->getRoleFont(FONT_UI);
+    font=getApp()->getRoleFont(FONT_UI,getWindowDPI());
     }
   }
 

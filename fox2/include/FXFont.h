@@ -153,6 +153,7 @@ protected:
   FXushort  hints;              // Matching hint flags
   FXushort  flags;              // Actual flags
   FXshort   angle;              // Angle
+  FXint     resolution;         // Font resolution (DPI), 0 for the screen DC
   void     *font;               // Info about the font
 private:
 #ifdef WIN32
@@ -318,6 +319,12 @@ public:
 
   /// Get font description
   FXFontDesc getFontDesc() const;
+
+  /// Change the font resolution in dots per inch; 0 uses the screen DC
+  void setResolution(FXint dpi){ resolution=dpi; }
+
+  /// Return the font resolution in dots per inch, or 0 for the screen DC
+  FXint getResolution() const { return resolution; }
 
   /// Get actual font description
   FXFontDesc getActualFontDesc() const;
