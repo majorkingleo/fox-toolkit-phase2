@@ -164,6 +164,38 @@ void fxplatformReleaseKeyboardGrab(void*,FXTime){
   }
 
 
+// Enable the window
+void FXWindow::enable(){
+  if(!isEnabled()){
+    flags|=FLAG_ENABLED;
+    if(xid){
+      EnableWindow((HWND)xid,true);
+      }
+    }
+  }
+
+
+// Disable the window
+void FXWindow::disable(){
+  killFocus();
+  if(isEnabled()){
+    flags&=~FLAG_ENABLED;
+    if(xid){
+      EnableWindow((HWND)xid,false);
+      if(getApp()->mouseGrabWindow==this){
+        ReleaseCapture();
+        SetCursor((HCURSOR)defaultCursor->id());
+        handle(this,FXSEL(SEL_UNGRABBED,0),&getApp()->event);
+        getApp()->mouseGrabWindow=nullptr;
+        }
+      if(getApp()->keyboardGrabWindow==this){
+        getApp()->keyboardGrabWindow=nullptr;
+        }
+      }
+    }
+  }
+
+
 }
 
 #endif

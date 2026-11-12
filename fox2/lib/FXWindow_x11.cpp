@@ -294,6 +294,44 @@ void fxplatformReleaseKeyboardGrab(void* display,FXTime time){
   XFlush(dpy);
   }
 
+
+// Enable the window
+void FXWindow::enable(){
+  if(!isEnabled()){
+    flags|=FLAG_ENABLED;
+    if(xid){
+      FXuint events=BASIC_EVENT_MASK|ENABLED_EVENT_MASK;
+      if(isShell()) events|=SHELL_EVENT_MASK;
+      XSelectInput((Display*)getApp()->getDisplay(),xid,events);
+      }
+    }
+  }
+
+
+// Disable the window
+void FXWindow::disable(){
+  killFocus();
+  if(isEnabled()){
+    flags&=~FLAG_ENABLED;
+    if(xid){
+      FXuint events=BASIC_EVENT_MASK;
+      if(isShell()) events|=SHELL_EVENT_MASK;
+      XSelectInput((Display*)getApp()->getDisplay(),xid,events);
+      if(getApp()->mouseGrabWindow==this){
+        XUngrabPointer((Display*)getApp()->getDisplay(),CurrentTime);
+        XFlush((Display*)getApp()->getDisplay());
+        handle(this,FXSEL(SEL_UNGRABBED,0),&getApp()->event);
+        getApp()->mouseGrabWindow=nullptr;
+        }
+      if(getApp()->keyboardGrabWindow==this){
+        XUngrabKeyboard((Display*)getApp()->getDisplay(),getApp()->event.time);
+        XFlush((Display*)getApp()->getDisplay());
+        getApp()->keyboardGrabWindow=nullptr;
+        }
+      }
+    }
+  }
+
 }
 
 #endif

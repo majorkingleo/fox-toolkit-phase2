@@ -329,6 +329,25 @@ Done. Session teardown is the first half of the session seam; `openDisplay()`
   prints `PASS` and exits 0, so `XCloseDisplay()` runs on the new path.
 - Both builds used `--fast`; no configure input changed.
 
+## Seam 10: window enable and disable
+
+Done. The input state of a window, deferred from the placement step, now lives
+with the window platform modules.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `FXWindow::enable()`/`disable()` via `EnableWindow()` plus the mouse and keyboard grab bookkeeping on disable |
+| X11 module | `FXWindow_x11.cpp`: the same two members via `XSelectInput()` with the basic, shell and enabled event masks, `XUngrabPointer()`/`XUngrabKeyboard()` on disable |
+| Portable core | `killFocus()` and the `FLAG_ENABLED` bookkeeping stay in the members, which now live in the modules |
+
+`grab()`, `ungrab()`, `grabKeyboard()` and `ungrabKeyboard()` — acquiring rather
+than releasing — are still in `FXWindow.cpp` and come with the event seam.
+
+### Verification
+
+- Fast builds (`--fast`) on both backends; `hello`, `button` and `dpi` run with
+  unchanged DPI values.
+
 ## Next seams, in order
 
 1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`

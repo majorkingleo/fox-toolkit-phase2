@@ -2228,61 +2228,6 @@ FXbool FXWindow::isEnabled() const {
   }
 
 
-// Enable the window
-void FXWindow::enable(){
-  if(!isEnabled()){
-    flags|=FLAG_ENABLED;
-    if(xid){
-#ifdef WIN32
-      EnableWindow((HWND)xid,true);
-#else
-      FXuint events=BASIC_EVENT_MASK|ENABLED_EVENT_MASK;
-      if(isShell()) events|=SHELL_EVENT_MASK;
-      XSelectInput((Display*)getApp()->getDisplay(),xid,events);
-#endif
-      }
-    }
-  }
-
-
-// Disable the window
-void FXWindow::disable(){
-  killFocus();
-  if(isEnabled()){
-    flags&=~FLAG_ENABLED;
-    if(xid){
-#ifdef WIN32
-      EnableWindow((HWND)xid,false);
-      if(getApp()->mouseGrabWindow==this){
-        ReleaseCapture();
-        SetCursor((HCURSOR)defaultCursor->id());
-        handle(this,FXSEL(SEL_UNGRABBED,0),&getApp()->event);
-        getApp()->mouseGrabWindow=nullptr;
-        }
-      if(getApp()->keyboardGrabWindow==this){
-        getApp()->keyboardGrabWindow=nullptr;
-        }
-#else
-      FXuint events=BASIC_EVENT_MASK;
-      if(isShell()) events|=SHELL_EVENT_MASK;
-      XSelectInput((Display*)getApp()->getDisplay(),xid,events);
-      if(getApp()->mouseGrabWindow==this){
-        XUngrabPointer((Display*)getApp()->getDisplay(),CurrentTime);
-        XFlush((Display*)getApp()->getDisplay());
-        handle(this,FXSEL(SEL_UNGRABBED,0),&getApp()->event);
-        getApp()->mouseGrabWindow=nullptr;
-        }
-      if(getApp()->keyboardGrabWindow==this){
-        XUngrabKeyboard((Display*)getApp()->getDisplay(),getApp()->event.time);
-        XFlush((Display*)getApp()->getDisplay());
-        getApp()->keyboardGrabWindow=nullptr;
-        }
-#endif
-      }
-    }
-  }
-
-
 // Raise (but do not activate!)
 void FXWindow::raise(){
   if(xid){
