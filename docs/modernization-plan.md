@@ -250,8 +250,17 @@ coordinates.
 
 Process DPI awareness is implemented, policy-driven, verified by the runtime,
 and reported through `FXApp::getDPIAwareness()` / `FXApp::getDPI()`. The native
-Windows build of `fox2/` and the `tests/dpi` diagnostic are in place. Details,
-the policy setting, and the remaining scaling steps are in `docs/dpi-plan.md`.
+Windows build of `fox2/` and the `tests/dpi` diagnostic are in place. Details
+and the policy setting are in `docs/dpi-plan.md`.
+
+#### Steps 2–3 result
+
+Display scale (`[display] scale=auto|<percent>`), per-window DPI storage with
+`FXWindow::scale()`/`unscale()`, and runtime `WM_DPICHANGED` handling (DPI
+update, theme relayout, suggested rectangle) are implemented and verified,
+including a simulated 144-DPI transition. Remaining: input/geometry boundary
+audit, DPI-aware font/icon caches, and validation on real 150/200% monitors —
+tracked in `docs/dpi-plan.md`.
 
 ### 3. Compile-time platform and presentation seams
 
@@ -463,7 +472,8 @@ the FOX event loop, and document the compositor versions tested.
 
 Status as of 2026-11-12: step 0 done on Linux/X11 and Windows/MinGW, step 1
 done (policy recorded above), step 2 core done with a defined remainder,
-step 3 in progress — process awareness done, centralized scaling next.
+step 3 in progress — awareness, scale wiring, and DPI-change handling done;
+boundary audit, fonts/caches, and real 150/200% validation next.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
    baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was
@@ -478,8 +488,10 @@ step 3 in progress — process awareness done, centralized scaling next.
    after the core"; it is deliberately sequenced so the widgets the DPI
    workstream will re-geometry are migrated once, not twice.
 3. **Windows DPI**: process awareness (per-monitor-v2 with policy and runtime
-   verification) is done and recorded in `docs/dpi-plan.md`; next is
-   centralized scaling and runtime DPI transitions. Reuse theme metrics.
+   verification), `[display] scale=auto|<percent>`, per-window DPI helpers, and
+   `WM_DPICHANGED` handling are done and recorded in `docs/dpi-plan.md`; next
+   are the input/geometry boundary audit, DPI-aware font/icon caches, and
+   validation on real 150/200% monitors. Reuse theme metrics.
 4. **Internal platform seam**: extract and validate narrow Windows/X11
    operations one at a time; update all build systems and cross-build checks.
 5. **Browser prototype**: compare drawing-surface versus semantic-widget

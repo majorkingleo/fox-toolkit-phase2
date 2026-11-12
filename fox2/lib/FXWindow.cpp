@@ -272,6 +272,7 @@ FXWindow::FXWindow(){
   message=0;
   xpos=0;
   ypos=0;
+  dpi=0;
   backColor=0;
   flags=FLAG_DIRTY|FLAG_UPDATE|FLAG_RECALC|FLAG_CURSOR;
   options=0;
@@ -297,6 +298,7 @@ FXWindow::FXWindow(FXApp* a,FXVisual *vis):FXDrawable(a,1,1){
   message=0;
   xpos=0;
   ypos=0;
+  dpi=0;
   backColor=0;
   flags=FLAG_DIRTY|FLAG_SHOWN|FLAG_UPDATE|FLAG_RECALC|FLAG_CURSOR;
   options=LAYOUT_FIX_X|LAYOUT_FIX_Y|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT;
@@ -332,6 +334,7 @@ FXWindow::FXWindow(FXApp* a,FXWindow* own,FXuint opts,FXint x,FXint y,FXint w,FX
   message=0;
   xpos=x;
   ypos=y;
+  dpi=0;
   backColor=getApp()->getBaseColor();
   flags=FLAG_DIRTY|FLAG_UPDATE|FLAG_RECALC|FLAG_SHELL|FLAG_CURSOR;
   options=opts;
@@ -366,9 +369,34 @@ FXWindow::FXWindow(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h):F
   message=0;
   xpos=x;
   ypos=y;
+  dpi=0;
   backColor=getApp()->getBaseColor();
   flags=FLAG_DIRTY|FLAG_UPDATE|FLAG_RECALC|FLAG_CURSOR;
   options=opts;
+  }
+
+
+// Return the scale factor from 96-DPI logical units to device pixels
+FXdouble FXWindow::getScale() const {
+  return dpi?FXdouble(dpi)/96.0:1.0;
+  }
+
+
+// Convert a logical length to device pixels
+FXint FXWindow::scale(FXint value) const {
+#if defined(WIN32)
+  if(dpi) return MulDiv(value,dpi,96);
+#endif
+  return value;
+  }
+
+
+// Convert a device length to logical units
+FXint FXWindow::unscale(FXint value) const {
+#if defined(WIN32)
+  if(dpi) return MulDiv(value,96,dpi);
+#endif
+  return value;
   }
 
 
@@ -1238,6 +1266,10 @@ void FXWindow::create(){
 
       // Uh-oh, we failed
       if(!xid){ throw FXWindowException("unable to create window."); }
+
+      // Remember the DPI of the monitor this window is on
+      dpi=getApp()->getWindowDPI(xid);
+      if(!dpi) dpi=96;
 
       // Store for xid to C++ object mapping
       getApp()->hash.insert((FXptr)xid,this);

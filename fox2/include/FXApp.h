@@ -257,6 +257,7 @@ private:
   FXbool           initialized;         // Has been initialized
   FXint            dpiawareness;        // Effective process DPI awareness
   FXint            dpi;                 // System DPI, 0 if unknown
+  FXbool           dpiautoscale;        // Follow the DPI for the theme scale
 
 private:
   static FXApp    *app;                 // Application pointer
@@ -388,7 +389,9 @@ private:
   void dragdropGetTypes(const FXWindow* window,FXDragType*& types,FXuint& numtypes);
   void openInputDevices();
   void closeInputDevices();
+  void setThemeScale(FXdouble scale);
 #ifdef WIN32
+  static void applyWindowDPI(FXWindow* window,FXint dpivalue);
   static FXival CALLBACK wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
 protected:
   virtual FXival dispatchEvent(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
@@ -549,6 +552,9 @@ public:
 
   /// Return the system DPI, or 0 if unknown
   FXint getDPI() const { return dpi; }
+
+  /// Return the DPI of the monitor a native window is on, 0 if unknown
+  FXint getWindowDPI(FXID hwnd) const;
 
   /// Connection to display; this is called by init()
   virtual FXbool openDisplay(const FXchar* dpy=nullptr);

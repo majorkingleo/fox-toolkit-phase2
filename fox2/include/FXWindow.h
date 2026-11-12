@@ -149,6 +149,7 @@ protected:
   FXSelector        message;            // Message ID
   FXint             xpos;               // Window X Position
   FXint             ypos;               // Window Y Position
+  FXint             dpi;                // DPI of the monitor this window is on
   FXColor           backColor;          // Window background color
   FXbool            backColorOverride=false;  // Back color set explicitly
   FXString          tag;                // Help tag
@@ -418,6 +419,18 @@ public:
 
   /// Get this window's y-coordinate, in the parent's coordinate system
   FXint getY() const { return ypos; }
+
+  /// Return the DPI of the monitor this window is on, 0 if unknown
+  FXint getWindowDPI() const { return dpi; }
+
+  /// Return the scale factor from 96-DPI logical units to device pixels
+  FXdouble getScale() const;
+
+  /// Convert a logical length to device pixels
+  FXint scale(FXint value) const;
+
+  /// Convert a device length to logical units
+  FXint unscale(FXint value) const;
 
   /// Return the default width of this window
   virtual FXint getDefaultWidth();

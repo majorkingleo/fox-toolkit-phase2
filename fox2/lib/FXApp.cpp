@@ -524,6 +524,7 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   initialized=false;                      // Not yet initialized
   dpiawareness=DPIAWARENESS_UNKNOWN;      // DPI awareness not established
   dpi=0;                                  // DPI not determined
+  dpiautoscale=false;                     // Do not follow the DPI yet
 
   // Clear sticky mod state
   stickyMods=0;
@@ -1493,6 +1494,7 @@ static FXint applyDPIAwareness(const FXString&){
 #endif
 
 typedef UINT (WINAPI *GETDPIFORSYSTEMFUNC)();
+typedef UINT (WINAPI *GETDPIFORWINDOWFUNC)(HWND hwnd);
 
 // Return the system DPI.
 static FXint getSystemDPI(){
@@ -1510,7 +1512,52 @@ static FXint getSystemDPI(){
   return dpi>0?dpi:96;
   }
 
+// Return the DPI of the monitor a native window is on, or 0 if unknown
+FXint FXApp::getWindowDPI(FXID hwnd) const {
+  HMODULE user32dll=GetModuleHandleA("user32.dll");
+  if(user32dll && hwnd){
+    GETDPIFORWINDOWFUNC getdpiforwindow=(GETDPIFORWINDOWFUNC)GetProcAddress(user32dll,"GetDpiForWindow");
+    if(getdpiforwindow){
+      UINT dpivalue=getdpiforwindow((HWND)hwnd);
+      if(dpivalue) return (FXint)dpivalue;
+      }
+    }
+  return dpi;
+  }
+
+// Recursively record the DPI of a window and its descendants
+void FXApp::applyWindowDPI(FXWindow* window,FXint dpivalue){
+  FXWindow *child;
+  window->dpi=dpivalue;
+  for(child=window->getFirst(); child; child=child->getNext()){
+    applyWindowDPI(child,dpivalue);
+    }
+  }
+
+#else
+
+// No native window DPI on this platform
+FXint FXApp::getWindowDPI(FXID) const {
+  return 0;
+  }
+
 #endif
+
+
+// Change the theme scale and relayout if it actually changed
+void FXApp::setThemeScale(FXdouble scale){
+  if(theme.getScale()!=scale){
+    theme.setScale(scale);
+    style.invalidate();
+    themeChanged();
+    if(root){
+      FXWindow *win;
+      for(win=root->getFirst(); win; win=win->getNext()){
+        win->recalc();
+        }
+      }
+    }
+  }
 
 // Open the display
 FXbool FXApp::openDisplay(const FXchar* dpy){
@@ -4647,6 +4694,23 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
       }
     }
 
+  // Display scale: "auto" follows the monitor DPI, a number is a percentage.
+  // The registry value overrides the scale defined by a theme file.
+  const FXchar *scalespec=registry.readStringEntry("display","scale",nullptr);
+#if defined(WIN32)
+  if(scalespec==nullptr) scalespec="auto";
+#endif
+  if(scalespec){
+    if(FXString::comparecase(scalespec,"auto")==0){
+      dpiautoscale=true;
+      setThemeScale(dpi?FXdouble(dpi)/96.0:1.0);
+      }
+    else{
+      dpiautoscale=false;
+      setThemeScale(FXdouble(FXString(scalespec).toInt())/100.0);
+      }
+    }
+
   // Maximum number of colors to allocate
   maxcolors=registry.readUIntEntry("SETTINGS","maxcolors",maxcolors);
 
@@ -4915,6 +4979,14 @@ FXival CALLBACK FXApp::wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam
 
 #ifndef WM_SYNCPAINT
 #define WM_SYNCPAINT 0x0088
+#endif
+
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
+
+#ifndef WM_DPICHANGED_AFTERPARENT
+#define WM_DPICHANGED_AFTERPARENT 0x02E3
 #endif
 
 
@@ -5408,6 +5480,29 @@ Alt key seems to repeat.
     // Configure position and size
     case WM_WINDOWPOSCHANGED:
       return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    // DPI of the window's monitor changed
+    case WM_DPICHANGED:
+      {
+        RECT *suggested=(RECT*)lParam;
+        FXint newdpi=(FXint)HIWORD(wParam);
+        if(newdpi<=0) newdpi=(FXint)LOWORD(wParam);
+        if(newdpi<=0) break;
+        applyWindowDPI(window,newdpi);
+        if(dpiautoscale) setThemeScale(FXdouble(newdpi)/96.0);
+        if(suggested){
+          SetWindowPos((HWND)hwnd,nullptr,suggested->left,suggested->top,suggested->right-suggested->left,suggested->bottom-suggested->top,SWP_NOZORDER|SWP_NOACTIVATE);
+          }
+      }
+      return 0;
+
+    // DPI changed because the parent window changed DPI
+    case WM_DPICHANGED_AFTERPARENT:
+      {
+        FXint newdpi=getWindowDPI(hwnd);
+        if(newdpi>0) applyWindowDPI(window,newdpi);
+      }
+      return 0;
 
     // Lost clipboard ownership
     case WM_DESTROYCLIPBOARD:

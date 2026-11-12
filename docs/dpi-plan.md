@@ -5,13 +5,14 @@ library. The Linux/X11 build is unaffected; all new code is guarded.
 
 ## Coordinate policy
 
-Public layout dimensions and theme metrics are **logical units**; the Windows
-adapter converts to device pixels at the native boundary. Conversion stays in
-one helper, and the same values are never scaled twice.
+Theme metrics are the single DPI-scaled quantity: `FXTheme::metric()` applies
+the scale, so FOX-drawn padding, borders, spacing, and row heights grow with
+the DPI. Window and widget coordinates remain device pixels for now;
+`FXWindow::scale()`/`unscale()` are the one conversion point for moving input
+or application geometry to logical units later.
 
-Logical units stay **opt-in** for now: the default theme scale remains 1.0, so
-existing applications keep pixel-identical geometry. `[display] scale=auto`
-opts into following the monitor DPI (see "Remaining work").
+Because only metrics scale, existing pixel geometry keeps its meaning, and at
+96 DPI `scale=auto` is exactly 1.0.
 
 ## Step 1 — process awareness (done)
 
@@ -73,8 +74,51 @@ FOX DPI diagnostic
   system DPI        : 96
   theme scale       : 1.00
   window bounds     : 1220,686 120x19
+  window DPI (FOX)  : 96
+  window scale      : 1.00
   window DPI        : 96
   device rect       : 1212,655 136x58
+```
+
+## Step 2 — display scale and per-window DPI (done)
+
+- `[display] scale` in the application registry controls the theme scale:
+  - `auto` (Windows default): theme scale = DPI / 96. It starts from the system
+    DPI during `init()` and is updated by DPI-change events.
+  - `<percent>`: fixed scale, for example `150` for 1.5.
+  - Absent on X11: whatever scale the theme file supplied is kept.
+  The registry value overrides a scale that came from a `.foxtheme` file.
+- `FXApp::setThemeScale()` applies the value through the existing single
+  conversion point (`FXTheme::metric()`), invalidates the style, repaints, and
+  recalculates top-level layouts when the value actually changes.
+- `FXWindow` records the monitor DPI when it is created (`GetDpiForWindow`,
+  falling back to the system DPI) and exposes `getWindowDPI()`, `getScale()`,
+  `scale()`, and `unscale()`. Conversion uses `MulDiv` on Windows and is the
+  identity elsewhere.
+- Coordinates are still device pixels; only theme metrics are scaled. This is
+  deliberate: it keeps existing application geometry compatible while making
+  FOX-drawn chrome grow with the system DPI.
+- Verified with `[display] scale=150`: theme scale 1.50 and the label window
+  becomes slightly taller (19 → 21 px at 96 DPI). Text size is unchanged
+  because FOX fonts are point-sized and therefore already follow real DPI.
+
+## Step 3 — runtime DPI changes (done)
+
+`FXApp::dispatchEvent()` handles `WM_DPICHANGED` and
+`WM_DPICHANGED_AFTERPARENT`:
+
+1. records the new DPI on the window and its descendants,
+2. updates the theme scale and relayouts when `scale=auto` is active,
+3. applies the suggested top-level rectangle from `lParam`.
+
+`tests/dpi simulate` sends a synthetic 144-DPI notification so the path can be
+checked on a 96-DPI machine:
+
+```
+  after WM_DPICHANGED (144 dpi):
+    theme scale       : 1.50
+    window DPI (FOX)  : 144
+    window bounds     : 1220,686 188x48
 ```
 
 ## Prerequisite — native Windows build of fox2 (done)
@@ -96,49 +140,43 @@ exports symbols and links `AlphaBlend`.
 
 ## Remaining work
 
-### 2. Centralized scale helper
-
-- Add one internal conversion helper for logical ↔ device:
-  `FXint FXWindow::scale(FXint)`, `FXint FXWindow::unscale(FXint)`, and a
-  per-top-window scale.
-- Store the effective DPI per top-level window (`FXWindow::dpi`), inherited by
-  children; expose `FXint getWindowDPI() const` and `FXdouble getScale() const`.
-- Wire `[display] scale=auto|<percent>`: `auto` derives the theme scale from
-  the window DPI (96 → 1.0, 120 → 1.25, 144 → 1.5, 192 → 2.0); a percent
-  keeps today's manual override. This is the opt-in logical mode.
-
-### 3. Runtime DPI transitions
-
-- Handle `WM_DPICHANGED` in the top-level window procedure; skip it for child
-  windows and use `WM_DPICHANGED_AFTERPARENT` only if needed.
-- Apply `lParam`'s suggested rectangle to the top-level window, update the
-  window scale, recreate role fonts and DPI-dependent resources, then
-  `relayout()` descendants and repaint.
-- Keep an app-wide fallback when the DPI notification is unavailable.
-
 ### 4. Input and geometry boundary audit
 
 - Window placement and client size, pointer coordinates, hit testing,
   drag/drop, scroll increments, text measurement, border widths, cursors, and
-  image/icon sizing must all go through the same helper.
+  image/icon sizing must all go through the same `scale()`/`unscale()` pair.
 - Normalize input to logical space before dispatch; never mix device and
-  logical values in one computation.
+  logical values in one computation. Today both sides are device pixels, so
+  no conversion is applied and hit testing stays aligned.
+- Decide whether application-supplied geometry becomes logical units
+  (opt-in) or stays in device pixels.
 
-### 5. DPI-aware caches
+### 5. DPI-aware caches and fonts
 
-- Key fonts, icons, and bitmaps by the DPI they were realized at; do not reuse
-  a 96-DPI bitmap on a 192-DPI monitor.
-- `FXFont` currently derives its pixel height from the DC DPI at creation
-  time; it must be recreated when the window scale changes.
+- `FXFont` handles are created from a DC's DPI and are not rebuilt when a
+  window moves to a monitor with another DPI. Recreate role fonts and other
+  DPI-dependent resources on scale changes without losing application font
+  overrides.
+- Key icons and bitmaps by the DPI they were realized at; do not reuse a
+  96-DPI bitmap on a 192-DPI monitor.
 
 ### 6. Validation
+
+- Run on a machine/monitor at 150% and 200% (this machine is 96 DPI); the
+  simulated 144-DPI transition covers the code path but not real monitor
+  metrics.
+- Move a live window between monitors with different scale factors and verify
+  size, fonts, metrics, hit targets, and pointer alignment.
+- Check that `scale=auto` at 96 DPI remains pixel-identical for the existing
+  examples.
 
 | Check | Status |
 | --- | --- |
 | 100% scaling, per-monitor-v2 | verified (`tests/dpi`) |
-| 150% and 200% scaling | not yet run on this machine |
-| Move between mixed-DPI monitors | not implemented yet |
-| Pointer hit testing aligned | not measured yet |
+| Simulated 144-DPI transition | verified (`tests/dpi simulate`) |
+| 150% / 200% real monitor | not yet run (this machine is 96 DPI) |
+| Mixed-DPI monitor move | code path in place, not measured |
+| Pointer hit testing | device-pixel regime unchanged; verify with logical mode |
 | X11 build unaffected | unchanged code paths |
 
 ## Open decisions
