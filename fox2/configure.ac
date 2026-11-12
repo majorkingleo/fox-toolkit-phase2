@@ -148,6 +148,21 @@ if test "x$enable_release" = "xyes" ; then
   fi
 fi
 
+# Keep FXTRACE statements compiled in; the Windows build would otherwise
+# define NDEBUG for the library, which removes all trace calls.
+AC_MSG_CHECKING(for FXTRACE build)
+AC_ARG_ENABLE(foxtrace,[  --enable-foxtrace       keep FXTRACE statements compiled in])
+AC_MSG_RESULT([$enable_foxtrace])
+FOX_NDEBUG="-DNDEBUG"
+if test "x$enable_foxtrace" = "xyes" ; then
+  FOX_NDEBUG=""
+  if test "x$enable_release" = "xyes" ; then
+    AC_MSG_WARN([--enable-foxtrace overrides the NDEBUG of --enable-release])
+    CXXFLAGS=`echo "$CXXFLAGS" | sed 's/-DNDEBUG//'`
+  fi
+fi
+AC_SUBST(FOX_NDEBUG)
+
 # Native code
 AC_MSG_CHECKING(for native code generation)
 AC_ARG_ENABLE(native,[  --enable-native         compile for native (or architecture like "corei7" or "amdfam10") code])

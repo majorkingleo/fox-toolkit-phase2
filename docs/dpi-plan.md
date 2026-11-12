@@ -222,6 +222,62 @@ conversion point at these boundaries.
 | Per-monitor font realization | implemented, exercised by `tests/dpi simulate`; no physical size change without per-window metrics |
 | Mixed-DPI monitor move | font cache path in place, not measured |
 | X11 build unaffected | unchanged code paths |
+| Demo session log | verified (`dpi.exe simulate` and an interactive move/resize session) |
+| FXTRACE captured to file | verified with `--enable-foxtrace` and `2>trace.log` (667 lines) |
+
+### Capturing evidence on a real monitor
+
+The test app writes its own session log, so a multi-monitor session can be
+reviewed afterwards without a debugger.
+
+- **Log file.** `dpi.exe` appends to `dpi-log.txt` in the current directory;
+  set `FOX_DPI_LOG=<path>` to write elsewhere. Sessions are appended, so
+  several runs can be compared in one file.
+- **Recorded automatically.** Session start (cwd, interactive or simulate,
+  trace environment), a `startup` snapshot, then a snapshot whenever the
+  window settles after a move, resize or DPI change, and whenever the monitor
+  layout changes. Each snapshot contains: process awareness, system DPI,
+  theme scale with the auto flag, FOX and native window DPI, FOX client size
+  and position, frame rectangle, the monitor table (name, primary flag, DPI,
+  monitor rectangle, work area) and the monitor the window is on. A dedicated
+  `window DPI changed A -> B` line marks a monitor transition.
+- **Recorded on demand.** The "Snapshot" button writes a `manual snapshot`
+  section; scale slider moves, the Auto button and sample-button clicks are
+  logged as `user: ...` lines.
+- **Sample line.**
+  `2026-11-12 22:43:42.494 +22ms |   monitor[0] name=\\.\DISPLAY1 primary dpi=96 rect=0,0 2560x1440 work=0,0 2560x1392`
+
+Suggested procedure on the mixed-DPI machine:
+
+1. Build, then start `tmp/build-fox2-win/tests/dpi.exe` from a directory you
+   can find again (the log lands there).
+2. Press "Snapshot" on each monitor, and again after every move or resize that
+   changes the DPI, so each state is labelled in the log.
+3. Exercise the slider at 150% and "Auto" on each monitor, and click the
+   sample button to record hit testing.
+4. Close the window; the log ends with a `session end` section.
+
+Expected values with `auto=yes`: `window_dpi_fox` equals the monitor DPI,
+`theme_scale` becomes 1.500 on a 150% monitor and 2.000 on a 200% monitor, and
+`window_size` grows from 520x320 to 780x480 and 1040x640.
+
+**FOX trace messages to a file.** `FXTRACE` is compiled out when `NDEBUG` is
+defined, and the default Windows build defines it for the library, so a trace
+build is required:
+
+- `.\scripts\build-fox2-mingw.ps1 -Trace -Clean` (or
+  `./scripts/build-fox2-mingw.sh --trace`), which passes
+  `--enable-foxtrace` to `configure`; `lib/Makefile.am` then omits `-DNDEBUG`.
+- Enable topics at run time with `-tracelevel N`, `-tracetopics 0:1023`, or
+  the `FOX_TRACE_LEVEL` / `FOX_TRACE_TOPICS` environment variables.
+- Capture stderr, which also carries `fxmessage`, `fxwarning` and `fxerror`:
+  `dpi.exe simulate -tracelevel 1023 2>trace.log`. Keep the argument order so
+  `simulate` stays first.
+- On Windows the same text also goes to `OutputDebugString`, so DebugView can
+  capture it; `fxwarning` and `fxerror` additionally open a message box, and
+  `fxerror` then breaks into the debugger.
+- The trace build replaces the artifacts in `tmp/build-fox2-win`; rebuild
+  without `--trace` before normal runs.
 
 ### 7. Next actions, in order
 

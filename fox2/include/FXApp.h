@@ -570,6 +570,9 @@ public:
   /// Return the display scale; 1.0 corresponds to 96 DPI
   FXdouble getDisplayScale() const { return theme.getScale(); }
 
+  /// Return true when the display scale follows the monitor DPI
+  FXbool getDisplayScaleAuto() const { return dpiautoscale; }
+
   /// Change the display scale explicitly; this disables automatic scaling
   void setDisplayScale(FXdouble scale);
 

@@ -1,1 +1,5 @@
 /tmp/
+
+# DPI test session logs
+dpi-log.txt
+trace.log

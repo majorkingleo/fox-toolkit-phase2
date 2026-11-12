@@ -16,6 +16,7 @@
 #   --jobs=N   parallel jobs (default: 12)
 #   --clean    delete the build directory first
 #   --fast     skip autoreconf/configure when their inputs did not change
+#   --trace    keep FXTRACE statements compiled in (no NDEBUG)
 #   --run      run hello and the DPI diagnostic after building
 #   -h|--help  show this help
 #
@@ -31,10 +32,11 @@ with_opengl=no
 build_type=
 clean=no
 fast=no
+trace=no
 run_test=no
 
 usage(){
-  sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -44,6 +46,7 @@ while [ $# -gt 0 ]; do
     --release)  build_type=release ;;
     --clean)    clean=yes ;;
     --fast)     fast=yes ;;
+    --trace)    trace=yes ;;
     --run)      run_test=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
@@ -90,6 +93,13 @@ case "$build_type" in
   debug)   opts+=(--enable-debug) ;;
   release) opts+=(--enable-release) ;;
 esac
+if [ "$trace" = yes ]; then
+  if [ "$build_type" = release ]; then
+    echo "error: --trace cannot be combined with --release" >&2
+    exit 2
+    fi
+  opts+=(--enable-foxtrace)
+  fi
 
 : >"$LOG"
 
@@ -166,3 +176,8 @@ if [ "$run_test" = yes ]; then
 
 echo
 echo "done. Build log: $LOG"
+if [ "$trace" = yes ]; then
+  echo
+  echo "trace build: FXTRACE is compiled in; run with -tracelevel N or FOX_TRACE_LEVEL=N"
+  echo "and redirect stderr to a file, e.g. tests/dpi.exe -tracelevel 1023 2> trace.log"
+  fi
