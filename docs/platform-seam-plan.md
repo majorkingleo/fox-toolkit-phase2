@@ -193,15 +193,16 @@ Deliberately left in `FXWindow.cpp` for now:
   `XMoveWindow`, `XResizeWindow`, `XMoveResizeWindow`, `XMapWindow`,
   `XUnmapWindow`, `XReparentWindow`, `XRaiseWindow` or `XLowerWindow`.
 
-## Seam 3: private event records and the event peek
+## Seam 3: the native event queue
 
-Done. This is the first half of the event seam.
+Done. The whole queue — records, fetch and peek — now lives in the platform
+modules; only message translation is left.
 
 | Part | Location |
 | --- | --- |
-| Private records | `fox2/lib/fxapppriv.h`: `FXCBSpec`, `FXTimer`, `FXSignal`, `FXChore`, `FXInput`, `FXRepaint`, `FXHandles`, `FXInvocation` — the types behind the opaque declarations in `FXApp.h`, with the platform handle table in `FXHandles` |
-| Windows module | `FXApp_win32.cpp`: `FXApp::peekEvent()` using `PeekMessage(PM_NOREMOVE)` after the refresher, chore and timer checks |
-| X11 module | `FXApp_x11.cpp`: `FXApp::peekEvent()` using `XEventsQueued`, the same pending checks and a zero-timeout `pselect` on the display connection |
+| Private records | `fox2/lib/fxapppriv.h`: `FXCBSpec`, `FXTimer`, `FXSignal`, `FXChore`, `FXInput`, `FXRepaint`, `FXHandles`, `FXInvocation` — the types behind the opaque declarations in `FXApp.h`, with the platform handle table in `FXHandles` and the shared `MAXSIGNALS` |
+| Windows module | `FXApp_win32.cpp`: `FXApp::getNextEvent()` around `PeekMessage()`/`MsgWaitForMultipleObjects()` with timer, signal and I/O handling; `FXApp::peekEvent()` using `PM_NOREMOVE` |
+| X11 module | `FXApp_x11.cpp`: `FXApp::getNextEvent()` around `XEventsQueued()`, `pselect()` on the display and input descriptors, repaint/chore/update idle work and the motion, wheel and configure compression; `FXApp::peekEvent()` with a zero-timeout poll |
 
 The records had to move first: they are declared as opaque types in `FXApp.h`
 and defined in `FXApp.cpp`, so a platform module could not touch `timers`,
@@ -210,19 +211,19 @@ and defined in `FXApp.cpp`, so a platform module could not touch `timers`,
 ### Verification
 
 - X11 and cross builds compile; `hello`, `button` and `dpi` run, DPI values are
-  unchanged.
-- The moved `peekEvent()` bodies are textually identical to the originals
-  (`diff` against `HEAD`), so this step cannot change behavior.
+  unchanged (`unknown/0/0/1.00` on X11, per-monitor-v2/96/96 under Wine).
+- Both moved `getNextEvent()` bodies and both `peekEvent()` bodies diff
+  identical against `HEAD`, so the move cannot change behavior.
 - `hello`/`button` screenshots vary slightly between two runs of the same
   binary (cursor or paint timing), `dpi` is stable; the committed screenshots
   are therefore left untouched.
 
 ## Next seams, in order
 
-1. **The rest of the event queue and message translation** (`FXApp.cpp`).
-   `getNextEvent()` for both platforms (timers, signals, I/O handles, event
-   compression), then `dispatchEvent()` and the `WM_*` handling including
-   `WM_DPICHANGED`, the enable/disable input state and grab acquisition.
+1. **Message translation** (`FXApp.cpp`). `dispatchEvent()` and the `WM_*`
+   handling including `WM_DPICHANGED` and `WM_DPICHANGED_AFTERPARENT`, which is
+   what makes per-window metrics real; the enable/disable input state and grab
+   acquisition belong here as well.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,

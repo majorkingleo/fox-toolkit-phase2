@@ -35,6 +35,10 @@
 #include "FXApp.h"
 
 
+// Largest number of signals on this system
+#define MAXSIGNALS 64
+
+
 namespace FX {
 
 class FXObject;

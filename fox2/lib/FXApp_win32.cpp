@@ -205,6 +205,159 @@ FXint fxplatformGetWindowDPI(FXID window){
   }
 
 
+// Get an event
+FXbool FXApp::getNextEvent(FXRawEvent& msg,FXTime blocking){
+  FXint allinputs;
+  DWORD signaled;
+
+  // Set to no-op just in case
+  msg.message=0;
+
+  // If a timer is due, handle it
+  if(timers && timers->due<=FXThread::time()){
+    FXTimer* t=timers;
+    timers=t->next;
+    t->next=timerrecs;
+    timerrecs=t;
+    if(t->target && t->target->tryHandle(this,FXSEL(SEL_TIMEOUT,t->message),t->data)) refresh();
+    return false;
+    }
+
+  // Check non-immediate signals that may have fired
+  if(signalreceived){
+    FXint sig=signalreceived;
+    FXint nxt=MAXSIGNALS;
+    signals[sig].notified=false;
+    while(--nxt && !signals[nxt].notified);
+    signalreceived=nxt;
+    if(signals[sig].target && signals[sig].target->tryHandle(this,FXSEL(SEL_SIGNAL,signals[sig].message),(void*)(FXival)sig)) refresh();
+    return false;
+    }
+
+  // Peek for messages; this marks the message queue as unsignalled, i.e.
+  // MsgWaitForMultipleObjects would block even if there are unhandled events;
+  // the fix is to call MsgWaitForMultipleObjects only AFTER having ascertained
+  // that there are NO unhandled events queued up.
+  if(PeekMessage(&msg,nullptr,0,0,PM_REMOVE)) return true;
+
+  // Poll to see if any waitable objects are signalled
+  allinputs=maxhandle+1;
+  signaled=MsgWaitForMultipleObjects(allinputs,handles->hnd,false,0,QS_ALLINPUT);
+// signaled=MsgWaitForMultipleObjectsEx(allinputs,handles,0,QS_ALLINPUT,MWMO_ALERTABLE|MWMO_INPUTAVAILABLE);
+
+  // No objects were signalled, so perform background tasks now
+  if(signaled==WAIT_TIMEOUT){
+
+    // Do our chores :-)
+    if(chores){
+      FXChore *c=chores;
+      chores=c->next;
+      c->next=chorerecs;
+      chorerecs=c;
+      if(c->target && c->target->tryHandle(this,FXSEL(SEL_CHORE,c->message),c->data)) refresh();
+      }
+
+    // GUI updating:- walk the whole widget tree, stop after updating refresherstop
+    if(refresher){
+      if(refresher->getFirst()){
+        refresher=refresher->getFirst();
+        }
+      else{
+        while(refresher->getParent()){
+          if(refresher->getNext()){ refresher=refresher->getNext(); break; }
+          refresher=refresher->getParent();
+          }
+        }
+      refresher->handle(this,FXSEL(SEL_UPDATE,0),nullptr);
+      if(refresher!=refresherstop) return false;
+      refresher=refresherstop=nullptr;
+      }
+
+    // There are more chores to do
+    if(chores) return false;
+
+    // No updates or chores pending, so return at this point if not blocking
+    if(blocking<=0) return false;
+
+    // One more call to PeekMessage here because the preceding idle
+    // processing may have caused some more messages to be posted to
+    // our message queue:- a call to MsgWaitForMultipleObjects when
+    // there are events already in the queue would NOT immediately fall
+    // through but block until the next event comes in.
+    if(PeekMessage(&msg,nullptr,0,0,PM_REMOVE)) return true;
+
+    // If there are timers, block only a little time
+    allinputs=maxhandle+1;
+    if(timers || blocking<forever){
+      FXTime interval;
+
+      // All that testing above may have taken some time...
+      if(timers && (interval=timers->due-FXThread::time())<blocking) blocking=interval;
+
+      // Some timers are already due; do them right away!
+      if(blocking<=0) return false;
+
+      DWORD delta=(DWORD)(blocking/1000000);
+
+      // Exit critical section
+      appMutex.unlock();
+
+      // Now we will block...
+      signaled=MsgWaitForMultipleObjects(allinputs,handles->hnd,false,delta,QS_ALLINPUT);
+      //signaled=MsgWaitForMultipleObjectsEx(allinputs,handles,delta,QS_ALLINPUT,MWMO_ALERTABLE|MWMO_INPUTAVAILABLE);
+
+      // Enter critical section
+      appMutex.lock();
+      }
+
+    // No timers, so block indefinitely
+    else{
+
+      // Exit critical section
+      appMutex.unlock();
+
+      // Now we will block...
+      signaled=MsgWaitForMultipleObjects(allinputs,handles->hnd,false,INFINITE,QS_ALLINPUT);
+      //signaled=MsgWaitForMultipleObjectsEx(allinputs,handles,INFINITE,QS_ALLINPUT,MWMO_ALERTABLE|MWMO_INPUTAVAILABLE);
+
+      // Enter critical section
+      appMutex.lock();
+      }
+    }
+
+  // Timed out, so do timeouts
+  if(signaled==WAIT_TIMEOUT) return false;
+
+  // Signallable object was signalled
+  if(WAIT_OBJECT_0<=signaled && signaled<WAIT_OBJECT_0+allinputs){
+
+    // Process ALL objects which are signalled after returning from
+    // MsgWaitForMultipleObjects. We copy the stuff out of the arrays
+    // before issueing callbacks, in case an entry is removed.
+    for(FXint i=0; i<=maxhandle; i++){
+      FXInputHandle fff=handles->hnd[i];
+      if((i==(FXint)(signaled-WAIT_OBJECT_0)) || (WaitForSingleObject(fff,0)==WAIT_OBJECT_0)){
+        FXInput in=inputs[i];
+        if(in.read.target && in.read.target->tryHandle(this,FXSEL(SEL_IO_READ,in.read.message),in.read.data)) refresh();
+        if(in.write.target && in.write.target->tryHandle(this,FXSEL(SEL_IO_WRITE,in.write.message),in.write.data)) refresh();
+        if(in.excpt.target && in.excpt.target->tryHandle(this,FXSEL(SEL_IO_EXCEPT,in.excpt.message),in.excpt.data)) refresh();
+        }
+      }
+    }
+
+  // Got message from the GUI?
+  if(signaled!=WAIT_OBJECT_0+allinputs) return false;
+
+  // Get the event; this used to be GetMessage(&msg,NULL,0,0),
+  // but for some reason, this occasionally blocks even though we
+  // have tried to make sure an event was indeed available.
+  // The new code will always fall through, with an event if there
+  // is one, or without one if despite our efforts above there wasn't.
+  // Thanks to Hodju Petri <phodju@cc.hut.fi> for this suggestion.
+  return PeekMessage(&msg,nullptr,0,0,PM_REMOVE)!=0;
+  }
+
+
 // Peek for event
 FXbool FXApp::peekEvent(){
   if(initialized){
