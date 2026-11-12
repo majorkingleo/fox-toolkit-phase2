@@ -625,6 +625,57 @@ void FXApp::beep(){
   }
 
 
+// Close display
+FXbool FXApp::closeDisplay(){
+  if(initialized){
+
+    // What's going on
+    FXTRACE(TOPIC_DETAIL,"%s::closeDisplay: closing display.\n",getClassName());
+
+    // Destroy widgets
+    destroy();
+
+    // Close input devices
+    closeInputDevices();
+
+    // Atoms created using GlobalCreateAtom() are reference-counted by
+    // the system; calling GlobalDeleteAtom() here just decrements the
+    // reference count but doesn't necessarily free the memory.
+    GlobalDeleteAtom(ddeTargets);
+    GlobalDeleteAtom(xdndAware);
+
+    // Free standard stipples
+    DeleteObject(stipples[STIPPLE_0]);
+    DeleteObject(stipples[STIPPLE_1]);
+    DeleteObject(stipples[STIPPLE_2]);
+    DeleteObject(stipples[STIPPLE_3]);
+    DeleteObject(stipples[STIPPLE_4]);
+    DeleteObject(stipples[STIPPLE_5]);
+    DeleteObject(stipples[STIPPLE_6]);
+    DeleteObject(stipples[STIPPLE_7]);
+    DeleteObject(stipples[STIPPLE_8]);
+    DeleteObject(stipples[STIPPLE_9]);
+    DeleteObject(stipples[STIPPLE_10]);
+    DeleteObject(stipples[STIPPLE_11]);
+    DeleteObject(stipples[STIPPLE_12]);
+    DeleteObject(stipples[STIPPLE_13]);
+    DeleteObject(stipples[STIPPLE_14]);
+    DeleteObject(stipples[STIPPLE_15]);
+    DeleteObject(stipples[STIPPLE_16]);
+
+    // Clear it
+    display=nullptr;
+
+    // Unlock the global mutex
+    appMutex.unlock();
+
+    // We are no longer initialized
+    initialized=false;
+    }
+  return true;
+  }
+
+
 }
 
 #endif

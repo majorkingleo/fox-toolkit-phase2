@@ -309,6 +309,26 @@ than moved.
 - `hello`, `button` and `dpi` run on X11 and under Wine with unchanged DPI
   values.
 
+## Seam 9: closing the display
+
+Done. Session teardown is the first half of the session seam; `openDisplay()`
+(~400 lines) is left for its own step.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `FXApp::closeDisplay()` releasing the DDE/XDND atoms with `GlobalDeleteAtom()` and the seventeen stipples with `DeleteObject()` |
+| X11 module | `FXApp_x11.cpp`: `FXApp::closeDisplay()` freeing stipples and hatch patterns with `XFreePixmap()`, closing the input method and calling `XCloseDisplay()` |
+| Portable core | the common prologue (`destroy()`, `closeInputDevices()`), clearing `display`, unlocking the mutex and clearing `initialized` stay in each module; `closeInputDevices()` itself is still in the core |
+
+### Verification
+
+- Cross build plus Wine: `dpi.exe simulate` now runs to completion instead of
+  being killed, so teardown actually executes — it reports the 144-DPI step
+  (scale 1.50, 780x480) then back to 96 DPI (520x320) and exits with status 0.
+- X11: a short program that opens and closes the display (`tmp/t1-check.cpp`)
+  prints `PASS` and exits 0, so `XCloseDisplay()` runs on the new path.
+- Both builds used `--fast`; no configure input changed.
+
 ## Next seams, in order
 
 1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`

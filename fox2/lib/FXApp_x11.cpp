@@ -677,6 +677,67 @@ void FXApp::beep(){
   }
 
 
+// Close display
+FXbool FXApp::closeDisplay(){
+  if(initialized){
+
+    // What's going on
+    FXTRACE(TOPIC_DETAIL,"%s::closeDisplay: closing display.\n",getClassName());
+
+    // Destroy widgets
+    destroy();
+
+    // Close input devices
+    closeInputDevices();
+
+    // Free standard stipples
+    XFreePixmap((Display*)display,stipples[STIPPLE_0]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_1]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_2]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_3]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_4]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_5]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_6]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_7]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_8]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_9]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_10]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_11]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_12]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_13]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_14]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_15]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_16]);
+
+    // Free hatch patterns
+    XFreePixmap((Display*)display,stipples[STIPPLE_HORZ]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_VERT]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_CROSS]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_DIAG]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_REVDIAG]);
+    XFreePixmap((Display*)display,stipples[STIPPLE_CROSSDIAG]);
+
+    // Close input method
+#ifndef NO_XIM
+    if(xim){XCloseIM((XIM)xim);}
+#endif
+
+    // Close display
+    XCloseDisplay((Display*)display);
+
+    // Clear it
+    display=nullptr;
+
+    // Unlock the global mutex
+    appMutex.unlock();
+
+    // We are no longer initialized
+    initialized=false;
+    }
+  return true;
+  }
+
+
 }
 
 #endif
