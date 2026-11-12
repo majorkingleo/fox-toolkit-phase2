@@ -130,5 +130,10 @@ Do not start a later seam before the earlier one is accepted on both builds.
   `scripts/build-fox2-linux.sh` on Linux. A step is accepted only when both
   compile and their test programs run; X11 modules must not be checked in
   unbuilt.
+- The Win32 backend also cross-compiles on the Linux host with
+  `scripts/build-fox2-mingw-cross.sh` (MinGW-w64, installed by
+  `scripts/install-cachyos-mingw.sh`). That is the fast compile check, and
+  Wine can start `hello`, `button` and `dpi` from it, but it does not replace
+  the native Windows run for DPI behavior.
 - Keep DPI behavior identical while extracting; `tests/dpi` output and the
   session log are the comparison.
