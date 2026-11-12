@@ -116,6 +116,16 @@ enum FXDefaultCursor {
   };
 
 
+/// Process DPI awareness levels
+enum {
+  DPIAWARENESS_UNKNOWN=0,               /// Not determined or not applicable
+  DPIAWARENESS_UNAWARE=1,               /// DPI unaware, system scales the app
+  DPIAWARENESS_SYSTEM=2,                /// Aware of the system DPI
+  DPIAWARENESS_PER_MONITOR=3,           /// Aware of per-monitor DPI
+  DPIAWARENESS_PER_MONITOR_V2=4         /// Per-monitor DPI, version 2
+  };
+
+
 /**
 * The Application object is the central point of a FOX user-interface.
 * It manages the event queue, timers, signals, chores, and input sources.
@@ -245,6 +255,8 @@ private:
   const FXchar    *inputmethod;         // Input method name
   const FXchar    *inputstyle;          // Input method style
   FXbool           initialized;         // Has been initialized
+  FXint            dpiawareness;        // Effective process DPI awareness
+  FXint            dpi;                 // System DPI, 0 if unknown
 
 private:
   static FXApp    *app;                 // Application pointer
@@ -531,6 +543,12 @@ public:
 
   /// Return pointer
   void* getDisplay() const { return display; }
+
+  /// Return the process DPI awareness established by init()
+  FXint getDPIAwareness() const { return dpiawareness; }
+
+  /// Return the system DPI, or 0 if unknown
+  FXint getDPI() const { return dpi; }
 
   /// Connection to display; this is called by init()
   virtual FXbool openDisplay(const FXchar* dpy=nullptr);

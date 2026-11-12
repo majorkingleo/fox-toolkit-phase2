@@ -246,6 +246,13 @@ coordinates.
 - Windows builds remain cross-compilable; new APIs are guarded and have
   fallbacks appropriate to supported Windows SDK/runtime versions.
 
+#### Step 1 result
+
+Process DPI awareness is implemented, policy-driven, verified by the runtime,
+and reported through `FXApp::getDPIAwareness()` / `FXApp::getDPI()`. The native
+Windows build of `fox2/` and the `tests/dpi` diagnostic are in place. Details,
+the policy setting, and the remaining scaling steps are in `docs/dpi-plan.md`.
+
 ### 3. Compile-time platform and presentation seams
 
 #### Extract incrementally
@@ -454,12 +461,14 @@ the FOX event loop, and document the compositor versions tested.
 
 ## Recommended sequencing
 
-Status as of 2026-11-11: step 0 done, step 1 done (policy recorded above),
-step 2 core done with a defined remainder, step 3 next.
+Status as of 2026-11-12: step 0 done on Linux/X11 and Windows/MinGW, step 1
+done (policy recorded above), step 2 core done with a defined remainder,
+step 3 in progress — process awareness done, centralized scaling next.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
-   baseline, the minimal subset was copied into `fox2/` with Autotools, and
-   `hello` runs. All later steps operate on `fox2/`.
+   baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was
+   copied into `fox2/` with Autotools, and `hello` runs. All later steps
+   operate on `fox2/`.
 1. **Baseline and compatibility policy** — done; see the section above.
 2. **Theme tokens** — core done: semantic colours, metrics, font roles, DPI
    scale, `.foxtheme` loading, runtime switching, antialiased corners, rounded
@@ -468,7 +477,8 @@ step 2 core done with a defined remainder, step 3 next.
    last chrome consumers, ordered in `docs/theme-plan.md` under "Next steps
    after the core"; it is deliberately sequenced so the widgets the DPI
    workstream will re-geometry are migrated once, not twice.
-3. **Windows DPI**: enable and verify per-monitor awareness, then implement
+3. **Windows DPI**: process awareness (per-monitor-v2 with policy and runtime
+   verification) is done and recorded in `docs/dpi-plan.md`; next is
    centralized scaling and runtime DPI transitions. Reuse theme metrics.
 4. **Internal platform seam**: extract and validate narrow Windows/X11
    operations one at a time; update all build systems and cross-build checks.
