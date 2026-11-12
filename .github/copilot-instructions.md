@@ -33,3 +33,27 @@
   - single-statement bodies may omit braces:
     `if(options&BUTTON_DEFAULT) setDefault(true);`
   - keep long parameter lists on one line; do not re-wrap them for width
+
+# porting guideline
+
+since we may wan't to support more platforms than X11 and WIN32
+don't use macros
+#ifdef WIN32
+..
+#else
+..
+#endif
+
+instead use
+#if defined(WIN32)
+#endif
+#if defined(X11)
+#endif
+
+if too much code is in one file more than 100 lines platform specific code, plit it into multiple files,
+eg: FXButton_win32.cpp, FXButton_x11.cpp, FXButton.cpp
+
+# screenshots
+
+if you need screenshots for testing store it in an screenshot folder for later reuse, eg screenshots/tests/fox1/x11/button.png, screenshots/tests/fox1/win32/button.png
+
