@@ -146,14 +146,6 @@
 
 */
 
-#define TOPIC_CONSTRUCT 1000
-#define TOPIC_CREATION  1001
-#define TOPIC_DETAIL    1002
-#define TOPIC_CONFIGURE 1003
-#define TOPIC_KEYBOARD  1009
-#define TOPIC_MOUSE     1010
-#define TOPIC_EVENT     1011
-
 // Default maximum number of colors to allocate
 #define MAXCOLORS  125
 
@@ -721,16 +713,6 @@ const FXString& FXApp::getVendorName() const {
   }
 
 
-// Return true if input method support
-FXbool FXApp::hasInputMethod() const {
-#if defined(WIN32)
-  return true;
-#else
-  return xim!=nullptr;
-#endif
-  }
-
-
 // Change default visual
 void FXApp::setDefaultVisual(FXVisual* vis){
   if(!vis){ fxerror("%s::setDefaultVisual: NULL visual.\n",getClassName()); }
@@ -781,37 +763,6 @@ FXWindow* FXApp::findWindowWithId(FXID xid) const {
   }
 
 
-// Find window from root x,y, starting from given window
-FXWindow* FXApp::findWindowAt(FXint rx,FXint ry,FXID window) const {
-  if(initialized){
-#if defined(WIN32)
-    POINT point;
-    FXID child;
-    if(!window) window=(FXID)GetDesktopWindow();
-    while(1){
-      point.x=rx; point.y=ry;
-      ScreenToClient((HWND)window,&point);
-      child=ChildWindowFromPointEx((HWND)window,point,CWP_SKIPINVISIBLE|CWP_SKIPTRANSPARENT);   // Suggested by "PelleBert"
-      if(!child || child==window) break;
-      window=child;
-      }
-#else
-    Window rootwin=XDefaultRootWindow((Display*)display);
-    Window child;
-    int wx,wy;
-    if(!window) window=rootwin;
-    while(1){
-      if(!XTranslateCoordinates((Display*)display,rootwin,window,rx,ry,&wx,&wy,&child)) return nullptr;
-      if(child==None) break;
-      window=child;
-      }
-#endif
-    return findWindowWithId(window);
-    }
-  return nullptr;
-  }
-
-
 // Change normal font
 void FXApp::setNormalFont(FXFont* font){
   if(!font){ fxerror("%s::setNormalFont: NULL font.\n",getClassName()); }
@@ -825,8 +776,6 @@ void FXApp::setDefaultCursor(FXDefaultCursor which,FXCursor* cur){
   if(!cur){ fxerror("%s::setDefaultCursor: NULL default cursor.\n",getClassName()); }
   cursor[which]=cur;
   }
-
-/*******************************************************************************/
 
 /*******************************************************************************/
 
@@ -4847,33 +4796,6 @@ long FXApp::onCmdQuit(FXObject*,FXSelector,void*){
 
 
 /*******************************************************************************/
-
-// Return key state
-FXbool FXApp::getKeyState(FXuint keysym) const {
-#if defined(WIN32)
-  return GetKeyState(keysym)!=0;
-#else
-  KeyCode keycode=XKeysymToKeycode((Display*)display,keysym);
-  char keys[32];
-  if(keycode==NoSymbol) return false;
-  XQueryKeymap((Display*)display,keys);
-  return (keys[keycode>>3]>>(keycode&7))&1;
-#endif
-  }
-
-
-// Beep
-void FXApp::beep(){
-  if(initialized){
-    FXTRACE(TOPIC_EVENT,"Beep\n");
-#if defined(WIN32)
-    MessageBeep(0);
-#else
-    XBell((Display*)display,0);
-#endif
-    }
-  }
-
 
 // Dump widgets
 long FXApp::onCmdDump(FXObject*,FXSelector,void*){

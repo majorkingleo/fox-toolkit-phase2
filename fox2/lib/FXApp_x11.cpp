@@ -634,6 +634,49 @@ FXbool FXApp::removeInput(FXInputHandle fd,FXuint mode){
   }
 
 
+// Return true if input method support
+FXbool FXApp::hasInputMethod() const {
+  return xim!=nullptr;
+  }
+
+
+// Find window from root x,y, starting from given window
+FXWindow* FXApp::findWindowAt(FXint rx,FXint ry,FXID window) const {
+  if(initialized){
+    Window rootwin=XDefaultRootWindow((Display*)display);
+    Window child;
+    int wx,wy;
+    if(!window) window=rootwin;
+    while(1){
+      if(!XTranslateCoordinates((Display*)display,rootwin,window,rx,ry,&wx,&wy,&child)) return nullptr;
+      if(child==None) break;
+      window=child;
+      }
+    return findWindowWithId(window);
+    }
+  return nullptr;
+  }
+
+
+// Return key state
+FXbool FXApp::getKeyState(FXuint keysym) const {
+  KeyCode keycode=XKeysymToKeycode((Display*)display,keysym);
+  char keys[32];
+  if(keycode==NoSymbol) return false;
+  XQueryKeymap((Display*)display,keys);
+  return (keys[keycode>>3]>>(keycode&7))&1;
+  }
+
+
+// Beep
+void FXApp::beep(){
+  if(initialized){
+    FXTRACE(TOPIC_EVENT,"Beep\n");
+    XBell((Display*)display,0);
+    }
+  }
+
+
 }
 
 #endif

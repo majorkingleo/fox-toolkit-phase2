@@ -39,6 +39,16 @@
 #define MAXSIGNALS 64
 
 
+// Trace topics
+#define TOPIC_CONSTRUCT 1000
+#define TOPIC_CREATION  1001
+#define TOPIC_DETAIL    1002
+#define TOPIC_CONFIGURE 1003
+#define TOPIC_KEYBOARD  1009
+#define TOPIC_MOUSE     1010
+#define TOPIC_EVENT     1011
+
+
 namespace FX {
 
 class FXObject;

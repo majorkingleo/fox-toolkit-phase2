@@ -585,6 +585,46 @@ r:if(mode&INPUT_READ){
   }
 
 
+// Return true if input method support
+FXbool FXApp::hasInputMethod() const {
+  return true;
+  }
+
+
+// Find window from root x,y, starting from given window
+FXWindow* FXApp::findWindowAt(FXint rx,FXint ry,FXID window) const {
+  if(initialized){
+    POINT point;
+    FXID child;
+    if(!window) window=(FXID)GetDesktopWindow();
+    while(1){
+      point.x=rx; point.y=ry;
+      ScreenToClient((HWND)window,&point);
+      child=ChildWindowFromPointEx((HWND)window,point,CWP_SKIPINVISIBLE|CWP_SKIPTRANSPARENT);   // Suggested by "PelleBert"
+      if(!child || child==window) break;
+      window=child;
+      }
+    return findWindowWithId(window);
+    }
+  return nullptr;
+  }
+
+
+// Return key state
+FXbool FXApp::getKeyState(FXuint keysym) const {
+  return GetKeyState(keysym)!=0;
+  }
+
+
+// Beep
+void FXApp::beep(){
+  if(initialized){
+    FXTRACE(TOPIC_EVENT,"Beep\n");
+    MessageBeep(0);
+    }
+  }
+
+
 }
 
 #endif

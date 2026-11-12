@@ -286,6 +286,29 @@ Done. The two registration APIs the event queue works on are now platform code.
 - The moved bodies are the former `#if defined(WIN32)`/`#else` arms with the
   branch tests removed.
 
+## Seam 8: window and input queries
+
+Done. Four small queries that each carried a platform branch moved as whole
+members, and the trace topics moved into the private header so the modules can
+use them.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `hasInputMethod()` (always true), `findWindowAt()` with `ChildWindowFromPointEx()`, `getKeyState()` via `GetKeyState()`, `beep()` via `MessageBeep()` |
+| X11 module | `FXApp_x11.cpp`: `hasInputMethod()` from `xim`, `findWindowAt()` with `XTranslateCoordinates()`, `getKeyState()` via `XQueryKeymap()`, `beep()` via `XBell()` |
+| Private header | `fxapppriv.h`: the `TOPIC_*` trace topics, moved next to `MAXSIGNALS` |
+| Portable core | `findWindowWithId()`, `getFocusWindow()` and the widget-tree helpers stay |
+
+`getForegroundWindow()` is dead code (`#if 0`) and was left untouched rather
+than moved.
+
+### Verification
+
+- Fast builds (`--fast`, no configure rerun) recompile `FXApp.cpp` and the
+  platform module, as the dependency files require.
+- `hello`, `button` and `dpi` run on X11 and under Wine with unchanged DPI
+  values.
+
 ## Next seams, in order
 
 1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`
