@@ -3434,21 +3434,6 @@ FXbool FXApp::dispatchEvent(FXRawEvent& msg){
 /*******************************************************************************/
 
 
-// Flush pending repaints
-void FXApp::flush(FXbool sync){
-  if(initialized){
-#if defined(WIN32)
-    GdiFlush();
-#else
-    if(sync)
-      XSync((Display*)display,false);
-    else
-      XFlush((Display*)display);
-#endif
-    }
-  }
-
-
 // Force GUI refresh of every widget in this application
 void FXApp::forceRefresh(){
   getRootWindow()->forceRefresh();
@@ -3461,20 +3446,6 @@ void FXApp::forceRefresh(){
 void FXApp::refresh(){
   if(!refresher) refresher=root;
   refresherstop=refresher;
-  }
-
-
-// Paint all windows marked for repainting
-void FXApp::repaint(){
-  if(initialized){
-#if defined(WIN32)
-    for(FXWindow *top=getRootWindow()->getFirst(); top; top=top->getNext()){
-      RedrawWindow((HWND)top->id(),nullptr,nullptr,RDW_ERASENOW|RDW_UPDATENOW|RDW_ALLCHILDREN);
-      }
-#else
-    removeRepaints(0,0,0,0,0);
-#endif
-    }
   }
 
 

@@ -398,6 +398,25 @@ FXbool FXApp::peekEvent(){
   }
 
 
+// Flush pending repaints
+void FXApp::flush(FXbool sync){
+  if(initialized){
+    if(sync)
+      XSync((Display*)display,false);
+    else
+      XFlush((Display*)display);
+    }
+  }
+
+
+// Paint all windows marked for repainting
+void FXApp::repaint(){
+  if(initialized){
+    removeRepaints(0,0,0,0,0);
+    }
+  }
+
+
 }
 
 #endif

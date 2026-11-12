@@ -381,6 +381,24 @@ FXbool FXApp::peekEvent(){
   }
 
 
+// Flush pending repaints
+void FXApp::flush(FXbool){
+  if(initialized){
+    GdiFlush();
+    }
+  }
+
+
+// Paint all windows marked for repainting
+void FXApp::repaint(){
+  if(initialized){
+    for(FXWindow *top=getRootWindow()->getFirst(); top; top=top->getNext()){
+      RedrawWindow((HWND)top->id(),nullptr,nullptr,RDW_ERASENOW|RDW_UPDATENOW|RDW_ALLCHILDREN);
+      }
+    }
+  }
+
+
 }
 
 #endif

@@ -218,12 +218,33 @@ and defined in `FXApp.cpp`, so a platform module could not touch `timers`,
   binary (cursor or paint timing), `dpi` is stable; the committed screenshots
   are therefore left untouched.
 
+## Seam 4: flush and repaint
+
+Done. Small, but dispatch and every drawing path call into it, so it had to come
+before message translation.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `FXApp::flush()` via `GdiFlush()`, `FXApp::repaint()` looping `RedrawWindow(RDW_ERASENOW\|RDW_UPDATENOW\|RDW_ALLCHILDREN)` over the top-level windows |
+| X11 module | `FXApp_x11.cpp`: `FXApp::flush()` via `XSync()`/`XFlush()`, `FXApp::repaint()` via `removeRepaints(0,0,0,0,0)` |
+| Portable core | `FXApp::forceRefresh()` and `FXApp::refresh()` are unchanged; they were already platform free |
+
+Both functions are member definitions in the platform file, so no new contract
+is needed in `fxplatform.h`.
+
+### Verification
+
+- X11 and cross builds compile; `hello`, `button` and `dpi` run with unchanged
+  DPI values.
+- The moved bodies are the exact arms of the former `#if defined(WIN32)` blocks.
+
 ## Next seams, in order
 
 1. **Message translation** (`FXApp.cpp`). `dispatchEvent()` and the `WM_*`
    handling including `WM_DPICHANGED` and `WM_DPICHANGED_AFTERPARENT`, which is
    what makes per-window metrics real; the enable/disable input state and grab
-   acquisition belong here as well.
+   acquisition belong here as well. The Windows arm is ~1900 lines, so it needs
+   its own sub-steps: `wndproc()` first, then the `WM_*` groups.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
