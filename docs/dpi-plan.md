@@ -223,6 +223,23 @@ conversion point at these boundaries.
 | Mixed-DPI monitor move | font cache path in place, not measured |
 | X11 build unaffected | unchanged code paths |
 
+### 7. Next actions, in order
+
+1. **Per-window metrics.** Required before mixed-DPI rendering can physically
+   differ: theme metrics and layout must follow each window's monitor scale
+   instead of the single app-wide `FXTheme::scale`. This belongs to the
+   platform-seam workstream, which owns window layout; do not add widget-local
+   scaling ahead of it.
+2. **DPI-keyed icon/bitmap caches.** Cache as `(image,dpi)` and rebuild on DPI
+   change once icons are wired into the subset.
+3. **Real monitor validation.** Repeat the `tests/dpi` checks on a 150% and a
+   200% monitor, then move a live window between monitors of different scale
+   and confirm size, fonts, metrics, hit targets, and pointer alignment.
+
+Current state: per-monitor font realization is committed (`fox2: realize fonts
+per monitor DPI`); the build and the simulated 96→144→96 round trip pass, and
+100%/150% screenshots are unchanged.
+
 ## Open decisions
 
 - **Logical mode default.** The plan keeps pixel mode the default and makes

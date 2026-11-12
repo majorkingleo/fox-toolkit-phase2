@@ -261,8 +261,12 @@ theme/font relayout, suggested rectangle), and an interactive
 slider/preset-button DPI test app are implemented and verified, including a
 simulated 144-DPI transition and manual 70–150% scaling. The device-pixel
 input/hit-test audit is complete and clicks are verified at 100% and 150%.
-Remaining: per-window fonts for mixed-DPI monitors, DPI-aware icon/bitmap
-caches, and validation on real 150/200% monitors — tracked in
+Per-monitor font realization is done as well: `FXFont` takes an explicit DPI
+resolution, `FXApp` caches normal and role fonts per DPI, and windows realize
+fonts for their own monitor. Measurement showed that per-monitor fonts alone
+do not change physical text size, so true mixed-DPI rendering needs per-window
+metrics in the platform seam. Remaining: per-window metrics, DPI-aware
+icon/bitmap caches, and validation on real 150/200% monitors — tracked in
 `docs/dpi-plan.md`.
 
 ### 3. Compile-time platform and presentation seams
@@ -475,9 +479,9 @@ the FOX event loop, and document the compositor versions tested.
 
 Status as of 2026-11-12: step 0 done on Linux/X11 and Windows/MinGW, step 1
 done (policy recorded above), step 2 core done with a defined remainder,
-step 3 in progress — awareness, scale wiring, DPI-change handling, and the
-hit-test audit are done; per-window fonts/icons and real 150/200% validation
-next.
+step 3 in progress — awareness, scale wiring, DPI-change handling, the
+hit-test audit, and per-monitor font realization are done; per-window metrics,
+icon/bitmap caches, and real 150/200% validation next.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
    baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was
@@ -494,9 +498,12 @@ next.
 3. **Windows DPI**: process awareness (per-monitor-v2 with policy and runtime
    verification), `[display] scale=auto|<percent>`, per-window DPI helpers, and
    `WM_DPICHANGED` handling are done and recorded in `docs/dpi-plan.md`; the
-   device-pixel input/hit-test audit is complete. Next are per-window fonts
-   for mixed-DPI monitors, DPI-aware icon/bitmap caches, and validation on
-   real 150/200% monitors. Reuse theme metrics.
+   device-pixel input/hit-test audit is complete. Per-monitor font realization
+   is done: fonts carry their monitor DPI and are cached per DPI. Because the
+   DPI cancels against the global scale, physical mixed-DPI text needs
+   per-window metrics, which the platform seam (step 4) must provide. Next are
+   per-window metrics, DPI-aware icon/bitmap caches, and validation on real
+   150/200% monitors. Reuse theme metrics.
 4. **Internal platform seam**: extract and validate narrow Windows/X11
    operations one at a time; update all build systems and cross-build checks.
 5. **Browser prototype**: compare drawing-surface versus semantic-widget
