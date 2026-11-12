@@ -106,8 +106,8 @@ FOX DPI diagnostic
 - `tests/dpi` is an interactive app: a slider from 70% to 150%, `-10%`,
   `+10%`, `100%` and `Auto` buttons, live awareness/DPI/scale readouts, and a
   sample area. The window also grows with the scale so the layout stays
-  visible. Screenshots: `screenshots/tests/fox2/win32/dpi-100.png` and
-  `dpi-150.png`.
+  visible. Screenshots: `screenshots/tests/fox2/win32/dpi-100.png`,
+  `dpi-150.png`, `dpi-200.png`, and `dpi-clicks*.png`.
 - `[display] scale=150` at 96 DPI now scales both metrics and text; the
   simulated 144-DPI transition below scales the window to 780x480.
 
@@ -127,13 +127,20 @@ checked on a 96-DPI machine:
   after WM_DPICHANGED (144 dpi):
     theme scale       : 1.50
     window DPI (FOX)  : 144
-    window bounds     : 1220,686 188x48
+    window bounds     : 1020,536 780x480
+  after WM_DPICHANGED (96 dpi):
+    theme scale       : 1.00
+    window DPI (FOX)  : 96
+    window bounds     : 1020,536 520x320
 ```
+
+A 200% manual scale was also checked through `[display] scale=200`
+(`screenshots/tests/fox2/win32/dpi-200.png`); the window becomes 1040x640.
 
 ## Prerequisite — native Windows build of fox2 (done)
 
 Build with `./scripts/build-fox2-mingw.sh --fast --run` inside MSYS2 MINGW64,
-or `\scripts\build-fox2-mingw.ps1 -Fast -Run` from PowerShell.
+or `.\scripts\build-fox2-mingw.ps1 -Fast -Run` from PowerShell.
 
 The copied subset lacked the sources that the Win32 paths reference. Added
 from `fox-1.7.95/` and registered in `lib/Makefile.am`:
@@ -173,6 +180,9 @@ conversion point at these boundaries.
   description.
 - Remaining: per-window font realization for mixed-DPI monitors, and keying
   icons/bitmaps by DPI so a 96-DPI bitmap is not reused on a 192-DPI monitor.
+  `FXFont::match()` currently derives the pixel height from a screen-compatible
+  DC (`CreateCompatibleDC(nullptr)`), so a per-window font needs an explicit
+  monitor DPI passed into font creation, plus a cache keyed by `(role,dpi)`.
 
 ### 6. Validation
 
@@ -187,9 +197,10 @@ conversion point at these boundaries.
 | Check | Status |
 | --- | --- |
 | 100% scaling, per-monitor-v2 | verified (`tests/dpi`) |
-| Simulated 144-DPI transition | verified (`tests/dpi simulate`) |
+| Simulated 144-DPI transition | verified (`tests/dpi simulate`), round trip back to 96 |
 | Interactive 70–150% scaling | verified (`tests/dpi`, screenshots) |
 | 150% theme scale (manual) | verified (`[display] scale=150`) |
+| 200% theme scale (manual) | verified (`dpi-200.png`) |
 | Pointer hit testing at 100% and 150% | verified (`dpi-clicks*.png`) |
 | 150% / 200% real monitor | not yet run (this machine is 96 DPI) |
 | Mixed-DPI monitor move | code path in place, not measured |

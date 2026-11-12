@@ -270,6 +270,18 @@ int main(int argc,char* argv[]){
     printf("    window DPI (FOX)  : %d\n",main->getWindowDPI());
     printf("    window bounds     : %d,%d %dx%d\n",main->getX(),main->getY(),main->getWidth(),main->getHeight());
     fflush(stdout);
+
+    // Round trip: move back to the system DPI
+    GetWindowRect(hwnd,&rect);
+    rect.right=rect.left+(rect.right-rect.left)*2/3;
+    rect.bottom=rect.top+(rect.bottom-rect.top)*2/3;
+    SendMessage(hwnd,WM_DPICHANGED,MAKEWPARAM(application.getDPI(),application.getDPI()),(LPARAM)&rect);
+    tester.update();
+    printf("  after WM_DPICHANGED (%d dpi):\n",application.getDPI());
+    printf("    theme scale       : %.2f\n",application.getDisplayScale());
+    printf("    window DPI (FOX)  : %d\n",main->getWindowDPI());
+    printf("    window bounds     : %d,%d %dx%d\n",main->getX(),main->getY(),main->getWidth(),main->getHeight());
+    fflush(stdout);
     application.addTimeout(&application,FXApp::ID_QUIT,2000000000);
     }
 #endif
