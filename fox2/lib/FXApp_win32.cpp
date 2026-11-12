@@ -475,6 +475,116 @@ FXString FXApp::getDragTypeName(FXDragType type) const {
   }
 
 
+// Add a signal message
+void FXApp::addSignal(FXint sig,FXObject* tgt,FXSelector sel,FXbool immediate,FXuint){
+  void (CDECL *handler)(int);
+  if(sig<0 || MAXSIGNALS<sig){ fxerror("%s::addSignal: bad signal number\n",getClassName()); }
+
+  // May have just changed the message and/or target
+  signals[sig].target=tgt;
+  signals[sig].message=sel;
+
+  // Has handler been set?
+  if(!signals[sig].handlerset){
+    if(immediate)
+      handler=immediatesignalhandler;
+    else
+      handler=signalhandler;
+#if defined(__IBMCPP__)
+    if(signal(sig,(_SigFunc)handler)==SIG_ERR){ fxwarning("%s::addSignal: error setting signal handler\n",getClassName()); }
+#else
+    if(signal(sig,handler)==SIG_ERR){ fxwarning("%s::addSignal: error setting signal handler\n",getClassName()); }
+#endif
+    signals[sig].notified=false;
+    signals[sig].handlerset=true;
+    }
+  }
+
+
+// Remove all signal messages for signal sig
+void FXApp::removeSignal(FXint sig){
+  if(sig<0 || MAXSIGNALS<sig){ fxerror("%s::removeSignal: bad signal number\n",getClassName()); }
+
+  // Has a handler been set?
+  if(signals[sig].handlerset){
+    if(signal(sig,SIG_DFL)==SIG_ERR){ fxwarning("%s::removeSignal: error removing signal handler\n",getClassName()); }
+    signals[sig].target=nullptr;
+    signals[sig].message=0;
+    signals[sig].handlerset=false;
+    signals[sig].notified=false;
+    }
+  }
+
+
+// Add input
+FXbool FXApp::addInput(FXObject *tgt,FXSelector sel,FXInputHandle fd,FXuint mode,FXptr ptr){
+  if(mode==INPUT_NONE) return false;
+  FXint in;
+  if(fd==INVALID_HANDLE_VALUE || fd==nullptr) return false;
+  for(in=0; in<=maxhandle; in++){       // See if existing handle
+    if(handles->hnd[in]==fd) goto r;    // If existing handle, just replace callbacks
+    }
+  if(maxhandle+1>=MAXIMUM_WAIT_OBJECTS) return false;
+  if(maxhandle+1>=ninputs){             // Grow table of callbacks
+    resizeElms(inputs,ninputs+1);
+    clearElms(&inputs[ninputs],1);
+    ninputs=ninputs+1;
+    }
+  in=++maxhandle;                       // One more handle
+  handles->hnd[in]=fd;
+r:FXASSERT(in<ninputs);
+  if(mode&INPUT_READ){                  // Replace callbacks
+    inputs[in].read.target=tgt;
+    inputs[in].read.message=sel;
+    inputs[in].read.data=ptr;
+    }
+  if(mode&INPUT_WRITE){
+    inputs[in].write.target=tgt;
+    inputs[in].write.message=sel;
+    inputs[in].write.data=ptr;
+    }
+  if(mode&INPUT_EXCEPT){
+    inputs[in].excpt.target=tgt;
+    inputs[in].excpt.message=sel;
+    inputs[in].excpt.data=ptr;
+    }
+  return true;
+  }
+
+
+// Remove input
+FXbool FXApp::removeInput(FXInputHandle fd,FXuint mode){
+  if(mode==INPUT_NONE) return false;
+  FXint in;
+  if(fd==INVALID_HANDLE_VALUE || fd==nullptr) return false;
+  for(in=0; in<=maxhandle; in++){       // See if existing handle
+    if(handles->hnd[in]==fd) goto r;
+    }
+  return false;                         // Handle didn't exist, so nothing to remove
+r:if(mode&INPUT_READ){
+    inputs[in].read.target=nullptr;
+    inputs[in].read.message=0;
+    inputs[in].read.data=nullptr;
+    }
+  if(mode&INPUT_WRITE){
+    inputs[in].write.target=nullptr;
+    inputs[in].write.message=0;
+    inputs[in].write.data=nullptr;
+    }
+  if(mode&INPUT_EXCEPT){
+    inputs[in].excpt.target=nullptr;
+    inputs[in].excpt.message=0;
+    inputs[in].excpt.data=nullptr;
+    }
+  if(!inputs[in].read.target && !inputs[in].write.target && !inputs[in].excpt.target){  // Removed them all
+    handles->hnd[in]=handles->hnd[maxhandle];      // Compact handle table
+    inputs[in]=inputs[maxhandle];
+    maxhandle--;
+    }
+  return true;
+  }
+
+
 }
 
 #endif

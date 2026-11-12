@@ -269,6 +269,23 @@ now whole members in the platform modules.
   DPI values.
 - Statement order of the moved bodies matches the former `#else`/`#if` arms.
 
+## Seam 7: signals and input handles
+
+Done. The two registration APIs the event queue works on are now platform code.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `FXApp::addSignal()`/`removeSignal()` with `signal()` (and the `__IBMCPP__` cast), `FXApp::addInput()`/`removeInput()` over the `HANDLE` table with `MAXIMUM_WAIT_OBJECTS` |
+| X11 module | `FXApp_x11.cpp`: `FXApp::addSignal()`/`removeSignal()` with `sigaction()` and the `_POSIX_SOURCE` fallback, `FXApp::addInput()`/`removeInput()` over the `fd_set` table with `FD_SET`/`FD_CLR` and the `maxhandle` trim |
+| Portable core | `signalhandler()`, `immediatesignalhandler()`, the chore list and `leaveWindow()` stay |
+
+### Verification
+
+- X11 and cross builds compile; `hello`, `button` and `dpi` run with unchanged
+  DPI values.
+- The moved bodies are the former `#if defined(WIN32)`/`#else` arms with the
+  branch tests removed.
+
 ## Next seams, in order
 
 1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`
