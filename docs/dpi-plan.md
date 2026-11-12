@@ -95,12 +95,21 @@ FOX DPI diagnostic
   falling back to the system DPI) and exposes `getWindowDPI()`, `getScale()`,
   `scale()`, and `unscale()`. Conversion uses `MulDiv` on Windows and is the
   identity elsewhere.
-- Coordinates are still device pixels; only theme metrics are scaled. This is
-  deliberate: it keeps existing application geometry compatible while making
-  FOX-drawn chrome grow with the system DPI.
-- Verified with `[display] scale=150`: theme scale 1.50 and the label window
-  becomes slightly taller (19 → 21 px at 96 DPI). Text size is unchanged
-  because FOX fonts are point-sized and therefore already follow real DPI.
+- Coordinates are still device pixels; theme metrics and font sizes are
+  scaled. This keeps existing application geometry compatible while making
+  FOX-drawn chrome and text grow with the display scale.
+- Font descriptions are scaled by `displayScale / (systemDPI / 96)`, so a
+  manual percentage changes text size at 96 DPI, while a real 150% monitor
+  with `scale=auto` does not scale text twice. `normalFont` is rebuilt in
+  place, and cached role fonts are released and recreated with the scaled
+  size when the scale changes; `applyTheme()` re-fetches them.
+- `tests/dpi` is an interactive app: a slider from 70% to 150%, `-10%`,
+  `+10%`, `100%` and `Auto` buttons, live awareness/DPI/scale readouts, and a
+  sample area. The window also grows with the scale so the layout stays
+  visible. Screenshots: `screenshots/tests/fox2/win32/dpi-100.png` and
+  `dpi-150.png`.
+- `[display] scale=150` at 96 DPI now scales both metrics and text; the
+  simulated 144-DPI transition below scales the window to 780x480.
 
 ## Step 3 — runtime DPI changes (done)
 
@@ -123,8 +132,8 @@ checked on a 96-DPI machine:
 
 ## Prerequisite — native Windows build of fox2 (done)
 
-Build with `./scripts/build-fox2-mingw.sh --run` inside MSYS2 MINGW64, or
-`.\scripts\build-fox2-mingw.ps1 -Run` from PowerShell.
+Build with `./scripts/build-fox2-mingw.sh --fast --run` inside MSYS2 MINGW64,
+or `\scripts\build-fox2-mingw.ps1 -Fast -Run` from PowerShell.
 
 The copied subset lacked the sources that the Win32 paths reference. Added
 from `fox-1.7.95/` and registered in `lib/Makefile.am`:
@@ -153,12 +162,11 @@ exports symbols and links `AlphaBlend`.
 
 ### 5. DPI-aware caches and fonts
 
-- `FXFont` handles are created from a DC's DPI and are not rebuilt when a
-  window moves to a monitor with another DPI. Recreate role fonts and other
-  DPI-dependent resources on scale changes without losing application font
-  overrides.
-- Key icons and bitmaps by the DPI they were realized at; do not reuse a
-  96-DPI bitmap on a 192-DPI monitor.
+- Normal and role fonts are rescaled and rebuilt when the display scale
+  changes; application font overrides are preserved through the base
+  description.
+- Remaining: per-window font realization for mixed-DPI monitors, and keying
+  icons/bitmaps by DPI so a 96-DPI bitmap is not reused on a 192-DPI monitor.
 
 ### 6. Validation
 
@@ -174,6 +182,8 @@ exports symbols and links `AlphaBlend`.
 | --- | --- |
 | 100% scaling, per-monitor-v2 | verified (`tests/dpi`) |
 | Simulated 144-DPI transition | verified (`tests/dpi simulate`) |
+| Interactive 70–150% scaling | verified (`tests/dpi`, screenshots) |
+| 150% theme scale (manual) | verified (`[display] scale=150`) |
 | 150% / 200% real monitor | not yet run (this machine is 96 DPI) |
 | Mixed-DPI monitor move | code path in place, not measured |
 | Pointer hit testing | device-pixel regime unchanged; verify with logical mode |

@@ -256,11 +256,12 @@ and the policy setting are in `docs/dpi-plan.md`.
 #### Steps 2–3 result
 
 Display scale (`[display] scale=auto|<percent>`), per-window DPI storage with
-`FXWindow::scale()`/`unscale()`, and runtime `WM_DPICHANGED` handling (DPI
-update, theme relayout, suggested rectangle) are implemented and verified,
-including a simulated 144-DPI transition. Remaining: input/geometry boundary
-audit, DPI-aware font/icon caches, and validation on real 150/200% monitors —
-tracked in `docs/dpi-plan.md`.
+`FXWindow::scale()`/`unscale()`, runtime `WM_DPICHANGED` handling (DPI update,
+theme/font relayout, suggested rectangle), and an interactive
+slider/preset-button DPI test app are implemented and verified, including a
+simulated 144-DPI transition and manual 70–150% scaling. Remaining:
+input/geometry boundary audit, icons and per-window fonts, and validation on
+real 150/200% monitors — tracked in `docs/dpi-plan.md`.
 
 ### 3. Compile-time platform and presentation seams
 

@@ -122,6 +122,7 @@
 #include "FXRootWindow.h"
 #include "FXGroupBox.h"
 #include "FXShell.h"
+#include "FXSlider.h"
 #include "FXToolTip.h"
 #include "FXPopup.h"
 #include "FXTopWindow.h"

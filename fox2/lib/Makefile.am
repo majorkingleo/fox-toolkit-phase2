@@ -72,6 +72,7 @@ fxscanf.cpp \
 FXSeparator.cpp \
 FXSettings.cpp \
 FXShell.cpp \
+FXSlider.cpp \
 FXStat.cpp \
 FXStatusBar.cpp \
 FXStatusLine.cpp \

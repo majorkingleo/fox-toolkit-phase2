@@ -1544,10 +1544,36 @@ FXint FXApp::getWindowDPI(FXID) const {
 #endif
 
 
+// Return the factor applied to font descriptions; fonts already follow the
+// monitor DPI, so only the difference between display scale and DPI applies.
+FXdouble FXApp::getFontScale() const {
+  FXdouble native=dpi?FXdouble(dpi)/96.0:1.0;
+  return native>0.0?theme.getScale()/native:theme.getScale();
+  }
+
+
+// Apply the display scale to the normal font and drop the cached role fonts
+void FXApp::applyFontScale(){
+  FXFontDesc desc;
+  FXdouble factor=getFontScale();
+  if(basefontdesc.size){
+    desc=basefontdesc;
+    desc.size=FXint(FXdouble(desc.size)*factor+0.5);
+    normalFont->setFontDesc(desc);
+    if(isInitialized()){
+      normalFont->destroy();
+      normalFont->create();
+      }
+    }
+  releaseRoleFonts();
+  }
+
+
 // Change the theme scale and relayout if it actually changed
 void FXApp::setThemeScale(FXdouble scale){
   if(theme.getScale()!=scale){
     theme.setScale(scale);
+    applyFontScale();
     style.invalidate();
     themeChanged();
     if(root){
@@ -4623,6 +4649,9 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
     normalFont->setFont(fontspec);
     }
 
+  // Remember the unscaled UI font; the display scale is applied on top
+  basefontdesc=normalFont->getFontDesc();
+
   // Load timing constants
   typingSpeed=registry.readLongEntry("SETTINGS","typingspeed",typingSpeed);
   clickSpeed=registry.readLongEntry("SETTINGS","clickspeed",clickSpeed);
@@ -4938,7 +4967,10 @@ FXFont* FXApp::getRoleFont(FXint role){
 
   // Create the font the first time it is asked for
   if(!roleFonts[role]){
-    roleFonts[role]=new FXFont(this,desc);
+    FXFontDesc fontdesc=desc;
+    FXdouble factor=getFontScale();
+    if(fontdesc.size) fontdesc.size=FXint(FXdouble(fontdesc.size)*factor+0.5);
+    roleFonts[role]=new FXFont(this,fontdesc);
     if(isInitialized()) roleFonts[role]->create();
     }
   return roleFonts[role];
@@ -6039,6 +6071,20 @@ void FXApp::setScrollBarSize(FXint size){
   }
 
 
+// Change the display scale explicitly
+void FXApp::setDisplayScale(FXdouble scale){
+  dpiautoscale=false;
+  setThemeScale(scale);
+  }
+
+
+// Follow the DPI for the display scale
+void FXApp::setDisplayScaleAuto(){
+  dpiautoscale=true;
+  setThemeScale(dpi?FXdouble(dpi)/96.0:1.0);
+  }
+
+
 // Change theme; updates the default palette colors
 void FXApp::setTheme(const FXTheme& thm){
   FXbool relayout=false;
@@ -6056,6 +6102,7 @@ void FXApp::setTheme(const FXTheme& thm){
   releaseRoleFonts();
 
   theme=thm;
+  applyFontScale();
   borderColor=theme.color(ROLE_BORDER);
   baseColor=theme.color(ROLE_SURFACE);
   hiliteColor=theme.color(ROLE_SURFACE_HILITE);

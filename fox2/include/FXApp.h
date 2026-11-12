@@ -207,6 +207,7 @@ private:
   FXint            signalreceived;      // Latest signal received
   FXFont          *normalFont;          // Normal font
   FXFont          *roleFonts[FONT_LAST];// Fonts for the theme's font roles
+  FXFontDesc       basefontdesc;        // Unscaled normal font description
   FXFont          *stockFont;           // Stock font
   FXMutex          appMutex;            // Application wide mutex
   FXEvent          event;               // Event
@@ -389,6 +390,8 @@ private:
   void dragdropGetTypes(const FXWindow* window,FXDragType*& types,FXuint& numtypes);
   void openInputDevices();
   void closeInputDevices();
+  FXdouble getFontScale() const;
+  void applyFontScale();
   void setThemeScale(FXdouble scale);
 #ifdef WIN32
   static void applyWindowDPI(FXWindow* window,FXint dpivalue);
@@ -555,6 +558,15 @@ public:
 
   /// Return the DPI of the monitor a native window is on, 0 if unknown
   FXint getWindowDPI(FXID hwnd) const;
+
+  /// Return the display scale; 1.0 corresponds to 96 DPI
+  FXdouble getDisplayScale() const { return theme.getScale(); }
+
+  /// Change the display scale explicitly; this disables automatic scaling
+  void setDisplayScale(FXdouble scale);
+
+  /// Follow the monitor DPI for the display scale
+  void setDisplayScaleAuto();
 
   /// Connection to display; this is called by init()
   virtual FXbool openDisplay(const FXchar* dpy=nullptr);
