@@ -6,9 +6,9 @@ fox_read_makefile_sources("${CMAKE_CURRENT_SOURCE_DIR}/Makefile.am" FOX_LIB_SOUR
 # Platform seam: exactly one implementation is compiled into the library
 list(FILTER FOX_LIB_SOURCES EXCLUDE REGEX "_(win32|x11)\\.cpp$")
 if(WIN32)
-  list(APPEND FOX_LIB_SOURCES FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp)
+  list(APPEND FOX_LIB_SOURCES FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp FXDir_win32.cpp)
 else()
-  list(APPEND FOX_LIB_SOURCES FXApp_x11.cpp FXWindow_x11.cpp FXFont_x11.cpp FXIODevice_x11.cpp FXMutex_x11.cpp FXAutoThreadStorageKey_x11.cpp FXPipe_x11.cpp)
+  list(APPEND FOX_LIB_SOURCES FXApp_x11.cpp FXWindow_x11.cpp FXFont_x11.cpp FXIODevice_x11.cpp FXMutex_x11.cpp FXAutoThreadStorageKey_x11.cpp FXPipe_x11.cpp FXDir_x11.cpp)
 endif()
 
 if(FOX_BUILD_SHARED)

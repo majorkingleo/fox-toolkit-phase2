@@ -702,10 +702,36 @@ that create or remove pipes moved whole into `FXPipe_win32.cpp` and
   DPI values. The pipe members are compile-checked; the examples do not
   create pipes.
 
+## Seam 27: directories
+
+Done. `FXDir.cpp` no longer contains a platform branch. Fourteen members and
+the `SPACE` handle record moved as whole members into `FXDir_win32.cpp` and
+`FXDir_x11.cpp`. The split script is generic now: `tmp/seamlib.py` resolves
+`WIN32` / `_WIN32` branches of any shape per platform and keeps other
+conditionals (`UNICODE`, `EXPERIMENTAL`, `_DIRENT_HAVE_D_TYPE`) as they are;
+`tmp/split-dir.py` drives it.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXDir_win32.cpp`: `SPACE` with `HANDLE` and `WIN32_FIND_DATA`, both constructors, `open()`, `isOpen()`, both `next()`, `close()`, `create()`, `remove()`, `listFiles()`, `removeFiles()`, `listDrives()` with `GetLogicalDriveStringsW()`, `listShares()` with `WNetEnumResourceW()`, `hasSubDirectories()` on `FindFirstFile()` |
+| X11 module | `FXDir_x11.cpp`: `SPACE` with `DIR*`, the same members on `opendir()`/`readdir()`/`closedir()`/`mkdir()`/`rmdir()`, a root-only drive and share list, and the hard-link count shortcut of `hasSubDirectories()` |
+| Portable core | `createDirectories()` and the destructor stay in `FXDir.cpp` |
+
+`listFiles()` and `removeFiles()` differ from platform to platform only in the
+hidden-file test, but moved whole, so their loop bodies are duplicated in both
+modules; unifying them behind one predicate is a separate refactor.
+
+### Verification
+
+- The removed lines equal the added lines of the two modules apart from the
+  `WIN32` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. The directory members are compile-checked on both backends.
+
 ## Next seams, in order
 
 1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`,
-   `FXProcess`, `FXStat`, `FXDir`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
+   `FXProcess`, `FXStat`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
