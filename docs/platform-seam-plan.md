@@ -1128,6 +1128,19 @@ placement against the monitor work area; `FXPopup_x11.cpp` holds the same
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXPopup.cpp`: only guard lines differ.
 
+## Seam 47: shell
+
+Done. `onConfigure` moved whole into `FXShell_win32.cpp` (forces an immediate
+`layout()` because Windows runs a modal loop while resizing) and
+`FXShell_x11.cpp` (schedules a delayed `recalc()`). The rest of `FXShell.cpp`
+is platform neutral; one remaining mention of `WIN32` is inside a comment in
+the moved code.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXShell.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
