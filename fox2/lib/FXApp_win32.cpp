@@ -20,8 +20,10 @@
 ********************************************************************************/
 #include "xincs.h"
 #include "fx.h"
+#include "FXComposeContext.h"
 #include "fxapppriv.h"
 #include "fxplatform.h"
+#include "fxpriv.h"
 
 #if defined(WIN32)
 
@@ -675,6 +677,882 @@ FXbool FXApp::closeDisplay(){
   return true;
   }
 
+
+
+
+// Dispatch event to widget
+FXbool FXApp::dispatchEvent(FXRawEvent& msg){
+  TranslateMessage(&msg);
+  DispatchMessage(&msg);
+  return true;
+  }
+
+
+
+#ifndef WM_SYNCPAINT
+#define WM_SYNCPAINT 0x0088
+#endif
+
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
+
+#ifndef WM_DPICHANGED_AFTERPARENT
+#define WM_DPICHANGED_AFTERPARENT 0x02E3
+#endif
+
+
+// Translate to string on KeyPress
+FXString translateKeyEvent(FXuint,FXuval wParam,FXival lParam){
+  FXnchar buffer[20]; BYTE keystate[256]; int n;
+  GetKeyboardState(keystate);
+  n=ToUnicodeEx((FXuint)wParam,HIWORD(lParam)&(KF_EXTENDED|KF_UP|0xFF),keystate,buffer,20,0,GetKeyboardLayout(0));
+  if(n<=0) n=0;
+  return FXString(buffer,n);
+  }
+
+
+// Message dispatching
+FXival FXApp::dispatchEvent(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam){
+  const FXTime milliseconds=1000000;
+  FXWindow *window,*ancestor,*win,*focuswin;
+  static HWND lastmovehwnd=0;
+  static LPARAM lastmovelParam=0;
+  POINT ptRoot, pt;
+  DWORD dwpts;
+  PAINTSTRUCT ps;
+  FXuint state;
+  HANDLE hMap;
+  HANDLE answer;
+
+  if(!IsWindow((HWND)hwnd))
+    return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+  // Get window
+  window=findWindowWithId(hwnd);
+
+  if(window==0 && iMsg!=WM_CREATE)
+    return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+  // Translate Win32 message to FOX message type
+  switch(iMsg){
+
+    // Repaint event
+    case WM_PAINT:
+      event.type=SEL_PAINT;
+      event.synthetic=1;              // FIXME when is it non-synthetic?
+      BeginPaint((HWND)hwnd,&ps);
+      event.rect.x=(FXshort)ps.rcPaint.left;
+      event.rect.y=(FXshort)ps.rcPaint.top;
+      event.rect.w=(FXshort)(ps.rcPaint.right-ps.rcPaint.left);
+      event.rect.h=(FXshort)(ps.rcPaint.bottom-ps.rcPaint.top);
+      window->handle(this,FXSEL(SEL_PAINT,0),&event);
+      EndPaint((HWND)hwnd,&ps);
+      return 0;
+
+    // Start Input Method Editor
+    case WM_IME_STARTCOMPOSITION:
+      focuswin=getFocusWindow();
+      if(inputstyle[1]!='o'){ // not root mode
+        if(focuswin && focuswin->getComposeContext())
+          focuswin->handle(this,FXSEL(SEL_IME_START,0),nullptr);
+        else
+          return 0;
+        }
+      // on-the-spot mode
+      if(inputstyle[1]=='n') return 0;
+      // other mode
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    // End Input Method Editor
+    case WM_IME_ENDCOMPOSITION:
+      focuswin=getFocusWindow();
+      if(inputstyle[1]!='o'){ // not root mode
+        if(focuswin && focuswin->getComposeContext())
+          focuswin->handle(this,FXSEL(SEL_IME_END,0),nullptr);
+        else
+          return 0;
+        }
+      // on-the-spot mode
+      if(inputstyle[1]=='n') return 0;
+      // other mode
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    // Character Input from Input Method Editor
+    case WM_IME_CHAR:
+      // ignore this message, coming after WM_IME_COMPOSITION
+      // because IME string is handled in WM_IME_COMPOSITION message
+      return 0;
+
+    // Keyboard
+    case WM_IME_COMPOSITION:
+      if((inputstyle[1]!='n') && !(lParam&GCS_RESULTSTR)){
+        focuswin=getFocusWindow();
+        if(focuswin && focuswin->getComposeContext())
+          return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+        else
+          return 0;
+        }
+      // else keep going
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+      FXTRACE(TOPIC_KEYBOARD,"%s virtkey=%c [0x%04x] hi=0x%04x rc=%d\n",iMsg==WM_KEYDOWN?"WM_KEYDOWN":iMsg==WM_KEYUP?"WM_KEYUP":iMsg==WM_SYSKEYDOWN?"WM_SYSKEYDOWN":"WM_SYSKEYUP",wParam,wParam,HIWORD(lParam),LOWORD(lParam));
+      event.type=((iMsg==WM_KEYUP)||(iMsg==WM_SYSKEYUP)) ? SEL_KEYRELEASE : SEL_KEYPRESS;
+      event.time=GetMessageTime();
+      dwpts=GetMessagePos();
+      event.root_x=pt.x=((int)(short)LOWORD(dwpts));
+      event.root_y=pt.y=((int)(short)HIWORD(dwpts));
+      ScreenToClient((HWND)hwnd,&pt);
+      event.win_x=pt.x;
+      event.win_y=pt.y;
+
+      event.state=fxmodifierkeys();
+
+      // Translate to keysym
+      event.code=wkbMapKeyCode(iMsg,wParam,lParam);// FIXME not all codes match with those of X11
+
+      // Translate to string on KeyPress
+      if(event.type==SEL_KEYPRESS){
+        focuswin=getFocusWindow();
+        if( (iMsg==WM_IME_COMPOSITION) && (lParam&GCS_RESULTSTR) && focuswin && focuswin->getComposeContext()){
+          FXRawEvent ev;
+          ev.hwnd=(HWND)hwnd;
+          ev.message=iMsg;
+          ev.wParam=wParam;
+          ev.lParam=lParam;
+          event.text=focuswin->getComposeContext()->translateEvent(ev);
+          }
+        else{
+          event.text=translateKeyEvent(iMsg,wParam,lParam);
+          }
+        }
+
+      // Clear string on KeyRelease
+      else{
+        event.text.clear();
+        }
+
+/*
+Alt key seems to repeat.
+*/
+
+      // Fix modifier state
+      if(event.type==SEL_KEYPRESS){
+        if(event.code==KEY_Shift_L) event.state|=SHIFTMASK;
+        else if(event.code==KEY_Shift_R) event.state|=SHIFTMASK;
+        else if(event.code==KEY_Control_L) event.state|=CONTROLMASK;
+        else if(event.code==KEY_Control_R) event.state|=CONTROLMASK;
+        else if(event.code==KEY_F13) event.state|=METAMASK;     // Key between Ctrl and Alt (on most keyboards)
+        else if(event.code==KEY_Alt_L) event.state|=ALTMASK;
+        else if(event.code==KEY_Alt_R) event.state|=ALTMASK;    // FIXME do we need ALTGR flag instead/in addition?
+        else if(event.code==KEY_Num_Lock) event.state|=NUMLOCKMASK;
+        else if(event.code==KEY_Caps_Lock) event.state|=CAPSLOCKMASK;
+        else if(event.code==KEY_Scroll_Lock) event.state|=SCROLLLOCKMASK;
+        else if(event.code==KEY_Super_L) event.state|=METAMASK;
+        else if(event.code==KEY_Super_R) event.state|=METAMASK;
+        else{ stickyMods=event.state&(SHIFTMASK|CONTROLMASK|METAMASK|ALTMASK); }
+        }
+      else{
+        if(event.code==KEY_Shift_L) event.state&=~SHIFTMASK;
+        else if(event.code==KEY_Shift_R) event.state&=~SHIFTMASK;
+        else if(event.code==KEY_Control_L) event.state&=~CONTROLMASK;
+        else if(event.code==KEY_Control_R) event.state&=~CONTROLMASK;
+        else if(event.code==KEY_F13) event.state&=~METAMASK;    // Key between Ctrl and Alt (on most keyboards)
+        else if(event.code==KEY_Alt_L) event.state&=~ALTMASK;
+        else if(event.code==KEY_Alt_R) event.state&=~ALTMASK;   // FIXME do we need ALTGR flag instead/in addition?
+        else if(event.code==KEY_Num_Lock) event.state&=~NUMLOCKMASK;
+        else if(event.code==KEY_Caps_Lock) event.state&=~CAPSLOCKMASK;
+        else if(event.code==KEY_Scroll_Lock) event.state&=~SCROLLLOCKMASK;
+        else if(event.code==KEY_Super_L) event.state&=~METAMASK;
+        else if(event.code==KEY_Super_R) event.state&=~METAMASK;
+        else{ event.state|=stickyMods; stickyMods=0; }
+        }
+
+      FXTRACE(TOPIC_KEYBOARD,"%s code=%04x state=%04x stickyMods=%04x text=\"%s\"\n",(event.type==SEL_KEYPRESS)?"SEL_KEYPRESS":"SEL_KEYRELEASE",event.code,event.state,stickyMods,event.text.text());
+
+      // Keyboard grabbed by specific window
+      if(keyboardGrabWindow){
+        if(keyboardGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+        return 0;
+        }
+
+      // Remember window for later
+      if(event.type==SEL_KEYPRESS) keyWindow=activeWindow;
+
+      // Dispatch to key window
+      if(keyWindow){
+
+        // FIXME doesSaveUnder test should go away
+        // Dispatch if not in a modal loop or in a modal loop for a window containing the focus window
+        if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(keyWindow)) || keyWindow->getShell()->doesSaveUnder()){
+          if(keyWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+          if((iMsg==WM_IME_COMPOSITION) && (inputstyle[1]!='n')){
+            // it is possible that undetermined IME characters remain
+            if(inputstyle[1]!='o'){
+              focuswin=getFocusWindow();
+              if(focuswin){
+                focuswin->handle(this,FXSEL(SEL_IME_START,0),nullptr);
+                }
+              }
+            return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+            }
+          return 0;
+          }
+
+        // Beep if outside modal
+        if(event.type==SEL_KEYPRESS) beep();
+        }
+      return 0;
+
+    // The grab might be broken; in FOX, we ignore this!!
+    case WM_CANCELMODE:
+      //FXTRACE(TOPIC_EVENT,"WM_CANCELMODE\n");
+      return 0;
+
+    // Capture changed
+    case WM_CAPTURECHANGED:
+      //FXTRACE(TOPIC_EVENT,"WM_CAPTURECHANGED\n");
+      // FIXME send SEL_UNGRABBED?
+      return 0;
+
+    // Motion
+    case WM_MOUSEMOVE:
+      event.time=GetMessageTime();
+      pt.x=ptRoot.x=(int)((short)LOWORD(lParam));
+      pt.y=ptRoot.y=(int)((short)HIWORD(lParam));
+      ClientToScreen((HWND)hwnd,&ptRoot);
+      event.root_x=ptRoot.x;
+      event.root_y=ptRoot.y;
+      event.state=fxmodifierkeys();
+
+      //FXTRACE(TOPIC_EVENT,"WM_MOUSEMOVE hwnd=%d x=%d y=%d \n",hwnd,event.root_x,event.root_y);
+
+      // Reset hover timer
+      addTimeout(this,ID_HOVER,200000000);
+
+      // Set moved flag
+      if((FXABS(event.root_x-event.rootclick_x)>=dragDelta) || (FXABS(event.root_y-event.rootclick_y)>=dragDelta)) event.moved=1;
+
+      // Was grabbed
+      if(mouseGrabWindow){
+
+        // Translate to grab window's coordinate system
+        root->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.root_x,event.root_y);
+
+        // Moved out of/into rectangle of grabbed window
+        if(0<=event.win_x && event.win_x<mouseGrabWindow->getWidth() && 0<=event.win_y && event.win_y<mouseGrabWindow->getHeight()){
+          window=mouseGrabWindow;
+          }
+        else{
+          window=mouseGrabWindow->getParent();
+          }
+        }
+
+      // Switched windows
+      if(cursorWindow!=window){
+        ancestor=FXWindow::commonAncestor(window,cursorWindow);
+        event.code=CROSSINGNORMAL;
+        leaveWindow(cursorWindow,ancestor);
+        enterWindow(window,ancestor);
+        refresh();
+        }
+
+      // Suppress spurious `tickling' motion events
+      if(hwnd==lastmovehwnd && lParam==lastmovelParam) return 0;
+
+      // Was still grabbed, but possibly new grab window!
+      if(mouseGrabWindow){
+
+        // Translate to grab window's coordinate system
+        root->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.root_x,event.root_y);
+
+        // Set event data
+        event.type=SEL_MOTION;
+        event.code=0;
+
+        // Dispatch to grab-window
+        if(mouseGrabWindow->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+        }
+
+// FIXME Does window still exist?
+
+      // Was not grabbed
+      else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){ // FIXME doesSaveUnder test should go away
+
+        // Set event data
+        event.type=SEL_MOTION;
+        event.code=0;
+        event.win_x=pt.x;
+        event.win_y=pt.y;
+
+        // Dispatch to window under cursor
+        if(window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+        }
+
+      // Update most recent mouse position
+      event.last_x=pt.x;
+      event.last_y=pt.y;
+
+      // Remember this for tickling test
+      lastmovehwnd=(HWND)hwnd;
+      lastmovelParam=lParam;
+
+      return 0;
+
+    // Button
+    case WM_LBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_LBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_RBUTTONUP:
+      event.time=GetMessageTime();
+      event.win_x=pt.x=(int)((short)LOWORD(lParam));
+      event.win_y=pt.y=(int)((short)HIWORD(lParam));
+      ClientToScreen((HWND)hwnd,&pt);
+      event.root_x=pt.x;
+      event.root_y=pt.y;
+      event.state=fxmodifierkeys();   // Get the state of the modifier keys and mouse buttons
+      if(iMsg==WM_LBUTTONDOWN || iMsg==WM_MBUTTONDOWN || iMsg==WM_RBUTTONDOWN){
+        if(iMsg==WM_LBUTTONDOWN){ event.type=SEL_LEFTBUTTONPRESS; event.code=LEFTBUTTON; }
+        if(iMsg==WM_MBUTTONDOWN){ event.type=SEL_MIDDLEBUTTONPRESS; event.code=MIDDLEBUTTON; }
+        if(iMsg==WM_RBUTTONDOWN){ event.type=SEL_RIGHTBUTTONPRESS; event.code=RIGHTBUTTON; }
+        if(!event.moved && (event.code==event.click_button) && (milliseconds*(event.time-event.click_time)<clickSpeed)){
+          event.click_count++;
+          event.click_time=event.time;
+          }
+        else{
+          event.click_count=1;
+          event.click_x=event.win_x;
+          event.click_y=event.win_y;
+          event.rootclick_x=event.root_x;
+          event.rootclick_y=event.root_y;
+          event.click_button=event.code;
+          event.click_time=event.time;
+          }
+        state=event.state&(LEFTBUTTONMASK|MIDDLEBUTTONMASK|RIGHTBUTTONMASK);
+        if((state==LEFTBUTTONMASK)||(state==MIDDLEBUTTONMASK)||(state==RIGHTBUTTONMASK)) event.moved=0;
+        }
+      else{
+        if(iMsg==WM_LBUTTONUP){ event.type=SEL_LEFTBUTTONRELEASE; event.code=LEFTBUTTON; }
+        if(iMsg==WM_MBUTTONUP){ event.type=SEL_MIDDLEBUTTONRELEASE; event.code=MIDDLEBUTTON; }
+        if(iMsg==WM_RBUTTONUP){ event.type=SEL_RIGHTBUTTONRELEASE; event.code=RIGHTBUTTON; }
+        }
+      if(mouseGrabWindow){
+        window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+        if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+        }
+      // FIXME doesSaveUnder test should go away
+      else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){
+        if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+        }
+      else if(iMsg==WM_LBUTTONDOWN || iMsg==WM_MBUTTONDOWN || iMsg==WM_RBUTTONDOWN){
+        beep();
+        }
+      event.last_x=event.win_x;
+      event.last_y=event.win_y;
+      return 0;
+
+    // Mouse wheel
+    case WM_MOUSEWHEEL:
+      event.type=SEL_MOUSEWHEEL;
+      event.time=GetMessageTime();
+      event.root_x=pt.x=(int)((short)LOWORD(lParam));
+      event.root_y=pt.y=(int)((short)HIWORD(lParam));
+      event.code=(int)((short)HIWORD(wParam));
+      event.state=fxmodifierkeys();   // Get the state of the modifier keys and mouse buttons
+      window=findWindowAt(event.root_x,event.root_y);
+      if(window){
+        ScreenToClient((HWND)window->id(),&pt);
+        event.win_x=pt.x;
+        event.win_y=pt.y;
+        if(mouseGrabWindow){
+          window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+          if(mouseGrabWindow->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)) refresh();
+          }
+        else{
+          // FIXME doesSaveUnder test should go away
+          while(window && (!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder())){
+            if(window->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)){ refresh(); break; }
+            window=window->getParent();
+            }
+          }
+        }
+      return 0;
+
+    // Focus
+    case WM_SETFOCUS:
+      SendMessage((HWND)window,WM_NCACTIVATE,1,123456); // Suggestion from: Frank De prins <fdp@MCS.BE>
+    case WM_KILLFOCUS:
+      window=window->getShell();
+      if(iMsg==WM_KILLFOCUS && activeWindow==window){
+        event.type=SEL_FOCUSOUT;
+        if(window->handle(this,FXSEL(SEL_FOCUSOUT,0),&event)) refresh();
+        activeWindow=nullptr;
+        }
+      if(iMsg==WM_SETFOCUS && activeWindow!=window){
+        event.type=SEL_FOCUSIN;
+        if(window->handle(this,FXSEL(SEL_FOCUSIN,0),&event)) refresh();
+        activeWindow=window;
+        }
+      return 0;
+
+    // Map or Unmap
+    case WM_SHOWWINDOW:
+      if(wParam){
+        event.type=SEL_MAP;
+        if(window->handle(this,FXSEL(SEL_MAP,0),&event)) refresh();
+        }
+      else{
+        event.type=SEL_UNMAP;
+        if(window->handle(this,FXSEL(SEL_UNMAP,0),&event)) refresh();
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    // Create
+    case WM_CREATE:
+      event.type=SEL_CREATE;
+      window=(FXWindow*)(((LPCREATESTRUCT)lParam)->lpCreateParams);
+      hash.insert((FXptr)hwnd,window);
+      if(window->handle(this,FXSEL(SEL_CREATE,0),&event)) refresh();
+      return 0;
+
+    // Close
+    case WM_CLOSE:
+
+      ////// Semantics: SEL_CLOSE is a suggestion that the window be closed;
+      ////// SEL_DESTROY is a notify that destruction has already taken place.
+      ////// Thus, a toplevel window gets a close, and MAY decide not to be closed;
+      ////// If it thinks its OK to close, it gets a SEL_DESTROY also.
+      event.type=SEL_CLOSE;
+      if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window))){
+        if(window->handle(this,FXSEL(SEL_CLOSE,0),&event)) refresh();
+        }
+      else{
+        beep();
+        }
+      return 0;
+
+    // Destroy
+    case WM_DESTROY:
+      event.type=SEL_DESTROY;
+      if(window->handle(this,FXSEL(SEL_DESTROY,0),&event)) refresh();
+      return 0;
+
+    // Configure (size)
+    case WM_SIZE:
+      switch(wParam){
+        case SIZE_MINIMIZED:            // Send SEL_MINIMIZE to window if not yet minimized
+          if(!IsIconic((HWND)hwnd)){
+            event.type=SEL_MINIMIZE;
+            if(window->handle(this,FXSEL(SEL_MINIMIZE,0),&event)) refresh();
+            }
+          break;
+        case SIZE_MAXIMIZED:            // Send SEL_MAXIMIZE to window if not yet maximized
+          if(!IsZoomed((HWND)hwnd)){
+            event.type=SEL_MAXIMIZE;
+            if(window->handle(this,FXSEL(SEL_MAXIMIZE,0),&event)) refresh();
+            }
+          event.type=SEL_CONFIGURE;
+          event.rect.x=window->getX();
+          event.rect.y=window->getY();
+          event.rect.w=LOWORD(lParam);
+          event.rect.h=HIWORD(lParam);
+          if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
+          break;
+        case SIZE_RESTORED:             // Send SEL_RESTORE to window if maximized or minimized
+          if(IsZoomed((HWND)hwnd) || IsIconic((HWND)hwnd)){
+            event.type=SEL_RESTORE;
+            if(window->handle(this,FXSEL(SEL_RESTORE,0),&event)) refresh();
+            }
+        case SIZE_MAXHIDE:
+        case SIZE_MAXSHOW:
+          event.type=SEL_CONFIGURE;
+          event.rect.x=window->getX();
+          event.rect.y=window->getY();
+          event.rect.w=LOWORD(lParam);
+          event.rect.h=HIWORD(lParam);
+          if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
+          break;
+        }
+      return 0;
+
+    // Configure (move)
+    case WM_MOVE:
+      event.type=SEL_CONFIGURE;
+      event.rect.x=(short)LOWORD(lParam);
+      event.rect.y=(short)HIWORD(lParam);
+      event.rect.w=window->getWidth();
+      event.rect.h=window->getHeight();
+      if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
+      return 0;
+
+    // Configure position and size
+    case WM_WINDOWPOSCHANGED:
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    // DPI of the window's monitor changed
+    case WM_DPICHANGED:
+      {
+        RECT *suggested=(RECT*)lParam;
+        FXint newdpi=(FXint)HIWORD(wParam);
+        if(newdpi<=0) newdpi=(FXint)LOWORD(wParam);
+        if(newdpi<=0) break;
+        applyWindowDPI(window,newdpi);
+        dpicurrent=newdpi;
+        if(dpiautoscale) setThemeScale(dpifactor*FXdouble(newdpi)/96.0);
+        if(suggested){
+          SetWindowPos((HWND)hwnd,nullptr,suggested->left,suggested->top,suggested->right-suggested->left,suggested->bottom-suggested->top,SWP_NOZORDER|SWP_NOACTIVATE);
+          }
+      }
+      return 0;
+
+    // DPI changed because the parent window changed DPI
+    case WM_DPICHANGED_AFTERPARENT:
+      {
+        FXint newdpi=getWindowDPI(hwnd);
+        if(newdpi>0) applyWindowDPI(window,newdpi);
+      }
+      return 0;
+
+    // Lost clipboard ownership
+    case WM_DESTROYCLIPBOARD:
+      if(clipboardWindow){
+        event.time=GetMessageTime();
+        event.type=SEL_CLIPBOARD_LOST;
+        if(clipboardWindow->handle(this,FXSEL(SEL_CLIPBOARD_LOST,0),&event)) refresh();
+        clipboardWindow=nullptr;
+        }
+      return 0;
+
+    // Safeguard it in the clipboard
+    case WM_RENDERALLFORMATS:
+      if(clipboardWindow){
+        OpenClipboard((HWND)hwnd);
+        EmptyClipboard();
+        UINT iFormat=0;
+        while((iFormat=EnumClipboardFormats(iFormat))!=0){
+          event.type=SEL_CLIPBOARD_REQUEST;
+          event.time=GetMessageTime();
+          event.target=iFormat;
+          if(clipboardWindow->handle(this,FXSEL(SEL_CLIPBOARD_REQUEST,0),&event)) refresh();
+          FXTRACE(TOPIC_EVENT,"Window %d being requested for CLIPBOARD DATA of type %d\n",hwnd,wParam);
+          }
+        CloseClipboard();
+        }
+      return 0;
+
+    // We're asked to provide certain format to the clipboard
+    case WM_RENDERFORMAT:
+      if(clipboardWindow){
+        event.type=SEL_CLIPBOARD_REQUEST;
+        event.time=GetMessageTime();
+        event.target=(FXDragType)wParam;
+        clipboardWindow->handle(this,FXSEL(SEL_CLIPBOARD_REQUEST,0),&event);
+        FXTRACE(TOPIC_EVENT,"Window %d being requested for CLIPBOARD DATA of type %d\n",hwnd,wParam);
+        }
+      return 0;
+
+    // Change the cursor based on the window
+    case WM_SETCURSOR:
+      if(waitCount){
+        SetCursor((HCURSOR)waitCursor->id());                     // Show wait cursor
+        return 0;
+        }
+      if(!mouseGrabWindow && window->getDefaultCursor() && (LOWORD(lParam)==HTCLIENT)){
+        SetCursor((HCURSOR)window->getDefaultCursor()->id());     // Show default cursor
+        return 0;
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    case WM_PALETTECHANGED:     // Suggested by Boris Kogan <bkogan@j51.com>
+      if((HWND)wParam==hwnd) break;
+    case WM_QUERYNEWPALETTE:
+      if(window->getVisual()->colormap){
+        HDC hdc=GetDC((HWND)hwnd);
+        HPALETTE paletteold=SelectPalette(hdc,(HPALETTE)window->getVisual()->colormap,false);
+        UINT nchanged=RealizePalette(hdc);
+        if(nchanged) InvalidateRect((HWND)hwnd,nullptr,true);
+        SelectPalette(hdc,paletteold,true);
+        ReleaseDC((HWND)hwnd,hdc);
+        return nchanged;
+        }
+      return 0;
+
+    case WM_QUERYENDSESSION:    // Session will end if this app thinks its OK
+      event.type=SEL_SESSION_NOTIFY;
+      return !window->handle(this,FXSEL(SEL_SESSION_NOTIFY,0),&event); // Return 1 if OK to terminate
+
+    case WM_ENDSESSION:         // Session will now end for sure
+      event.type=SEL_SESSION_CLOSED;
+      if(wParam) window->handle(this,FXSEL(SEL_SESSION_CLOSED,0),&event);
+      return 0;
+
+    case WM_STYLECHANGING:
+    case WM_SIZING:
+    case WM_MOVING:
+      return 0;
+    case WM_ERASEBKGND:         // Do nothing, erasing background causes flashing
+      return 1;
+
+    case WM_ACTIVATE:
+      //FXTRACE(TOPIC_EVENT,"WM_ACTIVATE %d\n",LOWORD(wParam));
+      if(window->isMemberOf(FXMETACLASS(FXTopWindow)) && activeWindow && activeWindow!=window){   // Suggestion from: Frank De prins <fdp@MCS.BE>
+        SendMessage((HWND)activeWindow->id(),WM_NCACTIVATE,0,123456);
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    case WM_GETMINMAXINFO:
+      if(window->id() && window->shown() &&window->isMemberOf(FXMETACLASS(FXTopWindow))){
+        RECT rect;
+        //FXTRACE(TOPIC_EVENT,"WM_GETMINMAXINFO ptMaxSize=%d,%d ptMinTrackSize=%d,%d ptMaxTrackSize=%d,%d\n",((MINMAXINFO*)lParam)->ptMaxSize.x,((MINMAXINFO*)lParam)->ptMaxSize.y,((MINMAXINFO*)lParam)->ptMinTrackSize.x,((MINMAXINFO*)lParam)->ptMinTrackSize.y,((MINMAXINFO*)lParam)->ptMaxTrackSize.x,((MINMAXINFO*)lParam)->ptMaxTrackSize.y);
+        if(!(((FXTopWindow*)window)->getDecorations()&DECOR_SHRINKABLE)){
+          if(!(((FXTopWindow*)window)->getDecorations()&DECOR_STRETCHABLE)){    // Cannot change at all
+            SetRect(&rect,0,0,window->getWidth(),window->getHeight());
+            //SetRect(&rect,0,0,window->getDefaultWidth(),window->getDefaultHeight());
+            AdjustWindowRectEx(&rect,GetWindowLong((HWND)hwnd,GWL_STYLE),false,GetWindowLong((HWND)hwnd,GWL_EXSTYLE));
+            ((MINMAXINFO*)lParam)->ptMinTrackSize.x=((MINMAXINFO*)lParam)->ptMaxTrackSize.x=rect.right-rect.left;
+            ((MINMAXINFO*)lParam)->ptMinTrackSize.y=((MINMAXINFO*)lParam)->ptMaxTrackSize.y=rect.bottom-rect.top;
+            }
+          else{                                                                 // Cannot get smaller than default
+            SetRect(&rect,0,0,window->getDefaultWidth(),window->getDefaultHeight());
+            AdjustWindowRectEx(&rect,GetWindowLong((HWND)hwnd,GWL_STYLE),false,GetWindowLong((HWND)hwnd,GWL_EXSTYLE));
+            ((MINMAXINFO*)lParam)->ptMinTrackSize.x=rect.right-rect.left;
+            ((MINMAXINFO*)lParam)->ptMinTrackSize.y=rect.bottom-rect.top;
+            }
+          }
+        else if(!(((FXTopWindow*)window)->getDecorations()&DECOR_STRETCHABLE)){ // Cannot get larger than default
+          SetRect(&rect,0,0,window->getDefaultWidth(),window->getDefaultHeight());
+          AdjustWindowRectEx(&rect,GetWindowLong((HWND)hwnd,GWL_STYLE),false,GetWindowLong((HWND)hwnd,GWL_EXSTYLE));
+          ((MINMAXINFO*)lParam)->ptMaxTrackSize.x=rect.right-rect.left;
+          ((MINMAXINFO*)lParam)->ptMaxTrackSize.y=rect.bottom-rect.top;
+          }
+        //FXTRACE(TOPIC_EVENT,"width=%d height=%d\n",window->getWidth(),window->getHeight());
+        //FXTRACE(TOPIC_EVENT,"WM_GETMINMAXINFO ptMaxSize=%d,%d ptMinTrackSize=%d,%d ptMaxTrackSize=%d,%d\n",((MINMAXINFO*)lParam)->ptMaxSize.x,((MINMAXINFO*)lParam)->ptMaxSize.y,((MINMAXINFO*)lParam)->ptMinTrackSize.x,((MINMAXINFO*)lParam)->ptMinTrackSize.y,((MINMAXINFO*)lParam)->ptMaxTrackSize.x,((MINMAXINFO*)lParam)->ptMaxTrackSize.y);
+        }
+      return 0;
+
+    case WM_INITMENU:           // Patch from Robin Wilson <robin.wilson@abaqus.com>
+    case WM_SYSCOMMAND:         // This pops down the menupane when clicking in non-client area
+      for(win=getRootWindow()->getFirst(); win; win=win->getNext()){       // FIXME don't we already know popupWindow?
+        if(win->shown() && win->isMemberOf(FXMETACLASS(FXMenuPane)) && window->containsChild(win->getOwner())) window->killFocus();
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+#if 0
+    case WM_ENTERSIZEMOVE:
+      if(!repostimer){
+        repostimer=SetTimer((HWND)hwnd,1,10 /* lower doesn't work :( */,nullptr);
+        return 0;
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+    case WM_EXITSIZEMOVE:
+      if(repostimer){
+        KillTimer((HWND)hwnd,1);
+        repostimer=0;
+        return 0;
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+    case WM_TIMER:
+      if(repostimer){
+        doIdleProcessing();
+        return 0;
+        }
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+#endif
+    case WM_INPUT:
+      //event.type=SEL_SPACEBALLMOTION;
+      //if(window->handle(this,FXSEL(event.type,0),(void *)lParam)) refresh();
+      return 0;
+
+    case WM_TIMER:              // added by msh 2/DEC/99
+    case WM_ENTERSIZEMOVE:
+    case WM_EXITSIZEMOVE:
+    case WM_ENTERMENULOOP:
+    case WM_MENUCHAR:
+    case WM_MENUSELECT:
+    case WM_EXITMENULOOP:
+    case WM_DISPLAYCHANGE:      // added by msh 2/DEC/99
+    case WM_ENTERIDLE:          // 24/NOV/99 md
+    case WM_NCCREATE:
+    case WM_NCDESTROY:
+    case WM_PARENTNOTIFY:
+    case WM_SETTEXT:
+    case WM_GETTEXT:
+    case WM_QUERYOPEN:
+    case WM_ENABLE:
+    case WM_MOUSEACTIVATE:
+    case WM_CHILDACTIVATE:
+    case WM_SYNCPAINT:
+    case WM_NCPAINT:
+    case WM_NCHITTEST:
+    case WM_NCMOUSEMOVE:
+    case WM_NCCALCSIZE:
+    case WM_NCLBUTTONDOWN:
+    case WM_NCLBUTTONUP:
+    case WM_WINDOWPOSCHANGING:  // Leave whatever placement is suggested
+    case WM_STYLECHANGED:
+    case WM_MOUSELEAVE:         // We no longer use TrackMouseEvent it is not reliable
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    case WM_NCACTIVATE:         // Suggestion from: Frank De prins <fdp@MCS.BE>
+      if(lParam!=123456) wParam=1;
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    case WM_ACTIVATEAPP:        // Suggestion from: Frank De prins <fdp@MCS.BE>
+      SendMessage((HWND)hwnd,WM_NCACTIVATE,wParam,123456);
+      return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+
+    case WM_DROPFILES:
+      //char ListFileName[MAX_PATH];
+      //HDROP hDropInfo=(HDROP)WParam;
+      //DragQueryFile(hDropInfo,0,ListFileName,sizeof(ListFileName)-1);
+      //numfiles = DragQueryFile(hDropInfo, (DWORD)(-1), (LPSTR)nullptr, 0);
+      //for (fileindex=0; fileindex<numfiles; fileindex++) {
+      //  numc = DragQueryFile(hDropInfo,fileindex,ListFileName,sizeof(ListFileName)-1);
+      //  }
+      //DragFinish(hDropInfo);
+      break;
+#if 0
+    case WM_DDE_INITIATE:
+    case WM_DDE_EXECUTE:
+    case WM_DDE_ACK:
+#endif
+    case WM_DND_ENTER:
+      FXTRACE(TOPIC_EVENT,"DNDEnter from remote window %d\n",lParam);
+      xdndSource=(FXID)lParam;
+      if(ddeTypeList){freeElms(ddeTypeList);ddeNumTypes=0;}
+      hMap=OpenFileMapping(FILE_MAP_READ,false,TEXT("XdndTypeList"));
+      if(hMap){
+        FXDragType *dragtypes=(FXDragType*)MapViewOfFile(hMap,FILE_MAP_READ,0,0,0);
+        if(dragtypes){
+          if(allocElms(ddeTypeList,dragtypes[0])){
+            copyElms(ddeTypeList,&dragtypes[1],dragtypes[0]);
+            ddeNumTypes=dragtypes[0];
+            }
+          UnmapViewOfFile(dragtypes);
+          }
+        CloseHandle(hMap);
+        }
+      return 0;
+
+    case WM_DND_LEAVE:
+      FXTRACE(TOPIC_EVENT,"DNDLeave from remote window %d\n",lParam);
+      if(xdndSource!=(FXID)lParam) return 0;
+      if(dropWindow){
+        event.type=SEL_DND_LEAVE;
+        if(dropWindow->handle(this,FXSEL(SEL_DND_LEAVE,0),&event)) refresh();
+        dropWindow=nullptr;
+        }
+      if(ddeTypeList){freeElms(ddeTypeList);ddeNumTypes=0;}
+      xdndSource=0;
+      return 0;
+
+    case WM_DND_DROP:
+      FXTRACE(TOPIC_EVENT,"DNDDrop from remote window %d\n",lParam);
+      if(xdndSource!=(FXID)lParam) return 0;
+      xdndFinishSent=false;
+      event.type=SEL_DND_DROP;
+      event.time=GetMessageTime();
+
+      // Perform drop operation on drop window
+      if(!dropWindow || !dropWindow->handle(this,FXSEL(SEL_DND_DROP,0),&event)) ansAction=DRAG_REJECT;
+
+      // Didn't sent finish yet
+      if(!xdndFinishSent){
+        PostMessage((HWND)xdndSource,WM_DND_FINISH_REJECT+ansAction,0,(LPARAM)hwnd);
+        }
+      if(ddeTypeList){freeElms(ddeTypeList);ddeNumTypes=0;}
+      dropWindow=nullptr;
+      xdndSource=0;
+      refresh();
+      return 0;
+
+    case WM_DND_POSITION_REJECT:
+    case WM_DND_POSITION_ASK:
+    case WM_DND_POSITION_COPY:
+    case WM_DND_POSITION_MOVE:
+    case WM_DND_POSITION_LINK:
+    case WM_DND_POSITION_PRIVATE:
+      if(xdndSource!=(FXID)lParam) return 0;
+      event.time=GetMessageTime();
+      event.root_x=(int)((short)LOWORD(wParam));
+      event.root_y=(int)((short)HIWORD(wParam));
+      win=findWindowAt(event.root_x,event.root_y);
+      ddeAction=(FXDragAction)(iMsg-WM_DND_POSITION_REJECT);    // Action encoded in message
+      FXTRACE(TOPIC_EVENT,"DNDPosition from remote window %d action %d\n",lParam,ddeAction);
+      ansAction=DRAG_REJECT;
+      xdndRect.x=event.root_x;
+      xdndRect.y=event.root_y;
+      xdndRect.w=1;
+      xdndRect.h=1;
+      if(win!=dropWindow){
+        if(dropWindow){
+          event.type=SEL_DND_LEAVE;
+          if(dropWindow->handle(this,FXSEL(SEL_DND_LEAVE,0),&event)) refresh();
+          }
+        dropWindow=nullptr;
+        if(win && win->isDropEnabled()){
+          dropWindow=win;
+          event.type=SEL_DND_ENTER;
+          if(dropWindow->handle(this,FXSEL(SEL_DND_ENTER,0),&event)) refresh();
+          }
+        }
+      if(dropWindow){
+        pt.x=event.root_x;
+        pt.y=event.root_y;
+        ScreenToClient((HWND)dropWindow->id(),&pt);
+        event.win_x=pt.x;
+        event.win_y=pt.y;
+        event.type=SEL_DND_MOTION;
+        if(dropWindow->handle(this,FXSEL(SEL_DND_MOTION,0),&event)) refresh();
+        event.last_x=event.win_x;
+        event.last_y=event.win_y;
+        }
+      FXTRACE(TOPIC_EVENT,"accepting %d\n",ansAction);
+      PostMessage((HWND)xdndSource,WM_DND_STATUS_REJECT+ansAction,MAKELONG(xdndRect.x,xdndRect.y),MAKELONG(xdndRect.w,xdndRect.h));
+      return 0;
+
+    case WM_DND_STATUS_REJECT:
+    case WM_DND_STATUS_ASK:
+    case WM_DND_STATUS_COPY:
+    case WM_DND_STATUS_MOVE:
+    case WM_DND_STATUS_LINK:
+    case WM_DND_STATUS_PRIVATE:
+      ansAction=(FXDragAction)(iMsg-WM_DND_STATUS_REJECT);
+      xdndRect.x=(int)((short)LOWORD(wParam));
+      xdndRect.y=(int)((short)HIWORD(wParam));
+      xdndRect.w=(int)((short)LOWORD(lParam));
+      xdndRect.h=(int)((short)HIWORD(lParam));
+      xdndStatusReceived=true;
+      xdndStatusPending=false;
+      FXTRACE(TOPIC_EVENT,"DNDStatus from remote window action=%d rect x=%d y=%d w=%d h=%d\n",ansAction,xdndRect.x,xdndRect.y,xdndRect.w,xdndRect.h);
+      return 0;
+
+    case WM_DND_REQUEST:
+      answer=0;
+      if(dragWindow){
+        event.type=SEL_DND_REQUEST;
+        event.time=GetMessageTime();
+        event.target=(FXDragType)wParam;
+        ddeData=nullptr;
+        ddeSize=0;
+        dragWindow->handle(this,FXSEL(SEL_DND_REQUEST,0),&event);
+        FXTRACE(TOPIC_EVENT,"Window %d being requested by window %d for XDND DATA of type %d; sending %d bytes\n",hwnd,lParam,wParam,ddeSize);
+        answer=fxsenddata((HWND)lParam,ddeData,ddeSize);
+        freeElms(ddeData);
+        ddeData=nullptr;
+        ddeSize=0;
+        }
+      FXTRACE(TOPIC_EVENT,"sending handle %d from window %d to %d\n",answer,hwnd,lParam);
+      PostMessage((HWND)lParam,WM_DND_REPLY,(WPARAM)answer,(LPARAM)hwnd);
+      return 0;
+    case WM_COPYDATA:
+      return window->handle(this,FXSEL(SEL_COPYDATA,0),(void*)lParam);
+    }
+  return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
+  }
 
 }
 

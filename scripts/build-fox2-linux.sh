@@ -20,11 +20,15 @@
 #              configure run (build dir: tmp/build-fox2-linux-cmake)
 #   -h|--help  show this help
 #
+# Environment:
+#   FOX_BUILD_DIR  build directory; use it under WSL to build on the Linux file
+#                  system instead of /mnt/<drive>, e.g. ~/build/fox2
+#
 set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 SRC="$ROOT/fox2"
-BUILD="$ROOT/tmp/build-fox2-linux"
+BUILD="${FOX_BUILD_DIR:-$ROOT/tmp/build-fox2-linux}"
 LOG="$BUILD/build.log"
 
 jobs=$(nproc 2>/dev/null || echo 4)
@@ -37,7 +41,7 @@ run_test=no
 use_cmake=no
 
 usage(){
-  sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -87,7 +91,7 @@ if [ "$run_test" = yes ] && [ -z "${DISPLAY-}" ] && [ -z "${WAYLAND_DISPLAY-}" ]
   fi
 
 if [ "$use_cmake" = yes ]; then
-  BUILD="$ROOT/tmp/build-fox2-linux-cmake"
+  BUILD="${FOX_BUILD_DIR:-$ROOT/tmp/build-fox2-linux-cmake}"
   LOG="$BUILD/build.log"
   for tool in cmake ninja; do
     command -v "$tool" >/dev/null 2>&1 || {

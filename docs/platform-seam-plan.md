@@ -348,14 +348,38 @@ than releasing — are still in `FXWindow.cpp` and come with the event seam.
 - Fast builds (`--fast`) on both backends; `hello`, `button` and `dpi` run with
   unchanged DPI values.
 
+## Seam 11: event translation
+
+Done. `FXApp::dispatchEvent()` — the translation of native events into FOX
+messages — now lives in the platform modules. The two backends already had
+separate definitions, so each moved as a whole instead of being split into
+groups (paint/configure, pointer/keyboard, DPI/DND) with new helper functions.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `FXApp::dispatchEvent(FXRawEvent&)` (`TranslateMessage()`/`DispatchMessage()`) and `FXApp::dispatchEvent(FXID,FXuint,FXuval,FXival)` with all `WM_*` handling, including `WM_DPICHANGED` and `WM_DPICHANGED_AFTERPARENT`, the DND messages and the `WM_SYNCPAINT`/`WM_DPICHANGED*` fallbacks |
+| X11 module | `FXApp_x11.cpp`: `FXApp::dispatchEvent(FXRawEvent&)` with the `XEvent` switch, `addRepaint()`/`removeRepaints()` compositing, `translateKeyEvent()`, the XInput2 and XRandR/XFixes handling |
+| Portable core | `FXApp.cpp` keeps the timers, chores, selection bookkeeping, `onCmd*` handlers and the widget-tree helpers; it contains no event translation any more |
+
+Both modules now include `FXComposeContext.h` and `fxpriv.h`, which the moved
+bodies use (`fxmodifierkeys()`, `wkbMapKeyCode()`, `fxsenddata()`, the
+`WM_DND_*` messages and the X11 event masks).
+
+### Verification
+
+- The removed lines of `FXApp.cpp` equal the added lines of the two modules,
+  apart from the preprocessor guards and the added includes
+  (`tmp/verify-move.sh`); the move is textual.
+- Windows (`build-fox2-mingw.sh --cmake`) and X11 (`build-fox2-linux.sh --cmake`
+  in WSL) compile; `hello`, `button` and `dpi` run on both, `dpi simulate`
+  reports the same scale and window sizes.
+- `FXApp.cpp` is down from 5217 to 3121 lines.
+
 ## Next seams, in order
 
-1. **Message translation** (`FXApp.cpp`). `dispatchEvent(FXID,FXuint,FXuval,FXival)`
-   and the `WM_*` handling including `WM_DPICHANGED` and
-   `WM_DPICHANGED_AFTERPARENT`, which is what makes per-window metrics real; the
-   enable/disable input state and grab acquisition belong here as well. The arm
-   is ~1900 lines, so it has to be taken in groups (paint and configure first,
-   then pointer and keyboard, then DPI and DND).
+1. **Grabs and input state** (`FXWindow.cpp`). `grab()`, `ungrab()`,
+   `grabKeyboard()` and `ungrabKeyboard()` acquire pointer and keyboard grabs
+   and are the last platform calls in the window core.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
@@ -377,5 +401,16 @@ Do not start a later seam before the earlier one is accepted on both builds.
   `scripts/install-cachyos-mingw.sh`). That is the fast compile check, and
   Wine can start `hello`, `button` and `dpi` from it, but it does not replace
   the native Windows run for DPI behavior.
+- On a Windows host the X11 backend is built in WSL (Ubuntu with `g++`, `cmake`,
+  `ninja`, `libx11-dev`; WSLg provides the display):
+
+  ```bash
+  FOX_BUILD_DIR=$HOME/build/fox2-cmake ./scripts/build-fox2-linux.sh --cmake --run
+  ```
+
+  The build directory must be on the WSL file system: CMake's try-compile fails
+  with `Permission denied` below `/mnt/<drive>`. A full build takes under 20 s.
+  Docker would add reproducibility (a pinned distro, Xvfb for headless runs)
+  but not coverage beyond this, so it is only worth it for CI.
 - Keep DPI behavior identical while extracting; `tests/dpi` output and the
   session log are the comparison.

@@ -20,8 +20,10 @@
 ********************************************************************************/
 #include "xincs.h"
 #include "fx.h"
+#include "FXComposeContext.h"
 #include "fxapppriv.h"
 #include "fxplatform.h"
+#include "fxpriv.h"
 
 #if !defined(WIN32)
 
@@ -738,6 +740,1217 @@ FXbool FXApp::closeDisplay(){
   }
 
 
+
+
+// Smart rectangle compositing algorithm
+void FXApp::addRepaint(FXID win,FXint x,FXint y,FXint w,FXint h,FXbool synth){
+  FXint px,py,pw,ph,newarea,area;
+  FXRepaint *r,**pr;
+  area=w*h;
+  w+=x;
+  h+=y;
+  do{
+
+    // Find overlap with outstanding rectangles
+    for(r=repaints,pr=&repaints; r; pr=&r->next,r=r->next){
+      if(r->window==win){
+
+        // Tentatively conglomerate rectangles
+        px=FXMIN(x,r->rect.x);
+        py=FXMIN(y,r->rect.y);
+        pw=FXMAX(w,r->rect.w);
+        ph=FXMAX(h,r->rect.h);
+        newarea=(pw-px)*(ph-py);
+
+        // New area bigger than sum; forget about it
+        if(newarea > area+r->area) continue;
+
+        // Take old paintrect out of the list
+        *pr=r->next;
+        r->next=repaintrecs;
+        repaintrecs=r;
+
+        // New rectangle
+        synth|=r->synth;        // Synthethic is preserved!
+        area=newarea;
+        x=px;
+        y=py;
+        w=pw;
+        h=ph;
+        break;
+        }
+      }
+    }
+  while(r);
+
+  // Get rectangle, recycled if possible
+  if(repaintrecs){
+    r=repaintrecs;
+    repaintrecs=r->next;
+    }
+  else{
+    r=new FXRepaint;
+    }
+
+  // Fill it
+  r->window=win;
+  r->rect.x=x;
+  r->rect.y=y;
+  r->rect.w=w;
+  r->rect.h=h;
+  r->area=area;
+  r->synth=synth;
+  r->next=nullptr;
+  *pr=r;
+  }
+
+
+// Remove repaints by dispatching them
+void FXApp::removeRepaints(FXID win,FXint x,FXint y,FXint w,FXint h){
+  FXRepaint *r,**rr;
+  XEvent ev;
+
+  w+=x;
+  h+=y;
+
+  // Flush the buffer and wait till the X server catches up;
+  // resulting events, if any, are buffered in the client.
+  XSync((Display*)display,false);
+
+  // Fish out the expose events and compound them
+  while(XCheckMaskEvent((Display*)display,ExposureMask,&ev)){
+    if(ev.xany.type==NoExpose) continue;
+    addRepaint(ev.xexpose.window,ev.xexpose.x,ev.xexpose.y,ev.xexpose.width,ev.xexpose.height,false);
+    }
+
+  // Then process events pertaining to window win and overlapping
+  // with the given rectangle; other events are left in the queue.
+  rr=&repaints;
+  while((r=*rr)!=nullptr){
+    if(!win || (win==r->window && x<r->rect.w && y<r->rect.h && r->rect.x<w && r->rect.y<h)){
+      *rr=r->next;
+      ev.xany.type=Expose;
+      ev.xexpose.window=r->window;
+      ev.xexpose.x=r->rect.x;
+      ev.xexpose.y=r->rect.y;
+      ev.xexpose.width=r->rect.w-r->rect.x;
+      ev.xexpose.height=r->rect.h-r->rect.y;
+      r->next=repaintrecs;
+      repaintrecs=r;
+      dispatchEvent(ev);
+      continue;
+      }
+    rr=&r->next;
+    }
+
+  // Flush the buffer again
+  XFlush((Display*)display);
+  }
+
+
+// Scroll repaint rectangles; some slight trickyness here:- the
+// rectangles don't just move, they stretch in the scroll direction
+// This means the original dirty area will remain part of the area to
+// be painted.
+void FXApp::scrollRepaints(FXID win,FXint dx,FXint dy){
+  FXRepaint *r;
+  for(r=repaints; r; r=r->next){
+    if(r->window==win){
+      if(dx>0) r->rect.w+=dx; else r->rect.x+=dx;
+      if(dy>0) r->rect.h+=dy; else r->rect.y+=dy;
+      }
+    }
+  }
+
+
+
+/*******************************************************************************/
+
+
+
+
+/*******************************************************************************/
+
+// Translate key code to utf8 text
+FXString translateKeyEvent(FXRawEvent& event){
+  char buffer[40]; KeySym sym; FXwchar w;
+  XLookupString(&event.xkey,buffer,sizeof(buffer),&sym,nullptr);
+  w=fxkeysym2ucs(sym);
+  return FXString(&w,1);
+  }
+
+
+// Get keysym; interprets the modifiers!
+static FXuint keysym(FXRawEvent& event){
+  KeySym sym=KEY_VoidSymbol;
+  char buffer[40];
+  XLookupString(&event.xkey,buffer,sizeof(buffer),&sym,nullptr);
+  return sym;
+  }
+
+
+/*
+// Translate key code to utf8 text
+FXString translateKeyEvent(XEvent& event,XIC xic){
+  char buffer[40]; KeySym sym; Status s; int n;
+  FXString result;
+  FXwchar w=0;
+#ifndef NO_XIM
+  if(xic){
+    n=XmbLookupString((XIC)xic,&event.xkey,buffer,sizeof(buffer),&sym,&s);
+    if(s!=XLookupChars && s!=XLookupBoth) n=0;
+    // FIXME decode buffer based on XLocaleOfIM(XIMOfIC((XIC)xic))
+    buffer[n]=0;
+    FXTRACE(TOPIC_DETAIL,"XLocaleOfIM=%s\n",XLocaleOfIM(XIMOfIC((XIC)xic)));
+    result.assign(buffer,n);
+    }
+  else{
+#endif
+    n=XLookupString(&event.xkey,buffer,sizeof(buffer),&sym,nullptr);
+    w=fxkeysym2ucs(sym);
+    result.assign(&w,1);
+#ifndef NO_XIM
+    }
+#endif
+  return result;
+  }
+*/
+
+/*
+  KeyCode keycode=XKeysymToKeycode((Display*)display,keysym);
+  char keys[32];
+  if(keycode==NoSymbol) return false;
+  XQueryKeymap((Display*)display,keys);
+  return (keys[keycode>>3]>>(keycode&7))&1;
+*/
+
+
+
+
+#if 0
+The XIHierarchyEvent has a couple of interesting fields:
+
+
+typedef struct {
+    int           type;         /* GenericEvent */
+    unsigned long serial;       /* # of last request processed by server */
+    Bool          send_event;   /* true if this came from a SendEvent request */
+    Display       *display;     /* Display the event was read from */
+    int           extension;    /* XI extension offset */
+    int           evtype;       /* XI_DeviceHierarchyChangedNotify */
+    Time          time;
+    int           flags;
+    int           num_devices;
+    XIHierarchyInfo *info;
+} XIHierarchyEvent;
+
+
+The first couple of fields are standard. The flags field lists all changes that occurred, a combination of:
+
+
+XIMasterAdded           A new master device has been created.
+XIMasterRemoved         A master device has been deleted.
+XISlaveAdded            A new slave device has been added (e.g. plugged in).
+XISlaveRemoved          A slave device has been removed (e.g. unplugged).
+XISlaveAttached         A slave device has been attached to a master device.
+XISlaveDetached         A slave device has been detached (set floating).
+XIDeviceEnabled         A device has been enabled (i.e. it may send events now)).
+XIDeviceDisabled        A device has been disabled (i.e. it will not send events until enabled again).
+
+
+The info field contains the details for all devices currently present and those
+removed with this change. Each info->flags states what happened to this particular device.
+For example, one could search for the slave device that just got removed by searching
+for the XISlaveRemoved flag.
+
+
+if (!(ev.flags & XISlaveRemoved)) {
+  printf("No slave device removed.\n");
+  return;
+  }
+
+for (i = 0; i < ev.num_devices; i++) {
+  if (info[i].flags & XISlaveRemoved) {
+    printf("Device %d has been removed.\n", info[i].deviceid);
+    }
+  }
+
+
+With this information, it is possible to keep track of the device hierarchy at all times and
+adjust the user interface as necessary.
+
+#endif
+
+
+#if 0
+
+        if(ev.type==xsbBallMotion){     // FIXME consecutive xsbBallMotion events should be compressed!
+          static int axis_data[6];
+          static Window prevwindow=0;
+          Window pw;
+          XDeviceMotionEvent& sbe=(XDeviceMotionEvent&)ev;
+          event.type=SEL_SPACEBALLMOTION;
+          event.time=sbe.time;
+          //event.win_x=sbe.x;
+          //event.win_y=sbe.y;
+          //event.root_x=sbe.x_root;
+          //event.root_y=sbe.y_root;
+          event.values[0]=sbe.axis_data[0]-axis_data[0];
+          event.values[1]=sbe.axis_data[1]-axis_data[1];
+          event.values[2]=sbe.axis_data[2]-axis_data[2];
+          event.values[3]=sbe.axis_data[3]-axis_data[3];
+          event.values[4]=sbe.axis_data[4]-axis_data[4];
+          event.values[5]=sbe.axis_data[5]-axis_data[5];
+
+//          FXTRACE(TOPIC_DETAIL,"values: %+3d %+3d %+3d %+3d %+3d %+3d\n",sbe.axis_data[0],sbe.axis_data[1],sbe.axis_data[2],sbe.axis_data[3],sbe.axis_data[4],sbe.axis_data[5]);
+          axis_data[0]=sbe.axis_data[0];
+          axis_data[1]=sbe.axis_data[1];
+          axis_data[2]=sbe.axis_data[2];
+          axis_data[3]=sbe.axis_data[3];
+          axis_data[4]=sbe.axis_data[4];
+          axis_data[5]=sbe.axis_data[5];
+          pw=prevwindow;
+          prevwindow=ev.xmotion.window;
+          if(pw!=ev.xmotion.window) return false;
+         // if((FXABS(event.values[0])>400) || (FXABS(event.values[1])>400) || (FXABS(event.values[2])>400) || (FXABS(event.values[3])>400) || (FXABS(event.values[4])>400) || (FXABS(event.values[5])>400)) return false;
+          //FXTRACE(TOPIC_DETAIL,"spaceballmotion\n");
+          //FXTRACE(TOPIC_DETAIL,"state : %08x axes_count=%d first_axis=%d\n",sbe.device_state,sbe.axes_count,sbe.first_axis);
+        //  FXTRACE(TOPIC_DETAIL,"values: %+3d %+3d %+3d %+3d %+3d %+3d\n",sbe.axis_data[0],sbe.axis_data[1],sbe.axis_data[2],sbe.axis_data[3],sbe.axis_data[4],sbe.axis_data[5]);
+          // FIXME
+
+          // Dispatch to grab window
+          if(mouseGrabWindow){
+            window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+            if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+
+          // Dispatch if inside model window
+          // FIXME doesSaveUnder test should go away
+          else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){
+            if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+          }
+        else if(ev.type==xsbButtonPress){
+          event.type=SEL_SPACEBALLBUTTONPRESS;
+          event.time=ev.xmotion.time;
+          event.win_x=ev.xmotion.x;
+          event.win_y=ev.xmotion.y;
+          event.root_x=ev.xmotion.x_root;
+          event.root_y=ev.xmotion.y_root;
+
+          // Dispatch to grab window
+          if(mouseGrabWindow){
+            window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+            if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+
+          // Dispatch if inside model window
+          // FIXME doesSaveUnder test should go away
+          else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){
+            if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+          }
+        else if(ev.type==xsbButtonRelease){
+          event.type=SEL_SPACEBALLBUTTONRELEASE;
+          event.time=ev.xmotion.time;
+          event.win_x=ev.xmotion.x;
+          event.win_y=ev.xmotion.y;
+          event.root_x=ev.xmotion.x_root;
+          event.root_y=ev.xmotion.y_root;
+
+          // Dispatch to grab window
+          if(mouseGrabWindow){
+            window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+            if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+
+          // Dispatch if inside model window
+          // FIXME doesSaveUnder test should go away
+          else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){
+            if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+          }
+
+
+      // Enable extra events when input extension supported
+#if defined(HAVE_XINPUT2_H)
+/*
+      if(1){
+        unsigned char maskbits[4]={0,0,0,0};
+        XIEventMask eventmask={11,sizeof(maskbits),maskbits};
+        XISetMask(eventmask.mask,XI_Enter);
+        XISetMask(eventmask.mask,XI_Leave);
+        XISetMask(eventmask.mask,XI_FocusIn);
+        XISetMask(eventmask.mask,XI_FocusOut);
+        XISetMask(eventmask.mask,XI_PropertyEvent);
+        if(isEnabled()){
+//          XISetMask(eventmask.mask,XI_KeyPress);
+//          XISetMask(eventmask.mask,XI_KeyRelease);
+//          XISetMask(eventmask.mask,XI_ButtonPress);
+//          XISetMask(eventmask.mask,XI_ButtonRelease);
+//          XISetMask(eventmask.mask,XI_Motion);
+          }
+        XISelectEvents((Display*)getApp()->getDisplay(),xid,&eventmask,1);
+
+//XIGrabModifiers modifiers[]={{0,0},{0,0x10},{0,0x1},{0,0x11}};
+//int nmods=sizeof(modifiers)/sizeof(modifiers[0]);
+//XIGrabButton((Display*)getApp()->getDisplay(),eventmask.deviceid,1,xid,None,GrabModeAsync,GrabModeAsync,False,&eventmask,nmods,modifiers);
+//XIUngrabButton((Display*)getApp()->getDisplay(),eventmask.deviceid,1,xid,nmods-2,&modifiers[2]);
+//XIGrabKeycode((Display*)getApp()->getDisplay(),eventmask.deviceid, 24, xid, GrabModeAsync, GrabModeAsync,False, &eventmask, nmods, modifiers);
+//XIUngrabKeycode((Display*)getApp()->getDisplay(),eventmask.deviceid, 24, xid, nmods - 2, &modifiers[2]);
+        }
+*/
+#endif
+
+#endif
+
+#if defined(HAVE_XINPUT2_H)
+static void print_hierarchychangedevent(XIHierarchyEvent *event){
+  const char *use;
+  int i;
+  FXTRACE(TOPIC_DETAIL,"    Changes happened: %s %s %s %s %s %s %s %s\n",(event->flags & XIMasterAdded) ? "[new master]" : "",(event->flags & XIMasterRemoved) ? "[master removed]" : "",(event->flags & XISlaveAdded) ? "[new slave]" : "",(event->flags & XISlaveRemoved) ? "[slave removed]" : "",(event->flags & XISlaveAttached) ? "[slave attached]" : "",(event->flags & XISlaveDetached) ? "[slave detached]" : "",(event->flags & XIDeviceEnabled) ? "[device enabled]" : "",(event->flags & XIDeviceDisabled) ? "[device disabled]" : "");
+
+  for(i=0; i<event->num_info; i++){
+    switch(event->info[i].use){
+      case XIMasterPointer: use = "master pointer"; break;
+      case XIMasterKeyboard: use = "master keyboard"; break;
+      case XISlavePointer: use = "slave pointer"; break;
+      case XISlaveKeyboard: use = "slave keyboard"; break;
+      case XIFloatingSlave: use = "floating slave"; break;
+      default: use=""; break;
+      }
+    FXTRACE(TOPIC_DETAIL,"    device %d [%s (%d)] is %s\n",event->info[i].deviceid,use,event->info[i].attachment,(event->info[i].enabled) ? "enabled" : "disabled");
+    if(event->info[i].flags){
+      FXTRACE(TOPIC_DETAIL,"    changes: %s %s %s %s %s %s %s %s\n",(event->info[i].flags & XIMasterAdded) ? "[new master]" : "",(event->info[i].flags & XIMasterRemoved) ? "[master removed]" : "",(event->info[i].flags & XISlaveAdded) ? "[new slave]" : "",(event->info[i].flags & XISlaveRemoved) ? "[slave removed]" : "",(event->info[i].flags & XISlaveAttached) ? "[slave attached]" : "",(event->info[i].flags & XISlaveDetached) ? "[slave detached]" : "",(event->info[i].flags & XIDeviceEnabled) ? "[device enabled]" : "",(event->info[i].flags & XIDeviceDisabled) ? "[device disabled]" : "");
+      }
+    }
+  }
+
+
+static void print_deviceevent(XIDeviceEvent* event){
+  double *val;
+  int i;
+  FXTRACE(TOPIC_DETAIL,"    device: %d (%d)\n", event->deviceid, event->sourceid);
+  FXTRACE(TOPIC_DETAIL,"    detail: %d\n", event->detail);
+  FXTRACE(TOPIC_DETAIL,"    flags: %s\n", (event->flags & XIKeyRepeat) ? "repeat" : "");
+  FXTRACE(TOPIC_DETAIL,"    root: %.2f/%.2f\n", event->root_x, event->root_y);
+  FXTRACE(TOPIC_DETAIL,"    event: %.2f/%.2f\n", event->event_x, event->event_y);
+  FXTRACE(TOPIC_DETAIL,"    buttons:");
+  for(i=0; i<event->buttons.mask_len*8; i++){
+    if(XIMaskIsSet(event->buttons.mask,i)) FXTRACE(TOPIC_DETAIL," %d", i);
+    }
+  FXTRACE(TOPIC_DETAIL,"\n");
+  FXTRACE(TOPIC_DETAIL,"    modifiers: locked %#x latched %#x base %#x effective: %#x\n",event->mods.locked, event->mods.latched,event->mods.base, event->mods.effective);
+  FXTRACE(TOPIC_DETAIL,"    group: locked %#x latched %#x base %#x effective: %#x\n",event->group.locked, event->group.latched,event->group.base, event->group.effective);
+  FXTRACE(TOPIC_DETAIL,"    valuators:");
+  val = event->valuators.values;
+  for(i=0; i<event->valuators.mask_len*8; i++){
+    if(XIMaskIsSet(event->valuators.mask,i)) FXTRACE(TOPIC_DETAIL," %.2f", *val++);
+    }
+  FXTRACE(TOPIC_DETAIL,"\n");
+  FXTRACE(TOPIC_DETAIL,"    windows: root 0x%lx event 0x%lx child 0x%ld\n",event->root, event->event, event->child);
+  }
+
+
+static void print_rawevent(XIRawEvent *event){
+  int i;
+  double *val, *raw_val;
+  FXTRACE(TOPIC_DETAIL,"    device: %d\n", event->deviceid);
+  FXTRACE(TOPIC_DETAIL,"    detail: %d\n", event->detail);
+  FXTRACE(TOPIC_DETAIL,"    valuators:\n");
+  val = event->valuators.values;
+  raw_val = event->raw_values;
+  for (i = 0; i < event->valuators.mask_len * 8; i++){
+    if (XIMaskIsSet(event->valuators.mask, i)) FXTRACE(TOPIC_DETAIL,"         %2d: %.2f (%.2f)\n", i, *val++, *raw_val++);
+    }
+  FXTRACE(TOPIC_DETAIL,"\n");
+  }
+
+#endif
+
+
+
+// Dispatch event to widget
+FXbool FXApp::dispatchEvent(FXRawEvent& ev){
+  const FXTime milliseconds=1000000;
+  FXWindow *window,*ancestor,*focuswin;
+  Atom      answer;
+  FXuint    state;
+  XEvent    se;
+  Window    tmp;
+
+  // Get window
+  window=findWindowWithId(ev.xany.window);
+
+  // Workaround XInput2
+#ifdef HAVE_XINPUT2_H
+  if(ev.xany.type==GenericEvent) window=getRootWindow();
+#endif
+
+  // Was one of our windows, so dispatch
+  if(window){
+
+    switch(ev.xany.type){
+
+      // Repaint event
+      case GraphicsExpose:
+      case Expose:
+        event.type=SEL_PAINT;
+        event.rect.x=ev.xexpose.x;
+        event.rect.y=ev.xexpose.y;
+        event.rect.w=ev.xexpose.width;
+        event.rect.h=ev.xexpose.height;
+        event.synthetic=ev.xexpose.send_event;
+        window->handle(this,FXSEL(SEL_PAINT,0),&event);
+        return true;
+      case NoExpose:
+        return true;
+
+      // Keymap Notify
+      case KeymapNotify:
+        //memcpy(keystate,ev.xkeymap.key_vector,32);
+        return true;
+
+      // Keyboard
+      case KeyPress:            // [Patch from Roland Baudin] FIXME should this go?
+#if 0
+#ifndef NO_XIM
+        focuswin=getFocusWindow();
+        if((ev.xkey.keycode!=0) && focuswin && focuswin->getComposeContext()){
+          Window w;
+          XGetICValues((XIC)focuswin->getComposeContext()->id(),XNFocusWindow,&w,nullptr);
+          if((focuswin->id()!=w) && XFilterEvent(&ev,(Window)focuswin->id())){
+            return true;
+            }
+          }
+#endif
+#endif
+      case KeyRelease:
+        event.type=SEL_KEYPRESS+ev.xkey.type-KeyPress;
+        event.time=ev.xkey.time;
+        event.win_x=ev.xkey.x;
+        event.win_y=ev.xkey.y;
+        event.root_x=ev.xkey.x_root;
+        event.root_y=ev.xkey.y_root;
+
+        // Translate to keysym; must interpret modifiers!
+        event.code=keysym(ev);
+//      XModifierKeymap *XGetModifierMapping((Display*)display);
+
+        // Translate to string on KeyPress
+        if(ev.xkey.type==KeyPress){
+//        FXTRACE(TOPIC_DETAIL,"getFocusWindow()=%s\n",getFocusWindow()?getFocusWindow()->getClassName():"nil");
+          focuswin=getFocusWindow();
+          if(focuswin && focuswin->getComposeContext())
+            event.text=focuswin->getComposeContext()->translateEvent(ev);
+          else
+            event.text=translateKeyEvent(ev);
+          }
+
+        // Clear string on KeyRelease
+        else{
+          event.text.clear();
+          }
+
+        // Mouse buttons and modifiers but no wheel buttons
+        event.state=ev.xkey.state&~(Button4Mask|Button5Mask);
+
+        // Fix modifier state
+        if(ev.xkey.type==KeyPress){
+          if(event.code==KEY_Shift_L) event.state|=SHIFTMASK;
+          else if(event.code==KEY_Shift_R) event.state|=SHIFTMASK;
+          else if(event.code==KEY_Control_L) event.state|=CONTROLMASK;
+          else if(event.code==KEY_Control_R) event.state|=CONTROLMASK;
+          else if(event.code==KEY_F13) event.state|=METAMASK;     // Key between Ctrl and Alt (on most keyboards)
+          else if(event.code==KEY_Alt_L) event.state|=ALTMASK;
+          else if(event.code==KEY_Alt_R) event.state|=ALTMASK;    // FIXME do we need ALTGR flag instead/in addition?
+          else if(event.code==KEY_Num_Lock) event.state|=NUMLOCKMASK;
+          else if(event.code==KEY_Caps_Lock) event.state|=CAPSLOCKMASK;
+          else if(event.code==KEY_Scroll_Lock) event.state|=SCROLLLOCKMASK;
+          else if(event.code==KEY_Super_L) event.state|=METAMASK;
+          else if(event.code==KEY_Super_R) event.state|=METAMASK;
+          else{ stickyMods=event.state&(SHIFTMASK|CONTROLMASK|METAMASK|ALTMASK); }
+          }
+        else{
+          if(event.code==KEY_Shift_L) event.state&=~SHIFTMASK;
+          else if(event.code==KEY_Shift_R) event.state&=~SHIFTMASK;
+          else if(event.code==KEY_Control_L) event.state&=~CONTROLMASK;
+          else if(event.code==KEY_Control_R) event.state&=~CONTROLMASK;
+          else if(event.code==KEY_F13) event.state&=~METAMASK;    // Key between Ctrl and Alt (on most keyboards)
+          else if(event.code==KEY_Alt_L) event.state&=~ALTMASK;
+          else if(event.code==KEY_Alt_R) event.state&=~ALTMASK;   // FIXME do we need ALTGR flag instead/in addition?
+          else if(event.code==KEY_Num_Lock) event.state&=~NUMLOCKMASK;
+          else if(event.code==KEY_Caps_Lock) event.state&=~CAPSLOCKMASK;
+          else if(event.code==KEY_Scroll_Lock) event.state&=~SCROLLLOCKMASK;
+          else if(event.code==KEY_Super_L) event.state&=~METAMASK;
+          else if(event.code==KEY_Super_R) event.state&=~METAMASK;
+          else{ event.state|=stickyMods; stickyMods=0; }
+          }
+
+        FXTRACE(TOPIC_KEYBOARD,"%s code=%04x state=%04x stickyMods=%04x text=\"%s\"\n",(event.type==SEL_KEYPRESS)?"SEL_KEYPRESS":"SEL_KEYRELEASE",event.code,event.state,stickyMods,event.text.text());
+
+        // Keyboard grabbed by specific window
+        if(keyboardGrabWindow){
+          if(keyboardGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+          return true;
+          }
+
+//        // Try popup window
+//        if(popupWindow){
+//          if(popupWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+//          return true;
+//          }
+
+        // Remember window for later
+        if(ev.xkey.type==KeyPress) keyWindow=activeWindow;
+
+        // Dispatch to key window
+        if(keyWindow){
+
+          // FIXME doesSaveUnder test should go away
+          // Dispatch if not in a modal loop or in a modal loop for a window containing the focus window
+          if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(keyWindow)) || keyWindow->getShell()->doesSaveUnder()){
+            if(keyWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+            if(inputstyle[1]!='o'){ // not root mode
+              focuswin=getFocusWindow();
+              if(focuswin && focuswin->getComposeContext()){
+                focuswin->handle(this,FXSEL(SEL_IME_START,0),nullptr);
+                }
+              }
+            return true;
+            }
+
+          // Beep if outside modal
+          if(ev.xany.type==KeyPress) beep();
+          }
+        return true;
+
+      // Motion
+      case MotionNotify:
+        event.type=SEL_MOTION;
+        event.time=ev.xmotion.time;
+        event.win_x=ev.xmotion.x;
+        event.win_y=ev.xmotion.y;
+        event.root_x=ev.xmotion.x_root;
+        event.root_y=ev.xmotion.y_root;
+        event.code=0;
+
+        // Mouse buttons and modifiers but no wheel buttons
+        event.state=(ev.xmotion.state&~(Button4Mask|Button5Mask)) | stickyMods;
+
+        // Moved more that delta
+        if((FXABS(event.root_x-event.rootclick_x)>=dragDelta) || (FXABS(event.root_y-event.rootclick_y)>=dragDelta)) event.moved=1;
+
+        // Dispatch to grab window
+        if(mouseGrabWindow){
+          window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+          if(mouseGrabWindow->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+          }
+
+        // FIXME doesSaveUnder test should go away
+        // Dispatch if inside model window
+        else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){
+          if(window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+          }
+
+        // Remember last mouse
+        event.last_x=event.win_x;
+        event.last_y=event.win_y;
+        return true;
+
+      // Button
+      case ButtonPress:
+      case ButtonRelease:
+        event.time=ev.xbutton.time;
+        event.win_x=ev.xbutton.x;
+        event.win_y=ev.xbutton.y;
+        event.root_x=ev.xbutton.x_root;
+        event.root_y=ev.xbutton.y_root;
+
+        // Mouse buttons and modifiers but no wheel buttons
+        event.state=(ev.xmotion.state&~(Button4Mask|Button5Mask)) | stickyMods;
+
+        // Mouse Wheel
+        if(ev.xbutton.button==Button4 || ev.xbutton.button==Button5){
+          event.type=SEL_MOUSEWHEEL;
+          event.code=((ev.xbutton.button==Button4)?120:-120)*ev.xbutton.subwindow;
+
+          // Dispatch to grab window
+          if(mouseGrabWindow){
+            window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+            if(mouseGrabWindow->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)) refresh();
+            return true;
+            }
+
+          // Dispatch to window under cursor
+          // FIXME doesSaveUnder test should go away
+          while(window && (!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder())){
+            if(window->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)){ refresh(); break; }
+            window=window->getParent();
+            }
+          return true;
+          }
+
+        // Mouse Button
+        event.code=ev.xbutton.button;
+        if(ev.xbutton.type==ButtonPress){                               // Mouse button press
+          if(ev.xbutton.button==Button1){ event.type=SEL_LEFTBUTTONPRESS; event.state|=LEFTBUTTONMASK; }
+          if(ev.xbutton.button==Button2){ event.type=SEL_MIDDLEBUTTONPRESS; event.state|=MIDDLEBUTTONMASK; }
+          if(ev.xbutton.button==Button3){ event.type=SEL_RIGHTBUTTONPRESS; event.state|=RIGHTBUTTONMASK; }
+          if(!event.moved && (event.code==event.click_button) && (milliseconds*(event.time-event.click_time)<clickSpeed)){
+            event.click_count++;
+            event.click_time=event.time;
+            }
+          else{
+            event.click_count=1;
+            event.click_x=event.win_x;
+            event.click_y=event.win_y;
+            event.rootclick_x=event.root_x;
+            event.rootclick_y=event.root_y;
+            event.click_button=event.code;
+            event.click_time=event.time;
+            }
+          state=event.state&(LEFTBUTTONMASK|MIDDLEBUTTONMASK|RIGHTBUTTONMASK);
+          if((state==LEFTBUTTONMASK)||(state==MIDDLEBUTTONMASK)||(state==RIGHTBUTTONMASK)) event.moved=0;
+          }
+        else{                                                           // Mouse button release
+          if(ev.xbutton.button==Button1){ event.type=SEL_LEFTBUTTONRELEASE; event.state&=~LEFTBUTTONMASK; }
+          if(ev.xbutton.button==Button2){ event.type=SEL_MIDDLEBUTTONRELEASE; event.state&=~MIDDLEBUTTONMASK; }
+          if(ev.xbutton.button==Button3){ event.type=SEL_RIGHTBUTTONRELEASE; event.state&=~RIGHTBUTTONMASK; }
+          }
+
+        // Dispatch to grab window
+        if(mouseGrabWindow){
+          window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+          if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+          }
+
+        // Dispatch if inside model window
+        // FIXME doesSaveUnder test should go away
+        else if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window)) || window->getShell()->doesSaveUnder()){
+          if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+          }
+
+        // Beep if outside modal window
+        else{
+          if(ev.xany.type==ButtonPress) beep();
+          }
+
+        // Remember last mouse
+        event.last_x=event.win_x;
+        event.last_y=event.win_y;
+        return true;
+
+      // Crossing
+      case EnterNotify:
+        event.time=ev.xcrossing.time;
+        if(cursorWindow!=window){
+          if(ev.xcrossing.mode==NotifyGrab || ev.xcrossing.mode==NotifyUngrab || (ev.xcrossing.mode==NotifyNormal && ev.xcrossing.detail!=NotifyInferior)){
+            ancestor=FXWindow::commonAncestor(window,cursorWindow);
+            event.root_x=ev.xcrossing.x_root;
+            event.root_y=ev.xcrossing.y_root;
+            event.code=ev.xcrossing.mode;
+            leaveWindow(cursorWindow,ancestor);
+            enterWindow(window,ancestor);
+            }
+          }
+        return true;
+
+      // Crossing
+      case LeaveNotify:
+        event.time=ev.xcrossing.time;
+        if(cursorWindow==window){
+          if(ev.xcrossing.mode==NotifyGrab || ev.xcrossing.mode==NotifyUngrab || (ev.xcrossing.mode==NotifyNormal && ev.xcrossing.detail!=NotifyInferior)){
+            event.root_x=ev.xcrossing.x_root;
+            event.root_y=ev.xcrossing.y_root;
+            event.code=ev.xcrossing.mode;
+            FXASSERT(cursorWindow==window);
+            leaveWindow(window,window->getParent());
+            }
+          }
+        return true;
+
+      // Focus change on shell window
+      case FocusIn:
+      case FocusOut:
+        window=window->getShell();
+        if(ev.xfocus.type==FocusOut && activeWindow==window){
+          event.type=SEL_FOCUSOUT;
+          if(window->handle(this,FXSEL(SEL_FOCUSOUT,0),&event)) refresh();
+          activeWindow=nullptr;
+          if(inputstyle[1]!='o'){ // not root mode
+            focuswin=getFocusWindow();
+            if(focuswin && focuswin->getComposeContext()){
+              focuswin->handle(this,FXSEL(SEL_IME_END,0),nullptr);
+              }
+            }
+          }
+        if(ev.xfocus.type==FocusIn && activeWindow!=window){
+          event.type=SEL_FOCUSIN;
+          if(window->handle(this,FXSEL(SEL_FOCUSIN,0),&event)) refresh();
+          activeWindow=window;
+          if(inputstyle[1]!='o'){ // not root mode
+            focuswin=getFocusWindow();
+            if(focuswin && focuswin->getComposeContext()){
+              focuswin->handle(this,FXSEL(SEL_IME_START,0),nullptr);
+              }
+            }
+          }
+        return true;
+
+      // Map
+      case MapNotify:
+        event.type=SEL_MAP;
+        if(window->handle(this,FXSEL(SEL_MAP,0),&event)) refresh();
+        return true;
+
+      // Unmap
+      case UnmapNotify:
+        event.type=SEL_UNMAP;
+        if(window->handle(this,FXSEL(SEL_UNMAP,0),&event)) refresh();
+        return true;
+
+      // Create
+      case CreateNotify:
+        event.type=SEL_CREATE;
+        if(window->handle(this,FXSEL(SEL_CREATE,0),&event)) refresh();
+        return true;
+
+      // Destroy
+      case DestroyNotify:
+        event.type=SEL_DESTROY;
+        if(window->handle(this,FXSEL(SEL_DESTROY,0),&event)) refresh();
+        return true;
+
+      // Configure
+      case ConfigureNotify:
+        event.type=SEL_CONFIGURE;
+        // According to the ICCCM, if its synthetic, the coordinates are relative
+        // to root window; otherwise, they're relative to the parent; so we use
+        // the old coordinates if its not a synthetic configure notify
+        if(window->getShell()==window && !ev.xconfigure.send_event){
+          ev.xconfigure.x=window->getX();
+          ev.xconfigure.y=window->getY();
+          }
+        event.rect.x=ev.xconfigure.x;
+        event.rect.y=ev.xconfigure.y;
+        event.rect.w=ev.xconfigure.width;
+        event.rect.h=ev.xconfigure.height;
+        event.synthetic=ev.xconfigure.send_event;
+        if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
+        return true;
+
+      // Circulate
+      case CirculateNotify:
+        event.type=SEL_RAISED+(ev.xcirculate.place&1);
+        if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+        return true;
+
+      // Selection Clear
+      case SelectionClear:
+        if(ev.xselectionclear.selection==XA_PRIMARY){
+
+          // We lost the primary selection if the new selection owner is different from selectionWindow
+          if(selectionWindow && selectionWindow->id()!=XGetSelectionOwner((Display*)display,XA_PRIMARY)){
+            event.type=SEL_SELECTION_LOST;
+            event.time=ev.xselectionclear.time;
+            if(selectionWindow->handle(this,FXSEL(SEL_SELECTION_LOST,0),&event)) refresh();
+            selectionWindow=nullptr;
+            }
+          freeElms(xselTypeList);
+          xselNumTypes=0;
+          }
+        else if(ev.xselectionclear.selection==xcbSelection){
+
+          // We lost the clipboard selection if the new clipboard owner is different from clipboardWindow
+          if(clipboardWindow && clipboardWindow->id()!=XGetSelectionOwner((Display*)display,xcbSelection)){
+            event.time=ev.xselectionclear.time;
+            event.type=SEL_CLIPBOARD_LOST;
+            if(clipboardWindow->handle(this,FXSEL(SEL_CLIPBOARD_LOST,0),&event)) refresh();
+            clipboardWindow=nullptr;
+            }
+          freeElms(xcbTypeList);
+          xcbNumTypes=0;
+          }
+        return true;
+
+      // Selection Request
+      case SelectionRequest:
+        answer=None;
+        FXTRACE(TOPIC_DETAIL,"Request selection (%ld) from requestor=%ld\n",ev.xselectionrequest.selection,ev.xselectionrequest.requestor);
+        if(ev.xselectionrequest.selection==XA_PRIMARY){
+          if(selectionWindow){
+            if(ev.xselectionrequest.target==ddeTargets){            // Request for TYPES
+              FXTRACE(TOPIC_EVENT,"Window %ld being requested by window %ld for SELECTION TYPES; sending %d types\n",ev.xselectionrequest.owner,ev.xselectionrequest.requestor,xselNumTypes);
+              answer=fxsendtypes((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.property,xselTypeList,xselNumTypes);
+              }
+            else{                                                   // Request for DATA
+              event.type=SEL_SELECTION_REQUEST;
+              event.time=ev.xselectionrequest.time;
+              event.target=ev.xselectionrequest.target;
+              ddeData=nullptr;
+              ddeSize=0;
+              selectionWindow->handle(this,FXSEL(SEL_SELECTION_REQUEST,0),&event);
+              FXTRACE(TOPIC_EVENT,"Window %ld being requested by window %ld for SELECTION DATA of type %ld; sending %d bytes\n",ev.xselectionrequest.owner,ev.xselectionrequest.requestor,ev.xselectionrequest.target,ddeSize);
+              answer=fxsenddata((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.property,ev.xselectionrequest.target,ddeData,ddeSize);
+              freeElms(ddeData);
+              ddeData=nullptr;
+              ddeSize=0;
+              }
+            }
+          }
+        else if(ev.xselectionrequest.selection==xcbSelection){
+          if(clipboardWindow){
+            if(ev.xselectionrequest.target==ddeTargets){            // Request for TYPES
+              FXTRACE(TOPIC_EVENT,"Window %ld being requested by window %ld for CLIPBOARD TYPES; sending %d types\n",ev.xselectionrequest.owner,ev.xselectionrequest.requestor,xcbNumTypes);
+              answer=fxsendtypes((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.property,xcbTypeList,xcbNumTypes);
+              }
+            else{                                                   // Request for DATA
+              event.type=SEL_CLIPBOARD_REQUEST;
+              event.time=ev.xselectionrequest.time;
+              event.target=ev.xselectionrequest.target;
+              ddeData=nullptr;
+              ddeSize=0;
+              clipboardWindow->handle(this,FXSEL(SEL_CLIPBOARD_REQUEST,0),&event);
+              FXTRACE(TOPIC_EVENT,"Window %ld being requested by window %ld for CLIPBOARD DATA of type %ld; sending %d bytes\n",ev.xselectionrequest.owner,ev.xselectionrequest.requestor,ev.xselectionrequest.target,ddeSize);
+              answer=fxsenddata((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.property,ev.xselectionrequest.target,ddeData,ddeSize);
+              freeElms(ddeData);
+              ddeData=nullptr;
+              ddeSize=0;
+              }
+            }
+          }
+        else if(ev.xselectionrequest.selection==xdndSelection){
+          if(dragWindow){
+            if(ev.xselectionrequest.target==ddeTargets){            // Request for TYPES
+              FXTRACE(TOPIC_EVENT,"Window %ld being requested by window %ld for XDND TYPES; sending %d types\n",ev.xselectionrequest.owner,ev.xselectionrequest.requestor,xdndNumTypes);
+              answer=fxsendtypes((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.property,xdndTypeList,xdndNumTypes);
+              }
+            else{                                                   // Request for DATA
+              event.type=SEL_DND_REQUEST;
+              event.time=ev.xselectionrequest.time;
+              event.target=ev.xselectionrequest.target;
+              ddeData=nullptr;
+              ddeSize=0;
+              dragWindow->handle(this,FXSEL(SEL_DND_REQUEST,0),&event);
+              FXTRACE(TOPIC_EVENT,"Window %ld being requested by window %ld for XDND DATA of type %ld; sending %d bytes\n",ev.xselectionrequest.owner,ev.xselectionrequest.requestor,ev.xselectionrequest.target,ddeSize);
+              answer=fxsenddata((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.property,ev.xselectionrequest.target,ddeData,ddeSize);
+              freeElms(ddeData);
+              ddeData=nullptr;
+              ddeSize=0;
+              }
+            }
+          }
+        FXTRACE(TOPIC_EVENT,"Sending back response to requestor=%ld\n",ev.xselectionrequest.requestor);
+        fxsendreply((Display*)display,ev.xselectionrequest.requestor,ev.xselectionrequest.selection,answer,ev.xselectionrequest.target,ev.xselectionrequest.time);
+        return true;
+
+      // Selection Notify
+      case SelectionNotify:
+        return true;
+
+      // Client message
+      case ClientMessage:
+
+        // WM_PROTOCOLS
+        if(ev.xclient.message_type==wmProtocols){
+          if((FXID)ev.xclient.data.l[0]==wmDeleteWindow){           // WM_DELETE_WINDOW
+            FXTRACE(TOPIC_EVENT,"WM_DELETE_WINDOW\n");
+            event.type=SEL_CLOSE;
+            if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window))){
+              if(window->handle(this,FXSEL(SEL_CLOSE,0),&event)) refresh();
+              }
+            else{
+              beep();
+              }
+            }
+          else if((FXID)ev.xclient.data.l[0]==wmSaveYourself){      // WM_SAVE_YOURSELF
+            FXTRACE(TOPIC_EVENT,"WM_SAVE_YOURSELF\n");
+            //XSetCommand((Display*)display,ev.xany.window,(char**)appArgv,appArgc);
+            //XChangeProperty((Display*)display,ev.xany.window,wmCommand,XA_STRING,8,PropModeReplace,(unsigned char*)"",0);
+            event.type=SEL_SESSION_NOTIFY;
+            return !window->handle(this,FXSEL(SEL_SESSION_NOTIFY,0),&event); // Return 1 if OK to terminate
+/*
+
+          case WM_ENDSESSION:         // Session will now end for sure
+            event.type=SEL_SESSION_CLOSED;
+            if(wParam) window->handle(this,FXSEL(SEL_SESSION_CLOSED,0),&event);
+            return 0;
+*/
+            }
+          else if((FXID)ev.xclient.data.l[0]==wmQuitApp){           // WM_QUIT_APP
+            FXTRACE(TOPIC_EVENT,"WM_QUIT_APP\n");
+            event.type=SEL_CLOSE;
+            if(!invocation || invocation->modality==MODAL_FOR_NONE || (invocation->window && invocation->window->isOwnerOf(window))){
+              if(window->handle(this,FXSEL(SEL_CLOSE,0),&event)) refresh();
+              }
+            else{
+              beep();
+              }
+            }
+          else if((FXID)ev.xclient.data.l[0]==wmTakeFocus){         // WM_TAKE_FOCUS
+            if(invocation && invocation->window && invocation->window->id()) ev.xclient.window=invocation->window->id();
+            // Assign focus to innermost modal dialog, even when trying to focus
+            // on another window; these other windows are dead to inputs anyway.
+            // XSetInputFocus causes a spurious BadMatch error; we ignore this in xerrorhandler
+            XSetInputFocus((Display*)display,ev.xclient.window,RevertToParent,ev.xclient.data.l[1]);
+            }
+          else if((FXID)ev.xclient.data.l[0]==wmNetPing){          // NET_WM_PING
+            FXTRACE(TOPIC_EVENT,"NET_WM_PING %ld\n",ev.xclient.data.l[1]);
+            se.xclient.type=ClientMessage;
+            se.xclient.display=(Display*)display;                       // This lets a window manager know that
+            se.xclient.message_type=wmProtocols;                        // we're still alive after having received
+            se.xclient.format=32;                                       // a WM_DELETE_WINDOW message
+            se.xclient.window=XDefaultRootWindow((Display*)display);
+            se.xclient.data.l[0]=ev.xclient.data.l[0];
+            se.xclient.data.l[1]=ev.xclient.data.l[1];
+            se.xclient.data.l[2]=ev.xclient.data.l[2];
+            se.xclient.data.l[3]=0;
+            se.xclient.data.l[4]=0;
+            XSendEvent((Display*)display,se.xclient.window,False,SubstructureRedirectMask|SubstructureNotifyMask,&se);
+            }
+          }
+
+        // XDND Enter from source
+        else if(ev.xclient.message_type==xdndEnter){
+          FXint ver=(ev.xclient.data.l[1]>>24)&255;
+          FXTRACE(TOPIC_EVENT,"DNDEnter from remote window %ld (ver %d)\n",ev.xclient.data.l[0],ver);
+          if(ver>XDND_PROTOCOL_VERSION) return true;
+          xdndSource=ev.xclient.data.l[0];                                  // Now we're talking to this guy
+          if(ddeTypeList){freeElms(ddeTypeList);ddeNumTypes=0;}
+          if(ev.xclient.data.l[1]&1){
+            fxrecvtypes((Display*)display,xdndSource,xdndTypes,ddeTypeList,ddeNumTypes,false);
+            }
+          else{
+            allocElms(ddeTypeList,3);
+            ddeNumTypes=0;
+            if(ev.xclient.data.l[2]){ddeTypeList[0]=ev.xclient.data.l[2];ddeNumTypes++;}
+            if(ev.xclient.data.l[3]){ddeTypeList[1]=ev.xclient.data.l[3];ddeNumTypes++;}
+            if(ev.xclient.data.l[4]){ddeTypeList[2]=ev.xclient.data.l[4];ddeNumTypes++;}
+            }
+          }
+
+        // XDND Leave from source
+        else if(ev.xclient.message_type==xdndLeave){
+          FXTRACE(TOPIC_EVENT,"DNDLeave from remote window %ld\n",ev.xclient.data.l[0]);
+          if(xdndSource!=(FXID)ev.xclient.data.l[0]) return true;   // We're not talking to this guy
+          if(dropWindow){
+            event.type=SEL_DND_LEAVE;
+            if(dropWindow->handle(this,FXSEL(SEL_DND_LEAVE,0),&event)) refresh();
+            dropWindow=nullptr;
+            }
+          if(ddeTypeList){freeElms(ddeTypeList);ddeNumTypes=0;}
+          xdndSource=0;
+          }
+
+        // XDND Position from source
+        else if(ev.xclient.message_type==xdndPosition){
+          if(xdndSource!=(FXID)ev.xclient.data.l[0]) return true;   // We're not talking to this guy
+          event.time=ev.xclient.data.l[3];
+          event.root_x=((FXuint)ev.xclient.data.l[2])>>16;
+          event.root_y=((FXuint)ev.xclient.data.l[2])&0xffff;
+          // Search from target window down; there may be another window
+          // (like e.g. the dragged shape window) right under the cursor.
+          // Note this is the target window, not the proxy target....
+          window=findWindowAt(event.root_x,event.root_y,ev.xclient.window);
+          if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_ASK]) ddeAction=DRAG_ASK;
+          else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_MOVE]) ddeAction=DRAG_MOVE;
+          else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_COPY]) ddeAction=DRAG_COPY;
+          else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_LINK]) ddeAction=DRAG_LINK;
+          else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_PRIVATE]) ddeAction=DRAG_PRIVATE;
+          else ddeAction=DRAG_COPY;
+          FXTRACE(TOPIC_EVENT,"DNDPosition from remote window %ld action %d\n",ev.xclient.data.l[0],ddeAction);
+          ansAction=DRAG_REJECT;
+          xdndWantUpdates=true;
+          xdndRect.x=event.root_x;
+          xdndRect.y=event.root_y;
+          xdndRect.w=1;
+          xdndRect.h=1;
+          if(window!=dropWindow){
+            if(dropWindow){
+              event.type=SEL_DND_LEAVE;
+              if(dropWindow->handle(this,FXSEL(SEL_DND_LEAVE,0),&event)) refresh();
+              }
+            dropWindow=nullptr;
+            if(window && window->isDropEnabled()){
+              dropWindow=window;
+              event.type=SEL_DND_ENTER;
+              if(dropWindow->handle(this,FXSEL(SEL_DND_ENTER,0),&event)) refresh();
+              }
+            }
+          if(dropWindow){
+            event.type=SEL_DND_MOTION;
+            XTranslateCoordinates((Display*)display,XDefaultRootWindow((Display*)display),dropWindow->id(),event.root_x,event.root_y,&event.win_x,&event.win_y,&tmp);
+            if(dropWindow->handle(this,FXSEL(SEL_DND_MOTION,0),&event)) refresh();
+            event.last_x=event.win_x;
+            event.last_y=event.win_y;
+            }
+          se.xclient.type=ClientMessage;
+          se.xclient.display=(Display*)display;
+          se.xclient.message_type=xdndStatus;
+          se.xclient.format=32;
+          se.xclient.window=xdndSource;
+          se.xclient.data.l[0]=ev.xclient.window;                       // Proxy Target window
+          se.xclient.data.l[1]=0;
+          if(ansAction!=DRAG_REJECT) se.xclient.data.l[1]|=1;           // Target accepted
+          if(xdndWantUpdates) se.xclient.data.l[1]|=2;                  // Target wants continuous position updates
+          se.xclient.data.l[2]=MKUINT(xdndRect.y,xdndRect.x);
+          se.xclient.data.l[3]=MKUINT(xdndRect.h,xdndRect.w);
+          se.xclient.data.l[4]=xdndActionList[ansAction];               // Drag and Drop Action accepted
+          XSendEvent((Display*)display,xdndSource,True,NoEventMask,&se);
+          }
+
+        // XDND Drop from source
+        else if(ev.xclient.message_type==xdndDrop){
+          FXTRACE(TOPIC_EVENT,"DNDDrop from remote window %ld\n",ev.xclient.data.l[0]);
+          if(xdndSource!=(FXID)ev.xclient.data.l[0]) return true;       // We're not talking to this guy
+          xdndFinishSent=false;
+          event.type=SEL_DND_DROP;
+          event.time=ev.xclient.data.l[2];
+
+          // Perform drop operation on drop window
+          if(!dropWindow || !dropWindow->handle(this,FXSEL(SEL_DND_DROP,0),&event)) ansAction=DRAG_REJECT;
+
+          // Didn't sent finish yet
+          if(!xdndFinishSent){
+            se.xclient.type=ClientMessage;
+            se.xclient.display=(Display*)display;
+            se.xclient.message_type=xdndFinished;
+            se.xclient.format=32;
+            se.xclient.window=xdndSource;
+            se.xclient.data.l[0]=ev.xclient.window;                     // Proxy Target window
+            se.xclient.data.l[1]=(ansAction==DRAG_REJECT)?0:1;          // Bit #0 means accepted
+            se.xclient.data.l[2]=xdndActionList[ansAction];             // Drag and Drop Action accepted
+            se.xclient.data.l[3]=0;
+            se.xclient.data.l[4]=0;
+            XSendEvent((Display*)display,xdndSource,True,NoEventMask,&se);
+            }
+
+          // Clean up
+          if(ddeTypeList){freeElms(ddeTypeList);ddeNumTypes=0;}
+          dropWindow=nullptr;
+          xdndSource=0;
+          refresh();
+          }
+
+        // XDND Status from target
+        else if(ev.xclient.message_type==xdndStatus){
+          // We ignore ev.xclient.data.l[0], because some other
+          // toolkits, e.g. Qt, do not place the proper value there;
+          // the proper value is xdndTarget, NOT xdndProxyTarget or None
+          //if(xdndTarget!=(FXID)ev.xclient.data.l[0]) return true; // We're not talking to this guy
+          ansAction=DRAG_REJECT;
+          if(ev.xclient.data.l[1]&1){
+            if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_ASK]) ansAction=DRAG_ASK;
+            else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_MOVE]) ansAction=DRAG_MOVE;
+            else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_COPY]) ansAction=DRAG_COPY;
+            else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_LINK]) ansAction=DRAG_LINK;
+            else if((FXID)ev.xclient.data.l[4]==xdndActionList[DRAG_PRIVATE]) ansAction=DRAG_PRIVATE;
+            }
+          xdndWantUpdates=ev.xclient.data.l[1]&2;
+          xdndRect.x=((FXuint)ev.xclient.data.l[2])>>16;
+          xdndRect.y=((FXuint)ev.xclient.data.l[2])&0xffff;
+          xdndRect.w=((FXuint)ev.xclient.data.l[3])>>16;
+          xdndRect.h=((FXuint)ev.xclient.data.l[3])&0xffff;
+          xdndStatusReceived=true;
+          xdndStatusPending=false;
+          FXTRACE(TOPIC_EVENT,"DNDStatus from remote window %ld action=%d rect=%d,%d,%d,%d updates=%d\n",ev.xclient.data.l[0],ansAction,xdndRect.x,xdndRect.y,xdndRect.w,xdndRect.h,xdndWantUpdates);
+          }
+        return true;
+
+      // Property change
+      case PropertyNotify:
+        FXTRACE(TOPIC_EVENT,"PropertyNotify %ld\n",ev.xproperty.atom);
+
+        // Update window position after minimize/maximize/restore whatever
+        if(ev.xproperty.atom==wmState || ev.xproperty.atom==wmNetState){
+          unsigned long n,i; Atom type; unsigned char *prop; int format;
+          if(Success==XGetWindowProperty((Display*)display,ev.xproperty.window,ev.xproperty.atom,0,10,false,AnyPropertyType,&type,&format,&n,&i,&prop)){
+            event.type=SEL_RESTORE;
+            event.time=ev.xproperty.time;
+            if(format==32){
+              for(i=0; i<n; i++){
+                if(((FXID*)prop)[i]==wmNetHidden){ event.type=SEL_MINIMIZE; break; }
+                if(((FXID*)prop)[i]==wmNetShaded){ event.type=SEL_MINIMIZE; break; }
+                if(((FXID*)prop)[i]==wmNetHMaximized){ event.type=SEL_MAXIMIZE; break; }
+                if(((FXID*)prop)[i]==wmNetVMaximized){ event.type=SEL_MAXIMIZE; break; }
+                if(((FXID*)prop)[i]==wmNetFullScreen){ event.type=SEL_MAXIMIZE; break; }
+                if(((FXID*)prop)[i]==IconicState){ event.type=SEL_MINIMIZE; break; }
+                if(((FXID*)prop)[i]==NormalState){ event.type=SEL_RESTORE; break; }
+                if(((FXID*)prop)[i]==WithdrawnState){ event.type=SEL_MINIMIZE; break; }
+                }
+              }
+            XFree(prop);
+            if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+            }
+          }
+        return true;
+
+      // Keyboard mapping
+      case MappingNotify:
+        FXTRACE(TOPIC_EVENT,"MappingNotify\n");
+        if(ev.xmapping.request!=MappingPointer) XRefreshKeyboardMapping(&ev.xmapping);
+        return true;
+
+      // Visibility notification
+      case VisibilityNotify:
+        FXTRACE(TOPIC_EVENT,"VisibilityNotify window=%ld %s\n",ev.xvisibility.window,(ev.xvisibility.state==VisibilityUnobscured)?"VisibilityUnobscured":(ev.xvisibility.state==VisibilityPartiallyObscured)?"VisibilityPartiallyObscured":"VisibilityFullyObscured");
+        return true;
+
+#if defined(HAVE_XINPUT2_H)
+      case GenericEvent:
+        FXTRACE(TOPIC_EVENT,"GenericEvent\n");
+        if(ev.xcookie.extension==xInputOpcode && XGetEventData((Display*)display,&ev.xcookie)){
+          FXTRACE(TOPIC_EVENT,"XInput2 type: %d\n",ev.xcookie.evtype);
+          switch(ev.xcookie.evtype){
+            case XI_ButtonPress:
+            case XI_ButtonRelease:
+            case XI_Motion:
+            case XI_KeyPress:
+            case XI_KeyRelease:
+              print_deviceevent((XIDeviceEvent*)ev.xcookie.data);
+              break;
+            case XI_RawKeyPress:
+            case XI_RawKeyRelease:
+            case XI_RawButtonPress:
+            case XI_RawButtonRelease:
+            case XI_RawMotion:
+              print_rawevent((XIRawEvent*)ev.xcookie.data);
+              break;
+            case XI_HierarchyChanged:
+              print_hierarchychangedevent((XIHierarchyEvent*)ev.xcookie.data);
+              break;
+            case XI_DeviceChanged:
+//              print_devicechangedevent(display,cookie->data);
+              break;
+            }
+          XFreeEventData((Display*)display,&ev.xcookie);
+          }
+        return true;
+#endif
+
+      // Other events
+      default:
+#if defined(HAVE_XRANDR_H)
+        if(ev.type==xrrScreenChange){
+          XRRUpdateConfiguration(&ev);
+          root->setWidth(root->getDefaultWidth());
+          root->setHeight(root->getDefaultHeight());
+          //int screen=XRRRootToScreen((Display*)display,ev.xany.window);
+          FXTRACE(TOPIC_EVENT,"RRScreenChangeNotify w=%d h=%d\n",DisplayWidth((Display*)display,DefaultScreen((Display*)display)),DisplayHeight((Display*)display,DefaultScreen((Display*)display)));
+          // FIXME This should be a SEL_CONFIGURE for the root window, eventually
+          }
+#endif
+#if defined(HAVE_XFIXES_H)
+        if(ev.type==xfxFixesSelection){
+          FXTRACE(TOPIC_EVENT,"XFixesSelectionNotifyEvent window=%lu owner=%lu selection=%lu\n",((XFixesSelectionNotifyEvent*)&ev)->window,((XFixesSelectionNotifyEvent*)&ev)->owner,((XFixesSelectionNotifyEvent*)&ev)->selection);
+          }
+#endif
+        return true;
+      }
+    }
+  return false;
+  }
 }
 
 #endif
