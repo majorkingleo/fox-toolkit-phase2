@@ -42,7 +42,6 @@ protected:
   FXWindow  *window;            // Window we belong to
   FXSelector message;           // Message to send it
 private:
-#ifndef WIN32
   void* fontset;
   static int  editStartCallback(void*,FXComposeContext*,void*);
   static void editDoneCallback(void*,FXComposeContext*,void*);
@@ -51,7 +50,6 @@ private:
   static void statusStartCallback(void*,FXComposeContext*,void*);
   static void statusDoneCallback(void*,FXComposeContext*,void*);
   static void statusDrawCallback(void*,FXComposeContext*,void*);
-#endif
 protected:
   FXComposeContext();
 private:

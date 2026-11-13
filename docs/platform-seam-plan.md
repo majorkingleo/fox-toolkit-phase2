@@ -1257,6 +1257,14 @@ of `FXApp.h`, `FXDCWindow.h`, `FXVisual.h`, `FXComposeContext.h`, the
 `FXImage.h` render helpers, `FXThread.h` (`function`), and `FXBitmap.h`, whose
 class is declared but has no implementation in `fox2/lib`.
 
+## Seam 57: compose context header
+
+`FXComposeContext.h` declares the `fontset` pointer and the seven input method
+callbacks on every platform. The callbacks are only defined in
+`FXComposeContext_x11.cpp`; they are private statics that nothing else
+references, so the Win32 build neither defines nor needs them. The Win32
+constructors now initialise `fontset` to `nullptr`. Both builds pass.
+
 ## Next seams, in order
 
 None in `fox2/lib`. After seam 55 every platform conditional in the core classes of

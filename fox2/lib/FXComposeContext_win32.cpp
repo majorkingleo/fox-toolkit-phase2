@@ -59,13 +59,13 @@ using namespace FX;
 namespace FX {
 
 // Deserialization
-FXComposeContext::FXComposeContext():window(nullptr),message(0){
+FXComposeContext::FXComposeContext():window(nullptr),message(0),fontset(nullptr){
   FXTRACE(TOPIC_CONSTRUCT,"FXComposeContext::FXComposeContext %p\n",this);
   }
 
 
 // Create input context
-FXComposeContext::FXComposeContext(FXApp* a,FXWindow* win,FXSelector sel):FXId(a),window(win),message(sel){
+FXComposeContext::FXComposeContext(FXApp* a,FXWindow* win,FXSelector sel):FXId(a),window(win),message(sel),fontset(nullptr){
   FXTRACE(TOPIC_CONSTRUCT,"FXComposeContext::FXComposeContext %p\n",this);
   }
 
