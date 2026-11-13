@@ -1104,11 +1104,23 @@ screen macros. `FXRootWindow.cpp` keeps the platform neutral members
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXRootWindow.cpp`: only guard lines differ.
 
+## Seam 45: icon
+
+Done. `FXIcon_win32.cpp` and `FXIcon_x11.cpp` hold `create`, `destroy`,
+`render` and `resize` (GDI bitmaps and masks versus pixmaps and shape/etch
+masks, including the XShm path). `FXIcon.cpp` keeps the platform neutral
+members (constructors, `guesstransp`, `guessthresh`, `detach`, destructor).
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXIcon.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
    first:
-   `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
+   `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
