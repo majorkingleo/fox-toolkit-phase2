@@ -728,9 +728,34 @@ modules; unifying them behind one predicate is a separate refactor.
 - Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
   DPI values. The directory members are compile-checked on both backends.
 
+## Seam 28: files
+
+Done. `FXFile.cpp` no longer contains a platform branch. Thirteen members
+moved as whole members into `FXFile_win32.cpp` and `FXFile_x11.cpp`. The
+local `BadHandle` definition is gone; `FXFile.cpp` and both modules include
+the shared `fxiopriv.h` from seam 24. `tmp/split-file.py` drives the split
+with `tmp/seamlib.py`; it also understands the file's section separators.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXFile_win32.cpp`: `open()` on `CreateFile`, `position()` x2, `truncate()`, `flush()`, `size()`, `create()`, `link()` on `CreateHardLink`, both `symlink()` as empty stubs, `copyFiles()`, `move()` on `MoveFileEx`, `remove()` on `DeleteFile` |
+| X11 module | `FXFile_x11.cpp`: the same members on `open()`/`lseek()`/`ftruncate()`/`fsync()`/`fstat()`/`link()`/`readlink()`/`symlink()`/`rename()`/`unlink()`, and `copyFiles()` with the fifo and device branches |
+| Portable core | constructors, `isSerial()`, `eof()`, `identical()`, `copy()`, `moveFiles()`, `removeFiles()`, `concat()` stay in `FXFile.cpp` |
+
+`copyFiles()` contains an inline `#if !defined(WIN32)` block for fifos and
+devices. It moved whole, so its recursion logic is duplicated in both modules;
+splitting out the special-file branch is a separate refactor.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the `WIN32` guards and the `BadHandle` block.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values.
+
 ## Next seams, in order
 
-1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`,
+1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`,
    `FXProcess`, `FXStat`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
