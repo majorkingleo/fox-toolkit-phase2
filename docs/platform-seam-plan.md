@@ -512,6 +512,38 @@ verbatim, rather than by hand.
   DPI values. No example starts a drag, so the moved code is compile-checked
   only.
 
+## Seam 19: font matching, realization and enumeration
+
+Done. About 1,700 lines of `FXFont.cpp` moved into the new
+`FXFont_win32.cpp` and `FXFont_x11.cpp`, which are registered in
+`fox2/lib/CMakeLists.txt` and `fox2/lib/Makefile.am` next to the window
+modules. Everything that uses the face-name helpers moved together, because
+the helpers are `static`: the Win32 charset converters, the Fontconfig
+weight/slant/width converters, the XLFD parsers and `xlfdFont()` are used by
+`match()`, `create()` and `listFonts()` alike. A scratch script
+(`tmp/split-font.py`) resolved the three-way `WIN32` / `HAVE_XFT_H` / XLFD
+branches per platform; the X11 module keeps the Xft/XLFD split internally.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXFont_win32.cpp`: `FXFont::match()` with `CreateFontIndirect()` and the `TEXTMETRIC` block, the `LOGFONT` charset converters, `create()`, `detach()`, `destroy()` (stock-font select, `DeleteObject()`, `DeleteDC()`), and `listFonts()` with `EnumFontFamiliesEx()` |
+| X11 module | `FXFont_x11.cpp`: both `FXFont::match()` variants (Fontconfig and XLFD), the Fontconfig and XLFD helper tables, `XLoadQueryFont()`/`XftFontClose()`/`XFreeFont()` in `create()`, `detach()`, `destroy()`, and `listFonts()` for both variants |
+| Portable core | constructors, `getFamily()`/`getFoundry()`, `setAngle()`, the text metrics and extents, the encoding name table and the font string parser stay in `FXFont.cpp` |
+
+`comparefont()` is portable but has a single user, `listFonts()`, so it is
+duplicated into both modules. `TOPIC_CREATION` and `TOPIC_DETAIL` are defined
+locally in both modules, and the X11 module declares `__snprintf()` itself.
+
+### Verification
+
+- The removed lines of `FXFont.cpp` equal the added lines of the two modules
+  apart from the `#if defined(WIN32)` / `#elif defined(HAVE_XFT_H)` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. Every example creates fonts, so Win32 `match()`/`create()` and
+  the XLFD variant run; the WSL image has no Xft headers, so the Fontconfig
+  variant is moved verbatim but not compiled, and `listFonts()` is
+  compile-checked only.
+
 ## Next seams, in order
 
 1. **Remaining `FXWindow.cpp` branches.** The `scale()`/`unscale()` DPI helpers,
@@ -519,8 +551,10 @@ verbatim, rather than by hand.
    strings), and the commented-out `setBackColor()` stub. The constants are
    data rather than behavior; moving them needs a private header or a per-module
    definition, so decide that before touching them.
-2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
-   only face matching, metrics and glyph extents.
+2. **Font metrics** (`FXFont.cpp`). Text metrics and glyph extents
+   (`getTextWidth()`, `getTextHeight()`, `getFontAscent()`, `getTextExtent*()`
+   and friends), which use `dc`/`font` per backend. Keep the public `FXFont`
+   API; the surrogate-pair constants stay with the portable code.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
    `FXIODevice`). Large but self-contained; split only when a feature needs it.
 4. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
