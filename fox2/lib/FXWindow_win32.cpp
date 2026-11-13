@@ -26,6 +26,7 @@
 #if defined(WIN32)
 
 #define TOPIC_DETAIL    1002
+#define TOPIC_EVENT     1011
 
 /*
   Notes:
@@ -452,6 +453,223 @@ void FXWindow::scroll(FXint x,FXint y,FXint w,FXint h,FXint dx,FXint dy) const {
     rect.bottom=y+h;
     ScrollWindowEx((HWND)xid,dx,dy,&rect,&rect,nullptr,nullptr,SW_INVALIDATE);
     }
+  }
+
+
+// Sent by the drop target
+void FXWindow::dropFinished(FXDragAction action) const {
+  if(!getApp()->xdndFinishSent){
+    if(action==DRAG_ACCEPT) action=getApp()->ansAction;
+    PostMessage((HWND)getApp()->xdndSource,WM_DND_FINISH_REJECT+action,0,(LPARAM)xid);
+    getApp()->xdndFinishSent=true;
+    }
+  }
+
+
+
+
+// Start a drag on the types mentioned
+FXbool FXWindow::beginDrag(const FXDragType *types,FXuint numtypes){
+  if(xid==0){ fxerror("%s::beginDrag: window has not yet been created.\n",getClassName()); }
+  if(!isDragging()){
+    if(!types || numtypes<1){ fxerror("%s::beginDrag: should have at least one type to drag.\n",getClassName()); }
+    getApp()->xdndTypes=CreateFileMappingA(INVALID_HANDLE_VALUE,nullptr,PAGE_READWRITE,0,(numtypes+1)*sizeof(FXDragType),"XdndTypeList");
+    if(getApp()->xdndTypes){
+      FXDragType *dragtypes=(FXDragType*)MapViewOfFile(getApp()->xdndTypes,FILE_MAP_WRITE,0,0,0);
+      if(dragtypes){
+        dragtypes[0]=numtypes;
+        copyElms(&dragtypes[1],types,numtypes);
+        UnmapViewOfFile(dragtypes);
+        }
+      }
+    getApp()->xdndTarget=0;
+    getApp()->ansAction=DRAG_REJECT;
+    getApp()->xdndStatusPending=false;
+    getApp()->xdndStatusReceived=false;
+    getApp()->xdndRect.x=0;
+    getApp()->xdndRect.y=0;
+    getApp()->xdndRect.w=0;
+    getApp()->xdndRect.h=0;
+    getApp()->dragWindow=this;
+    return true;
+    }
+  return false;
+  }
+
+
+// Drag to new position
+FXbool FXWindow::handleDrag(FXint x,FXint y,FXDragAction action){
+  if(xid==0){ fxerror("%s::handleDrag: window has not yet been created.\n",getClassName()); }
+  if(action<DRAG_ASK || DRAG_PRIVATE<action){ fxerror("%s::handleDrag: illegal drag action.\n",getClassName()); }
+  if(isDragging()){
+
+    HANDLE version=0;
+    FXbool forcepos=false;
+    POINT point;
+    HWND window;
+
+    // Get drop window
+    point.x=x;
+    point.y=y;
+    window=WindowFromPoint(point);      // FIXME wrong for disabled windows
+    while(window){
+//      version=(FXuint)GetProp(window,(LPCTSTR)MAKELONG(getApp()->xdndAware,0));
+      version=GetProp(window,(LPCTSTR)MAKELONG(getApp()->xdndAware,0));
+      if(version) break;
+      window=GetParent(window);
+      }
+
+    // Changed windows
+    if(window!=getApp()->xdndTarget){
+
+      // Moving OUT of XDND aware window?
+      if(getApp()->xdndTarget!=0){
+        PostMessage((HWND)getApp()->xdndTarget,WM_DND_LEAVE,0,(LPARAM)xid);
+        }
+
+      // Reset XDND variables
+      getApp()->xdndTarget=window;
+      getApp()->ansAction=DRAG_REJECT;
+      getApp()->xdndStatusPending=false;
+      getApp()->xdndStatusReceived=false;
+      getApp()->xdndRect.x=x;
+      getApp()->xdndRect.y=y;
+      getApp()->xdndRect.w=1;
+      getApp()->xdndRect.h=1;
+
+      // Moving INTO XDND aware window?
+      if(getApp()->xdndTarget!=0){
+        PostMessage((HWND)getApp()->xdndTarget,WM_DND_ENTER,0,(LPARAM)xid);
+        forcepos=true;
+        }
+      }
+
+    // Now send a position message
+    if(getApp()->xdndTarget!=0){
+
+      // Send position if we're outside the mouse box or ignoring it
+     if(forcepos || x<getApp()->xdndRect.x || y<getApp()->xdndRect.y || getApp()->xdndRect.x+getApp()->xdndRect.w<=x || getApp()->xdndRect.y+getApp()->xdndRect.h<=y){
+
+        // No outstanding status message, so send new pos right away
+        if(!getApp()->xdndStatusPending){
+          PostMessage((HWND)getApp()->xdndTarget,WM_DND_POSITION_REJECT+action,MAKELONG(x,y),(LPARAM)xid);
+          getApp()->xdndStatusPending=true;       // Waiting for the other app to respond
+          }
+        }
+      }
+
+    return true;
+    }
+  return false;
+  }
+
+
+
+
+// Terminate the drag; if drop flag is false, don't drop even if accepted.
+FXDragAction FXWindow::endDrag(FXbool drop){
+  FXDragAction action=DRAG_REJECT;
+  if(xid==0){ fxerror("%s::endDrag: window has not yet been created.\n",getClassName()); }
+  if(isDragging()){
+
+    FXbool nodrop=true;
+    FXuint loops;
+    MSG msg;
+
+    // Ever received a status
+    if(getApp()->xdndStatusReceived && drop){
+
+      // If a status message is still pending, wait for it
+      if(getApp()->xdndStatusPending){
+        loops=1000;
+        do{
+          FXTRACE(TOPIC_EVENT,"Waiting for XdndStatus\n");
+          if(PeekMessage(&msg,nullptr,0,0,PM_REMOVE)){
+            getApp()->dispatchEvent(msg);
+
+            // We got the status update, finally
+            if(WM_DND_STATUS_REJECT<=msg.message && msg.message<=WM_DND_STATUS_PRIVATE){
+              FXTRACE(TOPIC_EVENT,"Got XdndStatus\n");
+              getApp()->xdndStatusPending=false;
+              break;
+              }
+
+            // We got a selection request message, so there is still hope that
+            // the target is functioning; lets give it a bit more time...
+            if(msg.message==WM_DND_REQUEST){
+              FXTRACE(TOPIC_EVENT,"Got SelectionRequest\n");
+              loops=1000;
+              }
+            }
+          FXThread::sleep(10000000);
+          }
+        while(--loops);
+        FXTRACE(TOPIC_EVENT,"Waiting for pending XdndStatus\n");
+        getApp()->xdndStatusPending=false;
+        }
+
+      // Got our status message
+      if(!getApp()->xdndStatusPending && getApp()->ansAction!=DRAG_REJECT){
+
+        FXTRACE(TOPIC_EVENT,"Sending XdndDrop\n");
+        PostMessage((HWND)getApp()->xdndTarget,WM_DND_DROP,0,(LPARAM)xid);
+
+        // Wait until the target has processed the drop; since the
+        // target may be us, we keep processing all XDND related messages
+        // while we're waiting here.  After some time, we assume the target
+        // may have core dumped and we fall out of the loop.....
+        loops=1000;
+        do{
+          FXTRACE(TOPIC_EVENT,"Waiting for XdndFinish\n");
+          if(PeekMessage(&msg,nullptr,0,0,PM_REMOVE)){
+            getApp()->dispatchEvent(msg);
+
+            // Got the finish message; we now know which action was taken
+            if(WM_DND_FINISH_REJECT<=msg.message && msg.message<=WM_DND_FINISH_PRIVATE){
+              action=(FXDragAction)(msg.message-WM_DND_FINISH_REJECT);
+              FXTRACE(TOPIC_EVENT,"Got XdndFinish action=%d\n",action);
+              break;
+              }
+
+            // We got a selection request message, so there is still hope that
+            // the target is functioning; lets give it a bit more time...
+            if(msg.message==WM_DND_REQUEST){
+              FXTRACE(TOPIC_EVENT,"Got SelectionRequest\n");
+              loops=1000;
+              }
+            }
+          FXThread::sleep(10000000);
+          }
+        while(--loops);
+
+        // We tried a drop
+        nodrop=false;
+        }
+      }
+
+    // Didn't drop, or didn't get any response, so just send a leave
+    if(nodrop){
+      FXTRACE(TOPIC_EVENT,"Sending XdndLeave\n");
+      PostMessage((HWND)getApp()->xdndTarget,WM_DND_LEAVE,0,(LPARAM)xid);
+      }
+
+    // Get rid of the shared memory block containing the types list
+    if(getApp()->xdndTypes) CloseHandle(getApp()->xdndTypes);
+    getApp()->xdndTypes=nullptr;
+
+    // Clean up
+    getApp()->xdndTarget=0;
+    getApp()->ansAction=DRAG_REJECT;
+    getApp()->xdndStatusPending=false;
+    getApp()->xdndStatusReceived=false;
+    getApp()->xdndRect.x=0;
+    getApp()->xdndRect.y=0;
+    getApp()->xdndRect.w=0;
+    getApp()->xdndRect.h=0;
+    getApp()->dragWindow=nullptr;
+
+    }
+  return action;
   }
 
 

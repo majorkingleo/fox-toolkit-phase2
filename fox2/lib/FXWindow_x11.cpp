@@ -27,6 +27,7 @@
 #if !defined(WIN32)
 
 #define TOPIC_DETAIL    1002
+#define TOPIC_EVENT     1011
 
 /*
   Notes:
@@ -597,6 +598,354 @@ void FXWindow::scroll(FXint x,FXint y,FXint w,FXint h,FXint dx,FXint dy) const {
         }
       }
     }
+  }
+
+
+// Sent by the drop target
+void FXWindow::dropFinished(FXDragAction action) const {
+  if(!getApp()->xdndFinishSent){
+    if(action==DRAG_ACCEPT) action=getApp()->ansAction;
+    XEvent se;
+    se.xclient.type=ClientMessage;
+    se.xclient.display=(Display*)getApp()->getDisplay();
+    se.xclient.message_type=getApp()->xdndFinished;
+    se.xclient.format=32;
+    se.xclient.window=getApp()->xdndSource;
+    se.xclient.data.l[0]=xid;
+    se.xclient.data.l[1]=(action==DRAG_REJECT)?0:1;
+    se.xclient.data.l[2]=getApp()->xdndActionList[action];
+    se.xclient.data.l[3]=0;
+    se.xclient.data.l[4]=0;
+    XSendEvent((Display*)getApp()->getDisplay(),getApp()->xdndSource,True,NoEventMask,&se);
+    XFlush((Display*)getApp()->getDisplay());
+    getApp()->xdndFinishSent=true;
+    }
+  }
+
+
+
+
+// Start a drag on the types mentioned
+FXbool FXWindow::beginDrag(const FXDragType *types,FXuint numtypes){
+  if(xid==0){ fxerror("%s::beginDrag: window has not yet been created.\n",getClassName()); }
+  if(!isDragging()){
+    if(!types || numtypes<1){ fxerror("%s::beginDrag: should have at least one type to drag.\n",getClassName()); }
+    XSetSelectionOwner((Display*)getApp()->getDisplay(),getApp()->xdndSelection,xid,getApp()->event.time);
+    if(XGetSelectionOwner((Display*)getApp()->getDisplay(),getApp()->xdndSelection)!=xid){
+      fxwarning("%s::beginDrag: failed to acquire DND selection.\n",getClassName());
+      return false;
+      }
+    resizeElms(getApp()->xdndTypeList,numtypes);
+    copyElms(getApp()->xdndTypeList,types,numtypes);
+    getApp()->xdndNumTypes=numtypes;
+    XChangeProperty((Display*)getApp()->getDisplay(),xid,getApp()->xdndTypes,XA_ATOM,32,PropModeReplace,(unsigned char*)getApp()->xdndTypeList,getApp()->xdndNumTypes);
+    XChangeProperty((Display*)getApp()->getDisplay(),xid,getApp()->xdndActions,XA_ATOM,32,PropModeReplace,(unsigned char*)getApp()->xdndActionList,6);
+    getApp()->xdndTarget=0;
+    getApp()->xdndProxyTarget=0;
+    getApp()->ansAction=DRAG_REJECT;
+    getApp()->xdndStatusPending=false;
+    getApp()->xdndStatusReceived=false;
+    getApp()->xdndWantUpdates=true;
+    getApp()->xdndRect.x=0;
+    getApp()->xdndRect.y=0;
+    getApp()->xdndRect.w=0;
+    getApp()->xdndRect.h=0;
+    getApp()->dragWindow=this;
+    return true;
+    }
+  return false;
+  }
+
+
+// Drag to new position
+FXbool FXWindow::handleDrag(FXint x,FXint y,FXDragAction action){
+  if(xid==0){ fxerror("%s::handleDrag: window has not yet been created.\n",getClassName()); }
+  if(action<DRAG_ASK || DRAG_PRIVATE<action){ fxerror("%s::handleDrag: illegal drag action.\n",getClassName()); }
+  if(isDragging()){
+
+    Window proxywindow,window,child,win,proxywin,root;
+    unsigned long ni,ba;
+    unsigned char *ptr1;
+    unsigned char *ptr2;
+    unsigned char *ptr3;
+    Atom    typ;
+    int     fmt;
+    Atom    version;
+    int     dropx;
+    int     dropy;
+    XEvent  se;
+    FXbool    forcepos=false;
+
+    // Find XDND aware window at the indicated location
+    root=XDefaultRootWindow((Display*)getApp()->getDisplay());
+    window=0;
+    proxywindow=0;
+    version=0;
+    win=root;
+    while(1){
+      if(!XTranslateCoordinates((Display*)getApp()->getDisplay(),root,win,x,y,&dropx,&dropy,&child)) break;
+      proxywin=win;
+      if(XGetWindowProperty((Display*)getApp()->getDisplay(),win,getApp()->xdndProxy,0,1,False,AnyPropertyType,&typ,&fmt,&ni,&ba,&ptr1)==Success){
+        if(typ==XA_WINDOW && fmt==32 && ni>0){
+          if(XGetWindowProperty((Display*)getApp()->getDisplay(),*((Window*)ptr1),getApp()->xdndProxy,0,1,False,AnyPropertyType,&typ,&fmt,&ni,&ba,&ptr2)==Success){
+            if(typ==XA_WINDOW && fmt==32 && ni>0 && *((Window*)ptr2) == *((Window*)ptr1)){
+              proxywin=*((Window*)ptr1);
+              }
+            XFree(ptr2);
+            }
+          }
+        XFree(ptr1);
+        }
+      if(XGetWindowProperty((Display*)getApp()->getDisplay(),proxywin,getApp()->xdndAware,0,1,False,AnyPropertyType,&typ,&fmt,&ni,&ba,&ptr3)==Success){
+        if(typ==XA_ATOM && fmt==32 && ni>0 && *((Atom*)ptr3)>=3){
+          window=win;
+          proxywindow=proxywin;
+          version=FXMIN(*((Atom*)ptr3),XDND_PROTOCOL_VERSION);
+          if(window!=root){XFree(ptr3);break;}
+          }
+        XFree(ptr3);
+        }
+      if(child==None) break;
+      win=child;
+      }
+
+    // Changed windows
+    if(window!=getApp()->xdndTarget){
+
+      // Moving OUT of XDND aware window?
+      if(getApp()->xdndTarget!=0){
+        se.xclient.type=ClientMessage;
+        se.xclient.display=(Display*)getApp()->getDisplay();
+        se.xclient.message_type=getApp()->xdndLeave;
+        se.xclient.format=32;
+        se.xclient.window=getApp()->xdndTarget;
+        se.xclient.data.l[0]=xid;
+        se.xclient.data.l[1]=0;
+        se.xclient.data.l[2]=0;
+        se.xclient.data.l[3]=0;
+        se.xclient.data.l[4]=0;
+        XSendEvent((Display*)getApp()->getDisplay(),getApp()->xdndProxyTarget,True,NoEventMask,&se);
+        }
+
+      // Reset XDND variables
+      getApp()->xdndTarget=window;
+      getApp()->xdndProxyTarget=proxywindow;
+      getApp()->ansAction=DRAG_REJECT;
+      getApp()->xdndStatusPending=false;
+      getApp()->xdndStatusReceived=false;
+      getApp()->xdndWantUpdates=true;
+      getApp()->xdndRect.x=x;
+      getApp()->xdndRect.y=y;
+      getApp()->xdndRect.w=1;
+      getApp()->xdndRect.h=1;
+
+      // Moving INTO XDND aware window?
+      if(getApp()->xdndTarget!=0){
+        se.xclient.type=ClientMessage;
+        se.xclient.display=(Display*)getApp()->getDisplay();
+        se.xclient.message_type=getApp()->xdndEnter;
+        se.xclient.format=32;
+        se.xclient.window=getApp()->xdndTarget;
+        se.xclient.data.l[0]=xid;
+        se.xclient.data.l[1]=version<<24;
+        se.xclient.data.l[2]=getApp()->xdndNumTypes>=1 ? getApp()->xdndTypeList[0] : None;
+        se.xclient.data.l[3]=getApp()->xdndNumTypes>=2 ? getApp()->xdndTypeList[1] : None;
+        se.xclient.data.l[4]=getApp()->xdndNumTypes>=3 ? getApp()->xdndTypeList[2] : None;
+        if(getApp()->xdndNumTypes>3) se.xclient.data.l[1]|=1;
+        XSendEvent((Display*)getApp()->getDisplay(),getApp()->xdndProxyTarget,True,NoEventMask,&se);
+        forcepos=true;
+        }
+      }
+
+    // Now send a position message
+    if(getApp()->xdndTarget!=0){
+
+      // Send position if we're outside the mouse box or ignoring it
+      if(forcepos || getApp()->xdndRect.w==0 || getApp()->xdndRect.h==0 || getApp()->xdndWantUpdates || x<getApp()->xdndRect.x || y<getApp()->xdndRect.y || getApp()->xdndRect.x+getApp()->xdndRect.w<=x || getApp()->xdndRect.y+getApp()->xdndRect.h<=y){
+
+        // No outstanding status message, so send new pos right away
+        if(!getApp()->xdndStatusPending){
+          se.xclient.type=ClientMessage;
+          se.xclient.display=(Display*)getApp()->getDisplay();
+          se.xclient.message_type=getApp()->xdndPosition;
+          se.xclient.format=32;
+          se.xclient.window=getApp()->xdndTarget;
+          se.xclient.data.l[0]=xid;
+          se.xclient.data.l[1]=0;
+          se.xclient.data.l[2]=MKUINT(y,x);                               // Coordinates
+          se.xclient.data.l[3]=getApp()->event.time;                      // Time stamp
+          se.xclient.data.l[4]=getApp()->xdndActionList[action];
+          XSendEvent((Display*)getApp()->getDisplay(),getApp()->xdndProxyTarget,True,NoEventMask,&se);
+          getApp()->xdndStatusPending=true;       // Waiting for the other app to respond
+          }
+        }
+      }
+
+    return true;
+    }
+  return false;
+  }
+
+
+
+struct XDNDMatch {
+  Atom xdndStatus;
+  Atom xdndPosition;
+  Atom xdndFinished;
+  Atom xdndDrop;
+  Atom xdndEnter;
+  Atom xdndLeave;
+  };
+
+
+// Scan event queue for XDND messages or selection requests
+static Bool matchxdnd(Display*,XEvent* event,XPointer ptr){
+  XDNDMatch *m=(XDNDMatch*)ptr;
+  return event->type==SelectionRequest || (event->type==ClientMessage && (event->xclient.message_type==m->xdndStatus || event->xclient.message_type==m->xdndPosition || event->xclient.message_type==m->xdndFinished || event->xclient.message_type==m->xdndDrop || event->xclient.message_type==m->xdndEnter || event->xclient.message_type==m->xdndLeave));
+  }
+
+
+
+// Terminate the drag; if drop flag is false, don't drop even if accepted.
+FXDragAction FXWindow::endDrag(FXbool drop){
+  FXDragAction action=DRAG_REJECT;
+  if(xid==0){ fxerror("%s::endDrag: window has not yet been created.\n",getClassName()); }
+  if(isDragging()){
+
+    FXbool nodrop=true;
+    XEvent se;
+    FXuint loops;
+    XDNDMatch match;
+
+    // Fill up match struct
+    match.xdndStatus=getApp()->xdndStatus;
+    match.xdndPosition=getApp()->xdndPosition;
+    match.xdndFinished=getApp()->xdndFinished;
+    match.xdndDrop=getApp()->xdndDrop;
+    match.xdndEnter=getApp()->xdndEnter;
+    match.xdndLeave=getApp()->xdndLeave;
+
+    // Ever received a status
+    if(getApp()->xdndStatusReceived && drop){
+
+      // If a status message is still pending, wait for it
+      if(getApp()->xdndStatusPending){
+        loops=1000;
+        do{
+          FXTRACE(TOPIC_EVENT,"Waiting for pending XdndStatus\n");
+          if(XCheckIfEvent((Display*)getApp()->getDisplay(),&se,matchxdnd,(char*)&match)){
+            getApp()->dispatchEvent(se);
+
+            // We got the status update, finally
+            if(se.xclient.type==ClientMessage && se.xclient.message_type==getApp()->xdndStatus){
+              FXTRACE(TOPIC_EVENT,"Got XdndStatus\n");
+              getApp()->xdndStatusPending=false;
+              break;
+              }
+
+            // We got a selection request message, so there is still hope that
+            // the target is functioning; lets give it a bit more time...
+            if(se.xselection.type==SelectionRequest && se.xselectionrequest.selection==getApp()->xdndSelection){
+              FXTRACE(TOPIC_EVENT,"Got SelectionRequest\n");
+              loops=1000;
+              }
+            }
+          FXThread::sleep(10000000);
+          }
+        while(--loops);
+        }
+
+      // Got our status message
+      if(!getApp()->xdndStatusPending && getApp()->ansAction!=DRAG_REJECT){
+
+        FXTRACE(TOPIC_EVENT,"Sending XdndDrop\n");
+        se.xclient.type=ClientMessage;
+        se.xclient.display=(Display*)getApp()->getDisplay();
+        se.xclient.message_type=getApp()->xdndDrop;
+        se.xclient.format=32;
+        se.xclient.window=getApp()->xdndTarget;
+        se.xclient.data.l[0]=xid;
+        se.xclient.data.l[1]=0;
+        se.xclient.data.l[2]=getApp()->event.time;
+        se.xclient.data.l[3]=0;
+        se.xclient.data.l[4]=0;
+        XSendEvent((Display*)getApp()->getDisplay(),getApp()->xdndProxyTarget,True,NoEventMask,&se);
+
+        // Wait until the target has processed the drop; since the
+        // target may be us, we keep processing all XDND related messages
+        // while we're waiting here.  After some time, we assume the target
+        // may have core dumped and we fall out of the loop.....
+        loops=1000;
+        do{
+          FXTRACE(TOPIC_EVENT,"Waiting for XdndFinish\n");
+          if(XCheckIfEvent((Display*)getApp()->getDisplay(),&se,matchxdnd,(char*)&match)){
+            getApp()->dispatchEvent(se);
+
+            // Got the finish message; we now know the drop has been completed and processed
+            if(se.xclient.type==ClientMessage && se.xclient.message_type==getApp()->xdndFinished){
+              if(se.xclient.data.l[1]&1){
+                action=DRAG_ACCEPT;
+                if((FXID)se.xclient.data.l[2]==getApp()->xdndActionList[DRAG_ASK]) action=DRAG_ASK;
+                else if((FXID)se.xclient.data.l[2]==getApp()->xdndActionList[DRAG_MOVE]) action=DRAG_MOVE;
+                else if((FXID)se.xclient.data.l[2]==getApp()->xdndActionList[DRAG_COPY]) action=DRAG_COPY;
+                else if((FXID)se.xclient.data.l[2]==getApp()->xdndActionList[DRAG_LINK]) action=DRAG_LINK;
+                else if((FXID)se.xclient.data.l[2]==getApp()->xdndActionList[DRAG_PRIVATE]) action=DRAG_PRIVATE;
+                }
+              FXTRACE(TOPIC_EVENT,"Got XdndFinish action=%u\n",action);
+              break;
+              }
+
+            // We got a selection request message, so there is still hope that
+            // the target is functioning; lets give it a bit more time...
+            if(se.xselection.type==SelectionRequest && se.xselectionrequest.selection==getApp()->xdndSelection){
+              FXTRACE(TOPIC_EVENT,"Got SelectionRequest\n");
+              loops=1000;
+              }
+            }
+          FXThread::sleep(10000000);
+          }
+        while(--loops);
+
+        // We tried a drop but failed
+        nodrop=false;
+        }
+      }
+
+    // Didn't drop, or didn't get any response, so just send a leave
+    if(nodrop){
+      FXTRACE(TOPIC_EVENT,"Sending XdndLeave\n");
+      se.xclient.type=ClientMessage;
+      se.xclient.display=(Display*)getApp()->getDisplay();
+      se.xclient.message_type=getApp()->xdndLeave;
+      se.xclient.format=32;
+      se.xclient.window=getApp()->xdndTarget;
+      se.xclient.data.l[0]=xid;
+      se.xclient.data.l[1]=0;
+      se.xclient.data.l[2]=0;
+      se.xclient.data.l[3]=0;
+      se.xclient.data.l[4]=0;
+      XSendEvent((Display*)getApp()->getDisplay(),getApp()->xdndProxyTarget,True,NoEventMask,&se);
+      }
+
+    // Clean up
+    XSetSelectionOwner((Display*)getApp()->getDisplay(),getApp()->xdndSelection,None,getApp()->event.time);
+    XDeleteProperty((Display*)getApp()->getDisplay(),xid,getApp()->xdndTypes);
+    XDeleteProperty((Display*)getApp()->getDisplay(),xid,getApp()->xdndActions);
+    freeElms(getApp()->xdndTypeList);
+    getApp()->xdndNumTypes=0;
+    getApp()->xdndTarget=0;
+    getApp()->xdndProxyTarget=0;
+    getApp()->ansAction=DRAG_REJECT;
+    getApp()->xdndStatusPending=false;
+    getApp()->xdndStatusReceived=false;
+    getApp()->xdndWantUpdates=true;
+    getApp()->xdndRect.x=0;
+    getApp()->xdndRect.y=0;
+    getApp()->xdndRect.w=0;
+    getApp()->xdndRect.h=0;
+    getApp()->dragWindow=nullptr;
+    }
+  return action;
   }
 
 

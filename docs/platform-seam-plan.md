@@ -487,11 +487,38 @@ parameterless `update()` and `repaint()` stay in `FXWindow.cpp`.
   DPI values. Every example paints through `update()`/`repaint()`, so these
   paths run at startup on both backends; `scroll()` is compile-checked only.
 
+## Seam 18: drag and drop
+
+Done. `dropFinished()`, `beginDrag()`, `handleDrag()` and `endDrag()` moved as
+whole members into the window platform modules, about 500 lines of original
+code. They were moved with a scratch script (`tmp/split-dnd.py`) that resolves
+each member's `WIN32` branches per platform and copies everything else
+verbatim, rather than by hand.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: the `WM_DND_*` messages posted with `PostMessage()`, the shared-memory type list (`CreateFileMappingA()`/`MapViewOfFile()`), drop-window lookup via `WindowFromPoint()` and `GetProp()`, and the `PeekMessage()` wait loops in `endDrag()` |
+| X11 module | `FXWindow_x11.cpp`: the XDND protocol with `XSendEvent()` client messages, proxy and awareness lookup via `XGetWindowProperty()`, the `XDNDMatch` struct with its `matchxdnd()` predicate, and the `XCheckIfEvent()` wait loops |
+| Portable core | `acceptDrop()`, `inquireDNDAction()`, `didAccept()`, `isDragging()` and `isDropTarget()` stay in `FXWindow.cpp` |
+
+`TOPIC_EVENT` is defined locally in both modules, like `TOPIC_DETAIL`.
+
+### Verification
+
+- The removed lines of `FXWindow.cpp` equal the added lines of the two modules
+  apart from the preprocessor guards (`tmp/verify-move-window.sh`); lines that
+  both branches share are duplicated into both modules.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. No example starts a drag, so the moved code is compile-checked
+  only.
+
 ## Next seams, in order
 
-1. **Drag and drop** (`FXWindow.cpp`). `dropFinished()`, `beginDrag()`,
-   `handleDrag()` and `endDrag()` with the `XdndAction*` atoms against the
-   Windows DND messages.
+1. **Remaining `FXWindow.cpp` branches.** The `scale()`/`unscale()` DPI helpers,
+   the drag-type constants (`stringType`, `imageType` and the `*TypeName`
+   strings), and the commented-out `setBackColor()` stub. The constants are
+   data rather than behavior; moving them needs a private header or a per-module
+   definition, so decide that before touching them.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
