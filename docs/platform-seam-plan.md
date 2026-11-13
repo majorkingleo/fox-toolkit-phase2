@@ -948,10 +948,37 @@ several members (it only collapses runs of three or more).
 With this seam the drawing group is done. The classes below still hold platform
 branches in their core files.
 
+## Seam 37: top level windows
+
+Done. `FXTopWindow.cpp` no longer contains a platform branch. Twenty-seven blocks
+moved into `FXTopWindow_win32.cpp` and 26 into `FXTopWindow_x11.cpp` (the
+Windows-only `GetClass()` has no X11 counterpart): `create()`, `destroy()`,
+`setFocus()`, `killFocus()`, `hide()`, `raise()`, `lower()`, `place()`,
+`seticons()`, `settitle()`, `setdecorations()`, `getWMBorders()`, `flash()`,
+`restore()`, `maximize()`, `minimize()`, `fullScreen()`, `stackingOrder()`,
+`isMaximized()`, `isMinimized()`, `isFullScreen()`, `move()`, `resize()`,
+`position()`, `setIcon()`, `setMiniIcon()` and the destructor. The message map,
+`show()`, `close()`, the default size and `layout()`, the command and focus
+handlers, the packing accessors and the stream functions stay in the core.
+
+The Motif window manager hint constants (`MWM_*`), `DISPLAY` and the layout masks
+are used by only one side, so the X11 module owns the `MWM_*` block and `DISPLAY`
+(without the redundant `#ifndef WIN32`); `TOPIC_DETAIL` is defined in all three
+files. `tmp/split-generic.py` now carries the comment that sits directly above a
+define along with it, resolves platform guards inside moved define blocks, and
+only removes a define from the core when a module takes it over.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the `WIN32` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
+  on Windows was 144 at startup and after `WM_DPICHANGED`.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `FXTopWindow` (29 platform references), `FXRegion` (23), `fxutils` (9),
+   first: `FXRegion` (23 platform references), `fxutils` (9),
    `fxkeyboard` (6), `FXStyle` (6), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
