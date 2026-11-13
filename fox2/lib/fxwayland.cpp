@@ -80,6 +80,16 @@ FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window){
   }
 
 
+// Find the surface of the shell a window belongs to
+FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window){
+  FXID shell;
+  if(!app || !window) return nullptr;
+  shell=app->childmap.getShell(window);
+  if(!shell) return nullptr;
+  return fxwaylandFindSurface(app,shell);
+  }
+
+
 // Configure of the shell: acknowledge and tell the core
 static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
@@ -108,10 +118,21 @@ static void toplevelClose(void* data,xdg_toplevel*){
   }
 
 
-// Size hints of the shell; the buffer size follows the window
-static void toplevelConfigure(void*,xdg_toplevel*,int32_t,int32_t,wl_array*){}
-
-
+// Size hints of the shell; the buffer size follows the window, and the state
+// array tells us whether the compositor maximized, filled or focused it
+static void toplevelConfigure(void* data,xdg_toplevel*,int32_t,int32_t,wl_array* states){
+  FXWaylandSurface* s=(FXWaylandSurface*)data;
+  FXuint mask=0;
+  FXuint i,n=states->size/sizeof(uint32_t);
+  for(i=0; i<n; i++){
+    switch(((uint32_t*)states->data)[i]){
+      case XDG_TOPLEVEL_STATE_MAXIMIZED: mask|=FXXWL_STATE_MAXIMIZED; break;
+      case XDG_TOPLEVEL_STATE_FULLSCREEN: mask|=FXXWL_STATE_FULLSCREEN; break;
+      case XDG_TOPLEVEL_STATE_ACTIVATED: mask|=FXXWL_STATE_ACTIVATED; break;
+      }
+    }
+  s->state=mask;
+  }
 static const xdg_toplevel_listener toplevelListener={
   toplevelConfigure,
   toplevelClose
@@ -128,6 +149,9 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->popup=nullptr;
   s->toplevel=nullptr;
   s->buffers=nullptr;
+  s->paint=nullptr;
+  s->dirty=false;
+  s->state=0;
   s->width=0;
   s->height=0;
   s->surface=wl_compositor_create_surface(app->compositor);
@@ -306,8 +330,58 @@ void fxwaylandFreeBuffers(FXWaylandSurface* surf){
     delete b;
     }
   surf->buffers=nullptr;
+  surf->paint=nullptr;
+  surf->dirty=false;
   surf->width=0;
   surf->height=0;
+  }
+
+
+/*******************************************************************************/
+
+// Bind a window to the frame buffer of its shell
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& stride){
+  FXWaylandSurface* s;
+  FXRectangle shell;
+  FXRectangle here;
+  if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
+
+  // The frame is as large as the shell; children are drawn into it at their
+  // place in the shell, so the whole window tree of a shell shares one buffer
+  shell=app->childmap.getGeometry(s->window);
+  if(shell.w<=0 || shell.h<=0) return false;
+
+  // Acquire the frame once and keep it until the frame is committed
+  if(!s->paint){
+    if((s->paint=fxwaylandAcquireBuffer(s,shell.w,shell.h))==nullptr) return false;
+    }
+  if(s->paint->width!=shell.w || s->paint->height!=shell.h) return false;
+
+  // Origin of the window within the frame
+  here=app->childmap.getGlobalGeometry(window);
+  pixels=s->paint->pixels+(FXival)here.y*s->paint->width+here.x;
+  stride=s->paint->width;
+  s->dirty=true;
+  return true;
+  }
+
+
+// Commit the frames that were painted since the last call
+void fxwaylandFlushFrames(FXWaylandApp* app){
+  FXWaylandSurface* s;
+  if(!app) return;
+  for(s=app->surfaces; s; s=s->next){
+    if(s->paint){
+      if(s->dirty){
+        fxwaylandCommitBuffer(s,s->paint,0,0,s->paint->width,s->paint->height);
+        fxwaylandDumpBuffer(s,s->paint);
+        }
+      s->paint=nullptr;
+      s->dirty=false;
+      }
+    }
+  // The requests sit in the client buffer until we push them out
+  if(app->display) wl_display_flush(app->display);
   }
 
 }

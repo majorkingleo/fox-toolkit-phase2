@@ -48,6 +48,8 @@
 #include "FXDC.h"
 #include "fxglyphs.h"
 #include "fxraster.h"
+#include "fxwinmap.h"
+#include "fxwaylandpriv.h"
 #include "FXDCWindow.h"
 
 #if defined(FOX_WAYLAND)
@@ -80,9 +82,11 @@ static inline FXRaster* raster(void* ctx){
   }
 
 
-// Return the pixel buffer of a drawable; windows get theirs in phase 4
+// Return the pixel buffer of a drawable; an image owns its pixels, a window
+// draws into the frame buffer of the shell it belongs to, at its place there
 static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXint& stride){
   FXImage* image=dynamic_cast<FXImage*>(draw);
+  FXWindow* window;
   if(image){
     pixels=image->getData();
     w=image->getWidth();
@@ -90,10 +94,13 @@ static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXi
     stride=w;
     return pixels!=nullptr;
     }
-  pixels=nullptr;
   w=draw->getWidth();
   h=draw->getHeight();
   stride=w;
+  pixels=nullptr;
+  if((window=dynamic_cast<FXWindow*>(draw))!=nullptr && window->id()){
+    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,stride);
+    }
   return false;
   }
 
@@ -152,7 +159,9 @@ void FXDCWindow::begin(FXDrawable* draw){
     surface->visual->create();
     devfg=surface->visual->getPixel(fg);
     devbg=surface->visual->getPixel(bg);
-    getSurface(draw,pixels,w,h,stride);
+
+    // Nothing to draw into: the window has no shell or no frame yet
+    if(!getSurface(draw,pixels,w,h,stride)) return;
     ctx=new FXRaster(pixels,w,h,stride);
     raster(ctx)->setForeground(fg);
     raster(ctx)->setBackground(bg);
@@ -169,6 +178,9 @@ void FXDCWindow::begin(FXDrawable* draw){
     else{ raster(ctx)->setStipple(pattern,tx,ty); }
     if(mask){ raster(ctx)->setClipMask(mask,cx,cy); }
     if(font){ raster(ctx)->setGlyphs((FXGlyphs*)font->getGlyphCache()); }
+
+    // A window never draws outside of itself, even though its frame is shared
+    raster(ctx)->setClipRectangle(0,0,w,h);
     }
   }
 

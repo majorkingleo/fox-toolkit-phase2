@@ -445,6 +445,30 @@ Done in this phase so far (the protocol files and the platform seam):
   attaches and commits, and `fxwaylandDumpBuffer()` writes the committed buffer
   as a PPM into `$FOX_WAYLAND_DUMP`, which is how the gate will compare against
   the X11 screenshots once the windows paint.
+- Painting works as one frame per shell: `fxwaylandBindWindow()` finds the
+  surface of the window's shell, acquires the frame buffer once, and answers
+  with the pixel pointer of the window's place inside it, so a child widget
+  draws into the same buffer as its toplevel at its own offset. The DC clips
+  every draw to the window it draws for, and the rasterizer writes straight
+  into the mapped buffer. When the repaint list of the application is empty,
+  the event loop calls `fxwaylandFlushFrames()`, which damages, attaches and
+  commits each frame and writes the dump; a flush of the connection makes sure
+  the compositor sees the commit before the loop sleeps in `pselect`.
+- The window state of a toplevel (maximized, full screen, activated) is read
+  from the `xdg_toplevel.configure` state array and kept on the surface, so the
+  shell classes answer `isMaximized()` and friends from what the compositor
+  said instead of guessing. The size of the first `wl_output` is recorded from
+  its geometry and mode events and is what `FXRootWindow` reports.
+- `FXWindow_wayland.cpp` and `FXRootWindow_wayland.cpp` complete the window
+  base: the drag type indices (`stringType`, `utf16Type` are indices into the
+  mime table of phase 8), coordinate translation through the window table (the
+  root window has no row and sits at the origin), `update()` and `repaint()` on
+  the shared repaint list, and the grabs and the enable/disable state. Shapes,
+  cursor warping and pointer queries need the input region, the viewport and
+  the seat and keep the behaviour of a platform without them.
+- The library keeps 41 undefined platform symbols instead of 62; what is left
+  is `FXTopWindow` (24), `FXMainWindow` (1), `FXPopup`, `FXToolTip`,
+  `FXDragCorner` and `FXComposeContext`.
 
 ### Phase 5: window management
 

@@ -122,9 +122,40 @@ static void shmFormat(void* data,wl_shm*,uint32_t format){
   }
 
 
+// Output: the physical size and the current mode give us the screen size
+static void outputGeometry(void* data,wl_output*,int32_t,int32_t,int32_t width,int32_t height,int32_t,const char*,const char*,int32_t){
+  FXWaylandApp* app=fxwayland(data);
+  if(width>0 && height>0){
+    app->screenwidth=width;
+    app->screenheight=height;
+    }
+  }
+
+
+static void outputMode(void* data,wl_output*,uint32_t flags,int32_t width,int32_t height,int32_t){
+  FXWaylandApp* app=fxwayland(data);
+  if((flags&WL_OUTPUT_MODE_CURRENT) && width>0 && height>0){
+    app->screenwidth=width;
+    app->screenheight=height;
+    }
+  }
+
+
+static void outputDone(void*,wl_output*){}
+
+static void outputScale(void*,wl_output*,int32_t){}
+
+
 static const wl_registry_listener registryListener={
   registryGlobal,
   registryGlobalRemove
+  };
+
+static const wl_output_listener outputListener={
+  outputGeometry,
+  outputMode,
+  outputDone,
+  outputScale
   };
 
 static const xdg_wm_base_listener wmBaseListener={
@@ -148,6 +179,8 @@ void FXApp::initPlatformMembers(){
   app->seat=nullptr;
   app->output=nullptr;
   app->wmbase=nullptr;
+  app->screenwidth=0;
+  app->screenheight=0;
   app->argb=false;
   app->lost=false;
   app->events=nullptr;
@@ -199,6 +232,7 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   wl_display_roundtrip(app->display);
   if(app->wmbase){ xdg_wm_base_add_listener(app->wmbase,&wmBaseListener,app); }
   if(app->shm){ wl_shm_add_listener(app->shm,&shmListener,app); }
+  if(app->output){ wl_output_add_listener(app->output,&outputListener,app); }
   wl_display_roundtrip(app->display);
   if(!app->compositor || !app->shm || !app->wmbase){
     fxwarning("%s::openDisplay: the compositor lacks %s%s%s.\n",getClassName(),
@@ -318,6 +352,9 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
         repaintrecs=r;
         return true;
         }
+
+      // Nothing left to paint, so finish the frames of the shells
+      fxwaylandFlushFrames(app);
 
       // Do our chores :-)
       if(chores){

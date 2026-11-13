@@ -56,6 +56,15 @@ enum {
   };
 
 
+/// State of a toplevel, as the compositor reports it and as we request it
+enum {
+  FXXWL_STATE_MAXIMIZED  = 1,           // Toplevel is maximized
+  FXXWL_STATE_FULLSCREEN = 2,           // Toplevel covers the output
+  FXXWL_STATE_ACTIVATED  = 4,           // Toplevel holds the focus
+  FXXWL_STATE_MINIMIZED  = 8            // Toplevel was asked to iconify
+  };
+
+
 /// The surface of one shell, and the buffers it draws into
 struct FXWaylandApp;
 struct FXWaylandBuffer;
@@ -68,6 +77,9 @@ struct FXWaylandSurface {
   xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
   FXWaylandBuffer*           buffers;    // Buffer pool
+  FXWaylandBuffer*           paint;      // Buffer of the frame being painted
+  FXbool                     dirty;      // Something was drawn into the frame
+  FXuint                     state;      // FXXWL_STATE_* of the toplevel
   FXint                      width;      // Width of the pool buffers
   FXint                      height;     // Height of the pool buffers
   FXWaylandSurface*          next;       // Next surface
@@ -96,6 +108,8 @@ struct FXWaylandApp {
   wl_seat*          seat;               // Input devices
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
+  FXint             screenwidth;        // Size of the first output
+  FXint             screenheight;
   FXbool            argb;               // ARGB8888 buffers are supported
   FXbool            lost;               // Connection failed
   FXWaylandEvent*   events;             // Queued neutral events
@@ -124,6 +138,15 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
 
 /// Destroy the surface of a shell
 void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);
+
+/// Return the surface of the shell that a window belongs to, or nullptr
+FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window);
+
+/// Bind a window to the frame buffer of its shell; false when it has none
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& stride);
+
+/// Commit the frames that were painted since the last call
+void fxwaylandFlushFrames(FXWaylandApp* app);
 
 /// Return an idle buffer of the given size, creating the pool when needed
 FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);
