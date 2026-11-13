@@ -1,6 +1,6 @@
 /********************************************************************************
 *                                                                               *
-*               T h r e a d - L o c a l   S t o r a g e   C l a s s             *
+*        T h r e a d - L o c a l   S t o r a g e   C l a s s   ( X 1 1 )        *
 *                                                                               *
 *********************************************************************************
 * Copyright (C) 2004,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
@@ -25,11 +25,12 @@
 #include "FXException.h"
 #include "FXAutoThreadStorageKey.h"
 
+#if !defined(WIN32)
+
 /*
   Notes:
 
-  - Automatically generate thread-local storage keys in a global constructor;
-    clean them up automatically as well using a global destructor.
+  - Platform implementation of FXAutoThreadStorageKey; the whole class is platform specific.
 */
 
 using namespace FX;
@@ -40,45 +41,30 @@ namespace FX {
 
 // Automatically acquire a thread-local storage key
 FXAutoThreadStorageKey::FXAutoThreadStorageKey(){
-#if defined(WIN32)
-  FXSTATIC_ASSERT(sizeof(FXThreadStorageKey)>=sizeof(DWORD));
-  if((value=(FXThreadStorageKey)TlsAlloc())==TLS_OUT_OF_INDEXES){ throw FXMemoryException("FXAutoThreadStorageKey::FXAutoThreadStorageKey: out of memory\n"); }
-#else
   FXSTATIC_ASSERT(sizeof(FXThreadStorageKey)>=sizeof(pthread_key_t));
   pthread_key_t key;
   if(pthread_key_create(&key,nullptr)!=0){ throw FXMemoryException("FXAutoThreadStorageKey::FXAutoThreadStorageKey: out of memory\n"); }
   value=(FXThreadStorageKey)key;
-#endif
   }
 
 
 // Set thread local storage associated with this key
 void FXAutoThreadStorageKey::set(FXptr ptr) const {
-#if defined(WIN32)
-  TlsSetValue((DWORD)value,ptr);
-#else
   pthread_setspecific((pthread_key_t)value,ptr);
-#endif
   }
 
 
 // Get thread local storage associated with this key
 FXptr FXAutoThreadStorageKey::get() const {
-#if defined(WIN32)
-  return TlsGetValue((DWORD)value);
-#else
   return pthread_getspecific((pthread_key_t)value);
-#endif
   }
 
 
 // Automatically release a thread-local storage key
 FXAutoThreadStorageKey::~FXAutoThreadStorageKey(){
-#if defined(WIN32)
-  TlsFree((DWORD)value);
-#else
   pthread_key_delete((pthread_key_t)value);
-#endif
   }
 
 }
+
+#endif

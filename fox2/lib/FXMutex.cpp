@@ -52,62 +52,6 @@ using namespace FX;
 
 namespace FX {
 
-// Initialize mutex
-FXMutex::FXMutex(FXbool recursive){
-#if defined(WIN32)
-  // If this fails on your machine, determine what value
-  // of sizeof(CRITICAL_SECTION) is supposed to be on your
-  // machine and mail it to: jeroen@fox-toolkit.net!!
-  //FXTRACE(TOPIC_CONSTRUCT,"sizeof(CRITICAL_SECTION)=%d\n",sizeof(CRITICAL_SECTION));
-  FXSTATIC_ASSERT(sizeof(data)>=sizeof(CRITICAL_SECTION));
-  InitializeCriticalSection((CRITICAL_SECTION*)data);
-#else
-  // If this fails on your machine, determine what value
-  // of sizeof(pthread_mutex_t) is supposed to be on your
-  // machine and mail it to: jeroen@fox-toolkit.net!!
-  //FXTRACE(TOPIC_CONSTRUCT,"sizeof(pthread_mutex_t)=%d\n",sizeof(pthread_mutex_t));
-  FXSTATIC_ASSERT(sizeof(data)>=sizeof(pthread_mutex_t));
-  pthread_mutexattr_t mutexatt;
-  pthread_mutexattr_init(&mutexatt);
-  pthread_mutexattr_settype(&mutexatt,recursive?PTHREAD_MUTEX_RECURSIVE:PTHREAD_MUTEX_DEFAULT);
-  pthread_mutex_init((pthread_mutex_t*)data,&mutexatt);
-  pthread_mutexattr_destroy(&mutexatt);
-#endif
-  }
-
-
-// Lock the mutex
-void FXMutex::lock(){
-#if defined(WIN32)
-  EnterCriticalSection((CRITICAL_SECTION*)data);
-#else
-  pthread_mutex_lock((pthread_mutex_t*)data);
-#endif
-  }
-
-
-// Try lock the mutex
-FXbool FXMutex::trylock(){
-#if defined(WIN32)
-  return TryEnterCriticalSection((CRITICAL_SECTION*)data)!=0;
-#elif defined(WIN32)
-  return false;
-#else
-  return pthread_mutex_trylock((pthread_mutex_t*)data)==0;
-#endif
-  }
-
-
-// Unlock mutex
-void FXMutex::unlock(){
-#if defined(WIN32)
-  LeaveCriticalSection((CRITICAL_SECTION*)data);
-#else
-  pthread_mutex_unlock((pthread_mutex_t*)data);
-#endif
-  }
-
-
 // Test if locked
 FXbool FXMutex::locked(){
   if(trylock()){
@@ -115,16 +59,6 @@ FXbool FXMutex::locked(){
     return false;
     }
   return true;
-  }
-
-
-// Delete mutex
-FXMutex::~FXMutex(){
-#if defined(WIN32)
-  DeleteCriticalSection((CRITICAL_SECTION*)data);
-#else
-  pthread_mutex_destroy((pthread_mutex_t*)data);
-#endif
   }
 
 }

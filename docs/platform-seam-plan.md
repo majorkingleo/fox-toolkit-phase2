@@ -659,11 +659,33 @@ into `FXIODevice_win32.cpp` and `FXIODevice_x11.cpp` with a scratch script
   DPI values. The device members are compile-checked on both backends; the
   examples do not read from a raw device.
 
+## Seam 25: mutex and thread storage key
+
+Done. The two smallest thread primitives moved together; neither has a
+platform branch left in the portable core. The modules were written by hand
+from the original bodies (`tmp/split-mutex.py` generates them).
+
+| Part | Location |
+| --- | --- |
+| Windows modules | `FXMutex_win32.cpp`: constructor, `lock()`, `trylock()`, `unlock()` and destructor on `CRITICAL_SECTION`; `FXAutoThreadStorageKey_win32.cpp`: the whole class on `TlsAlloc()`/`TlsSetValue()`/`TlsGetValue()`/`TlsFree()` |
+| X11 modules | `FXMutex_x11.cpp`: the same members on `pthread_mutex_t`; `FXAutoThreadStorageKey_x11.cpp`: the class on `pthread_key_t`; both are the POSIX implementation, named `x11` by the repository rule |
+| Portable core | `FXMutex.cpp` keeps `locked()`. `FXAutoThreadStorageKey.cpp` is gone because every member was platform code; the sources list in `Makefile.am` no longer names it |
+
+The dead `#elif defined(WIN32)` branch of `FXMutex::trylock()` was dropped.
+
+### Verification
+
+- The removed lines equal the added lines of the new modules apart from the
+  guards and that dead branch.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. Every example uses mutexes and thread storage through the
+  application and registry.
+
 ## Next seams, in order
 
 1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`,
-   `FXProcess`, `FXStat`, `FXDir`, `FXMutex`, `FXPipe`), one class per seam,
-   smallest first. Large but self-contained; split only when a feature needs it.
+   `FXProcess`, `FXStat`, `FXDir`, `FXPipe`), one class per seam, smallest
+   first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
