@@ -48,10 +48,14 @@ namespace FX {
 // A special FXThreadException may be used to unroll to this point and return a specific
 // error code from the thread; any other FXException is silently caught here, and causes
 // FXThread to return error-code of -1.
-void* FXThread::function(void* ptr){
+struct FXThreadEntry {
+  static void* function(void* ptr);
+  };
+
+void* FXThreadEntry::function(void* ptr){
   FXThread *thread=(FXThread*)ptr;
   FXint code=-1;
-  self(thread);
+  FXThread::self(thread);
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,nullptr);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS,nullptr);
   try{
@@ -66,7 +70,7 @@ void* FXThread::function(void* ptr){
   catch(...){                           // Other exceptions
     fxerror("FXThread: caught unknown exception.\n");
     }
-  if(self()){ self()->busy=false; }
+  if(FXThread::self()){ FXThread::self()->busy=false; }
   return (void*)(FXival)code;
   }
 
@@ -84,10 +88,10 @@ FXbool FXThread::start(FXuval stacksize){
   sigset_t newset,oldset;
   sigfillset(&newset);
   pthread_sigmask(SIG_SETMASK,&newset,&oldset); // No signals except to main thread
-  if(pthread_create((pthread_t*)&tid,&attr,FXThread::function,(void*)this)!=0) busy=false;
+  if(pthread_create((pthread_t*)&tid,&attr,FXThreadEntry::function,(void*)this)!=0) busy=false;
   pthread_sigmask(SIG_SETMASK,&oldset,nullptr);    // Restore old mask
 #else
-  if(pthread_create((pthread_t*)&tid,&attr,FXThread::function,(void*)this)!=0) busy=false;
+  if(pthread_create((pthread_t*)&tid,&attr,FXThreadEntry::function,(void*)this)!=0) busy=false;
 #endif
   pthread_attr_destroy(&attr);
   return busy;

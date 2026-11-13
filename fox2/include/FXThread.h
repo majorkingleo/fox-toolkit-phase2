@@ -90,11 +90,7 @@ private:
 private:
   static FXAutoThreadStorageKey selfKey;
 private:
-#if defined(WIN32)
-  static unsigned int CALLBACK function(void*);
-#else
-  static void* function(void*);
-#endif
+  friend struct FXThreadEntry;
 public:
 
   /// Initialize thread object.

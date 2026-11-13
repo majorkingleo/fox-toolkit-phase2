@@ -1265,6 +1265,15 @@ callbacks on every platform. The callbacks are only defined in
 references, so the Win32 build neither defines nor needs them. The Win32
 constructors now initialise `fontset` to `nullptr`. Both builds pass.
 
+## Seam 58: thread entry point
+
+`FXThread.h` declared the private thread entry `function` with a different
+signature per platform (`unsigned int CALLBACK` on Win32, `void*` with
+pthreads). The declaration is replaced by `friend struct FXThreadEntry;`. Each
+module defines its own `FXThreadEntry` with the entry function, the body
+unchanged except that `self()` and `busy` are reached through `FXThread::`, and
+`start()` passes `FXThreadEntry::function` to the OS. Both builds pass.
+
 ## Next seams, in order
 
 None in `fox2/lib`. After seam 55 every platform conditional in the core classes of

@@ -48,10 +48,14 @@ namespace FX {
 // A special FXThreadException may be used to unroll to this point and return a specific
 // error code from the thread; any other FXException is silently caught here, and causes
 // FXThread to return error-code of -1.
-unsigned int CALLBACK FXThread::function(void* ptr){
+struct FXThreadEntry {
+  static unsigned int CALLBACK function(void* ptr);
+  };
+
+unsigned int CALLBACK FXThreadEntry::function(void* ptr){
   FXThread *thread=(FXThread*)ptr;
   FXint code=-1;
-  self(thread);
+  FXThread::self(thread);
   try{
     code=thread->run();
     }
@@ -64,7 +68,7 @@ unsigned int CALLBACK FXThread::function(void* ptr){
   catch(...){                           // Other exceptions
     fxerror("FXThread: caught unknown exception.\n");
     }
-  if(self()){ self()->busy=false; }
+  if(FXThread::self()){ FXThread::self()->busy=false; }
   return code;
   }
 
@@ -75,8 +79,8 @@ FXbool FXThread::start(FXuval stacksize){
   if(busy){ fxerror("FXThread::start: thread already running.\n"); }
   if(tid){ fxerror("FXThread::start: thread still attached.\n"); }
   busy=true;
-  if((tid=(FXThreadID)CreateThread(nullptr,stacksize,(LPTHREAD_START_ROUTINE)FXThread::function,this,0,&thd))==nullptr) busy=false;
-//  if((tid=(FXThreadID)_beginthreadex(nullptr,stacksize,(LPTHREAD_START_ROUTINE)FXThread::function,this,0,&thd))==nullptr) busy=false;
+  if((tid=(FXThreadID)CreateThread(nullptr,stacksize,(LPTHREAD_START_ROUTINE)FXThreadEntry::function,this,0,&thd))==nullptr) busy=false;
+//  if((tid=(FXThreadID)_beginthreadex(nullptr,stacksize,(LPTHREAD_START_ROUTINE)FXThreadEntry::function,this,0,&thd))==nullptr) busy=false;
   return busy;
   }
 
