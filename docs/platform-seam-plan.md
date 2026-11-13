@@ -1163,6 +1163,18 @@ the hint. The constructor and destructor stay in `FXMainWindow.cpp`.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXMainWindow.cpp`: only the guard line differs.
 
+## Seam 50: drag corner
+
+Done. `create` and `onLeftBtnPress` moved whole. `FXDragCorner_x11.cpp` probes
+`_NET_SUPPORTED` for the EWMH `_NET_WM_MOVERESIZE` request and sends it when
+available; `FXDragCorner_win32.cpp` only keeps the XOR-rectangle resize. The
+rest of `FXDragCorner.cpp` is platform neutral.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXDragCorner.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint

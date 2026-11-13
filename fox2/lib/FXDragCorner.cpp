@@ -50,14 +50,11 @@
 
 #define CORNERSIZE    17
 
-#define DISPLAY(app) ((Display*)((app)->getDisplay()))
-
 using namespace FX;
 
 /*******************************************************************************/
 
 namespace FX {
-
 
 // Map
 FXDEFMAP(FXDragCorner) FXDragCornerMap[]={
@@ -113,21 +110,6 @@ FXint FXDragCorner::getDefaultHeight(){
   }
 
 
-// Create drag corner
-void FXDragCorner::create(){
-  FXWindow::create();
-#ifndef WIN32
-  unsigned long n,i; Atom type; unsigned char *prop; int format;
-  if(Success==XGetWindowProperty(DISPLAY(getApp()),XDefaultRootWindow(DISPLAY(getApp())),getApp()->wmNetSupported,0,2048,False,XA_ATOM,&type,&format,&n,&i,&prop)){
-    for(i=0; i<n; i++){
-      if(((Atom*)prop)[i]==getApp()->wmNetMoveResize){ ewmh=true; break; }
-      }
-    XFree(prop);
-    }
-#endif
-  }
-
-
 // Slightly different from Frame border
 long FXDragCorner::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
@@ -144,46 +126,6 @@ long FXDragCorner::onPaint(FXObject*,FXSelector,void* ptr){
   dc.drawLine(width-17,height-1,width,height-18);
   return 1;
   }
-
-
-// Pressed LEFT button
-long FXDragCorner::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
-  FXEvent *event=(FXEvent*)ptr;
-#ifndef WIN32
-  if(ewmh){
-    XClientMessageEvent ev;
-    ev.type=ClientMessage;
-    ev.display=DISPLAY(getApp());
-    ev.window=getShell()->id();
-    ev.message_type=getApp()->wmNetMoveResize;
-    ev.format=32;
-    ev.data.l[0]=event->root_x;
-    ev.data.l[1]=event->root_y;
-    ev.data.l[2]=4;                // Bottom right
-    ev.data.l[3]=LEFTBUTTON;
-    ev.data.l[4]=0;
-    XSendEvent(DISPLAY(getApp()),XDefaultRootWindow(DISPLAY(getApp())),False,(SubstructureRedirectMask|SubstructureNotifyMask),(XEvent*)&ev);
-    ungrab();
-    return 1;
-    }
-#endif
-  FXDCWindow dc(getRoot());
-  FXint xx,yy,wx,wy;
-  grab();
-  xoff=width-event->win_x;
-  yoff=height-event->win_y;
-  translateCoordinatesTo(wx,wy,getShell(),event->win_x,event->win_y);
-  oldw=wx+xoff;
-  oldh=wy+yoff;
-  dc.clipChildren(false);
-  dc.setFunction(BLT_SRC_XOR_DST);
-  dc.setForeground(FXRGB(255,255,255));
-  getShell()->translateCoordinatesTo(xx,yy,getRoot(),0,0);
-  dc.drawRectangle(xx,yy,oldw,oldh);
-  flags|=FLAG_PRESSED;
-  return 1;
-  }
-
 
 
 // Released LEFT button
@@ -243,7 +185,6 @@ void FXDragCorner::setShadowColor(FXColor clr){
     update();
     }
   }
-
 
 
 // Save data
