@@ -701,6 +701,12 @@ extern FXAPI __noreturn void fxerror(const FXchar* format,...) FX_PRINTF(1,2) ;
 /// Warning routine; will continue program after writing message
 extern FXAPI void fxwarning(const FXchar* format,...) FX_PRINTF(1,2) ;
 
+/// Enable or disable message boxes for fxerror() and fxwarning(); when disabled, messages are written to stdout
+extern FXAPI void fxdialogs(FXbool enable);
+
+/// Return true if fxerror() and fxwarning() may open message boxes
+extern FXAPI FXbool fxdialogsenabled();
+
 /// Log message to [typically] stderr
 extern FXAPI void fxmessage(const FXchar* format,...) FX_PRINTF(1,2) ;
 

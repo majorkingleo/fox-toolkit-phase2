@@ -76,6 +76,11 @@ void fxerror(const FXchar* format,...){
   va_start(arguments,format);
   message.vformat(format,arguments);
   va_end(arguments);
+  if(!fxdialogsenabled()){
+    fputs(message.text(),stdout);
+    fflush(stdout);
+    abort();
+    }
   fputs(message.text(),stderr);
   fflush(stderr);
   abort();
@@ -89,6 +94,11 @@ void fxwarning(const FXchar* format,...){
   va_start(arguments,format);
   message.vformat(format,arguments);
   va_end(arguments);
+  if(!fxdialogsenabled()){
+    fputs(message.text(),stdout);
+    fflush(stdout);
+    return;
+    }
   fputs(message.text(),stderr);
   fflush(stderr);
   }

@@ -1319,8 +1319,8 @@ None. After seam 55 every platform conditional in the core classes of
 removed the platform conditionals from the class headers. What remains are
 `va_copy` shims, comments, private headers, and the configuration and compiler
 plumbing in `fx.h`, `fxdefs.h`, `xincs.h` and `fxmath.h`, which selects types
-and system includes per platform and stays. Presentation work (browser
-frontend, Wayland SHM surface) builds on this and is planned separately.
+and system includes per platform and stays. The Wayland module is planned in
+`docs/wayland-plan.md`; the browser frontend is planned separately.
 
 ## Constraints
 

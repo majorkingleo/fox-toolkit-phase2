@@ -9,3 +9,25 @@ noinst_PROGRAMS = hello button dpi
 hello_SOURCES = hello.cpp
 button_SOURCES = button.cpp
 dpi_SOURCES = dpi.cpp
+
+noinst_PROGRAMS += codecs dictest expression format half match math memmap minheritance parallel process rex scan thread timefmt unicode units variant xml
+
+codecs_SOURCES = codecs.cpp
+dictest_SOURCES = dictest.cpp
+expression_SOURCES = expression.cpp
+format_SOURCES = format.cpp
+half_SOURCES = half.cpp
+match_SOURCES = match.cpp
+math_SOURCES = math.cpp
+memmap_SOURCES = memmap.cpp
+minheritance_SOURCES = minheritance.cpp
+parallel_SOURCES = parallel.cpp
+process_SOURCES = process.cpp
+rex_SOURCES = rex.cpp
+scan_SOURCES = scan.cpp
+thread_SOURCES = thread.cpp
+timefmt_SOURCES = timefmt.cpp
+unicode_SOURCES = unicode.cpp
+units_SOURCES = units.cpp
+variant_SOURCES = variant.cpp
+xml_SOURCES = xml.cpp

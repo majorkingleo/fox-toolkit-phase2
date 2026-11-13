@@ -18,6 +18,7 @@
 ********************************************************************************/
 
 #include "fx.h"
+#include "testargs.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -510,6 +511,7 @@ long DPITest::onCmdSample(FXObject*,FXSelector,void*){
 
 // Entry point
 int main(int argc,char* argv[]){
+  fxtestargs(argc,argv);
   FXApp application("DPITest","FoxTest");
   FXMainWindow *main;
   FXSlider *slider;

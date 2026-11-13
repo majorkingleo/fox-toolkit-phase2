@@ -32,6 +32,7 @@ FXDir.cpp \
 FXDragCorner.cpp \
 FXDrawable.cpp \
 fxezquantize.cpp \
+fxmath.cpp \
 FXFile.cpp \
 FXFont.cpp \
 FXFrame.cpp \
@@ -81,6 +82,9 @@ fxstrtod.cpp \
 fxstrtoll.cpp \
 fxstrtoull.cpp \
 FXSystem.cpp \
+FXSystemTime.cpp \
+FXSystemTimeFormat.cpp \
+FXSystemTimeParse.cpp \
 FXTextCodec.cpp \
 FXThread.cpp \
 FXToolTip.cpp \
@@ -99,13 +103,45 @@ FXTheme.cpp \
 FXCSS.cpp \
 FXThemeCache.cpp \
 FXDesktopSettings.cpp \
+FX88592Codec.cpp \
+FXArray.cpp \
+FXCompletion.cpp \
+FXDictionary.cpp \
+FXException.cpp \
+FXExpression.cpp \
+FXhalf.cpp \
+FXINI.cpp \
+FXINIFile.cpp \
+FXJSON.cpp \
+FXJSONFile.cpp \
+FXJSONString.cpp \
+FXKOI8RCodec.cpp \
+FXLFQueue.cpp \
+FXMappedFile.cpp \
+FXParseBuffer.cpp \
+FXPtrList.cpp \
+FXRandom.cpp \
+FXReverseDictionary.cpp \
+FXRex.cpp \
+FXThreadPool.cpp \
+FXTaskGroup.cpp \
+FXUnits.cpp \
+FXUTF32Codec.cpp \
+FXUTF8Codec.cpp \
+FXVariant.cpp \
+FXVariantArray.cpp \
+FXVariantMap.cpp \
+FXWorker.cpp \
+FXXML.cpp \
+FXXMLFile.cpp \
+FXXMLString.cpp \
 fxpriv.h
 
 # Platform seam: exactly one implementation is compiled into the library
 if COND_OSWINDOWS
-libFOX_1_7_la_SOURCES += FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp FXDir_win32.cpp FXFile_win32.cpp FXProcess_win32.cpp FXStat_win32.cpp FXSystem_win32.cpp FXPath_win32.cpp FXThread_win32.cpp FXCursor_win32.cpp FXVisual_win32.cpp FXDCWindow_win32.cpp FXTopWindow_win32.cpp FXRegion_win32.cpp fxutils_win32.cpp fxkeyboard_win32.cpp FXStyle_win32.cpp FXImage_win32.cpp FXRootWindow_win32.cpp FXIcon_win32.cpp FXPopup_win32.cpp FXShell_win32.cpp FXToolTip_win32.cpp FXMainWindow_win32.cpp FXDragCorner_win32.cpp FXDesktopSettings_win32.cpp fxpriv_win32.cpp FXComposeContext_win32.cpp FXRegistry_win32.cpp FXCheckButton_win32.cpp FXSlider_win32.cpp
+libFOX_1_7_la_SOURCES += FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp FXDir_win32.cpp FXFile_win32.cpp FXProcess_win32.cpp FXStat_win32.cpp FXSystem_win32.cpp FXPath_win32.cpp FXThread_win32.cpp FXCursor_win32.cpp FXVisual_win32.cpp FXDCWindow_win32.cpp FXTopWindow_win32.cpp FXRegion_win32.cpp fxutils_win32.cpp fxkeyboard_win32.cpp FXStyle_win32.cpp FXImage_win32.cpp FXRootWindow_win32.cpp FXIcon_win32.cpp FXPopup_win32.cpp FXShell_win32.cpp FXToolTip_win32.cpp FXMainWindow_win32.cpp FXDragCorner_win32.cpp FXDesktopSettings_win32.cpp fxpriv_win32.cpp FXComposeContext_win32.cpp FXRegistry_win32.cpp FXCheckButton_win32.cpp FXSlider_win32.cpp FXSemaphore_win32.cpp FXMappedFile_win32.cpp FXSystemTime_win32.cpp fxosver_win32.cpp
 else
-libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXWindow_x11.cpp FXFont_x11.cpp FXIODevice_x11.cpp FXMutex_x11.cpp FXAutoThreadStorageKey_x11.cpp FXPipe_x11.cpp FXDir_x11.cpp FXFile_x11.cpp FXProcess_x11.cpp FXStat_x11.cpp FXSystem_x11.cpp FXPath_x11.cpp FXThread_x11.cpp FXCursor_x11.cpp FXVisual_x11.cpp FXDCWindow_x11.cpp FXTopWindow_x11.cpp FXRegion_x11.cpp fxutils_x11.cpp FXStyle_x11.cpp FXImage_x11.cpp FXRootWindow_x11.cpp FXIcon_x11.cpp FXPopup_x11.cpp FXShell_x11.cpp FXToolTip_x11.cpp FXMainWindow_x11.cpp FXDragCorner_x11.cpp FXDesktopSettings_x11.cpp fxpriv_x11.cpp FXComposeContext_x11.cpp FXRegistry_x11.cpp FXCheckButton_x11.cpp FXSlider_x11.cpp
+libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXWindow_x11.cpp FXFont_x11.cpp FXIODevice_x11.cpp FXMutex_x11.cpp FXAutoThreadStorageKey_x11.cpp FXPipe_x11.cpp FXDir_x11.cpp FXFile_x11.cpp FXProcess_x11.cpp FXStat_x11.cpp FXSystem_x11.cpp FXPath_x11.cpp FXThread_x11.cpp FXCursor_x11.cpp FXVisual_x11.cpp FXDCWindow_x11.cpp FXTopWindow_x11.cpp FXRegion_x11.cpp fxutils_x11.cpp FXStyle_x11.cpp FXImage_x11.cpp FXRootWindow_x11.cpp FXIcon_x11.cpp FXPopup_x11.cpp FXShell_x11.cpp FXToolTip_x11.cpp FXMainWindow_x11.cpp FXDragCorner_x11.cpp FXDesktopSettings_x11.cpp fxpriv_x11.cpp FXComposeContext_x11.cpp FXRegistry_x11.cpp FXCheckButton_x11.cpp FXSlider_x11.cpp FXSemaphore_x11.cpp FXMappedFile_x11.cpp FXSystemTime_x11.cpp fxosver_x11.cpp
 endif
 
 noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h

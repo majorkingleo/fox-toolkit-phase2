@@ -157,6 +157,11 @@ void fxerror(const FXchar* format,...){
   va_start(arguments,format);
   message.vformat(format,arguments);
   va_end(arguments);
+  if(!fxdialogsenabled()){
+    fputs(message.text(),stdout);
+    fflush(stdout);
+    abort();
+    }
 #if defined(_WINDOWS)
   OutputDebugStringA(message.text());
   fputs(message.text(),stderr);         // if a console is available
@@ -178,6 +183,11 @@ void fxwarning(const FXchar* format,...){
   va_start(arguments,format);
   message.vformat(format,arguments);
   va_end(arguments);
+  if(!fxdialogsenabled()){
+    fputs(message.text(),stdout);
+    fflush(stdout);
+    return;
+    }
 #if defined(_WINDOWS)
   OutputDebugStringA(message.text());
   fputs(message.text(),stderr);         // if a console is available

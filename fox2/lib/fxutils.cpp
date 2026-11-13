@@ -60,6 +60,23 @@ const FXuchar fxversion[3]={FOX_MAJOR,FOX_MINOR,FOX_LEVEL};
 
 /*******************************************************************************/
 
+// Message boxes allowed for errors and warnings
+static FXbool fxDialogs=true;
+
+
+// Enable or disable message boxes for errors and warnings
+void fxdialogs(FXbool enable){
+  fxDialogs=enable;
+  }
+
+
+// Return true if message boxes are allowed
+FXbool fxdialogsenabled(){
+  return fxDialogs;
+  }
+
+/*******************************************************************************/
+
 // Trace level environment variable
 static const FXchar* fxTraceVariable=nullptr;
 

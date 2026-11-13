@@ -6,6 +6,7 @@
 * Copyright (C) 1998,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
 ********************************************************************************/
 #include "fx.h"
+#include "testargs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -416,6 +417,7 @@ void ButtonWindow::load(FXStream& store){
 
 // Start the whole thing
 int main(int argc,char *argv[]){
+  fxtestargs(argc,argv);
 
   // Make application
   FXApp application("Button","FoxTest");

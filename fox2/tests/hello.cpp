@@ -1,4 +1,5 @@
 #include "fx.h"
+#include "testargs.h"
 
 /*
 
@@ -33,6 +34,7 @@
 
 // The entry point where the program starts running
 int main(int argc,char **argv){
+  fxtestargs(argc,argv);
 
   // Each FOX GUI program needs one, and only one, application object.
   // The application objects coordinates some common stuff shared between
