@@ -13,10 +13,11 @@ The original tree stays read-only; all generated files go to
 - MSYS2 installed in `C:\msys64`; target subsystem **MINGW64**
   (`C:\msys64\mingw64`, shell `C:\msys64\usr\bin\bash.exe` or
   `C:\msys64\mingw64.exe`).
-- Already present: GCC 16.2.0 (MinGW-w64), binutils, gdb, cmake, ninja,
-  pkgconf, winpthreads, zlib, bzip2, xz, zstd.
-- Missing on a fresh MINGW64 install: `make`, the autotools, and the image
-  libraries. `scripts/install-msys2-deps.sh` installs them.
+- Already present: GCC 16.2.0 (MinGW-w64), binutils, gdb, pkgconf,
+  winpthreads, zlib, bzip2, xz, zstd.
+- Missing on a fresh MINGW64 install: `make`, the autotools, `cmake`,
+  `ninja` and the image libraries. `scripts/install-msys2-deps.sh` installs
+  them.
 
 ## Platform differences from the Linux baseline
 
@@ -117,8 +118,36 @@ back to make's built-in rule and fail.
 Options: `--opengl` (enable GL, needs Mesa), `--static` (static library
 instead of the DLL), `--debug` / `--release`, `--jobs=N`, `--clean`,
 `--fast` (skip `autoreconf`/`configure` when `configure.ac`, a `Makefile.am`
-or the configure options did not change), and `--run` (start `hello` for 3 s
-and treat the timeout as success).
+or the configure options did not change), `--run` (start `hello` for 3 s
+and treat the timeout as success) and `--cmake` (see below).
+
+### CMake + Ninja alternative
+
+On Windows `autoreconf` and `configure` dominate the build time, so both trees
+also carry a CMake build (`CMakeLists.txt`, `cmake/FOXFeatures.cmake`;
+`fox2/` and `fox-1.7.95/`). Autotools stays the default; pass `--cmake`
+(`-CMake` in the PowerShell wrappers) to use it:
+
+```powershell
+.\scripts\build-fox2-mingw.ps1 -CMake -Run
+.\scripts\build-fox1-mingw.ps1 -CMake -Static
+```
+
+- No `autoreconf`, no `configure`, no copy of the source tree; the build
+  directories are `tmp/build-fox1-mingw-cmake` and `tmp/build-fox2-win-cmake`
+  (`tmp/build-fox2-linux-cmake` for `build-fox2-linux.sh --cmake`, untested).
+- Source lists are read from the `Makefile.am` files, so both build systems
+  stay in sync. Feature detection mirrors the `configure` switches via
+  `-DFOX_WITH_OPENGL`, `-DFOX_WITH_CUPS`, `-DFOX_WITH_WEBP`, `-DFOX_WITH_JP2`,
+  `-DFOX_BUILD_SHARED` (fox1) and `-DFOX_FOXTRACE` (fox2).
+- Output goes to `<build>/bin` (DLL, `reswrap`, test programs) and
+  `<build>/lib` (import library / static library).
+- Measured (12 jobs): fox2 clean configure + build + run about 20 s, fox1 clean
+  about 48 s, `--fast` no-op rebuild about 1 s. Extra fox1 tests can be built
+  with `-DFOX_BUILD_ALL_TESTS=ON` (all build on MinGW except `scan`, whose
+  `strtod(..., nullptr)` call is ambiguous with GCC 16; use `ninja -k 0`).
+- On MinGW all symbols of the DLL are exported (`--export-all-symbols`),
+  matching libtool behaviour; some classes lack `FXAPI`.
 
 ## MinGW patch
 

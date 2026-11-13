@@ -16,6 +16,8 @@
 #   --fast     skip autoreconf/configure when their inputs did not change
 #   --trace    keep FXTRACE statements compiled in (no NDEBUG)
 #   --run      run hello, button and the DPI test for 3 s after building
+#   --cmake    use CMake + Ninja instead of Autotools: no autoreconf and no
+#              configure run (build dir: tmp/build-fox2-linux-cmake)
 #   -h|--help  show this help
 #
 set -euo pipefail
@@ -32,9 +34,10 @@ clean=no
 fast=no
 trace=no
 run_test=no
+use_cmake=no
 
 usage(){
-  sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -46,6 +49,7 @@ while [ $# -gt 0 ]; do
     --fast)     fast=yes ;;
     --trace)    trace=yes ;;
     --run)      run_test=yes ;;
+    --cmake)    use_cmake=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -80,6 +84,92 @@ pkg-config --exists x11 2>/dev/null || {
 if [ "$run_test" = yes ] && [ -z "${DISPLAY-}" ] && [ -z "${WAYLAND_DISPLAY-}" ]; then
   echo "error: --run needs a display (DISPLAY or WAYLAND_DISPLAY is not set)." >&2
   exit 1
+  fi
+
+if [ "$use_cmake" = yes ]; then
+  BUILD="$ROOT/tmp/build-fox2-linux-cmake"
+  LOG="$BUILD/build.log"
+  for tool in cmake ninja; do
+    command -v "$tool" >/dev/null 2>&1 || {
+      echo "error: $tool not found. Install cmake and ninja." >&2
+      exit 1
+      }
+    done
+  if [ "$trace" = yes ] && [ "$build_type" = release ]; then
+    echo "error: --trace cannot be combined with --release" >&2
+    exit 2
+    fi
+
+  if [ "$clean" = yes ]; then
+    echo "==> removing $BUILD"
+    rm -rf -- "$BUILD"
+    fi
+  mkdir -p -- "$BUILD"
+  : >"$LOG"
+
+  run(){
+    echo "*** $*" >>"$LOG"
+    "$@" 2>&1 | tee -a "$LOG"
+    }
+
+  # CMake writes nothing into the source tree. The build type is always
+  # passed so that it is reset when no option is given.
+  copts=(-G Ninja -DFOX_WITH_CUPS=OFF)
+  if [ "$with_opengl" = yes ]; then
+    copts+=(-DFOX_WITH_OPENGL=ON)
+  else
+    copts+=(-DFOX_WITH_OPENGL=OFF)
+    fi
+  if [ "$trace" = yes ]; then
+    copts+=(-DFOX_FOXTRACE=ON)
+  else
+    copts+=(-DFOX_FOXTRACE=OFF)
+    fi
+  case "$build_type" in
+    debug)   copts+=(-DCMAKE_BUILD_TYPE=Debug) ;;
+    release) copts+=(-DCMAKE_BUILD_TYPE=Release) ;;
+    *)       copts+=(-DCMAKE_BUILD_TYPE=) ;;
+  esac
+
+  # Ninja reruns CMake by itself when a CMakeLists.txt or Makefile.am changes
+  if [ "$fast" = yes ] && [ -f "$BUILD/build.ninja" ] &&
+     [ "$(cat "$BUILD/.cmake-options" 2>/dev/null)" = "${copts[*]}" ]; then
+    echo "==> cmake configure skipped (options unchanged)"
+  else
+    echo "==> cmake configure: ${copts[*]}"
+    run cmake -S "$SRC" -B "$BUILD" "${copts[@]}"
+    printf '%s\n' "${copts[*]}" >"$BUILD/.cmake-options"
+    fi
+
+  echo "==> build library, tools and tests"
+  run cmake --build "$BUILD" -j "$jobs"
+
+  echo
+  echo "==> artifacts"
+  ls -l "$BUILD"/bin/* "$BUILD"/lib/*FOX* 2>/dev/null || true
+
+  if [ "$run_test" = yes ]; then
+    for prog in hello button dpi; do
+      echo
+      echo "==> running $prog for 3 seconds"
+      rc=0
+      timeout 3 "$BUILD/bin/$prog" || rc=$?
+      if [ "$rc" -eq 124 ]; then
+        echo "$prog stayed in its event loop (expected)"
+      else
+        echo "warning: $prog exited with status $rc" >&2
+        fi
+      done
+    fi
+
+  echo
+  echo "done. Build log: $LOG"
+  if [ "$trace" = yes ]; then
+    echo
+    echo "trace build: FXTRACE is compiled in; run with -tracelevel N or FOX_TRACE_LEVEL=N"
+    echo "and redirect stderr to a file, e.g. bin/dpi -tracelevel 1023 2> trace.log"
+    fi
+  exit 0
   fi
 
 if [ "$clean" = yes ]; then

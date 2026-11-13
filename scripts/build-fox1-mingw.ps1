@@ -6,6 +6,7 @@
 #   .\scripts\build-fox1-mingw.ps1 -Static          # static library
 #   .\scripts\build-fox1-mingw.ps1 -Clean -Run      # clean, build, run hello
 #   .\scripts\build-fox1-mingw.ps1 -Fast            # skip autotools when unchanged
+#   .\scripts\build-fox1-mingw.ps1 -CMake           # CMake + Ninja, no configure
 #
 # If script execution is blocked by the PowerShell policy, run:
 #   powershell -ExecutionPolicy Bypass -File .\scripts\build-fox1-mingw.ps1
@@ -17,6 +18,7 @@ param(
   [switch]$Clean,
   [switch]$Fast,
   [switch]$Run,
+  [switch]$CMake,
   [string]$Jobs
 )
 
@@ -51,6 +53,7 @@ if ($Static) { $buildArgs += '--static' }
 if ($Clean) { $buildArgs += '--clean' }
 if ($Fast) { $buildArgs += '--fast' }
 if ($Run) { $buildArgs += '--run' }
+if ($CMake) { $buildArgs += '--cmake' }
 if ($Jobs) { $buildArgs += "--jobs=$Jobs" }
 
 if ($InstallDeps) {

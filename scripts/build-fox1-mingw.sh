@@ -20,6 +20,8 @@
 #   --clean        delete the build and scratch source directories first
 #   --fast         skip autoreconf/configure when their inputs did not change
 #   --run          start tests/hello for 3 s after the build
+#   --cmake        use CMake + Ninja instead of Autotools: no autoreconf and
+#                  no configure run (build dir: tmp/build-fox1-mingw-cmake)
 #   -h|--help      show this help
 #
 set -euo pipefail
@@ -37,9 +39,10 @@ build_type=
 clean=no
 fast=no
 run_test=no
+use_cmake=no
 
 usage(){
-  sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -51,6 +54,7 @@ while [ $# -gt 0 ]; do
     --clean)    clean=yes ;;
     --fast)     fast=yes ;;
     --run)      run_test=yes ;;
+    --cmake)    use_cmake=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -70,12 +74,88 @@ command -v g++ >/dev/null 2>&1 || {
   echo "error: g++ not found. Run ./scripts/install-msys2-deps.sh first." >&2
   exit 1
   }
-command -v make >/dev/null 2>&1 || {
-  echo "error: make not found. Run ./scripts/install-msys2-deps.sh first (install msys/make, not mingw32-make)." >&2
-  exit 1
-  }
 [ -f "$SRC/configure.ac" ] || {
   echo "error: $SRC/configure.ac not found." >&2
+  exit 1
+  }
+
+if [ "$use_cmake" = yes ]; then
+  BUILD="$ROOT/tmp/build-fox1-mingw-cmake"
+  LOG="$BUILD/build.log"
+  for tool in cmake ninja; do
+    command -v "$tool" >/dev/null 2>&1 || {
+      echo "error: $tool not found. Run ./scripts/install-msys2-deps.sh first." >&2
+      exit 1
+      }
+    done
+
+  if [ "$clean" = yes ]; then
+    echo "==> removing $BUILD"
+    rm -rf -- "$BUILD"
+    fi
+  mkdir -p -- "$BUILD"
+  : >"$LOG"
+
+  run(){
+    echo "*** $*" >>"$LOG"
+    "$@" 2>&1 | tee -a "$LOG"
+    }
+
+  # CMake needs no generated files, so the original tree is used directly.
+  # The build type is always passed so that it is reset when no option is given.
+  copts=(-G Ninja -DFOX_WITH_CUPS=OFF -DFOX_WITH_WEBP=OFF -DFOX_WITH_JP2=OFF)
+  if [ "$with_opengl" = yes ]; then
+    copts+=(-DFOX_WITH_OPENGL=ON)
+  else
+    copts+=(-DFOX_WITH_OPENGL=OFF)
+    fi
+  if [ "$shared" = yes ]; then
+    copts+=(-DFOX_BUILD_SHARED=ON)
+  else
+    copts+=(-DFOX_BUILD_SHARED=OFF)
+    fi
+  case "$build_type" in
+    debug)   copts+=(-DCMAKE_BUILD_TYPE=Debug) ;;
+    release) copts+=(-DCMAKE_BUILD_TYPE=Release) ;;
+    *)       copts+=(-DCMAKE_BUILD_TYPE=) ;;
+  esac
+
+  # Ninja reruns CMake by itself when a CMakeLists.txt or Makefile.am changes
+  if [ "$fast" = yes ] && [ -f "$BUILD/build.ninja" ] &&
+     [ "$(cat "$BUILD/.cmake-options" 2>/dev/null)" = "${copts[*]}" ]; then
+    echo "==> cmake configure skipped (options unchanged)"
+  else
+    echo "==> cmake configure: ${copts[*]}"
+    run cmake -S "$SRC" -B "$BUILD" "${copts[@]}"
+    printf '%s\n' "${copts[*]}" >"$BUILD/.cmake-options"
+    fi
+
+  echo "==> build reswrap, library and test programs"
+  run cmake --build "$BUILD" -j "$jobs"
+
+  echo
+  echo "==> artifacts"
+  ls -l "$BUILD"/bin/*.exe "$BUILD"/bin/*FOX* "$BUILD"/lib/*FOX* 2>/dev/null || true
+
+  if [ "$run_test" = yes ]; then
+    echo
+    echo "==> running hello for 3 seconds"
+    rc=0
+    timeout 3 "$BUILD/bin/hello.exe" || rc=$?
+    if [ "$rc" -eq 124 ]; then
+      echo "hello stayed in its event loop (expected)"
+    else
+      echo "warning: hello exited with status $rc" >&2
+      fi
+    fi
+
+  echo
+  echo "done. Build log: $LOG"
+  exit 0
+  fi
+
+command -v make >/dev/null 2>&1 || {
+  echo "error: make not found. Run ./scripts/install-msys2-deps.sh first (install msys/make, not mingw32-make)." >&2
   exit 1
   }
 

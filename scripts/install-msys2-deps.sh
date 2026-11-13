@@ -42,6 +42,8 @@ MINGW_PACKAGES=(
   mingw-w64-x86_64-libwebp
   mingw-w64-x86_64-openjpeg2
   mingw-w64-x86_64-libjxl
+  mingw-w64-x86_64-cmake
+  mingw-w64-x86_64-ninja
   )
 
 OPENGL_PACKAGES=(
@@ -116,6 +118,8 @@ make --version | head -n 1
 autoconf --version | head -n 1
 automake --version | head -n 1
 libtool --version | head -n 1
+cmake --version | head -n 1
+ninja --version
 
 echo
 echo "==> library headers"
