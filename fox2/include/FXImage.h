@@ -74,7 +74,6 @@ protected:
 private:
   virtual FXID GetDC() const;
   virtual int ReleaseDC(FXID) const;
-#if !defined(WIN32)
   void render_true_32(void *xim,FXuchar *img);
   void render_true_24(void *xim,FXuchar *img);
   void render_true_16_fast(void *xim,FXuchar *img);
@@ -95,7 +94,6 @@ private:
   void render_gray_N_dither(void *xim,FXuchar *img);
   void render_mono_1_fast(void *xim,FXuchar *img);
   void render_mono_1_dither(void *xim,FXuchar *img);
-#endif
 protected:
   FXImage();
 private:

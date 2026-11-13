@@ -57,10 +57,8 @@ class FXAPI FXBitmap : public FXDrawable {
   friend class FXDC;
   friend class FXDCWindow;
 private:
-#ifdef WIN32
   virtual FXID GetDC() const;
   virtual int ReleaseDC(FXID) const;
-#endif
 protected:
   FXuchar *data;        // Pixel data
   FXint    bytewidth;   // Number of bytes across

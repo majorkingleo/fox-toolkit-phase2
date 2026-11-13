@@ -1252,10 +1252,11 @@ already gave there: no device context handle (`0`) and no window class
 instead of `nullptr` so the same line compiles where `FXID` is an integer.
 Both builds pass.
 
-Still conditional in the public headers, for later seams: the platform members
-of `FXApp.h`, `FXDCWindow.h`, `FXVisual.h`, `FXComposeContext.h`, the
-`FXImage.h` render helpers, `FXThread.h` (`function`), and `FXBitmap.h`, whose
-class is declared but has no implementation in `fox2/lib`.
+Still conditional in the public headers after this seam, handled by seams 57 to
+62: the platform members of `FXApp.h`, `FXDCWindow.h`, `FXVisual.h`,
+`FXComposeContext.h`, the `FXImage.h` render helpers, `FXThread.h`
+(`function`), and `FXBitmap.h`, whose class is declared but has no
+implementation in `fox2/lib`.
 
 ## Seam 57: compose context header
 
@@ -1304,14 +1305,22 @@ callbacks are declared everywhere and defined only where used; the virtual
 `dispatchEvent(FXID,...)` has a no-op definition in `FXApp_x11.cpp`. `CALLBACK`
 is defined empty outside Win32. Both builds pass.
 
+## Seam 62: image and bitmap headers
+
+`FXImage.h` declares the `render_*` helpers and `FXBitmap.h` declares
+`GetDC()` and `ReleaseDC()` on every platform. The helpers are defined only in
+`FXImage_x11.cpp`; they are private and nothing else references them on Win32.
+`FXBitmap` still has no implementation in `fox2/lib`. Both builds pass.
+
 ## Next seams, in order
 
-None in `fox2/lib`. After seam 55 every platform conditional in the core classes of
-`fox2/lib` lives in a `_win32.cpp` or `_x11.cpp` module. What remains there are
-`va_copy` shims, comments, and private headers. The remaining work is the list
-of public header conditionals at the end of seam 56, one header per seam.
-Presentation work (browser frontend, Wayland SHM surface) builds on this and is
-planned separately.
+None. After seam 55 every platform conditional in the core classes of
+`fox2/lib` lives in a `_win32.cpp` or `_x11.cpp` module, and seams 56 to 62
+removed the platform conditionals from the class headers. What remains are
+`va_copy` shims, comments, private headers, and the configuration and compiler
+plumbing in `fx.h`, `fxdefs.h`, `xincs.h` and `fxmath.h`, which selects types
+and system includes per platform and stays. Presentation work (browser
+frontend, Wayland SHM surface) builds on this and is planned separately.
 
 ## Constraints
 
