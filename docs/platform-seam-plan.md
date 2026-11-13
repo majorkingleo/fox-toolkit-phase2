@@ -1141,6 +1141,17 @@ the moved code.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXShell.cpp`: only guard lines differ.
 
+## Seam 48: tool tip
+
+Done. `FXToolTip_win32.cpp` holds `GetClass` and `place` (monitor work area);
+`FXToolTip_x11.cpp` holds `place` against the root window. The rest of
+`FXToolTip.cpp` is platform neutral.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXToolTip.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint

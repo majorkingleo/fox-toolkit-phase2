@@ -111,11 +111,6 @@ FXbool FXToolTip::doesSaveUnder() const {
   }
 
 
-#ifdef WIN32
-const void* FXToolTip::GetClass() const { return TEXT("FXPopup"); }
-#endif
-
-
 // Create window
 void FXToolTip::create(){
   FXShell::create();
@@ -198,57 +193,6 @@ long FXToolTip::onPaint(FXObject*,FXSelector,void* ptr){
     while(*end!='\0');
     }
   return 1;
-  }
-
-
-// Place the tool tip
-void FXToolTip::place(FXint x,FXint y){
-  FXint rx,ry,rw,rh,px,py,w,h;
-  w=getDefaultWidth();
-  h=getDefaultHeight();
-#ifdef WIN32
-  RECT rect;
-  MONITORINFO minfo;
-  HMONITOR monitor;
-
-  rect.left=x;
-  rect.right=x+w;
-  rect.top=y;
-  rect.bottom=y+h;
-
-  // Get monitor info if we have this API
-  monitor=MonitorFromRect(&rect,MONITOR_DEFAULTTOPRIMARY);
-  if(monitor){
-    clearElms(&minfo,1);
-    minfo.cbSize=sizeof(minfo);
-    GetMonitorInfo(monitor,&minfo);
-    rx=minfo.rcWork.left;
-    ry=minfo.rcWork.top;
-    rw=minfo.rcWork.right-minfo.rcWork.left;
-    rh=minfo.rcWork.bottom-minfo.rcWork.top;
-    }
-
-  // Otherwise use the work-area
-  else{
-    SystemParametersInfo(SPI_GETWORKAREA,sizeof(RECT),&rect,0);
-    rx=rect.left;
-    ry=rect.top;
-    rw=rect.right-rect.left;
-    rh=rect.bottom-rect.top;
-    }
-#else
-  rx=getRoot()->getX();
-  ry=getRoot()->getY();
-  rw=getRoot()->getWidth();
-  rh=getRoot()->getHeight();
-#endif
-  px=x+16-w/3;
-  py=y+20;
-  if(px<rx) px=rx;
-  if(py<ry) py=ry;
-  if(px+w>rx+rw) px=rx+rw-w;
-  if(py+h+50>ry+rh){ py=y-h-10; }
-  position(px,py,w,h);
   }
 
 
