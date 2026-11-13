@@ -129,7 +129,16 @@ static void pointerLeave(void* data,wl_pointer*,uint32_t serial,wl_surface* surf
   if(!s) return;
   fxwaylandTrace("pointer leave window %u\n",(unsigned int)s->window);
   postPointer(app,s,FXXWL_LEAVE,app->pointerx,app->pointery,0,app->pointerbuttons,0,0);
-  app->pointersurface=nullptr;
+  }
+
+
+// Whether a surface is still alive
+static FXbool surfaceAlive(FXWaylandApp* app,FXWaylandSurface* s){
+  FXWaylandSurface* p;
+  for(p=app?app->surfaces:nullptr; p; p=p->next){
+    if(p==s) return true;
+    }
+  return false;
   }
 
 
@@ -246,17 +255,15 @@ static void keyboardEnter(void* data,wl_keyboard*,uint32_t serial,wl_surface* su
 static void keyboardLeave(void* data,wl_keyboard*,uint32_t serial,wl_surface* surface){
   FXWaylandApp* app=fxwayland(data);
   FXWaylandSurface* s=fxwaylandSurfaceOf(app,surface);
-  FXWaylandEvent ev;
   (void)serial;
   if(!app || !s) return;
-  clearElms(&ev,1);
-  ev.type=0;
-  ev.id=s->window;
-  ev.code=FXXWL_FOCUSOUT;
-  ev.data[0]=(int)s->window;
-  fxwaylandPost(app,ev);
+
+  // No SEL_FOCUSOUT here: the focus of the core follows the shell that got the
+  // next enter, which is what the application sees; a compositor that reports
+  // the leave of a surface twice would otherwise take the focus away from a
+  // widget between the press and the release of a key
   app->keyboardsurface=nullptr;
-  fxwaylandTrace("keyboard focus out of window %u\n",(unsigned int)s->window);
+  fxwaylandTrace("keyboard focus left window %u\n",(unsigned int)s->window);
   }
 
 
@@ -280,6 +287,7 @@ static void keyboardKey(void* data,wl_keyboard*,uint32_t serial,uint32_t time,ui
   ev.state=app->modstate;
   ev.time=time;
   fxwaylandPost(app,ev);
+  fxwaylandTrace("key %u %s mods %x\n",key,pressed?"down":"up",app->modstate);
   }
 
 

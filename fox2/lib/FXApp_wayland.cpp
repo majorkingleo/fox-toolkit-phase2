@@ -45,6 +45,7 @@
 #include "FXApp.h"
 #include "fxapppriv.h"
 #include "fxplatform.h"
+#include "fxplatformwindow.h"
 #include "fxpriv.h"
 #include "fxwaylandpriv.h"
 
@@ -288,6 +289,19 @@ FXbool FXApp::closeDisplay(){
   FXWaylandApp* app=fxwayland(display);
   if(!app) return false;
   FXTRACE(TOPIC_CREATION,"%s::closeDisplay\n",getClassName());
+
+  // The windows hold the surfaces, so they have to go before the objects the
+  // surfaces were made from
+  if(initialized){
+    destroy();
+    initialized=false;
+    }
+
+  // Anything left over goes now
+  while(app->surfaces){
+    fxwaylandDestroySurface(app,app->surfaces->window);
+    }
+
   fxwaylandCloseSeat(app);
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
   if(app->output){ wl_output_destroy(app->output); app->output=nullptr; }
@@ -524,6 +538,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
     // where the window is, so the position stays what the core decided
     case FXXWL_CONFIGURE:
       if((window=findWindowWithId(ev.id))!=nullptr){
+        fxwaylandTrace("dispatch configure window %u %dx%d (was %dx%d)\n",(unsigned int)ev.id,ev.w,ev.h,window->getWidth(),window->getHeight());
         event.type=SEL_CONFIGURE;
         event.rect.x=window->getX();
         event.rect.y=window->getY();
@@ -531,6 +546,10 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         event.rect.h=ev.h>0?ev.h:window->getHeight();
         event.synthetic=true;
         if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
+
+        // The core keeps the size the compositor asked for, so the table has to
+        // follow it; the frame buffer and the hit test both come from the table
+        fxplatformPlaceWindow(display,ev.id,window->getX(),window->getY(),window->getWidth(),window->getHeight(),0,0,window->shown(),PLACEMENT_X|PLACEMENT_Y|PLACEMENT_W|PLACEMENT_H);
 
         // The size may have changed, and the frame buffer follows the window
         fxwaylandExpose(app,ev.id);
@@ -669,6 +688,13 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           activeWindow=nullptr;
           }
         if(ev.code==FXXWL_FOCUSIN && activeWindow!=window){
+
+          // The compositor handed the keyboard to this shell, so the shell
+          // focuses its first widget that wants the focus; the core has no
+          // other way to learn that the keyboard arrived
+          if(window->getFocus()==nullptr){
+            window->handle(window,FXSEL(SEL_FOCUS_NEXT,0),nullptr);
+            }
           if(window->handle(this,FXSEL(SEL_FOCUSIN,0),&event)) refresh();
           activeWindow=window;
           }
@@ -685,8 +711,10 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         event.state=ev.state;
         if(ev.button) event.text=fxwaylandKeyText(app,(FXuint)ev.data[0]);
         if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+        fxwaylandTrace("key %s to %s code %x text \"%s\"\n",ev.button?"press":"release",window->getClassName(),event.code,event.text.text());
         return true;
         }
+      fxwaylandTrace("key %s dropped, no focus window\n",ev.button?"press":"release");
       return false;
     }
   return false;

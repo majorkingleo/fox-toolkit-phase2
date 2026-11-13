@@ -146,7 +146,7 @@ static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   s->configured=true;
   fxwaylandTrace("configure %u serial %u size %dx%d\n",(unsigned int)s->window,serial,s->wantw,s->wanth);
   clearElms(&ev,1);
-  ev.type=FXXWL_CONFIGURE;
+  ev.code=FXXWL_CONFIGURE;
   ev.id=s->window;
   ev.w=s->wantw;
   ev.h=s->wanth;
@@ -169,7 +169,7 @@ static void toplevelClose(void* data,xdg_toplevel*){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
   FXWaylandEvent ev;
   clearElms(&ev,1);
-  ev.type=FXXWL_CLOSE;
+  ev.code=FXXWL_CLOSE;
   ev.id=s->window;
   fxwaylandPost(s->app,ev);
   }

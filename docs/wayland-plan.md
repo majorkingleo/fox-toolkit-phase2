@@ -612,6 +612,27 @@ Done in this phase so far (the protocol files and the platform seam):
   X11 references needs an X server that can run headless (`Xvfb`), which this
   machine does not have; until then those two are compared structurally (same
   window size, same ink, same layout) and not pixel by pixel.
+- **Input gate:** `scripts/gate-wayland-input.sh` runs the application against a
+  private headless sway with a virtual keyboard, types a space into the focused
+  hello button and passes when the application quits with status 0 instead of
+  being stopped. It passes; the trace shows the key arriving as keysym `0x20`
+  with the text `" "` and being handled by `FXButton`.
+  Two bugs came out of it: `closeDisplay()` never destroyed the widgets, so the
+  surfaces were freed after the objects they were made from and the application
+  crashed on shutdown with `SIGSEGV`; and the compositor's configure was
+  dispatched with the wrong event field, so a tiled window kept the size it
+  asked for instead of the size the compositor gave it.
+- **Pointer buttons are not covered by that harness:** sway accepts the virtual
+  pointer and reports them as ready, but no `wl_pointer.button` ever arrives at
+  the client in this configuration, so the click path is written and compiles
+  but is not verified yet; it has to be checked on KWin by hand until a harness
+  that delivers buttons exists.
+- **Focus:** the core has no other way to learn that the compositor handed the
+  keyboard to a shell, so the shell focuses its first focusable widget
+  (`SEL_FOCUS_NEXT`) when the keyboard enters. A keyboard leave does not raise
+  `SEL_FOCUSOUT`, because the compositor in the gate reports the leave of one
+  surface twice, which would otherwise take the focus away from a widget
+  between the press and the release of a key.
 - **Compositors:** WSLg/Weston (client-side decorations, no `xdg-decoration`)
   and KWin on the development machine (server-side decorations, all optional
   protocols). For scripted runs `scripts/run-fox2-wayland-headless.sh` starts a
