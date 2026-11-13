@@ -856,11 +856,35 @@ has a platform branch. It is now declared in the private header
 - Fast builds on both backends; `hello`, `button` and `dpi` run. The initial
   window DPI on Windows was 96 here; the `WM_DPICHANGED` readings are 144.
 
+## Seam 33: threads
+
+Done. `FXThread.cpp` no longer contains a platform branch. The platform blocks
+moved into `FXThread_win32.cpp` (34 blocks) and `FXThread_x11.cpp` (32 blocks;
+the Windows-only `NtDelayExecution` and `SetThreadDescription` helpers have no
+POSIX counterpart). `tmp/split-thread.py` drives the split.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXThread_win32.cpp`: `function()` on `_beginthreadex`, `start()`, `join()`, `cancel()`, `detach()`, `exit()`, `yield()`, `pause()`, the clocks `time()`, `steadytime()`, `cputime()`, `ticks()`, the `NtDelayExecution` stub with `sleep()`/`wakeat()`, `current()`, `processors()`, `processor()`, storage keys, `priority()`, `policy()`, `affinity()`, the `SetThreadDescription` stubs with `description()`, `suspend()`, `resume()` |
+| X11 module | `FXThread_x11.cpp`: the same members on pthreads, `clock_gettime()`/`nanosleep()`, `sysconf()`, `sched_*` and `pthread_setname_np()`, keeping the BSD, macOS, HP-UX and Solaris branches |
+| Portable core | `selfKey`, constructor, `id()`, `running()`, both `self()` and the destructor |
+
+`ticks()` is guarded by `defined(WIN32) && defined(_MSC_VER)`, which is not a
+plain platform test. The driver maps it to `defined(_MSC_VER)` in the Windows
+module and drops the branch from the X11 module, so MinGW builds keep the GNU
+cycle counter branches.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from `#elif` lines that became `#if` on the X11 side, the `ticks()` guard and
+  one trailing-comment guard.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
+  on Windows was 144 at startup and after `WM_DPICHANGED`.
+
 ## Next seams, in order
 
-1. **Remaining services** (`FXThread`),
-   one class per seam. Large but self-contained; split only when a feature needs it.
-2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+1. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
