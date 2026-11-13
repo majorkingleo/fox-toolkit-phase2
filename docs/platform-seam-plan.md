@@ -753,10 +753,35 @@ splitting out the special-file branch is a separate refactor.
 - Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
   DPI values.
 
+## Seam 29: processes
+
+Done. `FXProcess.cpp` no longer contains a platform branch. Eleven items
+moved as whole members into `FXProcess_win32.cpp` and `FXProcess_x11.cpp`;
+`tmp/split-process.py` drives the split with `tmp/seamlib.py`.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXProcess_win32.cpp`: the command line and environment block helpers (`commandline()`, `enviroblock()`, `needquotes()`, `comparison()`, `extravars`, in their `UNICODE` and ANSI variants), `start()` on `CreateProcess`, `current()`, `handle()`, `exit()`, `suspend()` and `resume()` (still the commented-out stubs), `kill()` on `TerminateProcess`, both `wait()`, the destructor |
+| X11 module | `FXProcess_x11.cpp`: `start()` on `fork()`/`execve()`, `current()`, `handle()`, `exit()`, `suspend()`/`resume()` on `SIGSTOP`/`SIGCONT`, `kill()`, both `wait()` on `waitpid()`, the destructor |
+| Portable core | the constructor and `id()` stay in `FXProcess.cpp`, together with the long notes on quoting rules and environment variables |
+
+The Windows helpers were one `#if defined(WIN32)` region spanning several
+members, so they moved as a single block; the X11 module has no counterpart.
+The destructor moved because it closes the process handle on Windows.
+
+### Verification
+
+- The removed lines equal the added lines of the two modules apart from the
+  `WIN32` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The Windows
+  `dpi` run reported a window DPI of 96 before `WM_DPICHANGED` on this
+  session; the DPI code is untouched by this seam and the later steps report
+  144 as before, so this reflects the monitor the window opened on.
+
 ## Next seams, in order
 
 1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`,
-   `FXProcess`, `FXStat`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
+   `FXStat`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 

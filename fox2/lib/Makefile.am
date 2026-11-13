@@ -104,9 +104,9 @@ fxpriv.h
 
 # Platform seam: exactly one implementation is compiled into the library
 if COND_OSWINDOWS
-libFOX_1_7_la_SOURCES += FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp FXDir_win32.cpp FXFile_win32.cpp
+libFOX_1_7_la_SOURCES += FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp FXDir_win32.cpp FXFile_win32.cpp FXProcess_win32.cpp
 else
-libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXWindow_x11.cpp FXFont_x11.cpp FXIODevice_x11.cpp FXMutex_x11.cpp FXAutoThreadStorageKey_x11.cpp FXPipe_x11.cpp FXDir_x11.cpp FXFile_x11.cpp
+libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXWindow_x11.cpp FXFont_x11.cpp FXIODevice_x11.cpp FXMutex_x11.cpp FXAutoThreadStorageKey_x11.cpp FXPipe_x11.cpp FXDir_x11.cpp FXFile_x11.cpp FXProcess_x11.cpp
 endif
 
 noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h
