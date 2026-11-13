@@ -1,0 +1,27 @@
+Vendored Wayland protocol descriptions
+=====================================
+
+The XML files below are copied unmodified from wayland-protocols 1.50
+(/usr/share/wayland-protocols on the development machine).  Each file carries
+its own copyright and licence header; they are distributed under the same
+terms as wayland-protocols (MIT for xdg-shell and viewporter, MIT or
+Apache-2.0 for the unstable and staging protocols, see the header of each
+file).
+
+They are vendored so that a Wayland build needs no wayland-protocols package
+at build time, only wayland-scanner.  The build generates the client glue from
+them into the build directory; see docs/wayland-plan.md, decision 7.
+
+  stable/xdg-shell/xdg-shell.xml
+  stable/viewporter/viewporter.xml
+  unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+  unstable/primary-selection/primary-selection-unstable-v1.xml
+  unstable/text-input/text-input-unstable-v3.xml
+  unstable/xdg-output/xdg-output-unstable-v1.xml
+  staging/fractional-scale/fractional-scale-v1.xml
+  staging/cursor-shape/cursor-shape-v1.xml
+  staging/xdg-activation/xdg-activation-v1.xml
+  staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml
+
+Do not edit these files; update them from a newer wayland-protocols release
+instead.

@@ -15,7 +15,35 @@ else()
     list(APPEND FOX_LIB_SOURCES FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp FXDCWindow_x11.cpp FXDragCorner_x11.cpp FXFont_x11.cpp FXIcon_x11.cpp FXImage_x11.cpp FXMainWindow_x11.cpp FXPopup_x11.cpp FXRegion_x11.cpp FXRootWindow_x11.cpp FXStyle_x11.cpp FXToolTip_x11.cpp FXTopWindow_x11.cpp FXVisual_x11.cpp FXWindow_x11.cpp fxpriv_x11.cpp)
   elseif(FOX_PLATFORM STREQUAL "wayland")
     # Wayland modules; the set grows phase by phase, see docs/wayland-plan.md
-    list(APPEND FOX_LIB_SOURCES FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp)
+    list(APPEND FOX_LIB_SOURCES FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp fxplatform_wayland.cpp)
+    # Client glue generated from the vendored protocol XML
+    set(_fox_gen "${CMAKE_CURRENT_BINARY_DIR}/protocols")
+    file(MAKE_DIRECTORY "${_fox_gen}")
+    set(_fox_protocols
+      xdg-shell:stable/xdg-shell/xdg-shell.xml
+      viewporter:stable/viewporter/viewporter.xml
+      xdg-decoration-unstable-v1:unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+      primary-selection-unstable-v1:unstable/primary-selection/primary-selection-unstable-v1.xml
+      text-input-unstable-v3:unstable/text-input/text-input-unstable-v3.xml
+      xdg-output-unstable-v1:unstable/xdg-output/xdg-output-unstable-v1.xml
+      fractional-scale-v1:staging/fractional-scale/fractional-scale-v1.xml
+      cursor-shape-v1:staging/cursor-shape/cursor-shape-v1.xml
+      xdg-activation-v1:staging/xdg-activation/xdg-activation-v1.xml
+      xdg-toplevel-icon-v1:staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml)
+    foreach(_fox_proto ${_fox_protocols})
+      string(REPLACE ":" ";" _fox_pair "${_fox_proto}")
+      list(GET _fox_pair 0 _fox_name)
+      list(GET _fox_pair 1 _fox_path)
+      set(_fox_xml "${PROJECT_SOURCE_DIR}/protocols/${_fox_path}")
+      set(_fox_hdr "${_fox_gen}/${_fox_name}-client-protocol.h")
+      set(_fox_src "${_fox_gen}/${_fox_name}-protocol.c")
+      add_custom_command(OUTPUT "${_fox_hdr}" "${_fox_src}"
+        COMMAND "${FOX_WAYLAND_SCANNER}" client-header "${_fox_xml}" "${_fox_hdr}"
+        COMMAND "${FOX_WAYLAND_SCANNER}" private-code "${_fox_xml}" "${_fox_src}"
+        DEPENDS "${_fox_xml}"
+        COMMENT "wayland-scanner ${_fox_name}")
+      list(APPEND FOX_LIB_SOURCES "${_fox_src}")
+    endforeach()
   endif()
 endif()
 
@@ -35,6 +63,10 @@ target_include_directories(FOX PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fox-1.7>)
+if(FOX_PLATFORM STREQUAL "wayland")
+  # Generated protocol headers are private to the library
+  target_include_directories(FOX PRIVATE "${_fox_gen}")
+endif()
 if(FOX_PUBLIC_INCLUDE_DIRS)
   target_include_directories(FOX SYSTEM PUBLIC ${FOX_PUBLIC_INCLUDE_DIRS})
 endif()

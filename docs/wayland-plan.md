@@ -380,6 +380,24 @@ Done in this phase so far:
 - Acceptance: `hello` and `button` show on WSLg and on KDE, and the dumped
   buffer matches the X11 screenshot.
 
+Done in this phase so far (the protocol files and the platform seam):
+
+- The ten protocol XML files are vendored under `fox2/protocols/` with their
+  licence headers and a `README` that names the wayland-protocols release they
+  came from; a build needs `wayland-scanner`, not the package.
+- The CMake build generates the client glue for all ten into the build
+  directory (`client-header` and `private-code`) and compiles it into the
+  library, so the protocol side of the connection is ready before the
+  connection itself exists. The generated code is C, so the Wayland
+  configuration enables the C language.
+- `fxplatform_wayland.cpp`: the seam hooks answer for the platform — no
+  process DPI awareness, no system DPI (the compositor reports a scale per
+  output in phase 9), `WAYLAND_DISPLAY` as the display name, "Sans,90" as the
+  default font and no configured scale.
+- The library builds with 90 undefined platform symbols left: the `FXApp`
+  connection, the windows of this phase, `FXDragCorner` and
+  `FXComposeContext`.
+
 ### Phase 5: window management
 
 - `xdg_surface.configure`/`ack_configure` handling, resize (`FXTopWindow` size
