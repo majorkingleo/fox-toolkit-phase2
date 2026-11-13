@@ -58,15 +58,32 @@ enum {
 
 /// The surface of one shell, and the buffers it draws into
 struct FXWaylandApp;
+struct FXWaylandBuffer;
 
 struct FXWaylandSurface {
   FXWaylandApp*              app;        // The connection
   FXID                       window;     // Virtual window id of the shell
   wl_surface*                surface;    // The surface itself
   xdg_surface*               xdsurface;  // Shell surface role
-  xdg_toplevel*              toplevel;   // Toplevel role, for shells
+  xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
+  FXWaylandBuffer*           buffers;    // Buffer pool
+  FXint                      width;      // Width of the pool buffers
+  FXint                      height;     // Height of the pool buffers
   FXWaylandSurface*          next;       // Next surface
+  };
+
+
+/// One shared memory buffer of a shell surface
+struct FXWaylandBuffer {
+  wl_buffer*                 buffer;     // The buffer
+  FXColor*                   pixels;     // Mapped pixels, width times height
+  FXuchar*                   map;        // The mapping itself
+  FXuval                     mapsize;    // Size of the mapping
+  FXint                      width;      // Size in pixels
+  FXint                      height;
+  FXbool                     busy;       // Still held by the compositor
+  FXWaylandBuffer*           next;       // Next buffer of the pool
   };
 
 
@@ -107,6 +124,18 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
 
 /// Destroy the surface of a shell
 void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);
+
+/// Return an idle buffer of the given size, creating the pool when needed
+FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);
+
+/// Attach the buffer, damage the rectangle and commit the surface
+void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,FXint y,FXint w,FXint h);
+
+/// Write a committed buffer as PPM into $FOX_WAYLAND_DUMP, if that is set
+void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf);
+
+/// Drop the buffer pool of a surface
+void fxwaylandFreeBuffers(FXWaylandSurface* surf);
 
 }
 

@@ -127,6 +127,9 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->window=window;
   s->popup=nullptr;
   s->toplevel=nullptr;
+  s->buffers=nullptr;
+  s->width=0;
+  s->height=0;
   s->surface=wl_compositor_create_surface(app->compositor);
   if(!s->surface){ delete s; return nullptr; }
   s->xdsurface=xdg_wm_base_get_xdg_surface(app->wmbase,s->surface);
@@ -150,6 +153,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
   for(link=&app->surfaces; (s=*link)!=nullptr; link=&s->next){
     if(s->window==window){
       *link=s->next;
+      fxwaylandFreeBuffers(s);
       if(s->toplevel) xdg_toplevel_destroy(s->toplevel);
       if(s->popup) xdg_popup_destroy(s->popup);
       if(s->xdsurface) xdg_surface_destroy(s->xdsurface);
@@ -158,6 +162,152 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
       return;
       }
     }
+  }
+
+
+/*******************************************************************************/
+
+// The compositor is done with a buffer
+static void bufferRelease(void* data,wl_buffer*){
+  ((FXWaylandBuffer*)data)->busy=false;
+  }
+
+
+static const wl_buffer_listener bufferListener={
+  bufferRelease
+  };
+
+
+// Make a shared memory file of the given size
+static int createShmFile(FXuval size){
+  const FXchar* dir=getenv("XDG_RUNTIME_DIR");
+  FXchar name[256];
+  int fd;
+  if(!dir || !dir[0]) dir="/tmp";
+  snprintf(name,sizeof(name),"%s/fox-shm-XXXXXX",dir);
+  if((fd=mkstemp(name))<0) return -1;
+  unlink(name);
+  if(ftruncate(fd,(off_t)size)<0){
+    close(fd);
+    return -1;
+    }
+  return fd;
+  }
+
+
+// Make one buffer of the given size and map it
+static FXWaylandBuffer* createBuffer(FXWaylandApp* app,FXint w,FXint h){
+  FXWaylandBuffer* b;
+  wl_shm_pool* pool;
+  FXuval size=(FXuval)w*h*sizeof(FXColor);
+  void* map;
+  int fd;
+  if(!app->shm) return nullptr;
+  if((fd=createShmFile(size))<0){
+    fxwarning("unable to create a shared memory buffer of %lu bytes\n",(unsigned long)size);
+    return nullptr;
+    }
+  map=mmap(nullptr,size,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
+  if(map==MAP_FAILED){
+    close(fd);
+    fxwarning("unable to map a shared memory buffer of %lu bytes\n",(unsigned long)size);
+    return nullptr;
+    }
+  pool=wl_shm_create_pool(app->shm,fd,(int32_t)size);
+  b=new FXWaylandBuffer();
+  b->buffer=wl_shm_pool_create_buffer(pool,0,w,h,w*(FXint)sizeof(FXColor),WL_SHM_FORMAT_ARGB8888);
+  wl_shm_pool_destroy(pool);
+  close(fd);
+  if(!b->buffer){
+    munmap(map,size);
+    delete b;
+    return nullptr;
+    }
+  wl_buffer_add_listener(b->buffer,&bufferListener,b);
+  b->pixels=(FXColor*)map;
+  b->map=(FXuchar*)map;
+  b->mapsize=size;
+  b->width=w;
+  b->height=h;
+  b->busy=false;
+  b->next=nullptr;
+  clearElms(b->pixels,w*h);
+  return b;
+  }
+
+
+// Return an idle buffer of the given size
+FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h){
+  FXWaylandBuffer* b;
+  FXWaylandBuffer** link;
+  FXuint n=0;
+  if(!surf || w<=0 || h<=0) return nullptr;
+  // Size change: the old buffers no longer fit
+  if(surf->buffers && (surf->width!=w || surf->height!=h)){
+    fxwaylandFreeBuffers(surf);
+    }
+  for(b=surf->buffers; b; b=b->next, n++){
+    if(!b->busy) return b;
+    }
+  // Three buffers are enough; if all are held, the caller waits for a release
+  if(n>=3) return nullptr;
+  if((b=createBuffer(surf->app,w,h))!=nullptr){
+    for(link=&surf->buffers; *link; link=&(*link)->next){}
+    *link=b;
+    surf->width=w;
+    surf->height=h;
+    }
+  return b;
+  }
+
+
+// Attach, damage and commit
+void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,FXint y,FXint w,FXint h){
+  if(!surf || !buf) return;
+  wl_surface_damage_buffer(surf->surface,x,y,w,h);
+  wl_surface_attach(surf->surface,buf->buffer,0,0);
+  wl_surface_commit(surf->surface);
+  buf->busy=true;
+  }
+
+
+// Write a committed buffer as PPM when FOX_WAYLAND_DUMP is set
+void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
+  const FXchar* dir=getenv("FOX_WAYLAND_DUMP");
+  FXchar path[512];
+  FILE* fp;
+  FXint x,y;
+  FXColor c;
+  if(!dir || !dir[0] || !buf) return;
+  snprintf(path,sizeof(path),"%s/window-%u-%dx%d.ppm",dir,(unsigned int)surf->window,buf->width,buf->height);
+  if((fp=fopen(path,"wb"))==nullptr) return;
+  fprintf(fp,"P6\n%d %d\n255\n",buf->width,buf->height);
+  for(y=0; y<buf->height; y++){
+    for(x=0; x<buf->width; x++){
+      c=buf->pixels[y*buf->width+x];
+      fputc(FXREDVAL(c),fp);
+      fputc(FXGREENVAL(c),fp);
+      fputc(FXBLUEVAL(c),fp);
+      }
+    }
+  fclose(fp);
+  }
+
+
+// Drop the buffer pool of a surface
+void fxwaylandFreeBuffers(FXWaylandSurface* surf){
+  FXWaylandBuffer* b;
+  FXWaylandBuffer* n;
+  if(!surf) return;
+  for(b=surf->buffers; b; b=n){
+    n=b->next;
+    if(b->map) munmap(b->map,b->mapsize);
+    if(b->buffer){ wl_buffer_destroy(b->buffer); }
+    delete b;
+    }
+  surf->buffers=nullptr;
+  surf->width=0;
+  surf->height=0;
   }
 
 }

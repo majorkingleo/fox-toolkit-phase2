@@ -437,6 +437,14 @@ Done in this phase so far (the protocol files and the platform seam):
   the grabs are implicit in the protocols and come back in phase 6.
 - The library keeps 62 undefined platform symbols instead of 71; what is left
   is `FXWindow` and the shell classes, `FXDragCorner` and `FXComposeContext`.
+- The buffer path is in place: `fxwaylandAcquireBuffer()` hands out an idle
+  ARGB8888 buffer of the requested size, creating it from a sealed shared
+  memory file (`XDG_RUNTIME_DIR`, `mkstemp` plus `ftruncate`), with at most
+  three buffers per surface and the pool rebuilt when the size changes;
+  `wl_buffer.release` clears the busy flag. `fxwaylandCommitBuffer()` damages,
+  attaches and commits, and `fxwaylandDumpBuffer()` writes the committed buffer
+  as a PPM into `$FOX_WAYLAND_DUMP`, which is how the gate will compare against
+  the X11 screenshots once the windows paint.
 
 ### Phase 5: window management
 
