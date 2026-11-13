@@ -1116,11 +1116,23 @@ members (constructors, `guesstransp`, `guessthresh`, `detach`, destructor).
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXIcon.cpp`: only guard lines differ.
 
+## Seam 46: popup
+
+Done. `FXPopup_win32.cpp` holds `GetClass` and the `popup(grabto,x,y,w,h)`
+placement against the monitor work area; `FXPopup_x11.cpp` holds the same
+`popup` placed against the root window. Everything else in `FXPopup.cpp`
+(event handlers, layout, frame drawing, properties) is platform neutral.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXPopup.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
    first:
-   `FXPopup`, then the files with one or two references. Presentation
+   the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.

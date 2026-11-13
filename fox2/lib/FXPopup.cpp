@@ -140,13 +140,6 @@ FXbool FXPopup::doesSaveUnder() const {
   }
 
 
-#ifdef WIN32
-
-const void* FXPopup::GetClass() const { return TEXT("FXPopup"); }
-
-#endif
-
-
 // Setting focus causes keyboard grab, because all keyboard
 // events need to be reported to the active popup.
 void FXPopup::setFocus(){
@@ -692,61 +685,6 @@ void FXPopup::hide(){
     killFocus();
     }
   // Focus back to popup under this one, iff this was top one
-  }
-
-
-// Popup the menu at some location
-void FXPopup::popup(FXWindow* grabto,FXint x,FXint y,FXint w,FXint h){
-  FXint rx,ry,rw,rh;
-#ifdef WIN32
-  RECT rect;
-  MONITORINFO minfo;
-  HMONITOR monitor;
-
-  rect.left=x;
-  rect.right=x+w;
-  rect.top=y;
-  rect.bottom=y+h;
-
-  // Get monitor info if we have this API
-  monitor=MonitorFromRect(&rect,MONITOR_DEFAULTTOPRIMARY);
-  if(monitor){
-    clearElms(&minfo,1);
-    minfo.cbSize=sizeof(minfo);
-    GetMonitorInfo(monitor,&minfo);
-    rx=minfo.rcWork.left;
-    ry=minfo.rcWork.top;
-    rw=minfo.rcWork.right-minfo.rcWork.left;
-    rh=minfo.rcWork.bottom-minfo.rcWork.top;
-    }
-
-  // Otherwise use the work-area
-  else{
-    SystemParametersInfo(SPI_GETWORKAREA,sizeof(RECT),&rect,0);
-    rx=rect.left;
-    ry=rect.top;
-    rw=rect.right-rect.left;
-    rh=rect.bottom-rect.top;
-    }
-#else
-  rx=getRoot()->getX();
-  ry=getRoot()->getY();
-  rw=getRoot()->getWidth();
-  rh=getRoot()->getHeight();
-#endif
-  FXTRACE(TOPIC_DETAIL,"%s::popup %p\n",getClassName(),this);
-  grabowner=grabto;
-  if((options&POPUP_SHRINKWRAP) || w<=1) w=getDefaultWidth();
-  if((options&POPUP_SHRINKWRAP) || h<=1) h=getDefaultHeight();
-  if(x+w>rx+rw) x=rx+rw-w;
-  if(y+h>ry+rh) y=ry+rh-h;
-  if(x<rx) x=rx;
-  if(y<ry) y=ry;
-  position(x,y,w,h);
-  show();
-  raise();
-  setFocus();
-  if(!grabowner) grab();
   }
 
 
