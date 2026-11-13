@@ -342,15 +342,20 @@ Done in this phase so far:
   plus descent, bearings from the glyph bitmap, mono detection by comparing the
   advances of "i" and "M"). `listFonts()` returns false until fontconfig
   enumeration is added.
+- `FXStyle_wayland.cpp` keeps the platform part of the style (corner mask cache
+  and the XRender probe) unused: the classic theme's rounded rectangles come
+  from `FXRaster`'s arcs, so `drawRoundRect()` reports false and the shared
+  theme code takes its plain path. `FXCursor_wayland.cpp` only marks the cursor
+  as created; the pointer surfaces are phase 6 work.
 - `scripts/build-fox2-wayland.sh` builds the library target only until phase 4
   (`FOX_WAYLAND_TARGET=all` builds everything once FXApp exists).
 - Measured on 2026-11-13: the library builds (2.3 MB) and the remaining
-  undefined platform symbols went from 155 to 102 — they are `FXApp`,
+  undefined platform symbols went from 155 to 96 — they are `FXApp`,
   `FXWindow`, `FXShell`, `FXTopWindow`, `FXMainWindow`, `FXPopup`,
-  `FXRootWindow`, `FXToolTip`, `FXDragCorner`, `FXStyle`, `FXCursor`,
-  `FXComposeContext` and the `fxplatform` hooks. That list is the work of
-  phase 4, together with the virtual window table; the X11 build, the Windows
-  cross build and the pixel, region and glyph gates are unchanged.
+  `FXRootWindow`, `FXToolTip`, `FXDragCorner`, `FXComposeContext` and the
+  `fxplatform` hooks. That list is the work of phase 4, together with the
+  virtual window table; the X11 build, the Windows cross build and the pixel,
+  region and glyph gates are unchanged.
 
 ### Phase 4: connection, event loop and virtual windows
 
