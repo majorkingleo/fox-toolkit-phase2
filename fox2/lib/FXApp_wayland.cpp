@@ -90,6 +90,7 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
   else if(strcmp(interface,wl_seat_interface.name)==0){
     if(!app->seat){
       app->seat=(wl_seat*)wl_registry_bind(registry,name,&wl_seat_interface,FXMIN(version,5u));
+      fxwaylandOpenSeat(app);
       }
     }
   else if(strcmp(interface,wl_output_interface.name)==0){
@@ -182,6 +183,16 @@ void FXApp::initPlatformMembers(){
   app->screenwidth=0;
   app->screenheight=0;
   app->rootwindow=0;
+  app->pointer=nullptr;
+  app->keyboard=nullptr;
+  app->xkbcontext=nullptr;
+  app->xkbkeymap=nullptr;
+  app->xkbstate=nullptr;
+  app->pointerwindow=0;
+  app->pointerbuttons=0;
+  app->modstate=0;
+  app->pointersurface=nullptr;
+  app->keyboardsurface=nullptr;
   app->argb=false;
   app->lost=false;
   app->events=nullptr;
@@ -277,6 +288,7 @@ FXbool FXApp::closeDisplay(){
   FXWaylandApp* app=fxwayland(display);
   if(!app) return false;
   FXTRACE(TOPIC_CREATION,"%s::closeDisplay\n",getClassName());
+  fxwaylandCloseSeat(app);
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
   if(app->output){ wl_output_destroy(app->output); app->output=nullptr; }
   if(app->seat){ wl_seat_destroy(app->seat); app->seat=nullptr; }
@@ -482,8 +494,12 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
 
 // Dispatch a raw event
 FXbool FXApp::dispatchEvent(FXRawEvent& ev){
+  const FXTime milliseconds=1000000;
   FXWaylandApp* app=fxwayland(display);
+  const FXWinEntry* entry;
   FXWindow* window;
+  FXWindow* ancestor;
+  FXint rx,ry;
   FXEvent event;
   if(!app) return false;
   switch(ev.code){
@@ -527,6 +543,148 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
       if((window=findWindowWithId(ev.id))!=nullptr){
         event.type=SEL_CLOSE;
         if(window->handle(this,FXSEL(SEL_CLOSE,0),&event)) refresh();
+        return true;
+        }
+      return false;
+
+    // Pointer and keyboard; where the pointer is inside the shell is in the
+    // event, and the place of the shell on the screen is in the table
+    case FXXWL_ENTER:
+    case FXXWL_LEAVE:
+    case FXXWL_MOTION:
+    case FXXWL_BUTTON:
+    case FXXWL_WHEEL:
+      if((window=findWindowWithId(ev.id))==nullptr) return false;
+
+      // Screen position of the point; the compositor only tells us where it
+      // is inside the surface of the shell
+      if((entry=app->childmap.getEntry(ev.data[0]))!=nullptr){
+        rx=entry->x+ev.x;
+        ry=entry->y+ev.y;
+        }
+      else{
+        rx=ev.x;
+        ry=ev.y;
+        }
+
+      // The pointer arrived on or left a window: keep the chain of windows
+      // that see SEL_ENTER and SEL_LEAVE up to date
+      if(ev.code==FXXWL_ENTER || ev.code==FXXWL_LEAVE){
+        event.type=(ev.code==FXXWL_ENTER)?SEL_ENTER:SEL_LEAVE;
+        event.root_x=rx;
+        event.root_y=ry;
+        if(ev.code==FXXWL_LEAVE){
+          if(cursorWindow==window) leaveWindow(window,window->getParent());
+          }
+        else{
+          if(cursorWindow!=window){
+            ancestor=FXWindow::commonAncestor(window,cursorWindow);
+            leaveWindow(cursorWindow,ancestor);
+            enterWindow(window,ancestor);
+            }
+          }
+        return true;
+        }
+
+      // Where the point is inside the window that gets the event
+      event.time=ev.time;
+      event.state=ev.state;
+      event.root_x=rx;
+      event.root_y=ry;
+      window->translateCoordinatesFrom(event.win_x,event.win_y,root,rx,ry);
+
+      // The mouse wheel
+      if(ev.code==FXXWL_WHEEL){
+        event.type=SEL_MOUSEWHEEL;
+        event.code=ev.data[1];
+        if(mouseGrabWindow){
+          window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+          if(mouseGrabWindow->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)) refresh();
+          return true;
+          }
+        while(window){
+          if(window->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)){ refresh(); break; }
+          window=window->getParent();
+          }
+        return true;
+        }
+
+      // Motion
+      if(ev.code==FXXWL_MOTION){
+        event.type=SEL_MOTION;
+        event.code=0;
+        if((FXABS(event.root_x-event.rootclick_x)>=dragDelta) || (FXABS(event.root_y-event.rootclick_y)>=dragDelta)) event.moved=1;
+        if(mouseGrabWindow){
+          window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+          if(mouseGrabWindow->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+          }
+        else if(window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+        event.last_x=event.win_x;
+        event.last_y=event.win_y;
+        return true;
+        }
+
+      // Mouse buttons; the press counts clicks the way the core does it
+      event.code=ev.button;
+      if(ev.data[1]){
+        if(ev.button==1){ event.type=SEL_LEFTBUTTONPRESS; event.state|=LEFTBUTTONMASK; }
+        if(ev.button==2){ event.type=SEL_MIDDLEBUTTONPRESS; event.state|=MIDDLEBUTTONMASK; }
+        if(ev.button==3){ event.type=SEL_RIGHTBUTTONPRESS; event.state|=RIGHTBUTTONMASK; }
+        if(!event.moved && (event.code==event.click_button) && (milliseconds*(event.time-event.click_time)<clickSpeed)){
+          event.click_count++;
+          event.click_time=event.time;
+          }
+        else{
+          event.click_count=1;
+          event.click_x=event.win_x;
+          event.click_y=event.win_y;
+          event.rootclick_x=event.root_x;
+          event.rootclick_y=event.root_y;
+          event.click_button=event.code;
+          event.click_time=event.time;
+          }
+        if((event.state&(LEFTBUTTONMASK|MIDDLEBUTTONMASK|RIGHTBUTTONMASK))!=0) event.moved=0;
+        }
+      else{
+        if(ev.button==1){ event.type=SEL_LEFTBUTTONRELEASE; event.state&=~LEFTBUTTONMASK; }
+        if(ev.button==2){ event.type=SEL_MIDDLEBUTTONRELEASE; event.state&=~MIDDLEBUTTONMASK; }
+        if(ev.button==3){ event.type=SEL_RIGHTBUTTONRELEASE; event.state&=~RIGHTBUTTONMASK; }
+        }
+      if(mouseGrabWindow){
+        window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
+        if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+        }
+      else if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+      event.last_x=event.win_x;
+      event.last_y=event.win_y;
+      return true;
+
+    case FXXWL_FOCUSIN:
+    case FXXWL_FOCUSOUT:
+      if((window=findWindowWithId(ev.id))!=nullptr){
+        window=window->getShell();
+        event.type=(ev.code==FXXWL_FOCUSIN)?SEL_FOCUSIN:SEL_FOCUSOUT;
+        if(ev.code==FXXWL_FOCUSOUT && activeWindow==window){
+          if(window->handle(this,FXSEL(SEL_FOCUSOUT,0),&event)) refresh();
+          activeWindow=nullptr;
+          }
+        if(ev.code==FXXWL_FOCUSIN && activeWindow!=window){
+          if(window->handle(this,FXSEL(SEL_FOCUSIN,0),&event)) refresh();
+          activeWindow=window;
+          }
+        return true;
+        }
+      return false;
+
+    case FXXWL_KEY:
+      window=keyboardGrabWindow?keyboardGrabWindow:getFocusWindow();
+      if(window){
+        event.type=ev.button?SEL_KEYPRESS:SEL_KEYRELEASE;
+        event.time=ev.time;
+        event.code=fxwaylandKeySym(app,(FXuint)ev.data[0]);
+        event.state=ev.state;
+        if(ev.button) event.text=fxwaylandKeyText(app,(FXuint)ev.data[0]);
+        if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
         return true;
         }
       return false;

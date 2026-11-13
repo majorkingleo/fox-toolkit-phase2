@@ -38,6 +38,12 @@
 #include <wayland-client.h>
 #include "xdg-shell-client-protocol.h"
 
+// The keyboard translator of libxkbcommon, only ever used through pointers
+// here so that the module that needs it includes its header
+struct xkb_context;
+struct xkb_keymap;
+struct xkb_state;
+
 
 namespace FX {
 
@@ -52,7 +58,10 @@ enum {
   FXXWL_LEAVE      = 5,         // Pointer left a window
   FXXWL_MOTION     = 6,         // Pointer moved
   FXXWL_BUTTON     = 7,         // Pointer button pressed or released
-  FXXWL_KEY        = 8          // Key pressed or released
+  FXXWL_KEY        = 8,         // Key pressed or released
+  FXXWL_WHEEL      = 9,         // Mouse wheel turned
+  FXXWL_FOCUSIN    = 10,        // The keyboard focus is on a shell
+  FXXWL_FOCUSOUT   = 11         // The keyboard focus left a shell
   };
 
 
@@ -111,6 +120,18 @@ struct FXWaylandApp {
   wl_compositor*    compositor;         // Surfaces and regions
   wl_shm*           shm;                // Shared memory buffers
   wl_seat*          seat;               // Input devices
+  wl_pointer*       pointer;            // Pointer of the seat
+  wl_keyboard*      keyboard;           // Keyboard of the seat
+  struct xkb_context* xkbcontext;       // Keymap compiler
+  struct xkb_keymap*  xkbkeymap;        // Keymap of the keyboard
+  struct xkb_state*   xkbstate;         // State of the modifiers
+  FXID              pointerwindow;      // Window the pointer is over
+  FXint             pointerx;           // Position of the pointer in the shell
+  FXint             pointery;
+  FXuint            pointerbuttons;     // Buttons held down
+  FXuint            modstate;           // Modifiers held down
+  FXWaylandSurface* pointersurface;     // Surface the pointer is on
+  FXWaylandSurface* keyboardsurface;    // Surface with the keyboard focus
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   FXint             screenwidth;        // Size of the first output
@@ -135,6 +156,17 @@ inline FXWaylandApp* fxwayland(void* display){
 
 /// Print a line of diagnostics when FOX_WAYLAND_TRACE is set
 void fxwaylandTrace(const FXchar* format,...);
+
+/// Add the listeners of the seat, and drop the devices again with it
+void fxwaylandOpenSeat(FXWaylandApp* app);
+void fxwaylandCloseSeat(FXWaylandApp* app);
+
+/// Find the surface that wraps a wl_surface
+FXWaylandSurface* fxwaylandSurfaceOf(FXWaylandApp* app,wl_surface* surface);
+
+/// Keysym and text of a key code, with the modifiers of the keyboard applied
+FXuint fxwaylandKeySym(FXWaylandApp* app,FXuint key);
+FXString fxwaylandKeyText(FXWaylandApp* app,FXuint key);
 
 /// Append an event to the queue
 void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event);
