@@ -882,9 +882,31 @@ cycle counter branches.
 - Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
   on Windows was 144 at startup and after `WM_DPICHANGED`.
 
+## Seam 34: cursors
+
+Done. `FXCursor.cpp` no longer contains a platform branch. `create()` (stock
+and custom cursors, Win32 `CreateIconIndirect`/`LoadCursor`, X11 core and Xcursor
+cursors) and `destroy()` moved into `FXCursor_win32.cpp` and `FXCursor_x11.cpp`.
+The constructors, `detach()`, `release()`, the option and ownership accessors and
+the stream functions stay in the core.
+
+`tmp/split-generic.py` is the reusable driver: it moves each top-level block that
+holds a platform conditional and also carries over what those blocks need from the
+core. The `#define` helpers used only by moved code (`DISPLAY`, `DARKCOLOR`,
+`CURSOR_STOCK`) moved with them and left the core; `TOPIC_CREATION` is used on
+both sides and is defined in each module. `extern` declarations are copied to a
+module only if its moved code calls them.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the two `WIN32` guard lines with trailing comments.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
+  on Windows was 144 at startup and after `WM_DPICHANGED`.
+
 ## Next seams, in order
 
-1. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+1. **Drawing** (`FXVisual`, `FXDCWindow`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
