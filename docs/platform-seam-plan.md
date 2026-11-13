@@ -991,11 +991,35 @@ notes comment is carried into both modules.
   `WIN32` guards.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 
+## Seam 39: utility functions
+
+Done. `fxutils.cpp` keeps the portable helpers (version, trace topics, string
+and colour helpers, DOS conversion). Seven blocks moved into `fxutils_win32.cpp`
+and `fxutils_x11.cpp`: `fxisconsole()` (the PE header probe on Windows, a stub
+elsewhere), `fxmessage()`, `fxerror()`, `fxwarning()`, `fxassert()`,
+`fxverify()` and the `fxopen()`/`fxreopen()` pair. The Windows module keeps its
+nested `_WINDOWS` test (debugger output and message boxes) and its `UNICODE`
+test (wide file names); those select a Windows subsystem and are not platform
+seams.
+
+`fxtrace()` stays in the core because it owns the file-local trace state. Its
+inline `OutputDebugString`/`fputs` tail was replaced by `fxmessage("%s",...)`,
+which writes the same text through the platform module; this is the only
+adaptation in the seam.
+
+The driver now also splits blocks at `/***/` section separators, and rewrites
+`defined(WIN32) && defined(UNICODE)` per platform before resolving guards.
+
+### Verification
+
+- Removed lines match the added lines of the core and modules apart from the
+  `WIN32` guards, the `UNICODE` refinement and the `fxtrace()` change.
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `fxutils` (9 platform references),
-   `fxkeyboard` (6), `FXStyle` (6), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
+   first: `fxkeyboard` (6 platform references), `FXStyle` (6), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 
