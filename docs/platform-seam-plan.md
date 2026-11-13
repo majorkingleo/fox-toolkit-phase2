@@ -1016,10 +1016,26 @@ The driver now also splits blocks at `/***/` section separators, and rewrites
   `WIN32` guards, the `UNICODE` refinement and the `fxtrace()` change.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 
+## Seam 40: keyboard translation
+
+Done. Every line of `fxkeyboard.cpp` sat inside one `#ifdef WIN32` block: the
+virtual-key to FOX key mapping (`wkbMapKeyCode()`), the modifier state
+(`fxmodifierkeys()`), the code page lookup and the `ToUnicodeEx` adapters. The
+X11 build compiled an empty file. The file was renamed with `git mv` to
+`fxkeyboard_win32.cpp`, its guard became `#if defined(WIN32)`, and it is
+listed with the other Windows modules in `fox2/lib/Makefile.am` and
+`CMakeLists.txt`. There is no X11 counterpart and no core file left; the
+declarations stay in the private `fxpriv.h`. The content is unchanged.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The X11 build
+  no longer compiles the file.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `fxkeyboard` (6 platform references), `FXStyle` (6), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
+   first: `FXStyle` (6 platform references), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 
