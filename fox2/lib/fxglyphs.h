@@ -122,6 +122,9 @@ public:
   /// Return the cached glyph of a character, loading it if needed
   const FXGlyph* getGlyph(FXuint ch);
 
+  /// Return true if the font has a glyph for the character
+  FXbool hasChar(FXuint ch);
+
   /// Return the advance width of a character
   FXint getCharWidth(FXuint ch);
 

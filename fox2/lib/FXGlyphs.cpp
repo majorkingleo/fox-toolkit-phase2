@@ -302,6 +302,13 @@ const FXGlyph* FXGlyphs::getGlyph(FXuint ch){
   }
 
 
+// Return true if the font has a glyph for the character
+FXbool FXGlyphs::hasChar(FXuint ch){
+  if(!face) return false;
+  return FT_Get_Char_Index((FT_Face)face,ch)!=0;
+  }
+
+
 // Return the advance width of a character
 FXint FXGlyphs::getCharWidth(FXuint ch){
   const FXGlyph* g=getGlyph(ch);
@@ -374,6 +381,11 @@ FXGlyph* FXGlyphs::load(FXuint){
 
 const FXGlyph* FXGlyphs::getGlyph(FXuint){
   return nullptr;
+  }
+
+
+FXbool FXGlyphs::hasChar(FXuint){
+  return false;
   }
 
 

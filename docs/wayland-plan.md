@@ -337,15 +337,20 @@ Done in this phase so far:
 - `FXFont::getGlyphCache()` is a neutral accessor on the font (nullptr on X11
   and Win32, where the platform draws text itself) so the Wayland DC can hand
   the glyph cache to the rasterizer without knowing the font internals.
+- `FXFont_wayland.cpp`: matching, sizing and every metric come from the glyph
+  cache, with the numbers the Xft path reports (leading 0, spacing is ascent
+  plus descent, bearings from the glyph bitmap, mono detection by comparing the
+  advances of "i" and "M"). `listFonts()` returns false until fontconfig
+  enumeration is added.
 - `scripts/build-fox2-wayland.sh` builds the library target only until phase 4
   (`FOX_WAYLAND_TARGET=all` builds everything once FXApp exists).
-- Measured on 2026-11-13: the library builds (2.2 MB) and the remaining
-  undefined platform symbols went from 155 to 121 — they are `FXApp`,
+- Measured on 2026-11-13: the library builds (2.3 MB) and the remaining
+  undefined platform symbols went from 155 to 102 — they are `FXApp`,
   `FXWindow`, `FXShell`, `FXTopWindow`, `FXMainWindow`, `FXPopup`,
-  `FXRootWindow`, `FXToolTip`, `FXDragCorner`, `FXFont`, `FXStyle`,
-  `FXCursor` and `FXComposeContext`. That list is the work of phase 4, together
-  with the virtual window table; the X11 build, the Windows cross build and the
-  pixel, region and glyph gates are unchanged.
+  `FXRootWindow`, `FXToolTip`, `FXDragCorner`, `FXStyle`, `FXCursor`,
+  `FXComposeContext` and the `fxplatform` hooks. That list is the work of
+  phase 4, together with the virtual window table; the X11 build, the Windows
+  cross build and the pixel, region and glyph gates are unchanged.
 
 ### Phase 4: connection, event loop and virtual windows
 
