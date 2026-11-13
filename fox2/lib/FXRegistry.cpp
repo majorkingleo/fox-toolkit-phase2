@@ -175,38 +175,11 @@
 #define MAXNAME   200
 #define MAXVALUE  2000
 
-// Default locations and names
-#if defined(WIN32)
-#define FOXRC           "fox.ini"
-#define SYSTEMDIRS      "%FOXDIR%;%ALLUSERSPROFILE%;C:\\ProgramData"
-#define USERDIR         "%APPDATA%"
-#define FILEEXT         ".ini"
-#else
-#define FOXRC           "fox.rc"
-#define SYSTEMDIRS      "$FOXDIR:$XDG_CONFIG_DIRS:/etc/xdg"
-#define USERDIR         "$HOME/.config"
-#define FILEEXT         ".rc"
-#endif
-
 using namespace FX;
 
 /*******************************************************************************/
 
 namespace FX {
-
-
-// File extension for settings files
-const FXchar FXRegistry::ext[]=FILEEXT;
-
-
-// File name of common settings file
-const FXchar FXRegistry::foxrc[]=FOXRC;
-
-
-// Make registry object
-FXRegistry::FXRegistry(const FXString& akey,const FXString& vkey):applicationkey(akey),vendorkey(vkey),systemdirs(SYSTEMDIRS),userdir(USERDIR){
-  FXTRACE(TOPIC_CONSTRUCT,"FXRegistry::FXRegistry\n");
-  }
 
 
 // Read registry
@@ -220,7 +193,7 @@ FXbool FXRegistry::read(){
     FXTRACE(TOPIC_DETAIL,"FXRegistry::read: systemdirs=%s\n",systemdirs.text());
 
     // Find common settings
-    path=FXPath::search(systemdirs,FOXRC);
+    path=FXPath::search(systemdirs,foxrc);
     if(!path.empty()){
       if(parseFile(path,false)) ok=true;
       }
@@ -264,7 +237,7 @@ FXbool FXRegistry::read(){
     path=FXPath::absolute(FXPath::expand(userdir));
 
     // Try read common settings
-    if(parseFile(path+PATHSEPSTRING FOXRC,false)) ok=true;
+    if(parseFile(path+PATHSEPSTRING+foxrc,false)) ok=true;
 
     // Try read vendor settings
     if(!vendorkey.empty()){

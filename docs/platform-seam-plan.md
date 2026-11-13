@@ -1221,6 +1221,15 @@ callbacks). Both moved whole to `FXComposeContext_win32.cpp` and
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXComposeContext.cpp`: only guard lines differ.
 
+## Seam 54: registry
+
+`FXRegistry` keeps its parsing and file logic in `FXRegistry.cpp`. The
+platform defaults moved to `FXRegistry_win32.cpp` and `FXRegistry_x11.cpp`:
+`FOXRC`, `SYSTEMDIRS`, `USERDIR` and `FILEEXT`, the `ext` and `foxrc` constants,
+and the constructor. The two `FOXRC` uses in `read()` now use the `foxrc`
+member. The code is adapted, not moved verbatim, so no lossless check applies.
+Both builds pass.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
