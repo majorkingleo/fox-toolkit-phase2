@@ -380,6 +380,117 @@ void FXWindow::translateCoordinatesTo(FXint& tox,FXint& toy,const FXWindow* towi
   }
 
 
+// Acquire the selection.
+// We always generate SEL_SELECTION_LOST and SEL_SELECTION_GAINED
+// because we assume the selection types may have changed, and want
+// to give target opportunity to allocate the new data for these types.
+FXbool FXWindow::acquireSelection(const FXDragType *types,FXuint numtypes){
+  if(!types || !numtypes){ fxerror("%s::acquireSelection: should have at least one type to select.\n",getClassName()); }
+  if(getApp()->selectionWindow){
+    getApp()->selectionWindow->handle(getApp(),FXSEL(SEL_SELECTION_LOST,0),&getApp()->event);
+    getApp()->selectionWindow=nullptr;
+    freeElms(getApp()->xselTypeList);
+    getApp()->xselNumTypes=0;
+    }
+  if(xid){
+    XSetSelectionOwner((Display*)getApp()->getDisplay(),XA_PRIMARY,xid,getApp()->event.time);
+    if(XGetSelectionOwner((Display*)getApp()->getDisplay(),XA_PRIMARY)!=xid) return false;
+    }
+  if(!getApp()->selectionWindow){
+    getApp()->selectionWindow=this;
+    getApp()->selectionWindow->handle(getApp(),FXSEL(SEL_SELECTION_GAINED,0),&getApp()->event);
+    resizeElms(getApp()->xselTypeList,numtypes);
+    copyElms(getApp()->xselTypeList,types,numtypes);
+    getApp()->xselNumTypes=numtypes;
+    }
+  return true;
+  }
+
+
+// Release the selection
+FXbool FXWindow::releaseSelection(){
+  if(getApp()->selectionWindow==this){
+    getApp()->selectionWindow->handle(getApp(),FXSEL(SEL_SELECTION_LOST,0),&getApp()->event);
+    getApp()->selectionWindow=nullptr;
+    freeElms(getApp()->xselTypeList);
+    getApp()->xselNumTypes=0;
+    if(xid){
+      XSetSelectionOwner((Display*)getApp()->getDisplay(),XA_PRIMARY,None,getApp()->event.time);
+      }
+    return true;
+    }
+  return false;
+  }
+
+
+// Acquire the clipboard
+// We always generate SEL_CLIPBOARD_LOST and SEL_CLIPBOARD_GAINED
+// because we assume the clipboard types may have changed, and want
+// to give target opportunity to allocate the new data for these types.
+FXbool FXWindow::acquireClipboard(const FXDragType *types,FXuint numtypes){
+  if(!types || !numtypes){ fxerror("%s::acquireClipboard: should have at least one type to select.\n",getClassName()); }
+  if(getApp()->clipboardWindow){
+    getApp()->clipboardWindow->handle(getApp(),FXSEL(SEL_CLIPBOARD_LOST,0),&getApp()->event);
+    getApp()->clipboardWindow=nullptr;
+    freeElms(getApp()->xcbTypeList);
+    getApp()->xcbNumTypes=0;
+    }
+  if(xid){
+    XSetSelectionOwner((Display*)getApp()->getDisplay(),getApp()->xcbSelection,xid,getApp()->event.time);
+    if(XGetSelectionOwner((Display*)getApp()->getDisplay(),getApp()->xcbSelection)!=xid) return false;
+    }
+  if(!getApp()->clipboardWindow){
+    getApp()->clipboardWindow=this;
+    getApp()->clipboardWindow->handle(getApp(),FXSEL(SEL_CLIPBOARD_GAINED,0),&getApp()->event);
+    resizeElms(getApp()->xcbTypeList,numtypes);
+    copyElms(getApp()->xcbTypeList,types,numtypes);
+    getApp()->xcbNumTypes=numtypes;
+    }
+  return true;
+  }
+
+
+// Release the clipboard
+FXbool FXWindow::releaseClipboard(){
+  if(getApp()->clipboardWindow==this){
+    getApp()->clipboardWindow->handle(getApp(),FXSEL(SEL_CLIPBOARD_LOST,0),&getApp()->event);
+    getApp()->clipboardWindow=nullptr;
+    freeElms(getApp()->xcbTypeList);
+    getApp()->xcbNumTypes=0;
+    if(xid){
+      XSetSelectionOwner((Display*)getApp()->getDisplay(),getApp()->xcbSelection,None,getApp()->event.time);
+      }
+    return true;
+    }
+  return false;
+  }
+
+
+// Set drag rectangle to block events while inside
+void FXWindow::setDragRectangle(FXint x,FXint y,FXint w,FXint h,FXbool wantupdates) const {
+  if(xid==0){ fxerror("%s::setDragRectangle: window has not yet been created.\n",getClassName()); }
+  Window tmp;
+  int tox,toy;
+  XTranslateCoordinates((Display*)getApp()->getDisplay(),xid,XDefaultRootWindow((Display*)getApp()->getDisplay()),x,y,&tox,&toy,&tmp);
+  getApp()->xdndRect.x=tox;
+  getApp()->xdndRect.y=toy;
+  getApp()->xdndWantUpdates=wantupdates;
+  getApp()->xdndRect.w=w;
+  getApp()->xdndRect.h=h;
+  }
+
+
+// Clear drag rectangle
+void FXWindow::clearDragRectangle() const {
+  if(xid==0){ fxerror("%s::clearDragRectangle: window has not yet been created.\n",getClassName()); }
+  getApp()->xdndRect.x=0;
+  getApp()->xdndRect.y=0;
+  getApp()->xdndRect.w=0;
+  getApp()->xdndRect.h=0;
+  getApp()->xdndWantUpdates=true; // Isn't this bullshit?
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){

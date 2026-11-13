@@ -446,15 +446,38 @@ modules. The `#if 0` portable fallback of the two translate members stays in
 - Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
   DPI values.
 
+## Seam 16: selection, clipboard and drag rectangle
+
+Done. `acquireSelection()`, `releaseSelection()`, `acquireClipboard()`,
+`releaseClipboard()`, `setDragRectangle()` and `clearDragRectangle()` moved as
+whole members into the window platform modules, with the order of the
+bookkeeping and the `SEL_*_LOST`/`SEL_*_GAINED` notifications unchanged.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: clipboard ownership via `OpenClipboard()`/`EmptyClipboard()`/`SetClipboardData()`/`GetClipboardOwner()`; no X selection type lists; drag rectangle in screen coordinates via `ClientToScreen()` |
+| X11 module | `FXWindow_x11.cpp`: `XSetSelectionOwner()`/`XGetSelectionOwner()` for `XA_PRIMARY` and the clipboard selection, the `xselTypeList`/`xcbTypeList` bookkeeping, drag rectangle via `XTranslateCoordinates()` and `xdndWantUpdates` |
+| Portable core | `hasSelection()`, `hasClipboard()` and the `on*Lost/Gained/Request` handlers stay in `FXWindow.cpp` |
+
+On Windows the selection members no longer carry an empty `if(xid){}` block;
+nothing else differs from the original bodies.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. No example owns the clipboard or the selection, so the moved
+  code is compile-checked only.
+
 ## Next seams, in order
 
-1. **Selection, clipboard and drag rectangle** (`FXWindow.cpp`).
-   `acquireSelection()`/`releaseSelection()`, `acquireClipboard()`/
-   `releaseClipboard()`, `setDragRectangle()` and `clearDragRectangle()`
-   mix portable bookkeeping with `XSetSelectionOwner()`/`OpenClipboard()`/
-   `XTranslateCoordinates()`; each moves whole into the matching module,
-   keeping the bookkeeping order intact. Then the remaining blocks in drag and
-   drop (`dropFinished()`, `beginDrag()`, `handleDrag()`).
+1. **Invalidation and scrolling** (`FXWindow.cpp`). `update(x,y,w,h)`,
+   `repaint(x,y,w,h)` and `scroll()` carry `InvalidateRect()`/`RedrawWindow()`/
+   `ScrollWindowEx()` against `addRepaint()`/`removeRepaints()`/`XCopyArea()`;
+   the clipping prologue is identical on both sides and is duplicated into each
+   module.
+2. **Drag and drop** (`FXWindow.cpp`). `dropFinished()`, `beginDrag()`,
+   `handleDrag()` and `endDrag()` with the `XdndAction*` atoms against the
+   Windows DND messages.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
