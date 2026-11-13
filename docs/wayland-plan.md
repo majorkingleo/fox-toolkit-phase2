@@ -599,7 +599,19 @@ Done in this phase so far (the protocol files and the platform seam):
   difference of more than one pixel.
 - **Pixel gate:** phases 1 to 4 compare dumped buffers with X11 screenshots of
   the same widget tree and theme; each difference is either fixed or recorded
-  with a reason.
+  with a reason. `scripts/gate-wayland-hello.sh` does this for the first real
+  window: it starts a private headless Weston, runs the application with a
+  private `HOME` (so that FOX reads the built-in classic theme instead of the
+  desktop's light/dark preference), collects the committed frame, and compares
+  it pixel by pixel with `screenshots/tests/fox2/x11/hello.png`. It reports
+  **0 differing pixels of 2158**; the stored X11 capture is two rows taller
+  because it was taken with the window edge included.
+  The other stored captures are not usable as references yet: `button.png` and
+  `dpi.png` were taken with a different desktop theme, so their palette and
+  their font metrics differ from a run with a private `HOME`. Capturing fresh
+  X11 references needs an X server that can run headless (`Xvfb`), which this
+  machine does not have; until then those two are compared structurally (same
+  window size, same ink, same layout) and not pixel by pixel.
 - **Compositors:** WSLg/Weston (client-side decorations, no `xdg-decoration`)
   and KWin on the development machine (server-side decorations, all optional
   protocols). For scripted runs `scripts/run-fox2-wayland-headless.sh` starts a
