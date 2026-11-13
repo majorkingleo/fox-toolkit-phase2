@@ -395,12 +395,30 @@ enable/disable step, moved as whole functions next to `enable()`/`disable()`.
 - `FXWindow.cpp` no longer calls `XGrabPointer()`, `XGrabKeyboard()`,
   `SetCapture()` or `SetActiveWindow()`.
 
+## Seam 13: window cursor
+
+Done. `showCursor()`, `setDefaultCursor()` and `setDragCursor()` moved as whole
+members into the window platform modules.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `ShowCursor()`, and `SetCursor()` guarded by `underCursor()`/`grabbed()` |
+| X11 module | `FXWindow_x11.cpp`: `XDefineCursor()` with the default or blank cursor, `XChangeActivePointerGrab()` during a grab |
+| Portable core | `cursorShown()`, `getDefaultCursor()`/`getDragCursor()` stay in `FXWindow.cpp` |
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values.
+
 ## Next seams, in order
 
-1. **Window cursor** (`FXWindow.cpp`). `showCursor()`, `setDefaultCursor()` and
-   `setDragCursor()` call `ShowCursor()`/`SetCursor()`/`XDefineCursor()`/
-   `XChangeActivePointerGrab()` inline; they move as whole members, followed by
-   the `translateCoordinates*()` branches.
+1. **Window shape** (`FXWindow.cpp`). The three `setShape()` overloads,
+   `clearShape()` and the Windows-only `makeregion()` helper use
+   `SetWindowRgn()` or `XShapeCombine*()`; they move together, with the
+   `HAVE_XSHAPE_H` guard staying in the X11 module. After that the
+   `translateCoordinates*()` branches and the remaining `#ifdef WIN32` blocks in
+   `FXWindow.cpp` (focus, `setFocus`/`killFocus`, input method).
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,

@@ -1565,69 +1565,6 @@ FXbool FXWindow::cursorShown() const {
   }
 
 
-// Show or hide the cursor
-void FXWindow::showCursor(FXbool flag){
-  if(!cursorShown() && flag){
-    if(xid){
-#ifdef WIN32
-      ShowCursor(true);
-#else
-      XDefineCursor((Display*)getApp()->getDisplay(),xid,defaultCursor->id());
-#endif
-      }
-    flags|=FLAG_CURSOR;
-    }
-  else if(cursorShown() && !flag){
-    if(xid){
-#ifdef WIN32
-      ShowCursor(false);
-#else
-      XDefineCursor((Display*)getApp()->getDisplay(),xid,getApp()->getDefaultCursor(DEF_BLANK_CURSOR)->id());
-#endif
-      }
-    flags&=~FLAG_CURSOR;
-    }
-  }
-
-
-// Set cursor
-void FXWindow::setDefaultCursor(FXCursor* cur){
-  if(defaultCursor!=cur){
-    if(!cur){ fxerror("%s::setDefaultCursor: NULL cursor argument.\n",getClassName()); }
-    if(xid){
-      if(cur->id()==0){ fxerror("%s::setDefaultCursor: Cursor has not been created yet.\n",getClassName()); }
-      if(cursorShown()){
-#ifdef WIN32
-        if(underCursor() && !grabbed()) SetCursor((HCURSOR)cur->id());
-#else
-        XDefineCursor((Display*)getApp()->getDisplay(),xid,cur->id());
-#endif
-        }
-      }
-    defaultCursor=cur;
-    }
-  }
-
-
-// Set drag cursor
-void FXWindow::setDragCursor(FXCursor* cur){
-  if(dragCursor!=cur){
-    if(!cur){ fxerror("%s::setDragCursor: NULL cursor argument.\n",getClassName()); }
-    if(xid){
-      if(cur->id()==0){ fxerror("%s::setDragCursor: Cursor has not been created yet.\n",getClassName()); }
-      if(grabbed()){
-#ifdef WIN32
-        SetCursor((HCURSOR)cur->id());
-#else
-        XChangeActivePointerGrab((Display*)getApp()->getDisplay(),GRAB_EVENT_MASK,cur->id(),CurrentTime);
-#endif
-        }
-      }
-    dragCursor=cur;
-    }
-  }
-
-
 // Set window background
 // Re-apply theme colors to this window
 void FXWindow::applyTheme(FXTheme*){

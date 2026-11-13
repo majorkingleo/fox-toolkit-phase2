@@ -347,6 +347,53 @@ void FXWindow::ungrabKeyboard(){
   }
 
 
+// Show or hide the cursor
+void FXWindow::showCursor(FXbool flag){
+  if(!cursorShown() && flag){
+    if(xid){
+      XDefineCursor((Display*)getApp()->getDisplay(),xid,defaultCursor->id());
+      }
+    flags|=FLAG_CURSOR;
+    }
+  else if(cursorShown() && !flag){
+    if(xid){
+      XDefineCursor((Display*)getApp()->getDisplay(),xid,getApp()->getDefaultCursor(DEF_BLANK_CURSOR)->id());
+      }
+    flags&=~FLAG_CURSOR;
+    }
+  }
+
+
+// Set cursor
+void FXWindow::setDefaultCursor(FXCursor* cur){
+  if(defaultCursor!=cur){
+    if(!cur){ fxerror("%s::setDefaultCursor: NULL cursor argument.\n",getClassName()); }
+    if(xid){
+      if(cur->id()==0){ fxerror("%s::setDefaultCursor: Cursor has not been created yet.\n",getClassName()); }
+      if(cursorShown()){
+        XDefineCursor((Display*)getApp()->getDisplay(),xid,cur->id());
+        }
+      }
+    defaultCursor=cur;
+    }
+  }
+
+
+// Set drag cursor
+void FXWindow::setDragCursor(FXCursor* cur){
+  if(dragCursor!=cur){
+    if(!cur){ fxerror("%s::setDragCursor: NULL cursor argument.\n",getClassName()); }
+    if(xid){
+      if(cur->id()==0){ fxerror("%s::setDragCursor: Cursor has not been created yet.\n",getClassName()); }
+      if(grabbed()){
+        XChangeActivePointerGrab((Display*)getApp()->getDisplay(),GRAB_EVENT_MASK,cur->id(),CurrentTime);
+        }
+      }
+    dragCursor=cur;
+    }
+  }
+
+
 // Enable the window
 void FXWindow::enable(){
   if(!isEnabled()){
