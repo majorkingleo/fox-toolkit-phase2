@@ -505,6 +505,25 @@ Done in this phase so far (the protocol files and the platform seam):
 
 ### Phase 5: window management
 
+Done in this phase so far:
+
+- The compositor's configure sizes the window: the size from the toplevel
+  configure is turned into a `SEL_CONFIGURE` for the shell, the layout resizes
+  the window tree, the virtual window table follows, and the frame buffer is
+  rebuilt on the next bind. Under a tiling compositor the window now takes the
+  size it is given instead of the size it asked for.
+- Decorations: `zxdg_decoration_manager_v1` is bound when the compositor
+  offers it and every toplevel asks for the server side mode; KWin's virtual
+  backend answers `server side`, and the trace says so. Headless weston does
+  not offer the protocol at all, so there no decoration object is made and the
+  window stays usable — the client-side title bar for that case is still open.
+- The drag corner asks the compositor for an interactive resize
+  (`xdg_toplevel.resize` with the seat and the serial of the last pointer
+  enter) and only falls back to tracking the drag itself when a compositor
+  gives no serial.
+- `xdg_toplevel.close` becomes `SEL_CLOSE`, which is what the title bar close
+  button and the window manager send.
+
 - `xdg_surface.configure`/`ack_configure` handling, resize (`FXTopWindow` size
   from the compositor, `layout()`, new buffer), maximize, fullscreen, minimize,
   `xdg_toplevel.close`, `wm_capabilities`, `configure_bounds`.
@@ -639,6 +658,12 @@ Done in this phase so far (the protocol files and the platform seam):
   `create popup for window 4 under 2 at +20+12 90x56` and two frames are
   committed, one for the main window and one for the pane, which is kept as
   `screenshots/tests/fox2/wayland/popup.png`.
+- **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
+  application against KWin's virtual backend, which is the only compositor here
+  that offers `xdg-decoration` (headless weston does not), and passes when the
+  trace says `decoration of window 2 is server side`. With a compositor that
+  does not offer the protocol, no decoration object is made and the window is
+  still usable; drawing a client-side title bar is still open.
 - **Compositors:** WSLg/Weston (client-side decorations, no `xdg-decoration`)
   and KWin on the development machine (server-side decorations, all optional
   protocols). For scripted runs `scripts/run-fox2-wayland-headless.sh` starts a

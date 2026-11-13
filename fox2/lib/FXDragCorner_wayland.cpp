@@ -39,6 +39,7 @@
 #include "FXDCWindow.h"
 #include "FXApp.h"
 #include "FXDragCorner.h"
+#include "fxwaylandpriv.h"
 
 #if defined(FOX_WAYLAND)
 
@@ -71,6 +72,11 @@ void FXDragCorner::create(){
 long FXDragCorner::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
   FXEvent *event=(FXEvent*)ptr;
   FXint wx,wy;
+
+  // The compositor drags the edge for us when it can; that keeps the layout of
+  // the window and the pointer together and needs no outline
+  if(fxwaylandStartResize(fxwayland(getApp()->getDisplay()),getShell()->id())) return 1;
+
   grab();
   xoff=width-event->win_x;
   yoff=height-event->win_y;

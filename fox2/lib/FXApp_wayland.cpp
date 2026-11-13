@@ -102,6 +102,11 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
   else if(strcmp(interface,xdg_wm_base_interface.name)==0){
     app->wmbase=(xdg_wm_base*)wl_registry_bind(registry,name,&xdg_wm_base_interface,FXMIN(version,2u));
     }
+  else if(strcmp(interface,zxdg_decoration_manager_v1_interface.name)==0){
+    if(!app->decomanager){
+      app->decomanager=(zxdg_decoration_manager_v1*)wl_registry_bind(registry,name,&zxdg_decoration_manager_v1_interface,1);
+      }
+    }
   }
 
 
@@ -181,6 +186,7 @@ void FXApp::initPlatformMembers(){
   app->seat=nullptr;
   app->output=nullptr;
   app->wmbase=nullptr;
+  app->decomanager=nullptr;
   app->screenwidth=0;
   app->screenheight=0;
   app->rootwindow=0;
@@ -303,6 +309,7 @@ FXbool FXApp::closeDisplay(){
     }
 
   fxwaylandCloseSeat(app);
+  if(app->decomanager){ zxdg_decoration_manager_v1_destroy(app->decomanager); app->decomanager=nullptr; }
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
   if(app->output){ wl_output_destroy(app->output); app->output=nullptr; }
   if(app->seat){ wl_seat_destroy(app->seat); app->seat=nullptr; }

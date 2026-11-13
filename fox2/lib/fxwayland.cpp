@@ -199,6 +199,20 @@ static const xdg_toplevel_listener toplevelListener={
   };
 
 
+// The compositor tells us who draws the title bar; server side is what we ask
+// for, and a compositor that refuses leaves the client to draw nothing yet
+static void decorationConfigure(void* data,zxdg_toplevel_decoration_v1*,uint32_t mode){
+  FXWaylandSurface* s=(FXWaylandSurface*)data;
+  fxwaylandTrace("decoration of window %u is %s\n",(unsigned int)s->window,
+                 mode==ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE?"server side":"client side");
+  }
+
+
+static const zxdg_toplevel_decoration_v1_listener decorationListener={
+  decorationConfigure
+  };
+
+
 // Create the surface of a shell
 FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool popup){
   FXWaylandSurface* s;
@@ -208,6 +222,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->window=window;
   s->popup=nullptr;
   s->toplevel=nullptr;
+  s->decoration=nullptr;
   s->parent=nullptr;
   s->buffers=nullptr;
   s->store=nullptr;
@@ -227,7 +242,19 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   xdg_surface_add_listener(s->xdsurface,&shellSurfaceListener,s);
   if(!popup){
     s->toplevel=xdg_surface_get_toplevel(s->xdsurface);
-    if(s->toplevel){ xdg_toplevel_add_listener(s->toplevel,&toplevelListener,s); }
+    if(s->toplevel){
+      xdg_toplevel_add_listener(s->toplevel,&toplevelListener,s);
+
+      // Ask for the decorations the desktop draws; a compositor without the
+      // protocol draws none, which is still a usable window
+      if(app->decomanager){
+        s->decoration=zxdg_decoration_manager_v1_get_toplevel_decoration(app->decomanager,s->toplevel);
+        if(s->decoration){
+          zxdg_toplevel_decoration_v1_add_listener(s->decoration,&decorationListener,s);
+          zxdg_toplevel_decoration_v1_set_mode(s->decoration,ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+          }
+        }
+      }
     }
   fxwaylandTrace("create surface for window %u (%s)\n",(unsigned int)window,popup?"popup":"toplevel");
   s->next=app->surfaces;
@@ -349,6 +376,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
       fxwaylandFreeBuffers(s);
       freeElms(s->store);
       s->store=nullptr;
+      if(s->decoration) zxdg_toplevel_decoration_v1_destroy(s->decoration);
       if(s->toplevel) xdg_toplevel_destroy(s->toplevel);
       if(s->popup) xdg_popup_destroy(s->popup);
       if(s->xdsurface) xdg_surface_destroy(s->xdsurface);
@@ -524,6 +552,17 @@ static FXbool resizeStore(FXWaylandSurface* s,FXint w,FXint h){
   s->storew=w;
   s->storeh=h;
   fxwaylandTrace("store of window %u is %dx%d\n",(unsigned int)s->window,w,h);
+  return true;
+  }
+
+
+// Ask the compositor to resize a toplevel from its bottom right corner
+FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window){
+  FXWaylandSurface* s;
+  if(!app || !app->seat || !app->pointerserial) return false;
+  if((s=fxwaylandShellSurface(app,window))==nullptr || !s->toplevel) return false;
+  xdg_toplevel_resize(s->toplevel,app->seat,app->pointerserial,XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT);
+  fxwaylandTrace("resize window %u with serial %u\n",(unsigned int)window,app->pointerserial);
   return true;
   }
 

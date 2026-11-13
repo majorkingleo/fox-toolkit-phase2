@@ -37,6 +37,7 @@
 
 #include <wayland-client.h>
 #include "xdg-shell-client-protocol.h"
+#include "xdg-decoration-unstable-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -86,6 +87,7 @@ struct FXWaylandSurface {
   xdg_surface*               xdsurface;  // Shell surface role
   xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
+  zxdg_toplevel_decoration_v1* decoration;// Who draws the title bar
   FXWaylandSurface*          parent;     // Surface the popup hangs off
   FXWaylandBuffer*           buffers;    // Buffer pool
   FXColor*                   store;      // Content of the shell window tree
@@ -137,6 +139,7 @@ struct FXWaylandApp {
   FXWaylandSurface* keyboardsurface;    // Surface with the keyboard focus
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
+  zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
   FXint             screenwidth;        // Size of the first output
   FXint             screenheight;
   FXID              rootwindow;         // Id of the virtual root window
@@ -182,6 +185,9 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
 
 /// Give a window the popup role under the given parent window; false on failure
 FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h);
+
+/// Ask the compositor to resize a toplevel with the corner under the pointer
+FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window);
 
 /// Destroy the surface of a shell
 void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);
