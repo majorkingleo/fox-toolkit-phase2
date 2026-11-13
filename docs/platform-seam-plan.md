@@ -375,11 +375,32 @@ bodies use (`fxmodifierkeys()`, `wkbMapKeyCode()`, `fxsenddata()`, the
   reports the same scale and window sizes.
 - `FXApp.cpp` is down from 5217 to 3121 lines.
 
+## Seam 12: pointer and keyboard grabs
+
+Done. The four members that acquire and release grabs, left behind by the
+enable/disable step, moved as whole functions next to `enable()`/`disable()`.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `grab()`/`ungrab()` via `SetCapture()`/`ReleaseCapture()` plus the drag and default cursors, `grabKeyboard()` via `SetActiveWindow()`, `ungrabKeyboard()` (bookkeeping only) |
+| X11 module | `FXWindow_x11.cpp`: `grab()` with `XGrabPointer()` and its `CurrentTime` retry, `ungrab()`, `grabKeyboard()` with `XGrabKeyboard()`, `ungrabKeyboard()` with `XUngrabKeyboard()` |
+| Portable core | `grabbed()`, `grabbedKeyboard()` and `onUngrabbed()` stay in `FXWindow.cpp` |
+
+`TOPIC_DETAIL` is defined locally in both modules, as `FXWindow.cpp` does.
+
+### Verification
+
+- Fast builds on both backends (Windows native, X11 in WSL); `hello`, `button`
+  and `dpi` run with unchanged DPI values.
+- `FXWindow.cpp` no longer calls `XGrabPointer()`, `XGrabKeyboard()`,
+  `SetCapture()` or `SetActiveWindow()`.
+
 ## Next seams, in order
 
-1. **Grabs and input state** (`FXWindow.cpp`). `grab()`, `ungrab()`,
-   `grabKeyboard()` and `ungrabKeyboard()` acquire pointer and keyboard grabs
-   and are the last platform calls in the window core.
+1. **Window cursor** (`FXWindow.cpp`). `showCursor()`, `setDefaultCursor()` and
+   `setDragCursor()` call `ShowCursor()`/`SetCursor()`/`XDefineCursor()`/
+   `XChangeActivePointerGrab()` inline; they move as whole members, followed by
+   the `translateCoordinates*()` branches.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,

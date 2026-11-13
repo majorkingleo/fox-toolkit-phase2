@@ -25,6 +25,8 @@
 
 #if defined(WIN32)
 
+#define TOPIC_DETAIL    1002
+
 /*
   Notes:
 
@@ -161,6 +163,57 @@ void fxplatformReleaseMouseGrab(void*,FXID cursor){
 
 // Release the keyboard grab
 void fxplatformReleaseKeyboardGrab(void*,FXTime){
+  }
+
+
+// Acquire grab; also switches to the drag cursor
+void FXWindow::grab(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::grab %p\n",getClassName(),this);
+    if(dragCursor->id()==0){ fxerror("%s::grab: Cursor has not been created yet.\n",getClassName()); }
+    if(!shown()){ fxwarning("%s::grab: Window is not visible.\n",getClassName()); }
+    SetCapture((HWND)xid);
+    if(GetCapture()!=(HWND)xid){
+      SetCapture((HWND)xid);
+      }
+    SetCursor((HCURSOR)dragCursor->id());
+    getApp()->mouseGrabWindow=this;
+    }
+  }
+
+
+// Release grab; also switches back to the normal cursor
+void FXWindow::ungrab(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::ungrab %p\n",getClassName(),this);
+    getApp()->mouseGrabWindow=nullptr;
+    ReleaseCapture();
+    SetCursor((HCURSOR)defaultCursor->id());
+    }
+  }
+
+
+// Grab keyboard device; note grabbing keyboard generates
+// SEL_FOCUSIN on the grab-window and SEL_FOCUSOUT on the old
+// focus-window
+void FXWindow::grabKeyboard(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::grabKeyboard %p\n",getClassName(),this);
+    if(!shown()){ fxwarning("%s::ungrabKeyboard: Window is not visible.\n",getClassName()); }
+    SetActiveWindow((HWND)xid); // FIXME Check this
+    getApp()->keyboardGrabWindow=this;
+    }
+  }
+
+
+// Ungrab keyboard device; note ungrabbing keyboard generates
+// SEL_FOCUSOUT on the grab-window and SEL_FOCUSIN on the
+// current focus-window
+void FXWindow::ungrabKeyboard(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::ungrabKeyboard %p\n",getClassName(),this);
+    getApp()->keyboardGrabWindow=nullptr;
+    }
   }
 
 

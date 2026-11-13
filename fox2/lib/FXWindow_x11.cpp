@@ -26,6 +26,8 @@
 
 #if !defined(WIN32)
 
+#define TOPIC_DETAIL    1002
+
 /*
   Notes:
 
@@ -292,6 +294,56 @@ void fxplatformReleaseKeyboardGrab(void* display,FXTime time){
   Display* dpy=(Display*)display;
   XUngrabKeyboard(dpy,time);
   XFlush(dpy);
+  }
+
+
+// Acquire grab; also switches to the drag cursor
+void FXWindow::grab(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::grab %p\n",getClassName(),this);
+    if(dragCursor->id()==0){ fxerror("%s::grab: Cursor has not been created yet.\n",getClassName()); }
+    if(!shown()){ fxwarning("%s::grab: Window is not visible.\n",getClassName()); }
+    if(GrabSuccess!=XGrabPointer((Display*)getApp()->getDisplay(),xid,false,GRAB_EVENT_MASK,GrabModeAsync,GrabModeAsync,None,dragCursor->id(),getApp()->event.time)){
+      XGrabPointer((Display*)getApp()->getDisplay(),xid,false,GRAB_EVENT_MASK,GrabModeAsync,GrabModeAsync,None,dragCursor->id(),CurrentTime);
+      }
+    getApp()->mouseGrabWindow=this;
+    }
+  }
+
+
+// Release grab; also switches back to the normal cursor
+void FXWindow::ungrab(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::ungrab %p\n",getClassName(),this);
+    getApp()->mouseGrabWindow=nullptr;
+    XUngrabPointer((Display*)getApp()->getDisplay(),getApp()->event.time);
+    XFlush((Display*)getApp()->getDisplay());
+    }
+  }
+
+
+// Grab keyboard device; note grabbing keyboard generates
+// SEL_FOCUSIN on the grab-window and SEL_FOCUSOUT on the old
+// focus-window
+void FXWindow::grabKeyboard(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::grabKeyboard %p\n",getClassName(),this);
+    if(!shown()){ fxwarning("%s::ungrabKeyboard: Window is not visible.\n",getClassName()); }
+    XGrabKeyboard((Display*)getApp()->getDisplay(),xid,false,GrabModeAsync,GrabModeAsync,getApp()->event.time);
+    getApp()->keyboardGrabWindow=this;
+    }
+  }
+
+
+// Ungrab keyboard device; note ungrabbing keyboard generates
+// SEL_FOCUSOUT on the grab-window and SEL_FOCUSIN on the
+// current focus-window
+void FXWindow::ungrabKeyboard(){
+  if(xid){
+    FXTRACE(TOPIC_DETAIL,"%s::ungrabKeyboard %p\n",getClassName(),this);
+    getApp()->keyboardGrabWindow=nullptr;
+    XUngrabKeyboard((Display*)getApp()->getDisplay(),getApp()->event.time);
+    }
   }
 
 
