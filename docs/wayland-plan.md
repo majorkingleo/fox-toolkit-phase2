@@ -410,6 +410,19 @@ Done in this phase so far (the protocol files and the platform seam):
   this phase (`FXWindow`, `FXRootWindow`, `FXShell`, `FXTopWindow`,
   `FXMainWindow`, `FXPopup`, `FXToolTip`), the `fxplatformCreateWindow` family,
   `FXDragCorner` and `FXComposeContext`.
+- Virtual window table: the private header `fxwinmap.h` and `FXWinMap.cpp` keep
+  the child windows Wayland does not have — synthetic id, parent, geometry
+  relative to the parent, stacking order (children bottom to top, shells in a
+  list of their own) and shown state — with create, destroy of a whole subtree,
+  reparent (keeping the place on the screen and going to the top), raise and
+  lower, point and rectangle hit-testing that descends in stacking order, and
+  the shell of any window. Nothing in it needs a display, so the module that
+  builds the surfaces and the browser frontend share it.
+- `tests/winmap` checks the table against a brute force model on a small tree:
+  nested hit tests, stacking after raise and lower, hidden windows and hidden
+  parents, reparenting, the rejection of a reparent that would make a loop,
+  subtree destruction, popup shells above a toplevel, and 200 random trees; all
+  of it runs headless on every host.
 
 ### Phase 5: window management
 

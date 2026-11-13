@@ -173,6 +173,9 @@ if [ "$use_cmake" = yes ]; then
     echo
     echo "==> glyph cache test"
     "$BUILD/bin/glyphs" || echo "warning: glyphs failed" >&2
+    echo
+    echo "==> virtual window map test"
+    "$BUILD/bin/winmap" || echo "warning: winmap failed" >&2
     fi
 
   echo
@@ -271,12 +274,12 @@ echo "==> build library"
 run make -j"$jobs" -C lib
 
 echo "==> build tests"
-run make -j"$jobs" -C tests hello button dpi raster region glyphs
+run make -j"$jobs" -C tests hello button dpi raster region glyphs winmap
 
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*FOX* 2>/dev/null || ls -l lib/*FOX* 2>/dev/null || true
-ls -l tests/hello tests/button tests/dpi tests/raster tests/region tests/glyphs 2>/dev/null || true
+ls -l tests/hello tests/button tests/dpi tests/raster tests/region tests/glyphs tests/winmap 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   for prog in hello button dpi; do
@@ -299,6 +302,9 @@ if [ "$run_test" = yes ]; then
   echo
   echo "==> glyph cache test"
   ( cd tests && PATH="$BUILD/lib/.libs:$PATH" ./glyphs ) || echo "warning: glyphs failed" >&2
+  echo
+  echo "==> virtual window map test"
+  ( cd tests && PATH="$BUILD/lib/.libs:$PATH" ./winmap ) || echo "warning: winmap failed" >&2
   fi
 
 echo

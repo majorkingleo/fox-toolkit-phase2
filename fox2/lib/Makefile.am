@@ -135,6 +135,7 @@ FXVariant.cpp \
 FXVariantArray.cpp \
 FXVariantMap.cpp \
 FXWorker.cpp \
+FXWinMap.cpp \
 FXXML.cpp \
 FXXMLFile.cpp \
 FXXMLString.cpp \
@@ -156,7 +157,7 @@ libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp
 endif
 endif
 
-noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxglyphs.h fxraster.h fxrects.h fxstipples.h
+noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxglyphs.h fxraster.h fxrects.h fxstipples.h fxwinmap.h
 
 EXTRA_DIST = \
 blank_mask.xbm \
