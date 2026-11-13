@@ -637,10 +637,33 @@ public header gained only declarations without platform types. Scratch script:
 - Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
   DPI values. The Win32 system colors and font are read at startup.
 
+## Seam 24: I/O device
+
+Done. First of the services: `FXIODevice.cpp` no longer contains a platform
+branch. The nine members that touch the native handle moved as whole members
+into `FXIODevice_win32.cpp` and `FXIODevice_x11.cpp` with a scratch script
+(`tmp/split-iodevice.py`); the `#if` branches are resolved per platform.
+
+| Part | Location |
+| --- | --- |
+| Private header | `fxiopriv.h` defines `BadHandle` (`INVALID_HANDLE_VALUE` or `-1`) for the portable class and the modules; `FXFile.cpp` still carries its own copy until its seam |
+| Windows module | `FXIODevice_win32.cpp`: `mode()` and `mode(FXuint)` through `GetHandleInformation()`/`SetHandleInformation()`, `perms()`, `perms(FXuint)` (still commented out), `valid()`, `readBlock()` and `writeBlock()` with `ReadFile()`/`WriteFile()`, `close()` with `CloseHandle()`, and the `NtQueryObject()` stub |
+| X11 module | `FXIODevice_x11.cpp`: the same members with `fcntl()`, `fstat()`, `fchmod()`, `read()`, `write()` and `close()`; the module is the POSIX implementation, named `x11` by the repository rule |
+| Portable core | constructors, `isOpen()`, `attach()`, `detach()`, `truncate()`, `flush()`, `eof()`, `size()` and the destructor stay in `FXIODevice.cpp` |
+
+### Verification
+
+- The removed lines of `FXIODevice.cpp` equal the added lines of the new files
+  apart from the `BadHandle` block, which moved to `fxiopriv.h`.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. The device members are compile-checked on both backends; the
+  examples do not read from a raw device.
+
 ## Next seams, in order
 
-1. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
-   `FXIODevice`). Large but self-contained; split only when a feature needs it.
+1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`,
+   `FXProcess`, `FXStat`, `FXDir`, `FXMutex`, `FXPipe`), one class per seam,
+   smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
