@@ -151,9 +151,10 @@ section per step, FOX formatting, no reformatting of moved code.
 
 ### Phase 1: software rasterizer (platform neutral)
 
-- Status: the rasterizer, the scene test and the pixel gate are done; the
-  portable `FXRegion`, text and the blits that need `FXBitmap` are still open
-  (text belongs to phase 2, `FXRegion` to phase 3).
+- Status: the rasterizer, the portable region, the scene test and the pixel
+  gate are done; text and the blits that need `FXBitmap` are still open (text
+  belongs to phase 2, the `FXRegion` wrapper around the portable region to
+  phase 3).
 - Private header `fxraster.h` and `FXRaster.cpp`: ARGB8888 target with stride,
   clip region, foreground and background, line width and cap, dashes, fill
   style (solid, tile, stipple, opaque stipple), function codes
@@ -187,6 +188,17 @@ Done in this phase so far:
   on Windows and headless.
 - Gate: `scripts/build-fox2-linux.sh --cmake` then
   `scripts/run-fox2-raster.sh` (add `--headless` to skip the X11 side).
+- Portable region: the private header `fxrects.h` and `FXRects.cpp` hold a
+  region as a canonical list of horizontal spans (sorted by scan line and
+  start, spans on a row disjoint and non-touching), with union, intersection,
+  difference, exclusive or, offset, bounds, point and rectangle queries and
+  polygon construction with both fill rules. No display is involved, so phase
+  3 wraps it in `FXRegion_wayland.cpp` and the browser frontend can use it as
+  it is.
+- `tests/region` checks `FXRects` against a brute force pixel model on a 48x48
+  grid: every operation is applied to both and every pixel is compared, plus
+  the bounding boxes, a rectangle query, the canonical form (the same pixel set
+  built two ways compares equal) and 200 pseudo random operations.
 - The same scene run under Wine (`raster.exe --raster-only`) writes a byte
   identical `raster.ppm` as on Linux, so the rasterizer is host independent.
   The Win32 platform has no comparison path yet; the test reports
@@ -376,6 +388,8 @@ Deviations, all on the one pixel outline unless noted:
   cell exceeds the limit recorded in the phase 1 table. The scene images are
   kept under `screenshots/tests/fox2/x11/raster.png` (X11) and
   `screenshots/tests/fox2/raster/raster.png`.
+- **Region gate (phase 1):** `tests/region` needs no display and runs on every
+  host; it fails when the span algebra differs from the pixel model.
 - **Pixel gate:** phases 1 to 4 compare dumped buffers with X11 screenshots of
   the same widget tree and theme; each difference is either fixed or recorded
   with a reason.

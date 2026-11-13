@@ -122,6 +122,7 @@ FXParseBuffer.cpp \
 FXPtrList.cpp \
 FXRandom.cpp \
 FXRaster.cpp \
+FXRects.cpp \
 FXReverseDictionary.cpp \
 FXRex.cpp \
 FXThreadPool.cpp \
@@ -154,7 +155,7 @@ libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp
 endif
 endif
 
-noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxraster.h fxstipples.h
+noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxraster.h fxrects.h fxstipples.h
 
 EXTRA_DIST = \
 blank_mask.xbm \

@@ -167,6 +167,9 @@ if [ "$use_cmake" = yes ]; then
     echo
     echo "==> rasterizer scene (headless)"
     "$BUILD/bin/raster" --raster-only || echo "warning: raster failed" >&2
+    echo
+    echo "==> rectangle region test"
+    "$BUILD/bin/region" || echo "warning: region failed" >&2
     fi
 
   echo
@@ -265,12 +268,12 @@ echo "==> build library"
 run make -j"$jobs" -C lib
 
 echo "==> build tests"
-run make -j"$jobs" -C tests hello button dpi raster
+run make -j"$jobs" -C tests hello button dpi raster region
 
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*FOX* 2>/dev/null || ls -l lib/*FOX* 2>/dev/null || true
-ls -l tests/hello tests/button tests/dpi tests/raster 2>/dev/null || true
+ls -l tests/hello tests/button tests/dpi tests/raster tests/region 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   for prog in hello button dpi; do
@@ -287,6 +290,9 @@ if [ "$run_test" = yes ]; then
   echo
   echo "==> rasterizer scene (headless)"
   ( cd tests && PATH="$BUILD/lib/.libs:$PATH" ./raster --raster-only ) || echo "warning: raster failed" >&2
+  echo
+  echo "==> rectangle region test"
+  ( cd tests && PATH="$BUILD/lib/.libs:$PATH" ./region ) || echo "warning: region failed" >&2
   fi
 
 echo

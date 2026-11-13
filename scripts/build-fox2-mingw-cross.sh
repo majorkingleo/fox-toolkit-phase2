@@ -184,12 +184,12 @@ echo "==> build library"
 run make -j"$jobs" -C lib
 
 echo "==> build tests"
-run make -j"$jobs" -C tests hello.exe button.exe dpi.exe raster.exe
+run make -j"$jobs" -C tests hello.exe button.exe dpi.exe raster.exe region.exe
 
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*.dll lib/.libs/*.dll.a 2>/dev/null || true
-ls -l tests/.libs/hello.exe tests/.libs/button.exe tests/.libs/dpi.exe tests/.libs/raster.exe 2>/dev/null || true
+ls -l tests/.libs/hello.exe tests/.libs/button.exe tests/.libs/dpi.exe tests/.libs/raster.exe tests/.libs/region.exe 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   # A dedicated prefix keeps the user's Wine setup untouched; the first run
@@ -238,6 +238,13 @@ if [ "$run_test" = yes ]; then
   rc=0
   timeout "$run_seconds" wine "$exe" --raster-only || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: raster exited with status $rc" >&2
+  echo
+  echo "==> rectangle region test under Wine"
+  exe="tests/.libs/region.exe"
+  [ -f "$exe" ] || exe="tests/region.exe"
+  rc=0
+  timeout "$run_seconds" wine "$exe" || rc=$?
+  [ "$rc" -eq 0 ] || echo "warning: region exited with status $rc" >&2
   fi
 
 echo
