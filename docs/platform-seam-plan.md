@@ -778,10 +778,34 @@ The destructor moved because it closes the process handle on Windows.
   session; the DPI code is untouched by this seam and the later steps report
   144 as before, so this reflects the monitor the window opened on.
 
+## Seam 30: file statistics
+
+Done. `FXStat.cpp` no longer contains a platform branch. Ten blocks moved as
+whole members into `FXStat_win32.cpp` and `FXStat_x11.cpp`;
+`tmp/split-stat.py` drives the split with `tmp/seamlib.py` and selects every
+block that holds a `WIN32` conditional.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXStat_win32.cpp`: the `fxunixtime()` and `fxwintime()` FILETIME converters, `statFile()`, `statLink()`, `stat(FXFile)` on `GetFileAttributesEx`/`GetFileInformationByHandle`, the `mode(file,perm)` stub, `exists()`, the three time setters on `SetFileTime`, `isAccessible()`, both disk-space queries on `GetDiskFreeSpaceEx` |
+| X11 module | `FXStat_x11.cpp`: the same members on `stat()`/`lstat()`/`fstat()`/`chmod()`/`utimensat()`/`access()`/`statvfs()`, with a `created(file,ns)` that returns false |
+| Portable core | the instance accessors and the path-based wrappers (`isHidden()`, `size()`, `modified()`, `isSame()`, ...) stay in `FXStat.cpp` |
+
+The `PERFORMANCE_RECORDER()` declarations moved with the function they
+instrument. `created(file)` shared a block with the platform-specific
+`created(file,ns)`; it was split first so that only the latter moved.
+
+### Verification
+
+- The removed lines equal the added lines of the two modules apart from the
+  `WIN32` guard.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with 144 DPI
+  on Windows.
+
 ## Next seams, in order
 
-1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`,
-   `FXStat`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
+1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`),
+   one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
