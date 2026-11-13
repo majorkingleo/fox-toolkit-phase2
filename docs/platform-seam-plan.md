@@ -681,11 +681,31 @@ The dead `#elif defined(WIN32)` branch of `FXMutex::trylock()` was dropped.
   DPI values. Every example uses mutexes and thread storage through the
   application and registry.
 
+## Seam 26: pipes
+
+Done. `FXPipe.cpp` no longer contains a platform branch; the three members
+that create or remove pipes moved whole into `FXPipe_win32.cpp` and
+`FXPipe_x11.cpp` (`tmp/split-pipe.py`).
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXPipe_win32.cpp`: `open()` with `CreatePipe()`; `create()` and `remove()` only return `false`, since named pipes are not available |
+| X11 module | `FXPipe_x11.cpp`: `open()` with `pipe2()` (`HAVE_PIPE2`) or `pipe()` plus `fcntl()`, `create()` with `mkfifo()` and `remove()` with `unlink()` |
+| Portable core | the two constructors and the `CreateNamedPipe()` note stay in `FXPipe.cpp`; its `BadHandle` block is gone because the core no longer uses it |
+
+### Verification
+
+- The removed lines equal the added lines of the two modules apart from the
+  guards, the `BadHandle` block and the `create()`/`remove()` bodies reduced
+  to the platform's branch.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. The pipe members are compile-checked; the examples do not
+  create pipes.
+
 ## Next seams, in order
 
 1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`,
-   `FXProcess`, `FXStat`, `FXDir`, `FXPipe`), one class per seam, smallest
-   first. Large but self-contained; split only when a feature needs it.
+   `FXProcess`, `FXStat`, `FXDir`), one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
