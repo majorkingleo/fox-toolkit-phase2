@@ -46,11 +46,9 @@
 #include "fxapppriv.h"
 #include "fxplatform.h"
 #include "fxpriv.h"
+#include "fxwaylandpriv.h"
 
 #if defined(FOX_WAYLAND)
-
-#include <wayland-client.h>
-#include "xdg-shell-client-protocol.h"
 
 /*
   Notes:
@@ -71,61 +69,17 @@
 #define TOPIC_CREATION  1001
 #define TOPIC_DETAIL    1002
 
-// Event codes of the neutral raw event
-#define FXXWL_EXPOSE    1                 // Repaint of a window rectangle
-
 using namespace FX;
 
 /*******************************************************************************/
 
 namespace FX {
 
-// Everything that belongs to the connection
-struct FXWaylandApp {
-  wl_display*       display;            // Connection to the compositor
-  wl_registry*      registry;           // Global registry
-  wl_compositor*    compositor;         // Surfaces and regions
-  wl_shm*           shm;                // Shared memory buffers
-  wl_seat*          seat;               // Input devices
-  wl_output*        output;             // First output
-  xdg_wm_base*      wmbase;             // Shell
-  FXbool            argb;               // ARGB8888 buffers are supported
-  FXbool            lost;               // Connection failed
-  FXWaylandEvent*   events;             // Queued neutral events
-  FXuint            eventcount;         // Number of queued events
-  FXuint            eventalloced;       // Allocated events
-  FXuint            eventhead;          // Index of the first queued event
-  };
-
-
-// The connection behind the display handle
-static inline FXWaylandApp* wapp(void* display){
-  return (FXWaylandApp*)display;
-  }
-
-
-// Append an event to the queue
-static void pushEvent(FXWaylandApp* app,const FXWaylandEvent& event){
-  FXuint count=app->eventcount-app->eventhead;
-  if(count==app->eventalloced){
-    FXuint cap=app->eventalloced?app->eventalloced*2:64;
-    if(app->eventhead){                                  // Compact first
-      memmove(app->events,app->events+app->eventhead,count*sizeof(FXWaylandEvent));
-      app->eventcount=count;
-      app->eventhead=0;
-      }
-    if(!resizeElms(app->events,cap)) return;
-    app->eventalloced=cap;
-    }
-  app->events[app->eventcount++]=event;
-  }
-
-
 /*******************************************************************************/
 
 // Registry: bind the globals we understand
 static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const char* interface,uint32_t version){
-  FXWaylandApp* app=wapp(data);
+  FXWaylandApp* app=fxwayland(data);
   FXTRACE(TOPIC_DETAIL,"registry global %s version %u name %u\n",interface,version,name);
   if(strcmp(interface,wl_compositor_interface.name)==0){
     app->compositor=(wl_compositor*)wl_registry_bind(registry,name,&wl_compositor_interface,FXMIN(version,4u));
@@ -163,7 +117,7 @@ static void wmBasePing(void*,xdg_wm_base* wmbase,uint32_t serial){
 
 // Shared memory: remember whether 32 bit ARGB is available
 static void shmFormat(void* data,wl_shm*,uint32_t format){
-  FXWaylandApp* app=wapp(data);
+  FXWaylandApp* app=fxwayland(data);
   if(format==WL_SHM_FORMAT_ARGB8888) app->argb=true;
   }
 
@@ -200,13 +154,14 @@ void FXApp::initPlatformMembers(){
   app->eventcount=0;
   app->eventalloced=0;
   app->eventhead=0;
+  app->surfaces=nullptr;
   display=app;
   }
 
 
 // Release platform members
 void FXApp::freePlatformMembers(){
-  FXWaylandApp* app=wapp(display);
+  FXWaylandApp* app=fxwayland(display);
   if(app){
     freeElms(app->events);
     delete app;
@@ -230,7 +185,7 @@ FXbool FXApp::parsePlatformArgument(int argc,char** argv,FXint& j,const FXchar*&
 
 // Open the connection to the compositor
 FXbool FXApp::openDisplay(const FXchar* dpy){
-  FXWaylandApp* app=wapp(display);
+  FXWaylandApp* app=fxwayland(display);
   FXTRACE(TOPIC_CREATION,"%s::openDisplay(%s)\n",getClassName(),dpy?dpy:"");
   if(!app) return false;
   if(app->display) return true;
@@ -262,7 +217,7 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
 
 // Close the connection to the compositor
 FXbool FXApp::closeDisplay(){
-  FXWaylandApp* app=wapp(display);
+  FXWaylandApp* app=fxwayland(display);
   if(!app) return false;
   FXTRACE(TOPIC_CREATION,"%s::closeDisplay\n",getClassName());
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
@@ -282,7 +237,7 @@ FXbool FXApp::closeDisplay(){
 
 // Get the next event for the shared event loop
 FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
-  FXWaylandApp* app=wapp(display);
+  FXWaylandApp* app=fxwayland(display);
   FXTime now,interval;
   FXint nfds;
   fd_set readfds;
@@ -467,7 +422,7 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
 
 // Dispatch a raw event
 FXbool FXApp::dispatchEvent(FXRawEvent& ev){
-  FXWaylandApp* app=wapp(display);
+  FXWaylandApp* app=fxwayland(display);
   FXWindow* window;
   FXEvent event;
   if(!app) return false;

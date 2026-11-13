@@ -15,7 +15,7 @@ else()
     list(APPEND FOX_LIB_SOURCES FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp FXDCWindow_x11.cpp FXDragCorner_x11.cpp FXFont_x11.cpp FXIcon_x11.cpp FXImage_x11.cpp FXMainWindow_x11.cpp FXPopup_x11.cpp FXRegion_x11.cpp FXRootWindow_x11.cpp FXStyle_x11.cpp FXToolTip_x11.cpp FXTopWindow_x11.cpp FXVisual_x11.cpp FXWindow_x11.cpp fxpriv_x11.cpp)
   elseif(FOX_PLATFORM STREQUAL "wayland")
     # Wayland modules; the set grows phase by phase, see docs/wayland-plan.md
-    list(APPEND FOX_LIB_SOURCES FXApp_wayland.cpp FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp fxplatform_wayland.cpp)
+    list(APPEND FOX_LIB_SOURCES FXApp_wayland.cpp FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp fxwayland.cpp fxplatform_wayland.cpp fxplatformwindow_wayland.cpp)
     # Client glue generated from the vendored protocol XML
     set(_fox_gen "${CMAKE_CURRENT_BINARY_DIR}/protocols")
     file(MAKE_DIRECTORY "${_fox_gen}")

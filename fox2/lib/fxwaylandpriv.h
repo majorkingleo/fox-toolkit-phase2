@@ -1,0 +1,115 @@
+/********************************************************************************
+*                                                                               *
+*            W a y l a n d   P l a t f o r m   P r i v a t e   D a t a          *
+*                                                                               *
+*********************************************************************************
+* Copyright (C) 2026 by Jeroen van der Zijp.   All Rights Reserved.             *
+*********************************************************************************
+* This library is free software; you can redistribute it and/or modify          *
+* it under the terms of the GNU Lesser General Public License as published by   *
+* the Free Software Foundation; either version 3 of the License, or             *
+* (at your option) any later version.                                           *
+*                                                                               *
+* This library is distributed in the hope that it will be useful,               *
+* but WITHOUT ANY WARRANTY; without even the implied warranty of                *
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                 *
+* GNU Lesser General Public License for more details.                           *
+*                                                                               *
+* You should have received a copy of the GNU Lesser General Public License      *
+* along with this program.  If not, see <http://www.gnu.org/licenses/>          *
+********************************************************************************/
+#ifndef FXWAYLANDPRIV_H
+#define FXWAYLANDPRIV_H
+
+
+////////////////////  DO NOT INCLUDE THIS PRIVATE HEADER FILE  //////////////////
+
+// Private data shared by the Wayland modules: the connection and everything
+// bound on it, the queue of neutral events, the virtual window table and the
+// surface of every shell.  Only FXApp_wayland.cpp and the window modules use
+// it; the public headers stay free of Wayland types.
+
+
+#include "fxdefs.h"
+#include "fxwinmap.h"
+
+#if defined(FOX_WAYLAND)
+
+#include <wayland-client.h>
+#include "xdg-shell-client-protocol.h"
+
+
+namespace FX {
+
+
+/// Codes of the neutral raw event
+enum {
+  FXXWL_NONE       = 0,         // No event
+  FXXWL_EXPOSE     = 1,         // Repaint a window rectangle
+  FXXWL_CONFIGURE  = 2,         // The compositor resized a shell
+  FXXWL_CLOSE      = 3,         // The compositor asked to close a shell
+  FXXWL_ENTER      = 4,         // Pointer entered a window
+  FXXWL_LEAVE      = 5,         // Pointer left a window
+  FXXWL_MOTION     = 6,         // Pointer moved
+  FXXWL_BUTTON     = 7,         // Pointer button pressed or released
+  FXXWL_KEY        = 8          // Key pressed or released
+  };
+
+
+/// The surface of one shell, and the buffers it draws into
+struct FXWaylandApp;
+
+struct FXWaylandSurface {
+  FXWaylandApp*              app;        // The connection
+  FXID                       window;     // Virtual window id of the shell
+  wl_surface*                surface;    // The surface itself
+  xdg_surface*               xdsurface;  // Shell surface role
+  xdg_toplevel*              toplevel;   // Toplevel role, for shells
+  xdg_popup*                 popup;      // Popup role, for popups
+  FXWaylandSurface*          next;       // Next surface
+  };
+
+
+/// Everything that belongs to the connection
+struct FXWaylandApp {
+  wl_display*       display;            // Connection to the compositor
+  wl_registry*      registry;           // Global registry
+  wl_compositor*    compositor;         // Surfaces and regions
+  wl_shm*           shm;                // Shared memory buffers
+  wl_seat*          seat;               // Input devices
+  wl_output*        output;             // First output
+  xdg_wm_base*      wmbase;             // Shell
+  FXbool            argb;               // ARGB8888 buffers are supported
+  FXbool            lost;               // Connection failed
+  FXWaylandEvent*   events;             // Queued neutral events
+  FXuint            eventcount;         // Number of queued events
+  FXuint            eventalloced;       // Allocated events
+  FXuint            eventhead;          // Index of the first queued event
+  FXWinMap          childmap;           // Virtual child windows
+  FXWaylandSurface* surfaces;           // Surfaces of the shells
+  };
+
+
+/// The connection behind the display handle
+inline FXWaylandApp* fxwayland(void* display){
+  return (FXWaylandApp*)display;
+  }
+
+
+/// Append an event to the queue
+void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event);
+
+/// Find the surface of a shell
+FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window);
+
+/// Create the surface of a shell; returns nullptr on failure
+FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool popup);
+
+/// Destroy the surface of a shell
+void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);
+
+}
+
+#endif
+
+#endif

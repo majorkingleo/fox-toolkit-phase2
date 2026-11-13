@@ -423,6 +423,20 @@ Done in this phase so far (the protocol files and the platform seam):
   parents, reparenting, the rejection of a reparent that would make a loop,
   subtree destruction, popup shells above a toplevel, and 200 random trees; all
   of it runs headless on every host.
+- `fxwaylandpriv.h` moved the connection out of the application module, so the
+  window modules share it: the bound globals, the event queue, the event codes
+  of the neutral raw event, the virtual window table and the list of shell
+  surfaces (surface, `xdg_surface`, `xdg_toplevel`, and the popup role later).
+  `fxwayland.cpp` holds what both sides need: queueing an event, finding,
+  creating and destroying a shell surface, and turning the shell's configure
+  and close requests into neutral events.
+- `fxplatformwindow_wayland.cpp` answers the window seam with the table: create
+  adds the row and, for a shell, its `wl_surface`/`xdg_surface`/`xdg_toplevel`;
+  destroy removes both; place, show, reparent and raise/lower only touch the
+  table. Attaching a foreign window is not a Wayland concept and does nothing;
+  the grabs are implicit in the protocols and come back in phase 6.
+- The library keeps 62 undefined platform symbols instead of 71; what is left
+  is `FXWindow` and the shell classes, `FXDragCorner` and `FXComposeContext`.
 
 ### Phase 5: window management
 
