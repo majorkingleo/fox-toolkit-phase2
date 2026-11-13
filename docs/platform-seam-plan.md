@@ -468,14 +468,28 @@ nothing else differs from the original bodies.
   DPI values. No example owns the clipboard or the selection, so the moved
   code is compile-checked only.
 
+## Seam 17: invalidation and scrolling
+
+Done. `update(x,y,w,h)`, `repaint(x,y,w,h)` and `scroll()` moved as whole members
+into the window platform modules. The clipping prologue of `update()` and
+`repaint()` is identical on both sides and is duplicated into each module; the
+parameterless `update()` and `repaint()` stay in `FXWindow.cpp`.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `InvalidateRect()`, `RedrawWindow()` with `RDW_UPDATENOW`, `ScrollWindowEx()` with `SW_INVALIDATE` |
+| X11 module | `FXWindow_x11.cpp`: `addRepaint()`/`removeRepaints()`/`scrollRepaints()` on the repaint list, and `scroll()` with `XSync()`, pending `Expose` events, `XCopyArea()` and the uncovered-area rectangles |
+| Portable core | `update()`, `repaint()` |
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. Every example paints through `update()`/`repaint()`, so these
+  paths run at startup on both backends; `scroll()` is compile-checked only.
+
 ## Next seams, in order
 
-1. **Invalidation and scrolling** (`FXWindow.cpp`). `update(x,y,w,h)`,
-   `repaint(x,y,w,h)` and `scroll()` carry `InvalidateRect()`/`RedrawWindow()`/
-   `ScrollWindowEx()` against `addRepaint()`/`removeRepaints()`/`XCopyArea()`;
-   the clipping prologue is identical on both sides and is duplicated into each
-   module.
-2. **Drag and drop** (`FXWindow.cpp`). `dropFinished()`, `beginDrag()`,
+1. **Drag and drop** (`FXWindow.cpp`). `dropFinished()`, `beginDrag()`,
    `handleDrag()` and `endDrag()` with the `XdndAction*` atoms against the
    Windows DND messages.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move

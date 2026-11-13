@@ -391,6 +391,70 @@ void FXWindow::clearDragRectangle() const {
   }
 
 
+// Update dirty rectangle
+void FXWindow::update(FXint x,FXint y,FXint w,FXint h) const {
+  if(xid){
+
+    // We toss out rectangles outside the visible area
+    if(x>=width || y>=height || x+w<=0 || y+h<=0) return;
+
+    // Intersect with the window
+    if(x<0){w+=x;x=0;}
+    if(y<0){h+=y;y=0;}
+    if(x+w>width){w=width-x;}
+    if(y+h>height){h=height-y;}
+
+    // Append the rectangle; it is a synthetic expose event!!
+    if(w>0 && h>0){
+      RECT r;
+      r.left=x;
+      r.top=y;
+      r.right=x+w;
+      r.bottom=y+h;
+      InvalidateRect((HWND)xid,&r,true);
+      }
+    }
+  }
+
+
+// If marked but not yet painted, paint the given area
+void FXWindow::repaint(FXint x,FXint y,FXint w,FXint h) const {
+  if(xid){
+
+    // We toss out rectangles outside the visible area
+    if(x>=width || y>=height || x+w<=0 || y+h<=0) return;
+
+    // Intersect with the window
+    if(x<0){w+=x;x=0;}
+    if(y<0){h+=y;y=0;}
+    if(x+w>width){w=width-x;}
+    if(y+h>height){h=height-y;}
+
+    if(w>0 && h>0){
+      RECT r;
+      r.left=x;
+      r.top=y;
+      r.right=x+w;
+      r.bottom=y+h;
+      RedrawWindow((HWND)xid,&r,nullptr,RDW_UPDATENOW);
+      }
+    }
+  }
+
+
+// Scroll rectangle x,y,w,h by a shift of dx,dy
+void FXWindow::scroll(FXint x,FXint y,FXint w,FXint h,FXint dx,FXint dy) const {
+  if(xid && 0<w && 0<h && (dx || dy)){
+    RECT rect;
+    rect.left=x;
+    rect.top=y;
+    rect.right=x+w;
+    rect.bottom=y+h;
+    ScrollWindowEx((HWND)xid,dx,dy,&rect,&rect,nullptr,nullptr,SW_INVALIDATE);
+    }
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){

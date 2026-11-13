@@ -491,6 +491,115 @@ void FXWindow::clearDragRectangle() const {
   }
 
 
+// Update dirty rectangle
+void FXWindow::update(FXint x,FXint y,FXint w,FXint h) const {
+  if(xid){
+
+    // We toss out rectangles outside the visible area
+    if(x>=width || y>=height || x+w<=0 || y+h<=0) return;
+
+    // Intersect with the window
+    if(x<0){w+=x;x=0;}
+    if(y<0){h+=y;y=0;}
+    if(x+w>width){w=width-x;}
+    if(y+h>height){h=height-y;}
+
+    // Append the rectangle; it is a synthetic expose event!!
+    if(w>0 && h>0){
+      getApp()->addRepaint(xid,x,y,w,h,true);
+      }
+    }
+  }
+
+
+// If marked but not yet painted, paint the given area
+void FXWindow::repaint(FXint x,FXint y,FXint w,FXint h) const {
+  if(xid){
+
+    // We toss out rectangles outside the visible area
+    if(x>=width || y>=height || x+w<=0 || y+h<=0) return;
+
+    // Intersect with the window
+    if(x<0){w+=x;x=0;}
+    if(y<0){h+=y;y=0;}
+    if(x+w>width){w=width-x;}
+    if(y+h>height){h=height-y;}
+
+    if(w>0 && h>0){
+      getApp()->removeRepaints(xid,x,y,w,h);
+      }
+    }
+  }
+
+
+// Scroll rectangle x,y,w,h by a shift of dx,dy
+void FXWindow::scroll(FXint x,FXint y,FXint w,FXint h,FXint dx,FXint dy) const {
+  if(xid && 0<w && 0<h && (dx || dy)){
+
+    // No overlap:- repaint the whole thing
+    if((w<=FXABS(dx)) || (h<=FXABS(dy))){
+      getApp()->addRepaint(xid,x,y,w,h,true);
+      }
+
+    // Has overlap, so blit contents and repaint the exposed parts
+    else{
+      FXint  tx,ty,fx,fy,ex,ey,ew,eh;
+      XEvent event;
+
+      // Force server to catch up
+      XSync((Display*)getApp()->getDisplay(),False);
+
+      // Pull any outstanding repaint events into our own repaint rectangle list
+      while(XCheckWindowEvent((Display*)getApp()->getDisplay(),xid,ExposureMask,&event)){
+        if(event.xany.type==NoExpose) continue;
+        getApp()->addRepaint(xid,event.xexpose.x,event.xexpose.y,event.xexpose.width,event.xexpose.height,false);
+        if(event.xgraphicsexpose.count==0) break;
+        }
+
+      // Scroll all repaint rectangles of this window by the dx,dy
+      getApp()->scrollRepaints(xid,dx,dy);
+
+      // Compute blitted area
+      if(dx>0){             // Content shifted right
+        fx=x;
+        tx=x+dx;
+        ex=x;
+        ew=dx;
+        }
+      else{                 // Content shifted left
+        fx=x-dx;
+        tx=x;
+        ex=x+w+dx;
+        ew=-dx;
+        }
+      if(dy>0){             // Content shifted down
+        fy=y;
+        ty=y+dy;
+        ey=y;
+        eh=dy;
+        }
+      else{                 // Content shifted up
+        fy=y-dy;
+        ty=y;
+        ey=y+h+dy;
+        eh=-dy;
+        }
+
+      // BLIT the contents
+      XCopyArea((Display*)getApp()->getDisplay(),xid,xid,(GC)visual->scrollgc,fx,fy,w-ew,h-eh,tx,ty);
+
+      // Post additional rectangles for the uncovered areas
+      if(dy){
+        getApp()->addRepaint(xid,x,ey,w,eh,true);
+        }
+      if(dx){
+        getApp()->addRepaint(xid,ex,y,ew,h,true);
+        }
+      }
+    }
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){
