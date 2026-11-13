@@ -33,6 +33,7 @@
 #include "FXSettings.h"
 #include "FXSystem.h"
 #include "FXDesktopSettings.h"
+#include "fxpriv.h"
 
 
 /*
@@ -100,38 +101,10 @@ static FXint kdeColorScheme(const FXString& config){
   }
 
 
-#if !defined(WIN32)
-
-// Ask gsettings; the command is only run when it is installed
-static FXint gsettingsColorScheme(){
-  FXString path=FXSystem::getEnvironment("PATH");
-  FXString result;
-  FXchar buffer[256];
-  FILE* pipe;
-  if(path.empty()) return SCHEME_UNKNOWN;
-  pipe=popen("gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null","r");
-  if(!pipe) return SCHEME_UNKNOWN;
-  while(std::fgets(buffer,sizeof(buffer),pipe)){
-    result.append(buffer);
-    }
-  pclose(pipe);
-  if(result.contains("prefer-dark")){
-    schemename="gsettings:color-scheme=prefer-dark";
-    return SCHEME_DARK;
-    }
-  if(result.contains("prefer-light")){
-    schemename="gsettings:color-scheme=prefer-light";
-    return SCHEME_LIGHT;
-    }
-  return SCHEME_UNKNOWN;
-  }
-
-#endif
-
-
 // Return the color scheme the desktop prefers
 FXint FXDesktopSettings::getColorScheme(){
   FXString value;
+  const FXchar* name;
   FXint scheme;
 
   // An explicit GTK theme name is the strongest hint
@@ -152,10 +125,8 @@ FXint FXDesktopSettings::getColorScheme(){
   if(scheme!=SCHEME_UNKNOWN) return scheme;
 
   // Finally ask the GNOME settings store, when it is available
-#if !defined(WIN32)
-  scheme=gsettingsColorScheme();
-  if(scheme!=SCHEME_UNKNOWN) return scheme;
-#endif
+  scheme=fxdesktopcolorscheme(name);
+  if(scheme!=SCHEME_UNKNOWN){ schemename=name; return scheme; }
 
   schemename="none";
   return SCHEME_UNKNOWN;

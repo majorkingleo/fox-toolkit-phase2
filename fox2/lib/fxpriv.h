@@ -26,6 +26,10 @@ namespace FX {
 // DND protocol version
 #define XDND_PROTOCOL_VERSION   5
 
+// Color scheme preferred by the desktop, from the platform specific source;
+// name receives a static description of the setting that decided the answer
+extern FXint fxdesktopcolorscheme(const FXchar*& name);
+
 
 #if defined(WIN32)  /////////////// Windows /////////////////////////////////////
 

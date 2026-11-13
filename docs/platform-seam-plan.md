@@ -1175,6 +1175,24 @@ rest of `FXDragCorner.cpp` is platform neutral.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXDragCorner.cpp`: only guard lines differ.
 
+## Seam 51: desktop settings
+
+Done. The GNOME `gsettings` probe was the only platform specific part of
+`FXDesktopSettings.cpp`, and it shared the file-local `schemename`. It is now
+`fxdesktopcolorscheme(const FXchar*& name)`, declared in `fxpriv.h`, defined in
+`FXDesktopSettings_x11.cpp` (runs `gsettings`) and `FXDesktopSettings_win32.cpp`
+(returns `SCHEME_UNKNOWN`). The probe returns a static description through
+`name`, and `getColorScheme()` stores it in `schemename` only when the probe
+decided the answer, so the diagnostic name is unchanged. The environment, GTK
+and KDE steps stay in the core file; the `#if !defined(WIN32)` guards are gone
+from it.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- No lossless check: the probe was adapted (out parameter instead of the file-local
+  `schemename`), not moved verbatim.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
