@@ -156,9 +156,7 @@ protected:
   FXint     resolution;         // Font resolution (DPI), 0 for the screen DC
   void     *font;               // Info about the font
 private:
-#ifdef WIN32
-  FXID      dc;
-#endif
+  void     *dc;                 // Dummy device context (Windows backend only)
 protected:
   FXFont();
   void* match(const FXString& wantfamily,const FXString& wantforge,FXuint wantsize,FXuint wantweight,FXuint wantslant,FXuint wantsetwidth,FXuint wantencoding,FXuint wanthints,FXint res);

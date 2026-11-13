@@ -1074,10 +1074,27 @@ recognises a platform test.
   from the platform guard lines.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 
+## Seam 43: font
+
+Done. `FXFont_win32.cpp` and `FXFont_x11.cpp` already held the font matching,
+metrics and listing code; what was left in `FXFont.cpp` were the four
+`#ifdef WIN32 dc=nullptr; #endif` initialisations in the constructors. The
+`dc` member (the dummy GDI device context) is now declared unconditionally in
+`FXFont.h` as `void *dc`, next to `font`, and the constructors initialise it on
+every platform. The X11 backend never reads it, so behavior is unchanged; each
+`FXFont` grows by one pointer there.
+
+The one `#if defined(WIN32)` still in `FXFont.cpp` sits inside a block comment
+(an old `drawText()` sketch) and is not compiled.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `FXFont` (5 platform references), `FXRootWindow`,
+   first: `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 

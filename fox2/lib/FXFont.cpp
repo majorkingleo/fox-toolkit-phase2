@@ -164,9 +164,7 @@ FXFont::FXFont(){
   angle=0;
   resolution=0;
   font=nullptr;
-#ifdef WIN32
   dc=nullptr;
-#endif
   }
 
 
@@ -188,9 +186,7 @@ FXFont::FXFont(FXApp* a,const FXString& string):FXId(a){
   angle=0;
   resolution=0;
   font=nullptr;
-#ifdef WIN32
   dc=nullptr;
-#endif
   setFont(string);
   }
 
@@ -213,9 +209,7 @@ FXFont::FXFont(FXApp* a,const FXString& face,FXuint size,FXuint weight,FXuint sl
   angle=0;
   resolution=0;
   font=nullptr;
-#ifdef WIN32
   dc=nullptr;
-#endif
   }
 
 
@@ -237,9 +231,7 @@ FXFont::FXFont(FXApp* a,const FXFontDesc& fontdesc):FXId(a),wantedName(fontdesc.
   angle=0;
   resolution=0;
   font=nullptr;
-#ifdef WIN32
   dc=nullptr;
-#endif
   }
 
 
