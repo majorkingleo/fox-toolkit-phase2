@@ -514,9 +514,16 @@ Done in this phase so far:
   size it is given instead of the size it asked for.
 - Decorations: `zxdg_decoration_manager_v1` is bound when the compositor
   offers it and every toplevel asks for the server side mode; KWin's virtual
-  backend answers `server side`, and the trace says so. Headless weston does
-  not offer the protocol at all, so there no decoration object is made and the
-  window stays usable — the client-side title bar for that case is still open.
+  backend answers `server side`, and the trace says so. Where the compositor
+  offers nothing — or answers client side — the client draws a **minimal title
+  bar** of its own: font height plus a small margin, the title on the left and
+  close, maximize and minimize on the right, painted by the rasterizer into the
+  store of the shell before every commit. The bar is part of the surface, so the
+  frame is the window plus the bar, the whole window tree is pushed down by it,
+  the pointer path subtracts it again, and a press inside the bar moves the
+  window (`xdg_toplevel.move`) or uses one of its buttons instead of reaching a
+  widget. The dumped file name carries the bar height (`window-2-83x52-bar26.ppm`)
+  so a test knows where the client area starts.
 - The drag corner asks the compositor for an interactive resize
   (`xdg_toplevel.resize` with the seat and the serial of the last pointer
   enter) and only falls back to tracking the drag itself when a compositor
@@ -624,7 +631,12 @@ Done in this phase so far:
   desktop's light/dark preference), collects the committed frame, and compares
   it pixel by pixel with `screenshots/tests/fox2/x11/hello.png`. It reports
   **0 differing pixels of 2158**; the stored X11 capture is two rows taller
-  because it was taken with the window edge included.
+  because it was taken with the window edge included. The gate runs against
+  headless weston for two reasons: it has no seat, so no window gets the
+  keyboard focus and the frame carries no focus rectangle — which is how the
+  X11 capture was taken, a focused frame adds 95 pixels of dashed rectangle —
+  and it offers no decorations, so the frame also carries the client side title
+  bar, which the comparison skips by the height in the file name.
   The other stored captures are not usable as references yet: `button.png` and
   `dpi.png` were taken with a different desktop theme, so their palette and
   their font metrics differ from a run with a private `HOME`. Capturing fresh
@@ -662,8 +674,14 @@ Done in this phase so far:
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the
   trace says `decoration of window 2 is server side`. With a compositor that
-  does not offer the protocol, no decoration object is made and the window is
-  still usable; drawing a client-side title bar is still open.
+  does not offer the protocol, no decoration object is made and the client draws
+  its own bar — `scripts/gate-wayland-csd.sh` checks that side.
+- **Client side decoration gate:** `scripts/gate-wayland-csd.sh` runs the
+  application against headless weston, which offers no decorations, and passes
+  when the frame carries a title bar of its own (`window-2-83x52-bar26.ppm`)
+  with ink in it: 211 of the 2158 bar pixels are the three buttons and the
+  shadow line. The frame is kept as
+  `screenshots/tests/fox2/wayland/csd.png`.
 - **Compositors:** WSLg/Weston (client-side decorations, no `xdg-decoration`)
   and KWin on the development machine (server-side decorations, all optional
   protocols). For scripted runs `scripts/run-fox2-wayland-headless.sh` starts a

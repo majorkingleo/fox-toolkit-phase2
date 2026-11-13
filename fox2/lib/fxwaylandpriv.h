@@ -31,6 +31,7 @@
 
 
 #include "fxdefs.h"
+#include "FXString.h"
 #include "fxwinmap.h"
 
 #if defined(FOX_WAYLAND)
@@ -89,6 +90,8 @@ struct FXWaylandSurface {
   xdg_popup*                 popup;      // Popup role, for popups
   zxdg_toplevel_decoration_v1* decoration;// Who draws the title bar
   FXWaylandSurface*          parent;     // Surface the popup hangs off
+  FXString                   btitle;     // Title shown in the client side bar
+  FXint                      barh;       // Height of that bar, 0 when the compositor draws it
   FXWaylandBuffer*           buffers;    // Buffer pool
   FXColor*                   store;      // Content of the shell window tree
   FXint                      storew;     // Size of the backing store
@@ -143,6 +146,7 @@ struct FXWaylandApp {
   FXint             screenwidth;        // Size of the first output
   FXint             screenheight;
   FXID              rootwindow;         // Id of the virtual root window
+  void*             foxapp;             // The FXApp, for fonts and colours
   FXbool            argb;               // ARGB8888 buffers are supported
   FXbool            lost;               // Connection failed
   FXWaylandEvent*   events;             // Queued neutral events
@@ -188,6 +192,18 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
 
 /// Ask the compositor to resize a toplevel with the corner under the pointer
 FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window);
+
+/// Title of a shell, as shown in a client side title bar
+void fxwaylandSetTitle(FXWaylandSurface* surf,const FXString& title);
+
+/// Height a client side title bar needs, from the font of the application
+FXint fxwaylandBarHeight(FXWaylandApp* app);
+
+/// Paint the client side title bar into the store of its shell
+void fxwaylandPaintBar(FXWaylandApp* app,FXWaylandSurface* surf);
+
+/// Handle a press inside the client side title bar; true when it was used
+FXbool fxwaylandBarPress(FXWaylandApp* app,FXWaylandSurface* surf,FXint x,FXint y);
 
 /// Destroy the surface of a shell
 void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);

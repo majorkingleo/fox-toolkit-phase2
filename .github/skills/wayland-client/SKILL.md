@@ -109,6 +109,14 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
   and the serial of the press.
 - **Hiding a window** means attaching a null buffer and committing; there is no
   unmap request.
+- **A toplevel surface is the whole window, decorations included.** With a
+  client side title bar the frame is the window plus the bar, so every window
+  offset and every pointer coordinate shifts by the bar height, and hit testing
+  has to keep points inside the bar with the shell instead of the widget below.
+- **Focus changes pixels.** A window with the keyboard focus draws its focus
+  rectangle, so two captures of the same window differ by it: a pixel gate has
+  to agree on whether the capture had focus (a compositor without a seat gives
+  no focus at all).
 - **Focus arrives from the compositor.** The client must focus its own initial
   widget when the keyboard enters a shell; the core has no other signal.
 

@@ -3,10 +3,16 @@
 # The phase 4 gate of docs/wayland-plan.md: hello paints the same pixels as it
 # does on X11.
 #
-# A private headless weston gets its own runtime directory, the application gets
-# a private HOME so that it reads the built-in "classic" theme instead of the
-# desktop's light/dark preference, and every committed buffer is dumped. The
-# dump is compared with the X11 screenshot, pixel by pixel.
+# The gate runs against headless weston for two reasons: it is the compositor
+# with no seat, so no window ever gets the keyboard focus and the frame has no
+# focus rectangle — which is how the X11 reference was captured — and it offers
+# no decorations, so the frame also exercises the client side title bar. The bar
+# height is part of the dumped file name and is skipped before comparing.
+#
+# The application gets a private HOME so that it reads the built-in "classic"
+# theme instead of the desktop's light/dark preference, and every committed
+# buffer is dumped. The dump is compared with the X11 screenshot, pixel by
+# pixel.
 #
 #   ./scripts/gate-wayland-hello.sh
 #   ./scripts/gate-wayland-hello.sh --save      also store the wayland screenshot
@@ -71,10 +77,7 @@ if [ ! -x "$BIN" ]; then
   echo "error: no binary at $BIN (build with FOX_WAYLAND_TARGET=all scripts/build-fox2-wayland.sh)" >&2
   exit 2
   fi
-if ! command -v weston >/dev/null 2>&1; then
-  echo "error: weston not found; install weston for the headless compositor" >&2
-  exit 2
-  fi
+command -v weston >/dev/null 2>&1 || { echo "error: weston not found; install weston for the headless compositor" >&2; exit 2; }
 if ! python3 -c 'import PIL' >/dev/null 2>&1; then
   echo "error: python3 with Pillow is needed to compare the frames" >&2
   exit 2
@@ -143,6 +146,16 @@ frame, ref = sys.argv[1], sys.argv[2]
 a = Image.open(frame).convert("RGB")
 b = Image.open(ref).convert("RGB")
 print(f"frame {a.width}x{a.height}  reference {b.width}x{b.height}")
+
+# A client side title bar is part of the frame; the dump name carries its
+# height, and the reference is the client area below it
+import re
+top = 0
+match = re.search(r"-bar(\d+)", frame)
+if match:
+    top = int(match.group(1))
+    print(f"note: {top} rows of client side title bar are skipped")
+    a = a.crop((0, top, a.width, a.height))
 w, h = min(a.width, b.width), min(a.height, b.height)
 pa, pb = a.load(), b.load()
 differing = 0

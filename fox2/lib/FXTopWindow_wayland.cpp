@@ -326,6 +326,7 @@ void FXTopWindow::settitle(){
   FXWaylandSurface* surf;
   if(!title.empty() && (surf=topSurface(getApp(),xid))!=nullptr && surf->toplevel){
     xdg_toplevel_set_title(surf->toplevel,title.text());
+    fxwaylandSetTitle(surf,title);
     }
   }
 

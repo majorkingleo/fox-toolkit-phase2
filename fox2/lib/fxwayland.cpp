@@ -26,6 +26,7 @@
 #include "FXSize.h"
 #include "FXPoint.h"
 #include "FXRectangle.h"
+#include "FXString.h"
 #include "fxwinmap.h"
 #include "fxwaylandpriv.h"
 
@@ -203,8 +204,14 @@ static const xdg_toplevel_listener toplevelListener={
 // for, and a compositor that refuses leaves the client to draw nothing yet
 static void decorationConfigure(void* data,zxdg_toplevel_decoration_v1*,uint32_t mode){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
+  FXint barh=(mode==ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE)?0:fxwaylandBarHeight(s->app);
   fxwaylandTrace("decoration of window %u is %s\n",(unsigned int)s->window,
                  mode==ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE?"server side":"client side");
+  if(s->barh!=barh){
+    s->barh=barh;
+    s->dirty=true;
+    fxwaylandExpose(s->app,s->window);
+    }
   }
 
 
@@ -224,6 +231,8 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->toplevel=nullptr;
   s->decoration=nullptr;
   s->parent=nullptr;
+  s->btitle.clear();
+  s->barh=0;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -246,13 +255,16 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
       xdg_toplevel_add_listener(s->toplevel,&toplevelListener,s);
 
       // Ask for the decorations the desktop draws; a compositor without the
-      // protocol draws none, which is still a usable window
+      // protocol gets a title bar from us instead
       if(app->decomanager){
         s->decoration=zxdg_decoration_manager_v1_get_toplevel_decoration(app->decomanager,s->toplevel);
         if(s->decoration){
           zxdg_toplevel_decoration_v1_add_listener(s->decoration,&decorationListener,s);
           zxdg_toplevel_decoration_v1_set_mode(s->decoration,ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
           }
+        }
+      else{
+        s->barh=fxwaylandBarHeight(app);
         }
       }
     }
@@ -312,6 +324,8 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->popup=nullptr;
   s->toplevel=nullptr;
   s->parent=parent;
+  s->btitle.clear();
+  s->barh=0;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -495,15 +509,19 @@ void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,F
   }
 
 
-// Write a committed buffer as PPM when FOX_WAYLAND_DUMP is set
+// Write a committed buffer as PPM when FOX_WAYLAND_DUMP is set; a client side
+// title bar is part of the name, so a test knows where the client area starts
 void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
   const FXchar* dir=getenv("FOX_WAYLAND_DUMP");
+  FXchar bar[32];
   FXchar path[512];
   FILE* fp;
   FXint x,y;
   FXColor c;
   if(!dir || !dir[0] || !buf) return;
-  snprintf(path,sizeof(path),"%s/window-%u-%dx%d.ppm",dir,(unsigned int)surf->window,buf->width,buf->height);
+  if(surf->barh>0) snprintf(bar,sizeof(bar),"-bar%d",surf->barh);
+  else bar[0]='\0';
+  snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s.ppm",dir,(unsigned int)surf->window,buf->width,buf->height,bar);
   if((fp=fopen(path,"wb"))==nullptr) return;
   fprintf(fp,"P6\n%d %d\n255\n",buf->width,buf->height);
   for(y=0; y<buf->height; y++){
@@ -575,16 +593,18 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   FXRectangle here;
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
 
-  // The store is as large as the shell; every window of the tree paints into
-  // it at its own place, which is why a window can be repainted on its own
+  // The store is as large as the shell, plus the client side title bar; every
+  // window of the tree paints into it at its own place, which is why a window
+  // can be repainted on its own
   shell=app->childmap.getGeometry(s->window);
-  if(!resizeStore(s,shell.w,shell.h)) return false;
+  if(!resizeStore(s,shell.w,shell.h+s->barh)) return false;
 
   // Origin of the window inside the shell; the table reports screen
-  // coordinates, so the place of the shell itself comes off again
+  // coordinates, so the place of the shell itself comes off again, and the bar
+  // pushes the whole tree down
   place=app->childmap.getGlobalGeometry(s->window);
   here=app->childmap.getGlobalGeometry(window);
-  pixels=s->store+(FXival)(here.y-place.y)*s->storew+(here.x-place.x);
+  pixels=s->store+(FXival)(here.y-place.y+s->barh)*s->storew+(here.x-place.x);
   stride=s->storew;
   s->dirty=true;
   fxwaylandTrace("bind window %u store %dx%d at %+d%+d pixels %p\n",(unsigned int)window,s->storew,s->storeh,here.x-place.x,here.y-place.y,pixels);
@@ -603,7 +623,9 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
       // Nothing is shown before the compositor configured the shell
       if(!s->configured) continue;
 
-      // A recycled buffer starts blank, so the whole store goes into it
+      // A recycled buffer starts blank, so the whole store goes into it; the
+      // client side title bar is painted into the store right before that
+      if(s->barh>0) fxwaylandPaintBar(app,s);
       if((b=fxwaylandAcquireBuffer(s,s->storew,s->storeh))!=nullptr){
         memcpy(b->pixels,s->store,(FXuval)s->storew*s->storeh*sizeof(FXColor));
         fxwaylandCommitBuffer(s,b,0,0,b->width,b->height);

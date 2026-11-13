@@ -77,11 +77,13 @@ FXWaylandSurface* fxwaylandSurfaceOf(FXWaylandApp* app,wl_surface* surface){
 
 
 // The window that is under a point of a shell, and the shell itself when the
-// point is not over any of its children
+// point is not over any of its children; the client side title bar belongs to
+// the shell, so nothing below it is under a point inside the bar
 static FXID hitWindow(FXWaylandApp* app,FXWaylandSurface* s,FXint x,FXint y){
   FXID id;
   if(!app || !s) return 0;
-  if((id=app->childmap.hitTest(x,y))==0) id=s->window;
+  if(y<s->barh) return s->window;
+  if((id=app->childmap.hitTest(x,y-s->barh))==0) id=s->window;
   return id;
   }
 

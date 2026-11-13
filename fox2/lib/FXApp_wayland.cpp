@@ -190,6 +190,7 @@ void FXApp::initPlatformMembers(){
   app->screenwidth=0;
   app->screenheight=0;
   app->rootwindow=0;
+  app->foxapp=this;
   app->pointer=nullptr;
   app->keyboard=nullptr;
   app->xkbcontext=nullptr;
@@ -518,6 +519,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   const FXTime milliseconds=1000000;
   FXWaylandApp* app=fxwayland(display);
   const FXWinEntry* entry;
+  FXWaylandSurface* shellsurface;
   FXWindow* window;
   FXWindow* ancestor;
   FXint rx,ry;
@@ -589,12 +591,19 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
     case FXXWL_BUTTON:
     case FXXWL_WHEEL:
       if((window=findWindowWithId(ev.id))==nullptr) return false;
+      shellsurface=fxwaylandShellSurface(app,ev.data[0]);
+
+      // A press inside the client side title bar moves the window or uses one
+      // of its buttons; nothing below the bar ever sees it
+      if(ev.code==FXXWL_BUTTON && ev.data[1] && shellsurface && fxwaylandBarPress(app,shellsurface,ev.x,ev.y)){
+        return true;
+        }
 
       // Screen position of the point; the compositor only tells us where it
-      // is inside the surface of the shell
+      // is inside the surface of the shell, which may start with a title bar
       if((entry=app->childmap.getEntry(ev.data[0]))!=nullptr){
         rx=entry->x+ev.x;
-        ry=entry->y+ev.y;
+        ry=entry->y+ev.y-(shellsurface?shellsurface->barh:0);
         }
       else{
         rx=ev.x;
