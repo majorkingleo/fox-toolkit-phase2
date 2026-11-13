@@ -1032,10 +1032,31 @@ declarations stay in the private `fxpriv.h`. The content is unchanged.
 - Fast builds on both backends; `hello`, `button` and `dpi` run. The X11 build
   no longer compiles the file.
 
+## Seam 41: style chrome
+
+Done. `FXStyle.cpp` keeps the constructor, destructor and all drawing that goes
+through `FXDCWindow`. The antialiased rounded rectangle path, which only exists
+on X11 with XRender, moved into `FXStyle_x11.cpp`: the `FXCornerMask` cache
+record, `invalidate()`, `buildCoverage()`, `compositeSolid()`, `hasXRender()`,
+`getMask()` and `drawRoundRect()`. `FXStyle_win32.cpp` holds the same members as
+stubs that clear the cache, report no XRender and return `false`/`nullptr`, so
+`drawButton()` falls back to the plain path exactly as before.
+
+The old `!defined(WIN32) && defined(HAVE_XRENDER_H)` tests were split: the X11
+module keeps `defined(HAVE_XRENDER_H)` (the feature test stays, the platform
+test is the module guard) and the Windows module resolves them to the false
+branch. The driver rewrites that condition per platform before resolving.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the rewritten `HAVE_XRENDER_H` conditions.
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `FXStyle` (6 platform references), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
+   first: `FXImage` (6 platform references), `FXFont` (5), `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 
