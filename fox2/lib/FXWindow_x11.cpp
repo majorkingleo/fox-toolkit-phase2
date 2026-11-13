@@ -222,6 +222,18 @@ void fxplatformDestroyWindow(void* display,FXID window,FXID shell,FXID colormap,
   }
 
 
+// X11 has no device context handles
+FXID FXWindow::GetDC() const {
+  return 0;
+  }
+
+
+// Nothing to release
+int FXWindow::ReleaseDC(FXID) const {
+  return 0;
+  }
+
+
 // X11 has no window classes
 const void* FXWindow::GetClass() const {
   return nullptr;

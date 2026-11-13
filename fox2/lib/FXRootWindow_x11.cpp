@@ -99,6 +99,19 @@ FXint FXRootWindow::getDefaultHeight(){
   return DisplayHeight(DISPLAY(getApp()),DefaultScreen(DISPLAY(getApp())));
   }
 
+
+
+// X11 has no device context handles
+FXID FXRootWindow::GetDC() const {
+  return 0;
+  }
+
+
+// Nothing to release
+int FXRootWindow::ReleaseDC(FXID) const {
+  return 0;
+  }
+
 }
 
 #endif

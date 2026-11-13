@@ -1127,6 +1127,19 @@ void FXImage::resize(FXint w,FXint h){
   height=h;
   }
 
+
+
+// X11 has no device context handles
+FXID FXImage::GetDC() const {
+  return 0;
+  }
+
+
+// Nothing to release
+int FXImage::ReleaseDC(FXID) const {
+  return 0;
+  }
+
 }
 
 #endif

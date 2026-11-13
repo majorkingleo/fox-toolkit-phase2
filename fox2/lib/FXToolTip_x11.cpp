@@ -77,6 +77,13 @@ void FXToolTip::place(FXint x,FXint y){
   position(px,py,w,h);
   }
 
+
+
+// X11 has no window classes
+const void* FXToolTip::GetClass() const {
+  return nullptr;
+  }
+
 }
 
 #endif

@@ -169,10 +169,8 @@ public:
 protected:
   virtual FXbool doesOverrideRedirect() const;
 protected:
-#if defined(WIN32)
   virtual FXID GetDC() const;
   virtual int ReleaseDC(FXID) const;
-#endif
   virtual const void* GetClass() const;
 protected:
   FXWindow();

@@ -33,10 +33,8 @@ class FXAPI FXRootWindow : public FXComposite {
   FXDECLARE(FXRootWindow)
 protected:
   FXRootWindow(){}
-#ifdef WIN32
   virtual FXID GetDC() const;
   virtual int ReleaseDC(FXID) const;
-#endif
 private:
   FXRootWindow(const FXRootWindow&);
   FXRootWindow &operator=(const FXRootWindow&);

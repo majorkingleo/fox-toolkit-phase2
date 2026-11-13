@@ -50,10 +50,8 @@ protected:
 private:
   FXDrawable(const FXDrawable&);
   FXDrawable &operator=(const FXDrawable&);
-#ifdef WIN32
-  virtual FXID GetDC() const { return nullptr; }
+  virtual FXID GetDC() const { return 0; }
   virtual int ReleaseDC(FXID) const { return 0; }
-#endif
 public:
 
   /// Get the visual

@@ -116,9 +116,7 @@ protected:
 private:
   FXTopWindow(const FXTopWindow&);
   FXTopWindow& operator=(const FXTopWindow&);
-#ifdef WIN32
   virtual const void* GetClass() const;
-#endif
 public:
   long onFocusUp(FXObject*,FXSelector,void*);
   long onFocusDown(FXObject*,FXSelector,void*);

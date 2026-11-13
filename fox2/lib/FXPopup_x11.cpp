@@ -81,6 +81,13 @@ void FXPopup::popup(FXWindow* grabto,FXint x,FXint y,FXint w,FXint h){
   if(!grabowner) grab();
   }
 
+
+
+// X11 has no window classes
+const void* FXPopup::GetClass() const {
+  return nullptr;
+  }
+
 }
 
 #endif

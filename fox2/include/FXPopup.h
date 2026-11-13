@@ -74,9 +74,7 @@ protected:
 private:
   FXPopup(const FXPopup&);
   FXPopup &operator=(const FXPopup&);
-#ifdef WIN32
   virtual const void* GetClass() const;
-#endif
 public:
   long onPaint(FXObject*,FXSelector,void*);
   long onFocusUp(FXObject*,FXSelector,void*);

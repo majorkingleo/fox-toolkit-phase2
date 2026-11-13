@@ -876,6 +876,13 @@ FXTopWindow::~FXTopWindow(){
   miniIcon=(FXIcon*)-1L;
   }
 
+
+
+// X11 has no window classes
+const void* FXTopWindow::GetClass() const {
+  return nullptr;
+  }
+
 }
 
 #endif

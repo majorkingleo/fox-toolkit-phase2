@@ -55,9 +55,7 @@ protected:
 private:
   FXToolTip(const FXToolTip&);
   FXToolTip& operator=(const FXToolTip&);
-#ifdef WIN32
   virtual const void* GetClass() const;
-#endif
 public:
   long onPaint(FXObject*,FXSelector,void*);
   long onUpdate(FXObject*,FXSelector,void*);

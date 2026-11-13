@@ -72,10 +72,9 @@ protected:
   FXColor *data;        // Pixel data
   FXuint   options;     // Options
 private:
-#ifdef WIN32
   virtual FXID GetDC() const;
   virtual int ReleaseDC(FXID) const;
-#else
+#if !defined(WIN32)
   void render_true_32(void *xim,FXuchar *img);
   void render_true_24(void *xim,FXuchar *img);
   void render_true_16_fast(void *xim,FXuchar *img);
