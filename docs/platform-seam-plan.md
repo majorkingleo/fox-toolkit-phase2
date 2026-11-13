@@ -411,14 +411,29 @@ members into the window platform modules.
 - Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
   DPI values.
 
+## Seam 14: window shape
+
+Done. The three `setShape()` overloads and `clearShape()` moved as whole members
+into the window platform modules; the Windows-only `makeregion()` helper moved
+with them as a `static` function.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `SetWindowRgn()` with a copied region, or one built from a bitmap or icon mask by `makeregion()` |
+| X11 module | `FXWindow_x11.cpp`: `XShapeCombineRegion()`/`XShapeCombineMask()` inside the `HAVE_XSHAPE_H` guard |
+| Portable core | nothing left; the argument checks are part of each member |
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. No example exercises shaped windows, so the new code is only
+  compile-checked.
+
 ## Next seams, in order
 
-1. **Window shape** (`FXWindow.cpp`). The three `setShape()` overloads,
-   `clearShape()` and the Windows-only `makeregion()` helper use
-   `SetWindowRgn()` or `XShapeCombine*()`; they move together, with the
-   `HAVE_XSHAPE_H` guard staying in the X11 module. After that the
-   `translateCoordinates*()` branches and the remaining `#ifdef WIN32` blocks in
-   `FXWindow.cpp` (focus, `setFocus`/`killFocus`, input method).
+1. **Coordinates and remaining window branches** (`FXWindow.cpp`). The
+   `translateCoordinates*()` members, then the `#ifdef WIN32` blocks in focus
+   handling and the input method. Take each member whole.
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,

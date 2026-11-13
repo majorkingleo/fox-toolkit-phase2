@@ -166,6 +166,73 @@ void fxplatformReleaseKeyboardGrab(void*,FXTime){
   }
 
 
+// Set window shape by means of region
+void FXWindow::setShape(const FXRegion& region){
+  if(xid){
+    // Make a copy so as to leave original region intact
+    HRGN rgn=CreateRectRgn(0,0,0,0);
+    CombineRgn(rgn,(HRGN)region.region,rgn,RGN_COPY);
+    SetWindowRgn((HWND)xid,rgn,false);
+    }
+  }
+
+
+// Builds a region from a bitmap
+static HRGN makeregion(HDC hdc,FXint w,FXint h){
+  const COLORREF clear=RGB(255,255,255);
+  HRGN shape,run;
+  FXint x,y,z;
+  shape=CreateRectRgn(0,0,0,0);
+  for(y=0; y<h; y++){
+    for(x=0; x<w; ){
+      while(x<w && GetPixel(hdc,x,y)==clear) ++x;
+      z=x;
+      while(x<w && GetPixel(hdc,x,y)!=clear) ++x;
+      if(z<x){
+        run=CreateRectRgn(z,y,x,y+1);
+        CombineRgn(shape,shape,run,RGN_OR);
+        DeleteObject(run);
+        }
+      }
+    }
+  return shape;
+  }
+
+
+// Set window shape by means of bitmap
+void FXWindow::setShape(FXBitmap* bitmap){
+  if(!bitmap || !bitmap->id()){ fxerror("%s::setShape: illegal bitmap specified.\n",getClassName()); }
+  if(xid){
+    HDC hdc=CreateCompatibleDC(nullptr);
+    SelectObject(hdc,bitmap->id());
+    HRGN rgn=makeregion(hdc,bitmap->getWidth(),bitmap->getHeight());
+    SetWindowRgn((HWND)xid,rgn,false);
+    DeleteDC(hdc);
+    }
+  }
+
+
+// Set window shape by means of bitmap
+void FXWindow::setShape(FXIcon* icon){
+  if(!icon || !icon->shape){ fxerror("%s::setShape: illegal icon specified.\n",getClassName()); }
+  if(xid){
+    HDC hdc=CreateCompatibleDC(nullptr);
+    SelectObject(hdc,icon->shape);
+    HRGN rgn=makeregion(hdc,icon->getWidth(),icon->getHeight());
+    SetWindowRgn((HWND)xid,rgn,false);
+    DeleteDC(hdc);
+    }
+  }
+
+
+// Clear window shape to default rectangle
+void FXWindow::clearShape(){
+  if(xid){
+    SetWindowRgn((HWND)xid,nullptr,false);
+    }
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){

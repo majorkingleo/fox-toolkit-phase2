@@ -297,6 +297,48 @@ void fxplatformReleaseKeyboardGrab(void* display,FXTime time){
   }
 
 
+// Set window shape by means of region
+void FXWindow::setShape(const FXRegion& region){
+  if(xid){
+#if defined(HAVE_XSHAPE_H)
+    XShapeCombineRegion((Display*)getApp()->getDisplay(),xid,ShapeBounding,0,0,(Region)region.region,ShapeSet);
+#endif
+    }
+  }
+
+
+// Set window shape by means of bitmap
+void FXWindow::setShape(FXBitmap* bitmap){
+  if(!bitmap || !bitmap->id()){ fxerror("%s::setShape: illegal bitmap specified.\n",getClassName()); }
+  if(xid){
+#if defined(HAVE_XSHAPE_H)
+    XShapeCombineMask((Display*)getApp()->getDisplay(),xid,ShapeBounding,0,0,bitmap->id(),ShapeSet);
+#endif
+    }
+  }
+
+
+// Set window shape by means of bitmap
+void FXWindow::setShape(FXIcon* icon){
+  if(!icon || !icon->shape){ fxerror("%s::setShape: illegal icon specified.\n",getClassName()); }
+  if(xid){
+#if defined(HAVE_XSHAPE_H)
+    XShapeCombineMask((Display*)getApp()->getDisplay(),xid,ShapeBounding,0,0,icon->shape,ShapeSet);
+#endif
+    }
+  }
+
+
+// Clear window shape to default rectangle
+void FXWindow::clearShape(){
+  if(xid){
+#if defined(HAVE_XSHAPE_H)
+    XShapeCombineMask((Display*)getApp()->getDisplay(),xid,ShapeBounding,0,0,None,ShapeSet);
+#endif
+    }
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){
