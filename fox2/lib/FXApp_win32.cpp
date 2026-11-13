@@ -1920,6 +1920,152 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   }
 
 
+
+
+// Initialize platform specific members
+void FXApp::initPlatformMembers(){
+
+  // DDE
+  ddeTargets=0;                           // Data exchange to get list of types
+  ddeAtom=0;                              // Data exchange atom
+  ddeDelete=0;                            // Data exchange delete request
+  ddeTypeList=nullptr;                    // Data types list available
+  ddeNumTypes=0;                          // Number of data types
+  ddeAction=DRAG_REJECT;                  // Drag and drop action requested
+  ansAction=DRAG_REJECT;                  // Drag and drop action suggested
+
+  // SELECTION
+  xselTypeList=nullptr;                   // List of primary selection types
+  xselNumTypes=0;                         // How many types in list
+
+  // XDND
+  xdndFinishPending=false;                // XDND waiting for drop-confirmation
+  xdndAware=0;                            // XDND awareness atom
+  xdndTypes=nullptr;
+  xdndSource=0;                           // XDND drag source window
+  xdndTarget=0;                           // XDND drop target window
+  xdndStatusPending=false;                // XDND waiting for status feedback
+  xdndStatusReceived=false;               // XDND received at least one status
+  xdndFinishSent=false;                   // XDND finish sent
+  xdndRect.x=0;                           // XDND motion rectangle
+  xdndRect.y=0;
+  xdndRect.w=0;
+  xdndRect.h=0;
+  }
+
+
+// Free platform specific members
+void FXApp::freePlatformMembers(){
+  freeElms(xselTypeList);
+  freeElms(ddeTypeList);
+  }
+
+
+// Default display name; Windows has no display name
+const FXchar* fxplatformDefaultDisplay(const FXchar* fallback){
+  return fallback;
+  }
+
+
+// Default font of the application
+const FXchar* fxplatformDefaultFont(){
+  return "helvetica,90";
+  }
+
+
+// Windows follows the monitor DPI by default
+const FXchar* fxplatformDefaultScale(){
+  return "auto";
+  }
+
+
+// No platform specific arguments
+FXbool FXApp::parsePlatformArgument(int,char**,FXint&,const FXchar*&,const FXchar*&){
+  return false;
+  }
+
+
+// Obtain system color and translate to FXColor
+static FXColor getSystemColor(FXuint which){
+  DWORD dwColor=GetSysColor(which);
+  return FXRGB(GetRValue(dwColor),GetGValue(dwColor),GetBValue(dwColor));
+  }
+
+
+// Obtain system font and translate to FXFontDesc
+static void getSystemFont(FXFontDesc& fontdesc){
+  NONCLIENTMETRICS ncm;
+  clearElms(&ncm,1);
+  ncm.cbSize=sizeof(NONCLIENTMETRICS);
+#if (WINVER >= 0x0600)                          // Fix from: Daniel Stine <robodanny@gmail.com>
+  OSVERSIONINFO osvi;                           // Adjust size based on operating system version
+  clearElms(&osvi,1);                           // So get run-time operating system version first
+  osvi.dwOSVersionInfoSize=sizeof(osvi);        // if headers include new member iPaddedBorderWidth
+  GetVersionEx(&osvi);                          // in NONCLIENTMETRICS struct
+  if(osvi.dwMajorVersion<6) ncm.cbSize-=sizeof(ncm.iPaddedBorderWidth);
+#endif
+  SystemParametersInfo(SPI_GETNONCLIENTMETRICS,sizeof(NONCLIENTMETRICS),&ncm,0);
+#if defined(UNICODE)
+  ncs2utf(fontdesc.face,ncm.lfMenuFont.lfFaceName,sizeof(fontdesc.face),LF_FACESIZE);
+#else
+  fxstrlcpy(fontdesc.face,ncm.lfMenuFont.lfFaceName,sizeof(fontdesc.face));
+#endif
+  fontdesc.face[sizeof(fontdesc.face)-1]='\0';
+  HDC hDC=CreateCompatibleDC(nullptr);
+  fontdesc.size=-10*MulDiv(ncm.lfMenuFont.lfHeight,72,GetDeviceCaps(hDC,LOGPIXELSY));
+  DeleteDC(hDC);
+  fontdesc.weight=(FXushort)ncm.lfMenuFont.lfWeight/10;
+  fontdesc.slant=ncm.lfMenuFont.lfItalic?FXFont::Italic:FXFont::Straight;
+  fontdesc.encoding=FONTENCODING_DEFAULT;
+  fontdesc.setwidth=0;
+  fontdesc.flags=0;
+  }
+
+
+
+
+// Obtain system settings
+void FXApp::initPlatformSettings(){
+
+  // Get font face and metrics
+  FXFontDesc fontdesc;
+  getSystemFont(fontdesc);
+  normalFont->setFontDesc(fontdesc);
+
+  // Read colors from system
+  baseColor=getSystemColor(COLOR_3DFACE);
+  hiliteColor=getSystemColor(COLOR_3DHILIGHT);
+  shadowColor=getSystemColor(COLOR_3DSHADOW);
+  backColor=getSystemColor(COLOR_WINDOW);
+  borderColor=getSystemColor(COLOR_WINDOWFRAME);
+  foreColor=getSystemColor(COLOR_BTNTEXT);
+  selforeColor=getSystemColor(COLOR_HIGHLIGHTTEXT);
+  selbackColor=getSystemColor(COLOR_HIGHLIGHT);
+  tipforeColor=getSystemColor(COLOR_INFOTEXT);
+  tipbackColor=getSystemColor(COLOR_INFOBK);
+
+  // Windows XP or later
+  OSVERSIONINFO osvi;
+  osvi.dwOSVersionInfoSize=sizeof(OSVERSIONINFO);
+  GetVersionEx((OSVERSIONINFO*)&osvi);
+
+  // Flat looking menus
+//  if((osvi.dwMajorVersion>5) || (osvi.dwMajorVersion==5 && osvi.dwMinorVersion>=1)){	// FIXME
+//    selMenuTextColor=getSystemColor(COLOR_HIGHLIGHT);
+//    selMenuBackColor=getSystemColor(COLOR_MENUHILIGHT);
+//    //selMenuBackColor=getSystemColor(COLOR_MENUTEXT);		// Menu text
+//    //selMenuBackColor=getSystemColor(COLOR_MENU);		// Menu background
+//    }
+//  else{
+    selMenuTextColor=getSystemColor(COLOR_HIGHLIGHTTEXT);
+    selMenuBackColor=getSystemColor(COLOR_HIGHLIGHT);
+//    }
+
+  // Get wheel lines
+  SystemParametersInfo(SPI_GETWHEELSCROLLLINES,0,&wheelLines,0);
+  }
+
+
 }
 
 #endif

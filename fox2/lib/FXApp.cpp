@@ -403,137 +403,7 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   root=new FXRootWindow(this,defaultVisual);
 
 
-#if defined(WIN32)      // MS-Windows specific inits
-
-  // DDE
-  ddeTargets=0;                           // Data exchange to get list of types
-  ddeAtom=0;                              // Data exchange atom
-  ddeDelete=0;                            // Data exchange delete request
-  ddeTypeList=nullptr;                    // Data types list available
-  ddeNumTypes=0;                          // Number of data types
-  ddeAction=DRAG_REJECT;                  // Drag and drop action requested
-  ansAction=DRAG_REJECT;                  // Drag and drop action suggested
-
-  // SELECTION
-  xselTypeList=nullptr;                   // List of primary selection types
-  xselNumTypes=0;                         // How many types in list
-
-  // XDND
-  xdndFinishPending=false;                // XDND waiting for drop-confirmation
-  xdndAware=0;                            // XDND awareness atom
-  xdndTypes=nullptr;
-  xdndSource=0;                           // XDND drag source window
-  xdndTarget=0;                           // XDND drop target window
-  xdndStatusPending=false;                // XDND waiting for status feedback
-  xdndStatusReceived=false;               // XDND received at least one status
-  xdndFinishSent=false;                   // XDND finish sent
-  xdndRect.x=0;                           // XDND motion rectangle
-  xdndRect.y=0;
-  xdndRect.w=0;
-  xdndRect.h=0;
-
-#else                   // X Window specific inits
-
-  wmDeleteWindow=0;                       // Window Manager stuff
-  wmSaveYourself=0;
-  wmQuitApp=0;
-  wmProtocols=0;
-  wmMotifHints=0;
-  wmTakeFocus=0;
-  wmClientMachine=0;
-  wmState=0;
-
-  wmNetState=0;
-  wmNetIconName=0;
-  wmNetWindowName=0;
-  wmNetSupported=0;                       // Extended Window Manager stuff
-  wmNetHidden=0;
-  wmNetShaded=0;
-  wmNetHMaximized=0;
-  wmNetVMaximized=0;
-  wmNetFullScreen=0;
-  wmNetBelowOthers=0;
-  wmNetAboveOthers=0;
-  wmNetNeedAttention=0;
-  wmNetActiveWindow=0;
-  wmNetMoveResize=0;
-  wmNetRestack=0;
-  wmNetPing=0;
-  wmNetProcessId=0;
-  wmNetWindowType=0;
-
-  wmWindowRole=0;                         // Window Role
-  wmClientLeader=0;                       // Client leader
-  wmClientId=0;                           // Session management id
-
-  embedAtom=0;                            // XEMBED support
-  embedInfoAtom=0;                        // XEMBED info support
-  timestampAtom=0;                        // Server time
-
-  // DDE
-  ddeTargets=0;                           // Data exchange to get list of types
-  ddeAtom=0;                              // Data exchange atom
-  ddeDelete=0;                            // Data exchange delete request
-  ddeTypeList=nullptr;                    // Data types list available
-  ddeNumTypes=0;                          // Number of data types
-  ddeAction=DRAG_REJECT;                  // Drag and drop action requested
-  ansAction=DRAG_REJECT;                  // Drag and drop action suggested
-
-  // CLIPBOARD
-  xcbSelection=0;                         // Clipboard selection atom
-  xcbTypeList=nullptr;                    // List of clipboard types
-  xcbNumTypes=0;                          // How many types clipped
-
-  // SELECTION
-  xselTypeList=nullptr;                   // List of primary selection types
-  xselNumTypes=0;                         // How many types in list
-
-  // XDND
-  xdndTypeList=nullptr;                   // List of XDND types
-  xdndNumTypes=0;                         // How many types in list
-  xdndProxy=0;                            // XDND proxy atom
-  xdndAware=0;                            // XDND awareness atom
-  xdndEnter=0;                            // XDND Message types
-  xdndLeave=0;
-  xdndPosition=0;
-  xdndStatus=0;
-  xdndDrop=0;
-  xdndFinished=0;
-  xdndSelection=0;
-
-  xdndTypes=0;                            // XDND type list atom
-  xdndActions=0;                          // XDND action list atom
-  xdndActionList[DRAG_REJECT]=0;          // XDND Reject
-  xdndActionList[DRAG_ASK]=0;             // XDND Ask action
-  xdndActionList[DRAG_COPY]=0;            // XDND Copy action
-  xdndActionList[DRAG_MOVE]=0;            // XDND Move action
-  xdndActionList[DRAG_LINK]=0;            // XDND Link action
-  xdndActionList[DRAG_PRIVATE]=0;         // XDND Private action
-
-  xdndSource=0;                           // XDND drag source window
-  xdndTarget=0;                           // XDND drop target window
-  xdndProxyTarget=0;                      // XDND window to set messages to
-  xdndStatusPending=false;                // XDND waiting for status feedback
-  xdndStatusReceived=false;               // XDND received at least one status
-  xdndWantUpdates=true;                   // XDND target always wants new positions
-  xdndFinishSent=false;                   // XDND finish sent
-  xdndRect.x=0;                           // XDND motion rectangle
-  xdndRect.y=0;
-  xdndRect.w=0;
-  xdndRect.h=0;
-  xrrScreenChange=0;                      // Xrandr event
-  xfxFixesSelection=0;                    // Xfixes event
-  xInputOpcode=0;                         // XInput2 Opcode
-  xsbDevice=0;                            // Space ball device
-  xim=nullptr;                            // Input method stuff
-
-  // Miscellaneous stuff
-  shmi=true;
-  shmp=true;
-  xrender=false;
-  synchronize=false;
-
-#endif
+  initPlatformMembers();
 
   // Timing constants
   typingSpeed=1000000000;
@@ -553,11 +423,7 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   scrollBarSize=15;
 
   // Make font
-#if defined(HAVE_XFT_H)
-  normalFont=new FXFont(this,"Sans,90");
-#else
-  normalFont=new FXFont(this,"helvetica,90");
-#endif
+  normalFont=new FXFont(this,fxplatformDefaultFont());
 
   // Theme font roles inherit the normal font until a theme names one
   clearElms(roleFonts,FONT_LAST);
@@ -1108,53 +974,11 @@ void FXApp::stopModal(FXint value){
   }
 
 
-// Obtain system color and translate to FXColor
-#if defined(WIN32)
-static FXColor getSystemColor(FXuint which){
-  DWORD dwColor=GetSysColor(which);
-  return FXRGB(GetRValue(dwColor),GetGValue(dwColor),GetBValue(dwColor));
-  }
-#endif
-
-
-// Obtain system font and translate to FXFontDesc
-#if defined(WIN32)
-static void getSystemFont(FXFontDesc& fontdesc){
-  NONCLIENTMETRICS ncm;
-  clearElms(&ncm,1);
-  ncm.cbSize=sizeof(NONCLIENTMETRICS);
-#if (WINVER >= 0x0600)                          // Fix from: Daniel Stine <robodanny@gmail.com>
-  OSVERSIONINFO osvi;                           // Adjust size based on operating system version
-  clearElms(&osvi,1);                           // So get run-time operating system version first
-  osvi.dwOSVersionInfoSize=sizeof(osvi);        // if headers include new member iPaddedBorderWidth
-  GetVersionEx(&osvi);                          // in NONCLIENTMETRICS struct
-  if(osvi.dwMajorVersion<6) ncm.cbSize-=sizeof(ncm.iPaddedBorderWidth);
-#endif
-  SystemParametersInfo(SPI_GETNONCLIENTMETRICS,sizeof(NONCLIENTMETRICS),&ncm,0);
-#if defined(UNICODE)
-  ncs2utf(fontdesc.face,ncm.lfMenuFont.lfFaceName,sizeof(fontdesc.face),LF_FACESIZE);
-#else
-  fxstrlcpy(fontdesc.face,ncm.lfMenuFont.lfFaceName,sizeof(fontdesc.face));
-#endif
-  fontdesc.face[sizeof(fontdesc.face)-1]='\0';
-  HDC hDC=CreateCompatibleDC(nullptr);
-  fontdesc.size=-10*MulDiv(ncm.lfMenuFont.lfHeight,72,GetDeviceCaps(hDC,LOGPIXELSY));
-  DeleteDC(hDC);
-  fontdesc.weight=(FXushort)ncm.lfMenuFont.lfWeight/10;
-  fontdesc.slant=ncm.lfMenuFont.lfItalic?FXFont::Italic:FXFont::Straight;
-  fontdesc.encoding=FONTENCODING_DEFAULT;
-  fontdesc.setwidth=0;
-  fontdesc.flags=0;
-  }
-#endif
-
-
 // Initialize application and optionally open display
 void FXApp::init(int& argc,char** argv,FXbool connect){
   const FXchar *fontspec=nullptr;
   const FXchar *istyle=nullptr;
   const FXchar *dpy=":0.0";
-  const FXchar *str=nullptr;
   FXuint maxcols=0;
   FXint i,j;
 
@@ -1187,9 +1011,7 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   setlocale(LC_NUMERIC,"C");
 
   // Try locate display
-#ifndef WIN32
-  if((str=getenv("DISPLAY"))!=nullptr) dpy=str;
-#endif
+  dpy=fxplatformDefaultDisplay(dpy);
 
   //fxisconsole(argv[0]);
 
@@ -1197,56 +1019,8 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   i=j=1;
   while(j<argc){
 
-#ifndef WIN32
-
-    // Start synchronized mode
-    if(FXString::compare(argv[j],"-sync")==0){
-      synchronize=true;
-      j++;
-      continue;
-      }
-
-    // Do not use X shared memory extension, even if available
-    if(FXString::compare(argv[j],"-noshm")==0){
-      shmi=false;
-      shmp=false;
-      j++;
-      continue;
-      }
-
-    // Force use X shared memory extension, if available
-    if(FXString::compare(argv[j],"-shm")==0){
-      shmi=true;
-      shmp=true;
-      j++;
-      continue;
-      }
-
-    // Alternative display
-    if(FXString::compare(argv[j],"-display")==0){
-      if(++j>=argc){ fxwarning("%s:init: missing argument for -display.\n",getClassName()); ::exit(1); }
-      dpy=argv[j];
-      j++;
-      continue;
-      }
-
-    // Set input method
-    if(FXString::compare(argv[j],"-im")==0){
-      if(++j>=argc){ fxwarning("%s:init: missing argument for -im.\n",getClassName()); ::exit(1); }
-      inputmethod=argv[j];
-      j++;
-      continue;
-      }
-
-    // Input style
-    if(FXString::compare(argv[j],"-is")==0){
-      if(++j>=argc){ fxwarning("%s:init: missing argument for -is.\n",getClassName()); ::exit(1); }
-      istyle=argv[j];
-      j++;
-      continue;
-      }
-
-#endif
+    // Platform specific arguments
+    if(parsePlatformArgument(argc,argv,j,dpy,istyle)) continue;
 
     // Set trace level
     if(FXString::compare(argv[j],"-tracelevel")==0){
@@ -1305,46 +1079,8 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   dpiawareness=fxplatformSetDPIAwareness(FXString(registry.readStringEntry("SETTINGS","dpiawareness","permonitorv2")));
   dpi=fxplatformGetSystemDPI();
 
-#if defined(WIN32)
-
-  // Get font face and metrics
-  FXFontDesc fontdesc;
-  getSystemFont(fontdesc);
-  normalFont->setFontDesc(fontdesc);
-
-  // Read colors from system
-  baseColor=getSystemColor(COLOR_3DFACE);
-  hiliteColor=getSystemColor(COLOR_3DHILIGHT);
-  shadowColor=getSystemColor(COLOR_3DSHADOW);
-  backColor=getSystemColor(COLOR_WINDOW);
-  borderColor=getSystemColor(COLOR_WINDOWFRAME);
-  foreColor=getSystemColor(COLOR_BTNTEXT);
-  selforeColor=getSystemColor(COLOR_HIGHLIGHTTEXT);
-  selbackColor=getSystemColor(COLOR_HIGHLIGHT);
-  tipforeColor=getSystemColor(COLOR_INFOTEXT);
-  tipbackColor=getSystemColor(COLOR_INFOBK);
-
-  // Windows XP or later
-  OSVERSIONINFO osvi;
-  osvi.dwOSVersionInfoSize=sizeof(OSVERSIONINFO);
-  GetVersionEx((OSVERSIONINFO*)&osvi);
-
-  // Flat looking menus
-//  if((osvi.dwMajorVersion>5) || (osvi.dwMajorVersion==5 && osvi.dwMinorVersion>=1)){	// FIXME
-//    selMenuTextColor=getSystemColor(COLOR_HIGHLIGHT);
-//    selMenuBackColor=getSystemColor(COLOR_MENUHILIGHT);
-//    //selMenuBackColor=getSystemColor(COLOR_MENUTEXT);		// Menu text
-//    //selMenuBackColor=getSystemColor(COLOR_MENU);		// Menu background
-//    }
-//  else{
-    selMenuTextColor=getSystemColor(COLOR_HIGHLIGHTTEXT);
-    selMenuBackColor=getSystemColor(COLOR_HIGHLIGHT);
-//    }
-
-  // Get wheel lines
-  SystemParametersInfo(SPI_GETWHEELSCROLLLINES,0,&wheelLines,0);
-
-#endif
+  // Read system settings
+  initPlatformSettings();
 
   // Parse font and change default font if set
   fontspec=registry.readStringEntry("SETTINGS","normalfont",nullptr);
@@ -1429,9 +1165,7 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   // Display scale: "auto" follows the monitor DPI, a number is a percentage.
   // The registry value overrides the scale defined by a theme file.
   const FXchar *scalespec=registry.readStringEntry("display","scale",nullptr);
-#if defined(WIN32)
-  if(scalespec==nullptr) scalespec="auto";
-#endif
+  if(scalespec==nullptr) scalespec=fxplatformDefaultScale();
   if(scalespec){
     if(FXString::comparecase(scalespec,"auto")==0){
       dpiautoscale=true;
@@ -2202,15 +1936,7 @@ FXApp::~FXApp(){
   ddeSize=0;
 
   // Free left-over selection type data
-#if defined(WIN32)
-  freeElms(xselTypeList);
-  freeElms(ddeTypeList);
-#else
-  freeElms(xselTypeList);
-  freeElms(xcbTypeList);
-  freeElms(xdndTypeList);
-  freeElms(ddeTypeList);
-#endif
+  freePlatformMembers();
 
   // Remove outstanding repaints
   while(repaints){

@@ -2429,6 +2429,201 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   }
 
 
+
+
+// Initialize platform specific members
+void FXApp::initPlatformMembers(){
+
+  wmDeleteWindow=0;                       // Window Manager stuff
+  wmSaveYourself=0;
+  wmQuitApp=0;
+  wmProtocols=0;
+  wmMotifHints=0;
+  wmTakeFocus=0;
+  wmClientMachine=0;
+  wmState=0;
+
+  wmNetState=0;
+  wmNetIconName=0;
+  wmNetWindowName=0;
+  wmNetSupported=0;                       // Extended Window Manager stuff
+  wmNetHidden=0;
+  wmNetShaded=0;
+  wmNetHMaximized=0;
+  wmNetVMaximized=0;
+  wmNetFullScreen=0;
+  wmNetBelowOthers=0;
+  wmNetAboveOthers=0;
+  wmNetNeedAttention=0;
+  wmNetActiveWindow=0;
+  wmNetMoveResize=0;
+  wmNetRestack=0;
+  wmNetPing=0;
+  wmNetProcessId=0;
+  wmNetWindowType=0;
+
+  wmWindowRole=0;                         // Window Role
+  wmClientLeader=0;                       // Client leader
+  wmClientId=0;                           // Session management id
+
+  embedAtom=0;                            // XEMBED support
+  embedInfoAtom=0;                        // XEMBED info support
+  timestampAtom=0;                        // Server time
+
+  // DDE
+  ddeTargets=0;                           // Data exchange to get list of types
+  ddeAtom=0;                              // Data exchange atom
+  ddeDelete=0;                            // Data exchange delete request
+  ddeTypeList=nullptr;                    // Data types list available
+  ddeNumTypes=0;                          // Number of data types
+  ddeAction=DRAG_REJECT;                  // Drag and drop action requested
+  ansAction=DRAG_REJECT;                  // Drag and drop action suggested
+
+  // CLIPBOARD
+  xcbSelection=0;                         // Clipboard selection atom
+  xcbTypeList=nullptr;                    // List of clipboard types
+  xcbNumTypes=0;                          // How many types clipped
+
+  // SELECTION
+  xselTypeList=nullptr;                   // List of primary selection types
+  xselNumTypes=0;                         // How many types in list
+
+  // XDND
+  xdndTypeList=nullptr;                   // List of XDND types
+  xdndNumTypes=0;                         // How many types in list
+  xdndProxy=0;                            // XDND proxy atom
+  xdndAware=0;                            // XDND awareness atom
+  xdndEnter=0;                            // XDND Message types
+  xdndLeave=0;
+  xdndPosition=0;
+  xdndStatus=0;
+  xdndDrop=0;
+  xdndFinished=0;
+  xdndSelection=0;
+
+  xdndTypes=0;                            // XDND type list atom
+  xdndActions=0;                          // XDND action list atom
+  xdndActionList[DRAG_REJECT]=0;          // XDND Reject
+  xdndActionList[DRAG_ASK]=0;             // XDND Ask action
+  xdndActionList[DRAG_COPY]=0;            // XDND Copy action
+  xdndActionList[DRAG_MOVE]=0;            // XDND Move action
+  xdndActionList[DRAG_LINK]=0;            // XDND Link action
+  xdndActionList[DRAG_PRIVATE]=0;         // XDND Private action
+
+  xdndSource=0;                           // XDND drag source window
+  xdndTarget=0;                           // XDND drop target window
+  xdndProxyTarget=0;                      // XDND window to set messages to
+  xdndStatusPending=false;                // XDND waiting for status feedback
+  xdndStatusReceived=false;               // XDND received at least one status
+  xdndWantUpdates=true;                   // XDND target always wants new positions
+  xdndFinishSent=false;                   // XDND finish sent
+  xdndRect.x=0;                           // XDND motion rectangle
+  xdndRect.y=0;
+  xdndRect.w=0;
+  xdndRect.h=0;
+  xrrScreenChange=0;                      // Xrandr event
+  xfxFixesSelection=0;                    // Xfixes event
+  xInputOpcode=0;                         // XInput2 Opcode
+  xsbDevice=0;                            // Space ball device
+  xim=nullptr;                            // Input method stuff
+
+  // Miscellaneous stuff
+  shmi=true;
+  shmp=true;
+  xrender=false;
+  synchronize=false;
+  }
+
+
+// Free platform specific members
+void FXApp::freePlatformMembers(){
+  freeElms(xselTypeList);
+  freeElms(xcbTypeList);
+  freeElms(xdndTypeList);
+  freeElms(ddeTypeList);
+  }
+
+
+// X11 has no system settings to read before the display is opened
+void FXApp::initPlatformSettings(){
+  }
+
+
+// Default display name from the environment
+const FXchar* fxplatformDefaultDisplay(const FXchar* fallback){
+  const FXchar* str=getenv("DISPLAY");
+  return str?str:fallback;
+  }
+
+
+// Default font of the application
+const FXchar* fxplatformDefaultFont(){
+#if defined(HAVE_XFT_H)
+  return "Sans,90";
+#else
+  return "helvetica,90";
+#endif
+  }
+
+
+// X11 has no system DPI, so the scale is only set when configured
+const FXchar* fxplatformDefaultScale(){
+  return nullptr;
+  }
+
+
+// Parse X11 specific arguments; return true if the argument at j was consumed
+FXbool FXApp::parsePlatformArgument(int argc,char** argv,FXint& j,const FXchar*& dpy,const FXchar*& istyle){
+  // Start synchronized mode
+  if(FXString::compare(argv[j],"-sync")==0){
+    synchronize=true;
+    j++;
+    return true;
+    }
+
+  // Do not use X shared memory extension, even if available
+  if(FXString::compare(argv[j],"-noshm")==0){
+    shmi=false;
+    shmp=false;
+    j++;
+    return true;
+    }
+
+  // Force use X shared memory extension, if available
+  if(FXString::compare(argv[j],"-shm")==0){
+    shmi=true;
+    shmp=true;
+    j++;
+    return true;
+    }
+
+  // Alternative display
+  if(FXString::compare(argv[j],"-display")==0){
+    if(++j>=argc){ fxwarning("%s:init: missing argument for -display.\n",getClassName()); ::exit(1); }
+    dpy=argv[j];
+    j++;
+    return true;
+    }
+
+  // Set input method
+  if(FXString::compare(argv[j],"-im")==0){
+    if(++j>=argc){ fxwarning("%s:init: missing argument for -im.\n",getClassName()); ::exit(1); }
+    inputmethod=argv[j];
+    j++;
+    return true;
+    }
+
+  // Input style
+  if(FXString::compare(argv[j],"-is")==0){
+    if(++j>=argc){ fxwarning("%s:init: missing argument for -is.\n",getClassName()); ::exit(1); }
+    istyle=argv[j];
+    j++;
+    return true;
+    }
+  return false;
+  }
+
+
 }
 
 #endif

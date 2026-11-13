@@ -394,6 +394,10 @@ private:
   void dragdropGetTypes(const FXWindow* window,FXDragType*& types,FXuint& numtypes);
   void openInputDevices();
   void closeInputDevices();
+  void initPlatformMembers();
+  void freePlatformMembers();
+  void initPlatformSettings();
+  FXbool parsePlatformArgument(int argc,char** argv,FXint& j,const FXchar*& dpy,const FXchar*& istyle);
   FXdouble getFontScale() const;
   void applyFontScale();
   void setThemeScale(FXdouble scale);

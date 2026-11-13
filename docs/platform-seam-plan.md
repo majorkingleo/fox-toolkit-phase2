@@ -613,14 +613,35 @@ Done. The display connection, input device handling and X error plumbing left
   XInput2 and XRandR paths are only compiled where the headers exist; the WSL
   image has none of them.
 
+## Seam 23: remaining app branches
+
+Done. `FXApp.cpp` no longer contains a live platform branch; the only
+`#ifdef WIN32` left is inside the long-dead `#if 0` `getForegroundWindow()`.
+The branches became four private members and three internal functions, so the
+public header gained only declarations without platform types. Scratch script:
+`tmp/split-app-init.py`.
+
+| Part | Location |
+| --- | --- |
+| Private members (`FXApp.h`) | `initPlatformMembers()` (constructor inits of the DDE, selection, XDND, window manager and Xlib members), `freePlatformMembers()` (destructor type lists), `initPlatformSettings()` and `parsePlatformArgument()` (command line switches of `init()`) |
+| Internal functions (`fxplatform.h`) | `fxplatformDefaultDisplay()` (the `DISPLAY` lookup), `fxplatformDefaultFont()` (`Sans,90` with Xft, else `helvetica,90`), `fxplatformDefaultScale()` (`"auto"` on Windows, none on X11) |
+| Windows module | `FXApp_win32.cpp`: the member inits, `getSystemColor()` and `getSystemFont()`, and `initPlatformSettings()` reading the system font, colors and wheel lines; `parsePlatformArgument()` accepts nothing |
+| X11 module | `FXApp_x11.cpp`: the member inits, the `-sync`, `-noshm`, `-shm`, `-display`, `-im` and `-is` switches; `initPlatformSettings()` is empty |
+| Portable core | the rest of `init()`, the constructor and the destructor |
+
+### Verification
+
+- The removed lines of `FXApp.cpp` equal the added lines of the two modules
+  apart from the guards, the dedented argument blocks and the five replaced
+  one-liners.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. The Win32 system colors and font are read at startup.
+
 ## Next seams, in order
 
-1. **Remaining `FXApp.cpp` branches**: the constructor inits, the
-   `getSystemColor()`/`getSystemFont()` helpers, the four branches in
-   `init()`, `getForegroundWindow()`, `stopModal()` and the destructor.
-2. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
+1. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
    `FXIODevice`). Large but self-contained; split only when a feature needs it.
-3. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.

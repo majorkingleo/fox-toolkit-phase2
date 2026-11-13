@@ -51,6 +51,18 @@ extern FXint fxplatformGetSystemDPI();
 extern FXint fxplatformGetWindowDPI(FXID window);
 
 
+/// Return the display name to connect to, or the fallback if the platform has none.
+extern const FXchar* fxplatformDefaultDisplay(const FXchar* fallback);
+
+
+/// Return the font specification used before any setting is read.
+extern const FXchar* fxplatformDefaultFont();
+
+
+/// Return the display scale used when none is configured, or nullptr for none.
+extern const FXchar* fxplatformDefaultScale();
+
+
 }
 
 #endif
