@@ -45,6 +45,9 @@
 namespace FX {
 
 
+class FXGlyphs;
+
+
 /// Software rasterizer for FXDC's platform neutral drawing primitives
 class FXAPI FXRaster {
 private:
@@ -86,6 +89,7 @@ private:
   FXint           stipbytew;    // Stipple bytes per row
   FXint           stx;          // Stipple origin x
   FXint           sty;          // Stipple origin y
+  FXGlyphs*       font;         // Glyph cache or nullptr
 private:
   FXRaster(const FXRaster&);
   FXRaster& operator=(const FXRaster&);
@@ -93,6 +97,7 @@ private:
   FXbool stipBit(FXint x,FXint y) const;
   void plot(FXint x,FXint y,FXColor src);
   void plotStyled(FXint x,FXint y);
+  void blend(FXint x,FXint y,FXuint cov);
   void span(FXint y,FXint x1,FXint x2);
   void plotLine(FXint x1,FXint y1,FXint x2,FXint y2,FXuint& dashindex,FXuint& dashremain,FXbool& dashon,FXbool skipfirst);
   void wideLine(FXint x1,FXint y1,FXint x2,FXint y2);
@@ -193,6 +198,12 @@ public:
   /// Draw focus rectangle
   void drawFocusRectangle(FXint x,FXint y,FXint w,FXint h);
 
+  /// Draw UTF-8 text with the baseline at x,y
+  void drawText(FXint x,FXint y,const FXchar* text,FXint len=-1);
+
+  /// Draw UTF-8 text over a filled background
+  void drawImageText(FXint x,FXint y,const FXchar* text,FXint len=-1);
+
   /// Draw area from image
   void drawArea(const FXImage* source,FXint sx,FXint sy,FXint sw,FXint sh,FXint dx,FXint dy);
   void drawArea(const FXImage* source,FXint sx,FXint sy,FXint sw,FXint sh,FXint dx,FXint dy,FXint dw,FXint dh);
@@ -201,6 +212,12 @@ public:
   void drawImage(const FXImage* image,FXint dx,FXint dy);
   void drawBitmap(const FXBitmap* bitmap,FXint dx,FXint dy);
   void drawIcon(const FXIcon* icon,FXint dx,FXint dy);
+
+  /// Set the glyph cache used by the text calls
+  void setGlyphs(FXGlyphs* glyphs);
+
+  /// Get the glyph cache
+  FXGlyphs* getGlyphs() const;
 
   /// Set foreground drawing color
   void setForeground(FXColor clr);

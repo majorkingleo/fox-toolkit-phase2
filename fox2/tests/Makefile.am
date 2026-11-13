@@ -12,7 +12,7 @@ dpi_SOURCES = dpi.cpp
 raster_SOURCES = raster.cpp
 noinst_PROGRAMS += raster
 
-noinst_PROGRAMS += codecs dictest expression format half match math memmap minheritance parallel process region rex scan thread timefmt unicode units variant xml
+noinst_PROGRAMS += codecs dictest expression format glyphs half match math memmap minheritance parallel process region rex scan thread timefmt unicode units variant xml
 
 # The rasterizer test also uses the private fxraster.h in ../lib
 AM_CPPFLAGS = -I$(top_srcdir)/lib
@@ -21,6 +21,7 @@ codecs_SOURCES = codecs.cpp
 dictest_SOURCES = dictest.cpp
 expression_SOURCES = expression.cpp
 format_SOURCES = format.cpp
+glyphs_SOURCES = glyphs.cpp
 half_SOURCES = half.cpp
 match_SOURCES = match.cpp
 math_SOURCES = math.cpp

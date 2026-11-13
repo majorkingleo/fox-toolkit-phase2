@@ -180,7 +180,7 @@ Done in this phase so far:
 - The 17 dither and 6 hatch bitmaps moved out of `FXApp_x11.cpp` into the
   private header `fxstipples.h`, shared by the X11 module and the rasterizer;
   the bitmaps were compared byte for byte with the originals.
-- `tests/raster` draws a 5x6 cell scene, one primitive per cell, with
+- `tests/raster` draws a 4x8 cell scene, one primitive per cell, with
   `FXRaster` and — on the X11 build and with a display — with `FXDCWindow`
   into an `FXImage`, then compares both buffers cell by cell, writes
   `raster.ppm`, `x11.ppm` and `diff.ppm`, and exits non-zero when a cell is
@@ -199,16 +199,16 @@ Done in this phase so far:
   grid: every operation is applied to both and every pixel is compared, plus
   the bounding boxes, a rectangle query, the canonical form (the same pixel set
   built two ways compares equal) and 200 pseudo random operations.
-- The same scene run under Wine (`raster.exe --raster-only`) writes a byte
-  identical `raster.ppm` as on Linux, so the rasterizer is host independent.
-  The Win32 platform has no comparison path yet; the test reports
-  `no drawable platform in this build` there.
+- The same scene run under Wine (`raster.exe --raster-only`) matches the Linux
+  one pixel for pixel outside the two text cells, which stay empty on Win32
+  because that build has no FreeType. The Win32 platform has no comparison path
+  yet; the test reports `no drawable platform in this build` there.
 - `scripts/build-fox2-wayland.sh --check` reports the build prerequisites
   (Wayland client library, `libxkbcommon`, `wayland-scanner`, compositor
   socket).
 
-Measured against the X11 build on 2026-11-13 (CachyOS, 64x64 cells): 805 of
-122880 pixels differ, 0.65%, all of them in the cells below.
+Measured against the X11 build on 2026-11-13 (CachyOS, 64x64 cells, 32 cells):
+1775 of 131072 pixels differ, 1.35%, all of them in the cells below.
 
 | cell | differing | of | reason |
 | --- | --- | --- | --- |
@@ -226,6 +226,8 @@ Measured against the X11 build on 2026-11-13 (CachyOS, 64x64 cells): 805 of
 | fillellipse | 63 | 4096 | the boundary only |
 | polygon, concave | 40 | 4096 | centre rule vs the X11 shape rule |
 | complex, winding | 66 | 4096 | same, with the even-odd and winding rules |
+| text | 406 | 4096 | FreeType coverage vs XRender component alpha |
+| imagetext | 564 | 4096 | same, including the background rectangle |
 
 Deviations, all on the one pixel outline unless noted:
 
@@ -238,6 +240,11 @@ Deviations, all on the one pixel outline unless noted:
   line, whereas the X11 server clips the whole stroke to the dash pattern.
 - Polygon fills cross the scan line at the pixel centres, the X11 shape rule
   includes a slightly different set of edge pixels.
+- Text is composited from the FreeType coverage bitmap at full colour; Xft goes
+  through XRender with component alpha, so the antialiased edge pixels carry
+  slightly different values while the glyph shapes, their positions and every
+  advance agree exactly (406 and 564 of 4096 pixels, all on glyph edges, and no
+  delta in the metrics - see `tests/glyphs`).
 - `fillVerticalGradient` and `fillHorizontalGradient` restore the previous
   foreground colour; the X11 module leaves the last gradient colour set, which
   is not reproduced.
@@ -261,6 +268,33 @@ Deviations, all on the one pixel outline unless noted:
 - Acceptance: `tests/raster` text scene has the same extents as the X11 build
   for the same font spec (metrics equal; pixels may differ by hinting and
   subpixel settings, which are read from fontconfig the way Xft does).
+
+Done in this phase so far (the glyph cache and rasterizer text; the
+`FXFont_wayland.cpp` wrapper belongs to the Wayland build of phase 4):
+
+- `fxglyphs.h` and `FXGlyphs.cpp`: fontconfig matches the font with the same
+  pattern the Xft path in `FXFont_x11.cpp` builds, FreeType loads the file that
+  match names and sizes it the way Xft sizes it. The cache holds, per character,
+  the advance, the left bearing, the bitmap position and the 8-bit coverage; it
+  also reports ascent, descent, height and the widest advance, and measures UTF-8
+  strings and finds the character at a pixel position.
+- FreeType and fontconfig are optional: the build defines `HAVE_XFT_H` when it
+  finds them, which is also what the Xft path needs. Without them the class
+  keeps its interface and `open()` fails, so the Win32 build still links and
+  simply has no text.
+- `FXRaster::drawText` composites the coverage bitmap with the foreground
+  colour, honouring the clip rectangle, the clip region and the clip mask;
+  `drawImageText` fills the text box with the background first, as
+  `XftDrawRect` does before the string.
+- `tests/glyphs` compares the cache with `FXFont` (Xft) for the same
+  description at the same resolution. On 2026-11-13 with "sans" 10 pt at
+  100 dpi (Noto Sans) the deltas are 0 for ascent, descent, height, max advance
+  and for the width of six strings, so the layout will match the X11 build.
+- The two text cells of `tests/raster` show the same glyphs at the same
+  positions with the same advances; only the antialiased edge pixels differ,
+  because Xft composites through XRender and the rasterizer blends coverage
+  itself.
+
 
 ### Phase 3: resources
 
@@ -390,6 +424,9 @@ Deviations, all on the one pixel outline unless noted:
   `screenshots/tests/fox2/raster/raster.png`.
 - **Region gate (phase 1):** `tests/region` needs no display and runs on every
   host; it fails when the span algebra differs from the pixel model.
+- **Text gate (phase 2):** `tests/glyphs` runs on every host; on X11 it compares
+  the metrics and the string widths of the glyph cache with Xft and fails on a
+  difference of more than one pixel.
 - **Pixel gate:** phases 1 to 4 compare dumped buffers with X11 screenshots of
   the same widget tree and theme; each difference is either fixed or recorded
   with a reason.

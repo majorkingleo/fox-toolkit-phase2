@@ -32,6 +32,8 @@
 #include "FXIcon.h"
 #include "FXRegion.h"
 #include "FXDC.h"
+#include "FXString.h"
+#include "fxglyphs.h"
 #include "fxstipples.h"
 #include "fxraster.h"
 
@@ -152,6 +154,7 @@ FXRaster::FXRaster(){
   stipwidth=0;
   stipheight=0;
   stipbytew=0;
+  font=nullptr;
   fg=0xff000000u;
   bg=0xffffffffu;
   linewidth=0;
@@ -1076,6 +1079,78 @@ void FXRaster::drawFocusRectangle(FXint x,FXint y,FXint w,FXint h){
 
 /*******************************************************************************/
 
+// Blend a glyph coverage value over the target pixel
+void FXRaster::blend(FXint x,FXint y,FXuint cov){
+  FXColor* p;
+  FXColor d;
+  FXuint inv;
+  if(!inClip(x,y) || cov==0) return;
+  p=target+y*tstride+x;
+  if(cov>=255){
+    *p=fg|0xff000000u;
+    return;
+    }
+  d=*p;
+  inv=255-cov;
+  *p=0xff000000u|FXRGB((FXREDVAL(fg)*cov+FXREDVAL(d)*inv+127)/255,
+                       (FXGREENVAL(fg)*cov+FXGREENVAL(d)*inv+127)/255,
+                       (FXBLUEVAL(fg)*cov+FXBLUEVAL(d)*inv+127)/255);
+  }
+
+
+#if defined(FOX_GLYPHS_AVAILABLE)
+
+// Draw UTF-8 text with the baseline at x,y
+void FXRaster::drawText(FXint x,FXint y,const FXchar* text,FXint len){
+  const FXGlyph* glyph;
+  FXint p=0,xx,yy;
+  if(!font || !text) return;
+  if(len<0){ len=0; while(text[len]) len++; }
+  while(p<len){
+    glyph=font->getGlyph(fxutf8decode(text,len,p));
+    if(!glyph) break;
+    if(glyph->coverage){
+      for(yy=0; yy<glyph->height; yy++){
+        for(xx=0; xx<glyph->width; xx++){
+          blend(x+glyph->bearing+xx,y-glyph->top+yy,glyph->coverage[yy*glyph->width+xx]);
+          }
+        }
+      }
+    x+=glyph->advance;
+    }
+  }
+
+
+// Draw UTF-8 text over a filled background, as XftDrawRect plus the string
+void FXRaster::drawImageText(FXint x,FXint y,const FXchar* text,FXint len){
+  FXColor oldfg;
+  FXint width;
+  if(!font || !text) return;
+  if(len<0){ len=0; while(text[len]) len++; }
+  width=font->getTextWidth(text,len);
+  oldfg=fg;
+  fg=bg;
+  fillFgRectangle(x,y-font->getAscent(),width,font->getHeight());
+  fg=oldfg;
+  drawText(x,y,text,len);
+  }
+
+#else
+
+// Draw UTF-8 text with the baseline at x,y
+void FXRaster::drawText(FXint,FXint,const FXchar*,FXint){
+  }
+
+
+// Draw UTF-8 text over a filled background
+void FXRaster::drawImageText(FXint,FXint,const FXchar*,FXint){
+  }
+
+#endif
+
+
+/*******************************************************************************/
+
 // Draw area from image
 void FXRaster::drawArea(const FXImage* source,FXint sx,FXint sy,FXint sw,FXint sh,FXint dx,FXint dy){
   const FXColor* src;
@@ -1188,12 +1263,22 @@ void FXRaster::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
 
 /*******************************************************************************/
 
+// Set the glyph cache used by the text calls
+void FXRaster::setGlyphs(FXGlyphs* glyphs){
+  font=glyphs;
+  }
+
+
+// Get the glyph cache
+FXGlyphs* FXRaster::getGlyphs() const {
+  return font;
+  }
+
+
 // Set foreground color
 void FXRaster::setForeground(FXColor clr){
   fg=clr|0xff000000u;
   }
-
-
 // Set background color
 void FXRaster::setBackground(FXColor clr){
   bg=clr|0xff000000u;
@@ -1340,8 +1425,11 @@ void FXRaster::setClipRectangle(const FXRectangle& rectangle){
   }
 
 
-// Clear clipping
+// Clear clipping; this drops a clip region and a clip mask as well, which is
+// what setting the clip rectangles on the X11 GC does
 void FXRaster::clearClipRectangle(){
+  clearClipRegion();
+  clearClipMask();
   clip.x=0;
   clip.y=0;
   clip.w=twidth;

@@ -20,6 +20,7 @@
 ********************************************************************************/
 #include "fx.h"
 #include "testargs.h"
+#include "../lib/fxglyphs.h"
 #include "../lib/fxraster.h"
 #include <stdio.h>
 #include <string.h>
@@ -32,7 +33,9 @@
     buffers cell by cell and report the differences.
   - Each cell of the scene holds one primitive; the scene is written as PPM so
     the output can be looked at, and the per-cell table tells which primitives
-    still deviate.
+    still deviate.  The two text cells use FreeType and fontconfig on the
+    rasterizer side and Xft on the X11 side, so their pixels differ in the
+    antialiasing even though the metrics and the advances agree.
   - --raster-only runs headless on any host: no FXApp, no display, no X11.
   - Exit code 0 when every exact cell matches and no tolerant cell exceeds its
     limit; 1 on pixel differences; 2 on usage or I/O errors.
@@ -41,11 +44,17 @@
 // Geometry of the test scene
 const FXint CELLW=64;
 const FXint CELLH=64;
-const FXint COLS=5;
-const FXint ROWS=6;
+const FXint COLS=4;
+const FXint ROWS=8;
 const FXint SCENEW=CELLW*COLS;
 const FXint SCENEH=CELLH*ROWS;
 const FXint NCELLS=COLS*ROWS;
+
+// Font description used by the text cells; deci-points at 100 dpi is what
+// FXFont uses by default on X11
+const FXchar* const textfamily="sans";
+const FXuint textsize=100;
+const FXint textdpi=100;
 
 
 // One cell of the scene, and how strictly it must match
@@ -90,14 +99,18 @@ static const FXCellDesc celldesc[NCELLS]={
   {"image",      true,  0},
   {"stretch",    true,  0},
   {"area",       true,  0},
-  {"clip",       true,  0}
+  {"clip",       true,  0},
+  {"text",       false, 500},
+  {"imagetext",  false, 700}
   };
 
 
-// Images used by the scene
+// Images and fonts used by the scene
 struct FXAssets {
   FXImage*  tile;               // 8x8 tile
   FXImage*  image;              // 32x32 source image
+  FXGlyphs* glyphs;             // Glyph cache for the rasterizer
+  FXFont*   font;               // Xft font for FXDCWindow, if there is an app
   };
 
 
@@ -127,7 +140,7 @@ static FXColor* makePixels(FXint w,FXint h,FXColor (*pattern)(FXint,FXint)){
 
 // An 8x8 checker tile
 static FXColor tilePattern(FXint x,FXint y){
-  return ((x^y)&8) ? FXRGB(0,120,200) : FXRGB(250,250,180);
+  return ((x^y)&1) ? FXRGB(0,120,200) : FXRGB(250,250,180);
   }
 
 
@@ -151,11 +164,19 @@ static FXbool makeAssets(FXAssets& a,FXApp* app){
   a.image=app?new FXImage(app):new FXBareImage();
   a.tile->setData(tilepix,IMAGE_OWNED|IMAGE_KEEP,8,8);
   a.image->setData(imagepix,IMAGE_OWNED|IMAGE_KEEP,32,32);
+  a.glyphs=new FXGlyphs();
+  a.glyphs->open(textfamily,textsize,FXFont::Normal,FXFont::Straight,FXFont::NonExpanded,textdpi);
+  if(!a.glyphs->isOpen()){
+    printf("warning: no font matched for the text cells\n");
+    }
+  a.font=nullptr;
   if(app){
     a.tile->create();
     a.tile->render();
     a.image->create();
     a.image->render();
+    a.font=new FXFont(app,textfamily,textsize/10,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,0);
+    a.font->create();
     }
   return true;
   }
@@ -163,12 +184,24 @@ static FXbool makeAssets(FXAssets& a,FXApp* app){
 
 // Release the assets
 static void freeAssets(FXAssets& a){
+  delete a.font;   a.font=nullptr;
+  delete a.glyphs; a.glyphs=nullptr;
   delete a.image;  a.image=nullptr;
   delete a.tile;   a.tile=nullptr;
   }
 
 
 /*******************************************************************************/
+
+// Select the font of the DC; the rasterizer and FXDCWindow take different kinds
+static void setSceneFont(FXRaster& dc,FXGlyphs* glyphs,FXFont* font){
+  dc.setGlyphs(glyphs);
+  }
+
+static void setSceneFont(FXDCWindow& dc,FXGlyphs* glyphs,FXFont* font){
+  if(font) dc.setFont(font);
+  }
+
 
 // Reset the drawing state at the start of a cell; both DC's must agree
 template<class DC>
@@ -437,6 +470,22 @@ static void drawCell(DC& dc,FXint i,FXint x,FXint y,const FXAssets& a){
       dc.setForeground(FXRGB(80,200,220));
       dc.fillRectangle(x,y,CELLW,CELLH);
       dc.clearClipRectangle();
+      break;
+
+    // Text, two lines
+    case 30:
+      setSceneFont(dc,a.glyphs,a.font);
+      dc.setForeground(FXRGB(20,20,60));
+      dc.drawText(x+4,y+22,"Hello, World!");
+      dc.drawText(x+4,y+42,"quick brown fox 0123");
+      break;
+
+    // Text over a filled background
+    case 31:
+      setSceneFont(dc,a.glyphs,a.font);
+      dc.setForeground(FXRGB(250,250,250));
+      dc.setBackground(FXRGB(60,80,140));
+      dc.drawImageText(x+4,y+30,"Background");
       break;
     }
   }

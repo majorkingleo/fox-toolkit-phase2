@@ -38,6 +38,7 @@ FXFont.cpp \
 FXFrame.cpp \
 fxfsquantize.cpp \
 FXGIFIcon.cpp \
+FXGlyphs.cpp \
 fxgifio.cpp \
 FXGroupBox.cpp \
 FXHash.cpp \
@@ -155,7 +156,7 @@ libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp
 endif
 endif
 
-noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxraster.h fxrects.h fxstipples.h
+noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxglyphs.h fxraster.h fxrects.h fxstipples.h
 
 EXTRA_DIST = \
 blank_mask.xbm \
