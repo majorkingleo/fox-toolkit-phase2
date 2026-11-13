@@ -1,9 +1,9 @@
 /********************************************************************************
 *                                                                               *
-*                              Slider   ( X 1 1 )                               *
+*                       FOX Target Platform Selection                           *
 *                                                                               *
 *********************************************************************************
-* Copyright (C) 1998,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
+* Copyright (C) 1997,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
 *********************************************************************************
 * This library is free software; you can redistribute it and/or modify          *
 * it under the terms of the GNU Lesser General Public License as published by   *
@@ -18,54 +18,29 @@
 * You should have received a copy of the GNU Lesser General Public License      *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>          *
 ********************************************************************************/
-#include "xincs.h"
-#include "fxver.h"
-#include "fxdefs.h"
-#include "fxmath.h"
-#include "fxkeys.h"
-#include "FXElement.h"
-#include "FXArray.h"
-#include "FXMetaClass.h"
-#include "FXHash.h"
-#include "FXMutex.h"
-#include "FXStream.h"
-#include "FXString.h"
-#include "FXSize.h"
-#include "FXPoint.h"
-#include "FXRectangle.h"
-#include "FXStringDictionary.h"
-#include "FXSettings.h"
-#include "FXRegistry.h"
-#include "FXEvent.h"
-#include "FXWindow.h"
-#include "FXDCWindow.h"
-#include "FXApp.h"
-#include "FXSlider.h"
-
-#if !defined(WIN32)
+#ifndef FXTARGET_H
+#define FXTARGET_H
 
 /*
   Notes:
 
-  - X11 slider head geometry.
+  - Exactly one of WIN32, FOX_X11 or FOX_WAYLAND selects the windowing platform.
+  - The build system defines it (CMake: FOX_PLATFORM, Autotools: --with-wayland).
+  - If none is defined, the host default is taken: FOX_X11 on Unix.
+
+  - Not named X11: that would clash with the FXFont::X11 enumerator.
 */
 
-using namespace FX;
-
-/*******************************************************************************/
-
-namespace FX {
-
-// Draw lower edges of right pointing slider head
-void FXSlider::drawArrowRightLower(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint m){
-  dc.setForeground(shadowColor);
-  dc.drawLine(x+w-2,y+h-m-1,x+w-m-2,y+h-1);
-  dc.drawLine(x+1,y+h-2,x+w-m-1,y+h-2);
-  dc.setForeground(borderColor);
-  dc.drawLine(x+w-1,y+h-m-1,x+w-m-1,y+h-1);
-  dc.drawLine(x,y+h-1,x+w-m-1,y+h-1);
-  }
-
-}
+#if defined(WIN32)
+#if defined(FOX_X11) || defined(FOX_WAYLAND)
+#error "More than one FOX platform is defined (WIN32, FOX_X11, FOX_WAYLAND)"
+#endif
+#elif defined(FOX_X11)
+#if defined(FOX_WAYLAND)
+#error "More than one FOX platform is defined (WIN32, FOX_X11, FOX_WAYLAND)"
+#endif
+#elif !defined(FOX_WAYLAND)
+#define FOX_X11
+#endif
 
 #endif

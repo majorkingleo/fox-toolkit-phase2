@@ -59,6 +59,16 @@ case "$host_os" in
 esac
 AM_CONDITIONAL(COND_OSWINDOWS, test x$OS_WINDOWS = x1)
 
+# Windowing platform: win32 on Windows, otherwise x11 (default) or wayland
+AC_ARG_WITH(wayland,[  --with-wayland         build the Wayland platform instead of X11 (not available yet)])
+if test "x$with_wayland" = "xyes"; then
+  if test x$OS_WINDOWS = x1; then
+    AC_MSG_ERROR([--with-wayland cannot be used for a Windows target])
+  fi
+  AC_MSG_ERROR([the Wayland platform is not implemented yet, see docs/wayland-plan.md])
+fi
+AM_CONDITIONAL(COND_WAYLAND, test "x$with_wayland" = "xyes")
+
 # Substitute variables in output files
 AC_SUBST(LT_RELEASE)
 AC_SUBST(LT_CURRENT)

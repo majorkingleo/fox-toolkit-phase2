@@ -45,7 +45,7 @@
 #include "FXDCWindow.h"
 #include "FXApp.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 #define TOPIC_CREATION  1001
 #define TOPIC_DETAIL    1012

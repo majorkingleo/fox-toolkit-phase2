@@ -1,6 +1,6 @@
 /********************************************************************************
 *                                                                               *
-*                           Check Button   ( X 1 1 )                            *
+*                              Slider   ( X 1 1 )                               *
 *                                                                               *
 *********************************************************************************
 * Copyright (C) 1998,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
@@ -23,15 +23,16 @@
 #include "fxdefs.h"
 #include "fxmath.h"
 #include "fxkeys.h"
+#include "FXElement.h"
+#include "FXArray.h"
+#include "FXMetaClass.h"
+#include "FXHash.h"
 #include "FXMutex.h"
+#include "FXStream.h"
+#include "FXString.h"
 #include "FXSize.h"
 #include "FXPoint.h"
 #include "FXRectangle.h"
-#include "FXElement.h"
-#include "FXMetaClass.h"
-#include "FXHash.h"
-#include "FXStream.h"
-#include "FXString.h"
 #include "FXStringDictionary.h"
 #include "FXSettings.h"
 #include "FXRegistry.h"
@@ -39,14 +40,14 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
-#include "FXCheckButton.h"
+#include "FXSlider.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11) || defined(FOX_WAYLAND)
 
 /*
   Notes:
 
-  - X11 check mark geometry.
+  - Unix slider head geometry.
 */
 
 using namespace FX;
@@ -55,16 +56,14 @@ using namespace FX;
 
 namespace FX {
 
-// Draw check mark
-void FXCheckButton::drawCheckMark(FXDCWindow& dc,FXint ix,FXint iy){
-  FXSegment seg[6];
-  seg[0].x1=3+ix; seg[0].y1=5+iy; seg[0].x2=5+ix; seg[0].y2=7+iy;
-  seg[1].x1=3+ix; seg[1].y1=6+iy; seg[1].x2=5+ix; seg[1].y2=8+iy;
-  seg[2].x1=3+ix; seg[2].y1=7+iy; seg[2].x2=5+ix; seg[2].y2=9+iy;
-  seg[3].x1=5+ix; seg[3].y1=7+iy; seg[3].x2=9+ix; seg[3].y2=3+iy;
-  seg[4].x1=5+ix; seg[4].y1=8+iy; seg[4].x2=9+ix; seg[4].y2=4+iy;
-  seg[5].x1=5+ix; seg[5].y1=9+iy; seg[5].x2=9+ix; seg[5].y2=5+iy;
-  dc.drawLineSegments(seg,6);
+// Draw lower edges of right pointing slider head
+void FXSlider::drawArrowRightLower(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint m){
+  dc.setForeground(shadowColor);
+  dc.drawLine(x+w-2,y+h-m-1,x+w-m-2,y+h-1);
+  dc.drawLine(x+1,y+h-2,x+w-m-1,y+h-2);
+  dc.setForeground(borderColor);
+  dc.drawLine(x+w-1,y+h-m-1,x+w-m-1,y+h-1);
+  dc.drawLine(x,y+h-1,x+w-m-1,y+h-1);
   }
 
 }

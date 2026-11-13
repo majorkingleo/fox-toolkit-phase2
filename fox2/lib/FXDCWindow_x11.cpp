@@ -56,7 +56,7 @@
 #include "FXRegion.h"
 #include "FXDCWindow.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 /*
   Notes:

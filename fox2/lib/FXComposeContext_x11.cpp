@@ -41,7 +41,7 @@
 #include "FXComposeContext.h"
 #include "FXException.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 /*
   Notes:

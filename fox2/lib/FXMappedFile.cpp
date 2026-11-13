@@ -31,7 +31,7 @@
 /*
   Notes:
   - Memory-mapped file implementation; platform specific members are in
-    FXMappedFile_win32.cpp and FXMappedFile_x11.cpp.
+    FXMappedFile_win32.cpp and FXMappedFile_posix.cpp.
 */
 
 using namespace FX;

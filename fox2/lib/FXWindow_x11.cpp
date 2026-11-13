@@ -24,7 +24,7 @@
 #include "fxplatformwindow.h"
 #include "fxpriv.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 #define TOPIC_DETAIL    1002
 #define TOPIC_EVENT     1011

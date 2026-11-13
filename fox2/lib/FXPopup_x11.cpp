@@ -43,7 +43,7 @@
 #include "FXPopup.h"
 #include "fxpriv.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 /*
   Notes:

@@ -58,6 +58,7 @@ FXDC.h \
 FXDCWindow.h \
 FXDebugTarget.h \
 fxdefs.h \
+fxtarget.h \
 FXDialogBox.h \
 FXDir.h \
 FXDLL.h \

@@ -1,9 +1,9 @@
 /********************************************************************************
 *                                                                               *
-*                               Shell   ( X 1 1 )                               *
+*                         Desktop settings   ( X 1 1 )                          *
 *                                                                               *
 *********************************************************************************
-* Copyright (C) 1997,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
+* Copyright (C) 1998,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
 *********************************************************************************
 * This library is free software; you can redistribute it and/or modify          *
 * it under the terms of the GNU Lesser General Public License as published by   *
@@ -22,35 +22,26 @@
 #include "fxver.h"
 #include "fxdefs.h"
 #include "fxmath.h"
-#include "fxkeys.h"
+#include "fxascii.h"
 #include "FXElement.h"
 #include "FXArray.h"
 #include "FXMetaClass.h"
 #include "FXHash.h"
-#include "FXMutex.h"
 #include "FXStream.h"
 #include "FXString.h"
-#include "FXSize.h"
-#include "FXPoint.h"
-#include "FXRectangle.h"
 #include "FXStringDictionary.h"
 #include "FXSettings.h"
-#include "FXRegistry.h"
-#include "FXAccelTable.h"
-#include "FXEvent.h"
-#include "FXWindow.h"
-#include "FXApp.h"
-#include "FXShell.h"
+#include "FXSystem.h"
+#include "FXDesktopSettings.h"
+#include "fxpriv.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11) || defined(FOX_WAYLAND)
 
 /*
   Notes:
 
-  - X11 shell: configure schedules a delayed layout.
+  - Unix desktop settings: the GNOME settings store, queried through gsettings.
 */
-
-#define TOPIC_CONFIGURE 1002
 
 using namespace FX;
 
@@ -58,28 +49,29 @@ using namespace FX;
 
 namespace FX {
 
-// Handle configure notify
-long FXShell::onConfigure(FXObject* sender,FXSelector sel,void* ptr){
-  FXEvent *ev=(FXEvent*)ptr;
-  FXComposite::onConfigure(sender,sel,ptr);
-  FXTRACE(TOPIC_CONFIGURE,"%s::onConfigure x=%d y=%d w=%d h=%d\n",getClassName(),ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
-  xpos=ev->rect.x;
-  ypos=ev->rect.y;
-  if((ev->rect.w!=width) || (ev->rect.h!=height)){
-    width=ev->rect.w;               // Record new size
-    height=ev->rect.h;
-    // Delayed layout optimization. The delayed layout optimization
-    // currently only works on UNIX.  On Windows, the program enters
-    // a modal loop during a window-resize operation.  During this
-    // modal loop, which is somewhere inside WIN32 code, we are completely
-    // deaf to other event sources such as timers, chores, file i/o, and
-    // are unable to perform idle processing.  So the chore we would set
-    // in recalc() would never fire until we're all done with the resizing.
-    // We'd love to have a fix for this, but it seems difficult because of
-    // the need to pass "non-client" events over to the DefWindowProc...
-    recalc();           // On UNIX, we process idle messages during a resize
+// Ask gsettings; the command is only run when it is installed
+FXint fxdesktopcolorscheme(const FXchar*& name){
+  FXString path=FXSystem::getEnvironment("PATH");
+  FXString result;
+  FXchar buffer[256];
+  FILE* pipe;
+  name=nullptr;
+  if(path.empty()) return SCHEME_UNKNOWN;
+  pipe=popen("gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null","r");
+  if(!pipe) return SCHEME_UNKNOWN;
+  while(std::fgets(buffer,sizeof(buffer),pipe)){
+    result.append(buffer);
     }
-  return 1;
+  pclose(pipe);
+  if(result.contains("prefer-dark")){
+    name="gsettings:color-scheme=prefer-dark";
+    return SCHEME_DARK;
+    }
+  if(result.contains("prefer-light")){
+    name="gsettings:color-scheme=prefer-light";
+    return SCHEME_LIGHT;
+    }
+  return SCHEME_UNKNOWN;
   }
 
 }

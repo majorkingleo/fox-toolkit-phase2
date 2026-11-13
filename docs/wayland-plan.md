@@ -38,9 +38,8 @@ positioning (Wayland forbids it), pointer warping.
     `FXImage` (1,145), `FXWindow` (1,124), `FXVisual` (982), `FXTopWindow` (888),
     `FXComposeContext` (434), `fxpriv` (389), `FXIcon`, `FXStyle`, `FXRegion`,
     `FXCursor`, and the small stubs.
-- The guard of the X11 modules is `#if !defined(WIN32)`, so "not Windows" means
-  "X11". The porting rule in `.github/copilot-instructions.md` asks for
-  `#if defined(X11)`. This must be fixed before a third platform can exist.
+- The guard of the X11 modules was `#if !defined(WIN32)`, so "not Windows" meant
+  "X11". Phase 0 replaced it by `#if defined(FOX_X11)` (done).
 - Drawing is server-side: `FXDCWindow_x11.cpp` issues `XFillRectangle`,
   `XftDrawStringUtf8`, `XRenderComposite`; `FXImage_x11.cpp` uses `XImage`/XShm;
   `FXRegion_x11.cpp` uses `XRegion`. Wayland has no drawing requests, so the
@@ -56,9 +55,9 @@ positioning (Wayland forbids it), pointer warping.
 These are recommendations; each is called out for review at the end.
 
 1. **Compile-time platform choice.** New CMake option `FOX_PLATFORM=x11|wayland|win32`
-   (default by host) and an Autotools `--with-wayland`. The macros are `X11`,
-   `WAYLAND` and `WIN32`; modules are `<Class>_wayland.cpp` guarded by
-   `#if defined(WAYLAND)`. Wayland sessions that need an X11 build use Xwayland.
+   (default by host) and an Autotools `--with-wayland`. The macros are `FOX_X11`,
+   `FOX_WAYLAND` and `WIN32` (`X11` is taken by the `FXFont::X11` enumerator);
+   modules are `<Class>_wayland.cpp` guarded by `#if defined(FOX_WAYLAND)`. Wayland sessions that need an X11 build use Xwayland.
 2. **One `wl_surface` per shell, virtual child windows.** Only shells (`FXShell`,
    `FXTopWindow`, `FXPopup`, `FXToolTip`) get a surface and an `xdg_*` role. The
    module hands out synthetic `FXID`s for all other windows and keeps a private
@@ -126,18 +125,23 @@ section per step, FOX formatting, no reformatting of moved code.
 
 ### Phase 0: build selection and module classification
 
-- Define `X11`, `WAYLAND`, `WIN32` from the build system; replace the
-  `#if !defined(WIN32)` guards in the `_x11.cpp` modules with `#if defined(X11)`.
+- Status: all done except the gate scaffold (the last bullet but one).
+- Define `FOX_X11`, `FOX_WAYLAND`, `WIN32` from the build system (`fxtarget.h`
+  checks that exactly one is set and defaults to `FOX_X11` on Unix); replace the
+  `#if !defined(WIN32)` guards in the `_x11.cpp` modules with
+  `#if defined(FOX_X11)`.
 - Rename the POSIX modules to `_posix.cpp` with guard `#if !defined(WIN32)` so
-  X11 and Wayland share them. Review each of the 35 files to decide: POSIX,
-  X-specific, or trivial stub shared by both Unix platforms (rename to
-  `_unix.cpp`).
-- CMake option `FOX_PLATFORM`, Autotools `--with-wayland`, module lists in
-  `fox2/lib/Makefile.am` and `fox2/lib/CMakeLists.txt` split into common,
-  `win32`, `x11`, `wayland`, `posix` lists.
-- Introduce a neutral `FXRawEvent` for the Wayland build (small private tagged
-  struct), keeping the X11 and Win32 typedefs; move the typedef selection into
-  one place in `fxdefs.h`.
+  X11 and Wayland share them. The 39 modules were split into 16 `_posix`, 5
+  `_unix` (`FXCheckButton`, `FXSlider`, `FXRegistry`, `FXDesktopSettings`,
+  `FXShell`; guard `#if defined(FOX_X11) || defined(FOX_WAYLAND)`) and 18
+  X-specific `_x11` modules.
+- CMake option `FOX_PLATFORM` and Autotools `--with-wayland` (both fail with a
+  clear message until phase 4); module lists in `fox2/lib/Makefile.am` and
+  `fox2/lib/CMakeLists.txt` split into common, `win32`, `posix`, `unix` and
+  `x11` lists (the `wayland` list is added with the first Wayland module).
+- `FXRawEvent` selection is in one place in `fxdefs.h`; the Wayland branch is a
+  forward declared `FXWaylandEvent` that phase 4 defines as a small private
+  tagged struct.
 - Wayland gate scaffold: `scripts/build-fox2-wayland.sh`, and a check that the
   WSL distro runs a Wayland client against WSLg's Weston
   (`$XDG_RUNTIME_DIR/wayland-0`). The KDE Wayland session of the development
@@ -333,7 +337,7 @@ section per step, FOX formatting, no reformatting of moved code.
 
 ## Decisions to confirm before phase 0
 
-1. The macros are `X11` and `WAYLAND` and the platform is chosen at configure
+1. The macros are `FOX_X11` and `FOX_WAYLAND` and the platform is chosen at configure
    time (`FOX_PLATFORM`), with no combined X11 + Wayland binary.
 2. Child windows are virtual and only shells own a `wl_surface`.
 3. The rasterizer is written in-tree (no cairo or pixman); text uses FreeType

@@ -43,7 +43,7 @@
 #include "FXApp.h"
 #include "FXImage.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 /*
   Notes:

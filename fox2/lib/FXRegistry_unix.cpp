@@ -38,12 +38,12 @@
 #include "FXStringDictionary.h"
 #include "FXRegistry.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11) || defined(FOX_WAYLAND)
 
 /*
   Notes:
 
-  - X11 registry: .rc files under $FOXDIR, $XDG_CONFIG_DIRS and $HOME/.config.
+  - Unix registry: .rc files under $FOXDIR, $XDG_CONFIG_DIRS and $HOME/.config.
 */
 
 #define TOPIC_CONSTRUCT 1000

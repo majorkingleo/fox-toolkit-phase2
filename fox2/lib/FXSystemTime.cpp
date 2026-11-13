@@ -31,7 +31,7 @@
 /*
   Notes:
   - Handy functions for manipulating calendar time; the time zone members are in
-    FXSystemTime_win32.cpp and FXSystemTime_x11.cpp.
+    FXSystemTime_win32.cpp and FXSystemTime_posix.cpp.
 */
 
 #define TOPIC_DEBUG     1002

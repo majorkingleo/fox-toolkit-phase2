@@ -30,7 +30,7 @@
 #include "FXRectangle.h"
 #include "FXRegion.h"
 
-#if !defined(WIN32)
+#if defined(FOX_X11)
 
 /*
   Notes:

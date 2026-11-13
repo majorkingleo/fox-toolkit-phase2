@@ -21,6 +21,8 @@
 #ifndef FXDEFS_H
 #define FXDEFS_H
 
+#include "fxtarget.h"
+
 
 
 /********************************  Definitions  ********************************/
@@ -265,10 +267,12 @@
 
 
 // Raw event type
-#ifdef WIN32
+#if defined(WIN32)
 struct tagMSG;
-#else
+#elif defined(FOX_X11)
 union _XEvent;
+#elif defined(FOX_WAYLAND)
+struct FXWaylandEvent;
 #endif
 
 
@@ -380,10 +384,12 @@ typedef unsigned long           FXThreadID;
 typedef FXuval                  FXThreadStorageKey;
 
 // Raw event type
-#ifdef WIN32
+#if defined(WIN32)
 typedef tagMSG                  FXRawEvent;
-#else
+#elif defined(FOX_X11)
 typedef _XEvent                 FXRawEvent;
+#elif defined(FOX_WAYLAND)
+typedef FXWaylandEvent          FXRawEvent;
 #endif
 
 

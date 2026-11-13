@@ -21,6 +21,8 @@
 #ifndef XINCS_H
 #define XINCS_H
 
+#include "fxtarget.h"
+
 
 ////////////////////  DO NOT INCLUDE THIS PRIVATE HEADER FILE  //////////////////
 
@@ -285,6 +287,7 @@ typedef cpuset_t   cpu_set_t;
 
 
 // X11 includes
+#if defined(FOX_X11)
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xcms.h>
@@ -321,6 +324,7 @@ typedef cpuset_t   cpu_set_t;
 #define NO_XIM
 #elif XlibSpecificationRelease < 6      // Need at least Xlib X11R6
 #define NO_XIM
+#endif
 #endif
 #endif
 
