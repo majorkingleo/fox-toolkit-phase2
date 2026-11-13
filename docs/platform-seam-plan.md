@@ -1274,6 +1274,14 @@ module defines its own `FXThreadEntry` with the entry function, the body
 unchanged except that `self()` and `busy` are reached through `FXThread::`, and
 `start()` passes `FXThreadEntry::function` to the OS. Both builds pass.
 
+## Seam 59: visual header
+
+`FXVisual.h` declares the scrolling and drawing GC pointers, the pixel mapping
+tables and the `setup*()` helpers on every platform. Only the X11 module defines
+the helpers and uses the tables; the Win32 constructors leave them untouched,
+as the X11 constructors already do for the tables. The cost on Win32 is the
+unused tables in each visual object. Both builds pass.
+
 ## Next seams, in order
 
 None in `fox2/lib`. After seam 55 every platform conditional in the core classes of

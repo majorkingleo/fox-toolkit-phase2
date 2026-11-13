@@ -78,7 +78,6 @@ protected:
   FXuint        hint;                   // Hint value
   FXuchar       type;                   // Visual type
   FXbool        freemap;                // We allocated the map
-#ifndef WIN32
 protected:
   void         *scrollgc;               // Scrolling GC
   void         *gc;                     // Drawing GC
@@ -96,7 +95,6 @@ protected:
   void setuppixmapmono();
   void setupcolormap();
   void* setupgc(FXbool);
-#endif
 protected:
   FXVisual();
 private:
