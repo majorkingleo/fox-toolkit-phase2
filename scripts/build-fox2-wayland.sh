@@ -85,9 +85,40 @@ else
   echo "warning: wayland-scanner not found" >&2
   missing=1
   fi
-if [ "$missing" -ne 0 ]; then
-  echo "         install libwayland-dev libxkbcommon-dev (Debian/Ubuntu) or wayland libxkbcommon (Arch)" >&2
+
+# Protocol XML for xdg-shell and the optional protocols (vendored in phase 4)
+protos=
+for d in "${WAYLAND_PROTOCOLS_DIR-}" /usr/share/wayland-protocols /usr/local/share/wayland-protocols; do
+  [ -n "$d" ] && [ -f "$d/stable/xdg-shell/xdg-shell.xml" ] && { protos=$d; break; }
+  done
+if [ -n "$protos" ]; then
+  echo "==> found wayland-protocols in $protos"
+else
+  echo "warning: xdg-shell.xml not found; install wayland-protocols" >&2
+  missing=1
   fi
+
+# Keymap data for libxkbcommon, read at run time
+if [ -d /usr/share/X11/xkb ]; then
+  echo "==> found xkb data in /usr/share/X11/xkb"
+else
+  echo "warning: /usr/share/X11/xkb not found; install xkeyboard-config" >&2
+  missing=1
+  fi
+
+if [ "$missing" -ne 0 ]; then
+  echo "         install libwayland-dev libxkbcommon-dev libxkbcommon-x11-0 wayland-protocols xkeyboard-config" >&2
+  echo "         (Debian/Ubuntu) or wayland libxkbcommon wayland-protocols xkeyboard-config (Arch)" >&2
+  fi
+
+# Optional, only for the gates and for debugging
+for tool in weston wayland-info; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    echo "==> found $tool (optional)"
+  else
+    echo "==> $tool not installed (optional: headless compositor, protocol dump)"
+    fi
+  done
 
 if [ "$check_only" = yes ]; then
   exit "$missing"
