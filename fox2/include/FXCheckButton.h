@@ -60,6 +60,7 @@ protected:
   FXuchar  oldcheck;    // Old check state
 protected:
   FXCheckButton();
+  void drawCheckMark(FXDCWindow& dc,FXint ix,FXint iy);
 private:
   FXCheckButton(const FXCheckButton&);
   FXCheckButton &operator=(const FXCheckButton&);

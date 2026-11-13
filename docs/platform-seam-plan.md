@@ -1230,6 +1230,17 @@ and the constructor. The two `FOXRC` uses in `read()` now use the `foxrc`
 member. The code is adapted, not moved verbatim, so no lossless check applies.
 Both builds pass.
 
+## Seam 55: check button and slider geometry
+
+The last two `WIN32` conditionals in widget drawing code sat inside larger
+members, so each got a protected helper that holds only the differing lines.
+`FXCheckButton::drawCheckMark()` draws the check mark segments (the Win32 mark
+is one pixel wider). `FXSlider::drawArrowRightLower()` draws the lower edges of
+the right pointing slider head. Both are defined in `_win32.cpp` and `_x11.cpp`
+modules; the core `onPaint()` and `drawSliderHead()` call them. The helpers are
+declared in the public headers without platform types. Lines were moved
+verbatim, only re-indented. Both builds pass.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint

@@ -71,6 +71,7 @@ protected:
 protected:
   FXSlider();
   void drawSliderHead(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
+  void drawArrowRightLower(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint m);
   void drawHorzTicks(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
   void drawVertTicks(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
 private:
