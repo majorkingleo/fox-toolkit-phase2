@@ -1091,10 +1091,23 @@ The one `#if defined(WIN32)` still in `FXFont.cpp` sits inside a block comment
 
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 
+## Seam 44: root window
+
+Done. `FXRootWindow_win32.cpp` holds `GetDC`, `ReleaseDC`, `create` (desktop
+window, virtual screen size) and `getDefaultWidth`/`getDefaultHeight`;
+`FXRootWindow_x11.cpp` holds `create` and the two default sizes using the X11
+screen macros. `FXRootWindow.cpp` keeps the platform neutral members
+(constructor, `attach`, `detach`, `destroy`, and the no-op geometry members).
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXRootWindow.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `FXRootWindow`,
+   first:
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 

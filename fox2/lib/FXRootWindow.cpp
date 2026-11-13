@@ -53,8 +53,6 @@
 #define TOPIC_CONSTRUCT 1000
 #define TOPIC_CREATION  1001
 
-#define DISPLAY(app) ((Display*)((app)->display))
-
 using namespace FX;
 
 /*******************************************************************************/
@@ -67,112 +65,6 @@ FXIMPLEMENT(FXRootWindow,FXComposite,nullptr,0)
 
 // Construct root window
 FXRootWindow::FXRootWindow(FXApp* a,FXVisual *vis):FXComposite(a,vis){
-  }
-
-
-#ifdef WIN32
-
-// Returns device context
-FXID FXRootWindow::GetDC() const {
-  LockWindowUpdate(GetDesktopWindow());
-  return GetDCEx(GetDesktopWindow(),nullptr,DCX_CACHE|DCX_LOCKWINDOWUPDATE);
-  }
-
-
-// Release DC
-int FXRootWindow::ReleaseDC(FXID hdc) const {
-  int status=::ReleaseDC(GetDesktopWindow(),(HDC)hdc);
-  LockWindowUpdate(nullptr);
-  return status;
-  }
-
-
-/*
-
-// EnumDisplayMonitors callback routine to determine biggest screen size
-static BOOL maxScreenSizeCallback(HMONITOR hmon,HDC hdc,LPRECT rect,LPARAM args){
-  MONITORINFO moninfo; FXint w,h;
-  moninfo.cbSize=sizeof(moninfo);
-  GetMonitorInfo(hmon,&moninfo);
-  w=moninfo.rcWork.right-moninfo.rcWork.left;
-  h=moninfo.rcWork.bottom-moninfo.rcWork.top;
-  if(((FXint*)args)[0]<w) ((FXint*)args)[0]=w;
-  if(((FXint*)args)[1]<h) ((FXint*)args)[1]=h;
-  return true;
-  }
-
-
-// Obtain largest dimensions of all screens (bounding box)
-static FXbool getMaxScreenSize(FXint& width,FXint& height){
-  FXint args[2]={0,0};
-  if(EnumDisplayMonitors(nullptr,nullptr,(MONITORENUMPROC)maxScreenSizeCallback,(LPARAM)args)){
-    width=args[0];
-    height=args[1];
-    return true;
-    }
-  return false;
-  }
-
-*/
-
-
-#endif
-
-
-// When created, create subwindows ONLY
-void FXRootWindow::create(){
-  if(!xid){
-    if(getApp()->isInitialized()){
-      FXTRACE(TOPIC_CREATION,"%s::create %p\n",getClassName(),this);
-
-      // Got to have a visual
-      if(!visual){ fxerror("%s::create: trying to create window without a visual.\n",getClassName()); }
-
-      // Initialize visual
-      visual->create();
-
-#ifdef WIN32
-
-      // Get handle of desktop window
-      xid=GetDesktopWindow();
-
-      // Obtain desktop window size
-      width=GetSystemMetrics(SM_CXVIRTUALSCREEN);
-      height=GetSystemMetrics(SM_CYVIRTUALSCREEN);
-
-      //HDC hdc=::GetDC((HWND)xid);
-      //width=GetDeviceCaps(hdc,HORZRES);
-      //height=GetDeviceCaps(hdc,VERTRES);
-      //::ReleaseDC((HWND)xid,hdc);
-
-      // Size of primary display screen
-      //width=GetSystemMetrics(SM_CXSCREEN);
-      //height=GetSystemMetrics(SM_CYSCREEN);
-
-      // Size bigger than all display screens
-      //getMaxScreenSize(width,height);
-
-      // Store for xid to C++ object mapping
-      getApp()->hash.insert((void*)xid,this);
-
-#else
-
-      // Get handle of desktop window
-      xid=RootWindow(DISPLAY(getApp()),DefaultScreen(DISPLAY(getApp())));
-
-      // Obtain desktop window size
-      width=DisplayWidth(DISPLAY(getApp()),DefaultScreen(DISPLAY(getApp())));
-      height=DisplayHeight(DISPLAY(getApp()),DefaultScreen(DISPLAY(getApp())));
-
-      // Store for xid to C++ object mapping
-      getApp()->hash.insert((void*)xid,this);
-
-#endif
-
-      // Normally create children
-      for(FXWindow *c=getFirst(); c; c=c->getNext()) c->create();
-      }
-    }
   }
 
 
@@ -200,33 +92,6 @@ void FXRootWindow::destroy(){
       }
     xid=0;
     }
-  }
-
-
-// Get default width
-FXint FXRootWindow::getDefaultWidth(){
-#ifdef WIN32
-//  HDC hdc=::GetDC(GetDesktopWindow());
-//  FXint w=GetDeviceCaps(hdc,HORZRES);
-//  ::ReleaseDC(GetDesktopWindow(),hdc);
-//  return w;
-  return GetSystemMetrics(SM_CXVIRTUALSCREEN);
-#else
-  return DisplayWidth(DISPLAY(getApp()),DefaultScreen(DISPLAY(getApp())));
-#endif
-  }
-
-// Get default height
-FXint FXRootWindow::getDefaultHeight(){
-#ifdef WIN32
-//  HDC hdc=::GetDC(GetDesktopWindow());
-//  FXint h=GetDeviceCaps(hdc,VERTRES);
-//  ::ReleaseDC(GetDesktopWindow(),hdc);
-//  return h;
-  return GetSystemMetrics(SM_CYVIRTUALSCREEN);
-#else
-  return DisplayHeight(DISPLAY(getApp()),DefaultScreen(DISPLAY(getApp())));
-#endif
   }
 
 
