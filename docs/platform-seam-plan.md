@@ -1291,6 +1291,19 @@ unused tables in each visual object. Both builds pass.
 the other platform's set, so no member is left uninitialised; `updateBrush()`
 and `updatePen()` stay defined only in `FXDCWindow_win32.cpp`. Both builds pass.
 
+## Seam 61: application header
+
+`FXApp.h` declares the platform state and the platform hooks on every
+platform. The DDE, selection, XDND and stipple members common to both
+platforms are declared once (atoms as `FXDragType`, the XDND type handle as
+`FXID`, 23 stipples), followed by the Win32-only `xdndFinishPending` and the
+X11 window manager, XDND, XRandR, XInput and XSHM members. `initPlatformMembers()`
+in each module initialises the members of the other platform. `wndproc()`,
+`addRepaint()`, `removeRepaints()`, `scrollRepaints()` and the input method
+callbacks are declared everywhere and defined only where used; the virtual
+`dispatchEvent(FXID,...)` has a no-op definition in `FXApp_x11.cpp`. `CALLBACK`
+is defined empty outside Win32. Both builds pass.
+
 ## Next seams, in order
 
 None in `fox2/lib`. After seam 55 every platform conditional in the core classes of

@@ -2521,6 +2521,7 @@ void FXApp::initPlatformMembers(){
   xdndRect.y=0;
   xdndRect.w=0;
   xdndRect.h=0;
+  xdndFinishPending=false;                // Used by the Win32 module only
   xrrScreenChange=0;                      // Xrandr event
   xfxFixesSelection=0;                    // Xfixes event
   xInputOpcode=0;                         // XInput2 Opcode
@@ -2532,6 +2533,12 @@ void FXApp::initPlatformMembers(){
   shmp=true;
   xrender=false;
   synchronize=false;
+  }
+
+
+// Windows messages are not dispatched on X11
+FXival FXApp::dispatchEvent(FXID,FXuint,FXuval,FXival){
+  return 0;
   }
 
 

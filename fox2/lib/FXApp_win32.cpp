@@ -1941,7 +1941,7 @@ void FXApp::initPlatformMembers(){
   // XDND
   xdndFinishPending=false;                // XDND waiting for drop-confirmation
   xdndAware=0;                            // XDND awareness atom
-  xdndTypes=nullptr;
+  xdndTypes=0;                            // XDND file mapping handle
   xdndSource=0;                           // XDND drag source window
   xdndTarget=0;                           // XDND drop target window
   xdndStatusPending=false;                // XDND waiting for status feedback
@@ -1951,6 +1951,66 @@ void FXApp::initPlatformMembers(){
   xdndRect.y=0;
   xdndRect.w=0;
   xdndRect.h=0;
+
+  // Members used by the X11 module only
+  wmDeleteWindow=0;
+  wmSaveYourself=0;
+  wmQuitApp=0;
+  wmProtocols=0;
+  wmMotifHints=0;
+  wmTakeFocus=0;
+  wmClientMachine=0;
+  wmState=0;
+  wmNetState=0;
+  wmNetIconName=0;
+  wmNetWindowName=0;
+  wmNetSupported=0;
+  wmNetHidden=0;
+  wmNetShaded=0;
+  wmNetHMaximized=0;
+  wmNetVMaximized=0;
+  wmNetFullScreen=0;
+  wmNetBelowOthers=0;
+  wmNetAboveOthers=0;
+  wmNetNeedAttention=0;
+  wmNetActiveWindow=0;
+  wmNetMoveResize=0;
+  wmNetRestack=0;
+  wmNetPing=0;
+  wmNetProcessId=0;
+  wmNetWindowType=0;
+  wmWindowRole=0;
+  wmClientLeader=0;
+  wmClientId=0;
+  embedAtom=0;
+  embedInfoAtom=0;
+  timestampAtom=0;
+  ddeIncr=0;
+  xcbSelection=0;
+  xdndProxy=0;
+  xdndEnter=0;
+  xdndLeave=0;
+  xdndPosition=0;
+  xdndStatus=0;
+  xdndDrop=0;
+  xdndFinished=0;
+  xdndSelection=0;
+  xdndActions=0;
+  xdndProxyTarget=0;
+  xcbTypeList=nullptr;
+  xcbNumTypes=0;
+  xdndTypeList=nullptr;
+  xdndNumTypes=0;
+  xdndWantUpdates=false;
+  xrrScreenChange=0;
+  xfxFixesSelection=0;
+  xInputOpcode=0;
+  xsbDevice=0;
+  xim=nullptr;
+  shmi=false;
+  shmp=false;
+  xrender=false;
+  synchronize=false;
   }
 
 

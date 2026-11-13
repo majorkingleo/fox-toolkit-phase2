@@ -207,6 +207,10 @@
 #ifndef CALLBACK
 #define CALLBACK __stdcall
 #endif
+#else
+#ifndef CALLBACK
+#define CALLBACK
+#endif
 #endif
 
 // C Language calling sequence

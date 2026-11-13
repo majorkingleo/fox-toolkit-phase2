@@ -267,32 +267,27 @@ private:
 private:
   static FXApp    *app;                 // Application pointer
 
-  // Platform dependent private stuff
-#if defined(WIN32)
-
-  FXushort         ddeTargets;          // DDE targets atom
-  FXushort         ddeAtom;             // DDE Exchange Atom
-  FXDragType       ddeDelete;           // DDE Delete Target Atom
+  // Platform dependent private stuff, declared on all platforms
+  FXDragType       ddeTargets;          // DDE targets atom
+  FXDragType       ddeAtom;             // DDE exchange atom
+  FXDragType       ddeDelete;           // DDE delete target atom
   FXDragType      *ddeTypeList;         // DDE drop type list
   FXuint           ddeNumTypes;         // DDE number of drop types
   FXDragAction     ddeAction;           // DDE action
   FXDragAction     ansAction;           // Reply action
   FXDragType      *xselTypeList;        // Selection type list
   FXuint           xselNumTypes;        // Selection number of types on list
-  void*            xdndTypes;           // Handle to file mapping object for types list
-  FXushort         xdndAware;           // XDND awareness atom
+  FXDragType       xdndAware;           // XDND awareness atom
+  FXID             xdndTypes;           // XDND type list atom or file mapping handle
   FXID             xdndSource;          // XDND drag source window
   FXID             xdndTarget;          // XDND drop target window
   FXbool           xdndStatusPending;   // XDND waiting for status feedback
-  FXbool           xdndFinishPending;   // XDND waiting for drop-confirmation
   FXbool           xdndStatusReceived;  // XDND received at least one status
   FXbool           xdndFinishSent;      // XDND finish sent
   FXRectangle      xdndRect;            // XDND rectangle bounding target
-  FXID             stipples[17];        // Standard stipple bitmaps
+  FXID             stipples[23];        // Standard stipple bitmaps or patterns
+  FXbool           xdndFinishPending;   // XDND waiting for drop-confirmation (Win32)
 
-#else
-
-private:
   FXID             wmDeleteWindow;      // Catch delete window
   FXID             wmSaveYourself;      // Catch shutdown
   FXID             wmQuitApp;           // Catch quit application
@@ -326,23 +321,13 @@ private:
   FXID             embedAtom;           // XEMBED support
   FXID             embedInfoAtom;       // XEMBED info support
   FXID             timestampAtom;       // Server time
-  FXID             ddeTargets;          // DDE targets atom
-  FXID             ddeAtom;             // DDE exchange atom
-  FXID             ddeDelete;           // DDE delete target atom
   FXID             ddeIncr;             // DDE incremental data exchange atom
-  FXDragType      *ddeTypeList;         // DDE drop type list
-  FXuint           ddeNumTypes;         // DDE number of drop types
-  FXDragAction     ddeAction;           // DDE action
-  FXDragAction     ansAction;           // Reply action
   FXID             xcbSelection;        // Clipboard selection
   FXDragType      *xcbTypeList;         // Clipboard type list
   FXuint           xcbNumTypes;         // Clipboard number of types on list
-  FXDragType      *xselTypeList;        // Selection type list
-  FXuint           xselNumTypes;        // Selection number of types on list
   FXDragType      *xdndTypeList;        // XDND type list
   FXuint           xdndNumTypes;        // XDND number of types
   FXID             xdndProxy;           // XDND proxy atom
-  FXID             xdndAware;           // XDND awareness atom
   FXID             xdndEnter;           // XDND enter window message
   FXID             xdndLeave;           // XDND leave window message
   FXID             xdndPosition;        // XDND position update message
@@ -350,29 +335,19 @@ private:
   FXID             xdndDrop;            // XDND drop message
   FXID             xdndFinished;        // XDND finished message
   FXID             xdndSelection;       // XDND selection atom
-  FXID             xdndTypes;           // XDND type list atom
   FXID             xdndActions;         // XDND action list atom
   FXID             xdndActionList[6];   // XDND actions
-  FXID             xdndSource;          // XDND drag source window
-  FXID             xdndTarget;          // XDND drop target window
   FXID             xdndProxyTarget;     // XDND window to set messages to
-  FXbool           xdndStatusPending;   // XDND waiting for status feedback
-  FXbool           xdndStatusReceived;  // XDND received at least one status
   FXbool           xdndWantUpdates;     // XDND target wants new positions while in rect
-  FXbool           xdndFinishSent;      // XDND finish sent
-  FXRectangle      xdndRect;            // XDND rectangle bounding target
   FXint            xrrScreenChange;     // Xrandr ScreenChange event
   FXint            xfxFixesSelection;   // Xfixes selection event
   FXint            xInputOpcode;        // XInput2 opcode
   FXint            xsbDevice;           // Space ball input device id
-  FXID             stipples[23];        // Standard stipple patterns
   void            *xim;                 // Input method
   FXbool           shmi;                // Use XSHM Image possible
   FXbool           shmp;                // Use XSHM Pixmap possible
   FXbool           xrender;             // XRender available
   FXbool           synchronize;         // Synchronized
-
-#endif
 
 private:
 
@@ -402,19 +377,17 @@ private:
   void applyFontScale();
   void setThemeScale(FXdouble scale);
   static void applyWindowDPI(FXWindow* window,FXint dpivalue);
-#if defined(WIN32)
   static FXival CALLBACK wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
-protected:
-  virtual FXival dispatchEvent(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
-#else
   void addRepaint(FXID win,FXint x,FXint y,FXint w,FXint h,FXbool synth=false);
   void removeRepaints(FXID win,FXint x,FXint y,FXint w,FXint h);
   void scrollRepaints(FXID win,FXint dx,FXint dy);
   static void imcreatecallback(void*,FXApp*,void*);
   static void imdestroycallback(void*,FXApp*,void*);
-#endif
 
 protected:
+
+  /// Dispatch a window message
+  virtual FXival dispatchEvent(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
 
   /// Destroy and forget the cached theme role fonts
   void releaseRoleFonts();
