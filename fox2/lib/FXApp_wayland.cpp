@@ -502,6 +502,34 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           }
         }
       return false;
+
+    // The compositor configured a shell; it decides the size of a maximized or
+    // full screen window and tells us when the user resizes, but it never says
+    // where the window is, so the position stays what the core decided
+    case FXXWL_CONFIGURE:
+      if((window=findWindowWithId(ev.id))!=nullptr){
+        event.type=SEL_CONFIGURE;
+        event.rect.x=window->getX();
+        event.rect.y=window->getY();
+        event.rect.w=ev.w>0?ev.w:window->getWidth();
+        event.rect.h=ev.h>0?ev.h:window->getHeight();
+        event.synthetic=true;
+        if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
+
+        // The size may have changed, and the frame buffer follows the window
+        fxwaylandExpose(app,ev.id);
+        return true;
+        }
+      return false;
+
+    // The compositor asked the user's window to go away
+    case FXXWL_CLOSE:
+      if((window=findWindowWithId(ev.id))!=nullptr){
+        event.type=SEL_CLOSE;
+        if(window->handle(this,FXSEL(SEL_CLOSE,0),&event)) refresh();
+        return true;
+        }
+      return false;
     }
   return false;
   }

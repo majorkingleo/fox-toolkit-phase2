@@ -137,16 +137,21 @@ void fxwaylandExpose(FXWaylandApp* app,FXID window){
   }
 
 
-// Configure of the shell: acknowledge and tell the core
+// Configure of the shell: acknowledge and tell the core; the toplevel
+// configure that came before it carries the size the compositor asks for
 static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
   FXWaylandEvent ev;
   xdg_surface_ack_configure(xdsurface,serial);
   s->configured=true;
-  fxwaylandTrace("configure %u serial %u\n",(unsigned int)s->window,serial);
+  fxwaylandTrace("configure %u serial %u size %dx%d\n",(unsigned int)s->window,serial,s->wantw,s->wanth);
   clearElms(&ev,1);
   ev.type=FXXWL_CONFIGURE;
   ev.id=s->window;
+  ev.w=s->wantw;
+  ev.h=s->wanth;
+  s->wantw=0;
+  s->wanth=0;
   fxwaylandPost(s->app,ev);
 
   // The windows could not be painted before this, so paint them now
@@ -172,7 +177,7 @@ static void toplevelClose(void* data,xdg_toplevel*){
 
 // Size hints of the shell; the buffer size follows the window, and the state
 // array tells us whether the compositor maximized, filled or focused it
-static void toplevelConfigure(void* data,xdg_toplevel*,int32_t,int32_t,wl_array* states){
+static void toplevelConfigure(void* data,xdg_toplevel*,int32_t width,int32_t height,wl_array* states){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
   FXuint mask=0;
   FXuint i,n=states->size/sizeof(uint32_t);
@@ -184,6 +189,9 @@ static void toplevelConfigure(void* data,xdg_toplevel*,int32_t,int32_t,wl_array*
       }
     }
   s->state=mask;
+  s->wantw=width>0?width:0;             // Zero means "the size is yours"
+  s->wanth=height>0?height:0;
+  fxwaylandTrace("toplevel configure %u %dx%d\n",(unsigned int)s->window,s->wantw,s->wanth);
   }
 static const xdg_toplevel_listener toplevelListener={
   toplevelConfigure,
@@ -206,6 +214,8 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->storeh=0;
   s->dirty=false;
   s->configured=false;
+  s->wantw=0;
+  s->wanth=0;
   s->state=0;
   s->width=0;
   s->height=0;

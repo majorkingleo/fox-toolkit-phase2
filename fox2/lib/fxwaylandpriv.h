@@ -82,6 +82,8 @@ struct FXWaylandSurface {
   FXint                      storeh;
   FXbool                     dirty;      // Something was drawn into the store
   FXbool                     configured; // The compositor configured the shell
+  FXint                      wantw;      // Size the compositor asked for
+  FXint                      wanth;
   FXuint                     state;      // FXXWL_STATE_* of the toplevel
   FXint                      width;      // Width of the pool buffers
   FXint                      height;     // Height of the pool buffers
