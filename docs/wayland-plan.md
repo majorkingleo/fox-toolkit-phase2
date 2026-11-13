@@ -466,9 +466,34 @@ Done in this phase so far (the protocol files and the platform seam):
   the shared repaint list, and the grabs and the enable/disable state. Shapes,
   cursor warping and pointer queries need the input region, the viewport and
   the seat and keep the behaviour of a platform without them.
-- The library keeps 41 undefined platform symbols instead of 62; what is left
-  is `FXTopWindow` (24), `FXMainWindow` (1), `FXPopup`, `FXToolTip`,
-  `FXDragCorner` and `FXComposeContext`.
+- The shell classes are in: `FXTopWindow_wayland.cpp` drives the `xdg_toplevel`
+  (title, application id, the size limits that follow from the `DECOR_*`
+  options), hides a window by detaching its buffer, and asks for maximize,
+  minimize and full screen with the toplevel requests; whether a window is
+  maximized or full screen is read back from the configure state, and the
+  minimized flag is the one request the protocol has no state for, so we keep
+  it ourselves. `FXMainWindow_wayland.cpp`, `FXPopup_wayland.cpp`,
+  `FXToolTip_wayland.cpp`, `FXDragCorner_wayland.cpp` and
+  `FXComposeContext_wayland.cpp` carry the placement rules of the X11 module
+  over, minus what only the input and popup phases can provide.
+- Windows are painted because they are exposed, not because they are asked to:
+  `fxplatformShowWindow()` and the configure of a shell post exposures for the
+  whole tree below them (`fxwaylandExpose()`), and a shell that the compositor
+  has not configured yet is not painted at all, which is why the first frame is
+  only committed after the first configure. The root window gets an id of its
+  own even though it has no row in the table, and a shell with a parent that is
+  not in the table hangs off the root.
+- `FOX_WAYLAND_TRACE=1` prints what the module does — connect, create window,
+  create surface, configure, expose, bind, new buffer, flush — because a
+  Wayland client has no other way to say what it did and the compositor log
+  does not show it.
+- The library now has **no** undefined platform symbols, and `hello` runs
+  against the headless compositor: it creates its toplevel, gets configured,
+  paints the button and commits an 83x26 frame, which `FOX_WAYLAND_DUMP` writes
+  as `window-2-83x26.ppm`. The frame has the same size as the X11 screenshot
+  and the same text and focus rectangle in the same place; the colours differ
+  because the palette comes from the desktop settings, which are not the same
+  in a bare headless session, not because of the painting.
 
 ### Phase 5: window management
 

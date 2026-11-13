@@ -58,14 +58,23 @@ namespace FX {
 FXID fxplatformCreateWindow(const FXWindowCreateInfo& info){
   FXWaylandApp* app=fxwayland(info.display);
   FXuint flags=0;
+  FXID parent=info.parent;
   FXID id;
+  fxwaylandTrace("create window parent %u %dx%d%+d%+d flags %u\n",(unsigned int)info.parent,info.w,info.h,info.x,info.y,info.flags);
   if(!app) return 0;
   if(info.flags&WINDOWINFO_SHELL) flags|=WINMAP_SHELL;
   if(info.flags&WINDOWINFO_SHOWN) flags|=WINMAP_SHOWN;
-  id=app->childmap.create(info.parent,info.x,info.y,info.w,info.h,flags);
+
+  // A shell hangs off the root window, which has no row in the table
+  if(!app->childmap.hasWindow(parent)){
+    parent=0;
+    flags|=WINMAP_SHELL;
+    }
+  id=app->childmap.create(parent,info.x,info.y,info.w,info.h,flags);
   if(!id) return 0;
   if(flags&WINMAP_SHELL){
     if(!fxwaylandCreateSurface(app,id,(info.flags&WINDOWINFO_OVERRIDEREDIRECT)!=0)){
+      fxwaylandTrace("no surface for window %u\n",(unsigned int)id);
       app->childmap.destroy(id);
       return 0;
       }
@@ -101,6 +110,10 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
   FXWaylandApp* app=fxwayland(display);
   if(!app) return;
   app->childmap.setShown(window,shown);
+
+  // Mapping a window exposes it, and with it everything below it, just like
+  // the server does on X11
+  if(shown) fxwaylandExpose(app,window);
   }
 
 

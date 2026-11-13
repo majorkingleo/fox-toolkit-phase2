@@ -181,6 +181,7 @@ void FXApp::initPlatformMembers(){
   app->wmbase=nullptr;
   app->screenwidth=0;
   app->screenheight=0;
+  app->rootwindow=0;
   app->argb=false;
   app->lost=false;
   app->events=nullptr;
@@ -222,6 +223,7 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   FXTRACE(TOPIC_CREATION,"%s::openDisplay(%s)\n",getClassName(),dpy?dpy:"");
   if(!app) return false;
   if(app->display) return true;
+  fxwaylandTrace("openDisplay %s\n",dpy?dpy:"(default)");
   app->display=wl_display_connect(dpy);
   if(!app->display){
     fxwarning("%s::openDisplay: unable to connect to a Wayland compositor.\n",getClassName());
@@ -245,6 +247,27 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   if(!app->argb){
     fxwarning("%s::openDisplay: the compositor has no ARGB8888 shared memory format.\n",getClassName());
     }
+
+  // Preregister some drag types; a Wayland drag type is the index of a mime
+  // type in the table of the data device, which phase 8 fills in
+  FXWindow::octetType=3;
+  FXWindow::deleteType=4;
+  FXWindow::textType=5;
+  FXWindow::colorType=6;
+  FXWindow::urilistType=7;
+  FXWindow::utf8Type=8;
+  FXWindow::actionType=9;
+
+  // Clear sticky mod state
+  stickyMods=0;
+
+  // Lock the global mutex
+  appMutex.lock();
+
+  fxwaylandTrace("connected, screen %dx%d\n",app->screenwidth,app->screenheight);
+
+  // We have been initialized
+  initialized=true;
   return true;
   }
 
@@ -487,6 +510,101 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
 // Dispatch a window message; no such messages on this platform
 FXival FXApp::dispatchEvent(FXID,FXuint,FXuval,FXival){
   return 0;
+  }
+
+
+/*******************************************************************************/
+
+// Smart rectangle compositing algorithm; the repaint list is platform neutral,
+// and its rectangles are what the event loop hands to the windows as expose
+void FXApp::addRepaint(FXID win,FXint x,FXint y,FXint w,FXint h,FXbool synth){
+  FXint px,py,pw,ph,newarea,area;
+  FXRepaint *r,**pr;
+  area=w*h;
+  w+=x;
+  h+=y;
+  do{
+
+    // Find overlap with outstanding rectangles
+    for(r=repaints,pr=&repaints; r; pr=&r->next,r=r->next){
+      if(r->window==win){
+
+        // Tentatively conglomerate rectangles
+        px=FXMIN(x,r->rect.x);
+        py=FXMIN(y,r->rect.y);
+        pw=FXMAX(w,r->rect.w);
+        ph=FXMAX(h,r->rect.h);
+        newarea=(pw-px)*(ph-py);
+
+        // New area bigger than sum; forget about it
+        if(newarea > area+r->area) continue;
+
+        // Take old paintrect out of the list
+        *pr=r->next;
+        r->next=repaintrecs;
+        repaintrecs=r;
+
+        // New rectangle
+        synth|=r->synth;        // Synthethic is preserved!
+        area=newarea;
+        x=px;
+        y=py;
+        w=pw;
+        h=ph;
+        break;
+        }
+      }
+    }
+  while(r);
+
+  // Get rectangle, recycled if possible
+  if(repaintrecs){
+    r=repaintrecs;
+    repaintrecs=r->next;
+    }
+  else{
+    r=new FXRepaint;
+    }
+
+  // Fill it
+  r->window=win;
+  r->rect.x=x;
+  r->rect.y=y;
+  r->rect.w=w;
+  r->rect.h=h;
+  r->area=area;
+  r->synth=synth;
+  r->next=nullptr;
+  *pr=r;
+  }
+
+
+// Remove repaints by dispatching them; there are no server side exposes to
+// merge with, so the rectangles of the list are painted right away
+void FXApp::removeRepaints(FXID win,FXint x,FXint y,FXint w,FXint h){
+  FXRepaint *r,**rr;
+  FXRawEvent ev;
+  w+=x;
+  h+=y;
+  rr=&repaints;
+  while((r=*rr)!=nullptr){
+    if(!win || (win==r->window && x<r->rect.w && y<r->rect.h && r->rect.x<w && r->rect.y<h)){
+      *rr=r->next;
+      clearElms(&ev,1);
+      ev.id=r->window;
+      ev.x=r->rect.x;
+      ev.y=r->rect.y;
+      ev.w=r->rect.w-r->rect.x;
+      ev.h=r->rect.h-r->rect.y;
+      ev.code=FXXWL_EXPOSE;
+      ev.state=r->synth;
+      r->next=repaintrecs;
+      repaintrecs=r;
+      dispatchEvent(ev);
+      continue;
+      }
+    rr=&r->next;
+    }
   }
 
 

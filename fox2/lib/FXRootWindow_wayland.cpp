@@ -65,7 +65,8 @@ namespace FX {
 
 // When created, create subwindows ONLY
 void FXRootWindow::create(){
-  if(getApp()->isInitialized()){
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  if(!xid && getApp()->isInitialized()){
     FXTRACE(TOPIC_CREATION,"%s::create %p\n",getClassName(),this);
 
     // Got to have a visual
@@ -74,8 +75,14 @@ void FXRootWindow::create(){
     // Initialize visual
     visual->create();
 
-    // The screen itself has no surface; creating it twice creates nothing new
-    // because every child checks for its own id
+    // The screen itself has no surface and no row in the window table, but the
+    // core needs an id before the toplevels can be created
+    if(app){
+      if(!app->rootwindow) app->rootwindow=app->childmap.newId();
+      xid=app->rootwindow;
+      }
+
+    // Create the children
     for(FXWindow *c=getFirst(); c; c=c->getNext()) c->create();
     }
   }

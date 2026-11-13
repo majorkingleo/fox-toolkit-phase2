@@ -49,6 +49,26 @@ using namespace FX;
 
 namespace FX {
 
+// Print a line of diagnostics when FOX_WAYLAND_TRACE is set; a Wayland client
+// has no other way to say what it did, and the compositor logs do not show it
+static FXbool traceon(){
+  static FXint on=-1;
+  if(on<0) on=getenv("FOX_WAYLAND_TRACE")?1:0;
+  return on!=0;
+  }
+
+
+void fxwaylandTrace(const FXchar* format,...){
+  va_list args;
+  if(!traceon()) return;
+  va_start(args,format);
+  fputs("fxwayland: ",stderr);
+  vfprintf(stderr,format,args);
+  va_end(args);
+  fflush(stderr);
+  }
+
+
 // Append an event to the queue
 void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event){
   FXuint count;
@@ -90,15 +110,47 @@ FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window){
   }
 
 
+// Post an expose for a window and every visible window below it; mapping a
+// window makes the server expose it on X11, and this is the same thing
+void fxwaylandExpose(FXWaylandApp* app,FXID window){
+  FXWaylandEvent ev;
+  FXRectangle r;
+  FXID child;
+  if(!app || !window) return;
+  r=app->childmap.getGeometry(window);
+  if(app->childmap.isVisible(window) && r.w>0 && r.h>0){
+    clearElms(&ev,1);
+    ev.type=0;
+    ev.id=window;
+    ev.x=0;
+    ev.y=0;
+    ev.w=r.w;
+    ev.h=r.h;
+    ev.code=FXXWL_EXPOSE;
+    ev.state=1;                 // Painted to order, not by the compositor
+    fxwaylandPost(app,ev);
+    }
+  fxwaylandTrace("expose window %u %dx%d\n",(unsigned int)window,r.w,r.h);
+  for(child=app->childmap.getFirst(window); child; child=app->childmap.getNext(child)){
+    fxwaylandExpose(app,child);
+    }
+  }
+
+
 // Configure of the shell: acknowledge and tell the core
 static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
   FXWaylandEvent ev;
   xdg_surface_ack_configure(xdsurface,serial);
+  s->configured=true;
+  fxwaylandTrace("configure %u serial %u\n",(unsigned int)s->window,serial);
   clearElms(&ev,1);
   ev.type=FXXWL_CONFIGURE;
   ev.id=s->window;
   fxwaylandPost(s->app,ev);
+
+  // The windows could not be painted before this, so paint them now
+  fxwaylandExpose(s->app,s->window);
   }
 
 
@@ -151,6 +203,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->buffers=nullptr;
   s->paint=nullptr;
   s->dirty=false;
+  s->configured=false;
   s->state=0;
   s->width=0;
   s->height=0;
@@ -163,8 +216,14 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
     s->toplevel=xdg_surface_get_toplevel(s->xdsurface);
     if(s->toplevel){ xdg_toplevel_add_listener(s->toplevel,&toplevelListener,s); }
     }
+  fxwaylandTrace("create surface for window %u (%s)\n",(unsigned int)window,popup?"popup":"toplevel");
   s->next=app->surfaces;
   app->surfaces=s;
+
+  // Nothing is mapped before the compositor configured the shell, so ask for
+  // the first configure now by committing the surface without a buffer
+  wl_surface_commit(s->surface);
+  wl_display_flush(app->display);
   return s;
   }
 
@@ -255,6 +314,7 @@ static FXWaylandBuffer* createBuffer(FXWaylandApp* app,FXint w,FXint h){
   b->height=h;
   b->busy=false;
   b->next=nullptr;
+  fxwaylandTrace("new buffer %dx%d map %p size %lu\n",w,h,map,(unsigned long)size);
   clearElms(b->pixels,w*h);
   return b;
   }
@@ -323,6 +383,7 @@ void fxwaylandFreeBuffers(FXWaylandSurface* surf){
   FXWaylandBuffer* b;
   FXWaylandBuffer* n;
   if(!surf) return;
+  fxwaylandTrace("free buffers of window %u\n",(unsigned int)surf->window);
   for(b=surf->buffers; b; b=n){
     n=b->next;
     if(b->map) munmap(b->map,b->mapsize);
@@ -343,8 +404,13 @@ void fxwaylandFreeBuffers(FXWaylandSurface* surf){
 FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& stride){
   FXWaylandSurface* s;
   FXRectangle shell;
+  FXRectangle place;
   FXRectangle here;
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
+
+  // A shell that the compositor did not configure yet cannot be painted; the
+  // configure handler posts the exposures that bring us back here
+  if(!s->configured) return false;
 
   // The frame is as large as the shell; children are drawn into it at their
   // place in the shell, so the whole window tree of a shell shares one buffer
@@ -357,11 +423,14 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
     }
   if(s->paint->width!=shell.w || s->paint->height!=shell.h) return false;
 
-  // Origin of the window within the frame
+  // Origin of the window within the frame; the table reports screen
+  // coordinates, so the place of the shell itself comes off again
+  place=app->childmap.getGlobalGeometry(s->window);
   here=app->childmap.getGlobalGeometry(window);
-  pixels=s->paint->pixels+(FXival)here.y*s->paint->width+here.x;
+  pixels=s->paint->pixels+(FXival)(here.y-place.y)*s->paint->width+(here.x-place.x);
   stride=s->paint->width;
   s->dirty=true;
+  fxwaylandTrace("bind window %u frame %dx%d at %+d%+d pixels %p\n",(unsigned int)window,s->paint->width,s->paint->height,here.x-place.x,here.y-place.y,pixels);
   return true;
   }
 
@@ -372,7 +441,8 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
   if(!app) return;
   for(s=app->surfaces; s; s=s->next){
     if(s->paint){
-      if(s->dirty){
+      fxwaylandTrace("flush window %u dirty %d configured %d\n",(unsigned int)s->window,s->dirty,s->configured);
+      if(s->dirty && s->configured){
         fxwaylandCommitBuffer(s,s->paint,0,0,s->paint->width,s->paint->height);
         fxwaylandDumpBuffer(s,s->paint);
         }
@@ -382,6 +452,22 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
     }
   // The requests sit in the client buffer until we push them out
   if(app->display) wl_display_flush(app->display);
+  }
+
+
+// Take the content away from a shell surface
+void fxwaylandHideSurface(FXWaylandSurface* surf){
+  if(!surf || !surf->surface) return;
+
+  // Drop the frame that was being painted, so the flush does not bring the
+  // content back after all
+  surf->paint=nullptr;
+  surf->dirty=false;
+
+  // A surface without a buffer shows nothing
+  wl_surface_attach(surf->surface,nullptr,0,0);
+  wl_surface_commit(surf->surface);
+  if(surf->app->display) wl_display_flush(surf->app->display);
   }
 
 }

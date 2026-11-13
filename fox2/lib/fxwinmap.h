@@ -90,6 +90,9 @@ public:
   /// Create a window below the given parent; returns its id
   FXID create(FXID parent,FXint x,FXint y,FXint w,FXint h,FXuint flags=0);
 
+  /// Hand out an id for a window that is not in the table, such as the root
+  FXID newId(){ return ++serial; }
+
   /// Destroy a window and all its children
   void destroy(FXID id);
 

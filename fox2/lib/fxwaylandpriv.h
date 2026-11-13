@@ -79,6 +79,7 @@ struct FXWaylandSurface {
   FXWaylandBuffer*           buffers;    // Buffer pool
   FXWaylandBuffer*           paint;      // Buffer of the frame being painted
   FXbool                     dirty;      // Something was drawn into the frame
+  FXbool                     configured; // The compositor configured the shell
   FXuint                     state;      // FXXWL_STATE_* of the toplevel
   FXint                      width;      // Width of the pool buffers
   FXint                      height;     // Height of the pool buffers
@@ -110,6 +111,7 @@ struct FXWaylandApp {
   xdg_wm_base*      wmbase;             // Shell
   FXint             screenwidth;        // Size of the first output
   FXint             screenheight;
+  FXID              rootwindow;         // Id of the virtual root window
   FXbool            argb;               // ARGB8888 buffers are supported
   FXbool            lost;               // Connection failed
   FXWaylandEvent*   events;             // Queued neutral events
@@ -126,6 +128,9 @@ inline FXWaylandApp* fxwayland(void* display){
   return (FXWaylandApp*)display;
   }
 
+
+/// Print a line of diagnostics when FOX_WAYLAND_TRACE is set
+void fxwaylandTrace(const FXchar* format,...);
 
 /// Append an event to the queue
 void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event);
@@ -147,6 +152,12 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
 
 /// Commit the frames that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app);
+
+/// Take the content away from a shell surface, which is how a toplevel hides
+void fxwaylandHideSurface(FXWaylandSurface* surf);
+
+/// Post an expose for a window and every visible window below it
+void fxwaylandExpose(FXWaylandApp* app,FXID window);
 
 /// Return an idle buffer of the given size, creating the pool when needed
 FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);
