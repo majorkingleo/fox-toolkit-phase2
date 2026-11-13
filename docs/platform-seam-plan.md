@@ -926,10 +926,35 @@ module together with its comment; `TOPIC_DEBUG` moved to both modules.
 - Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
   on Windows was 96 at startup (monitor placement) and 144 after `WM_DPICHANGED`.
 
+## Seam 36: window device context
+
+Done. `FXDCWindow.cpp` wrapped its whole implementation in one
+`#if defined(WIN32)` / `#else` pair, so the entire class moved: the GDI version
+into `FXDCWindow_win32.cpp` and the Xlib/Xft version into `FXDCWindow_x11.cpp`.
+`FXDCWindow.cpp` now holds only the includes and the design notes, which apply to
+both backends. Each module opens with its own section banner (`MS-Windows`,
+`X-Windows`); the banner that sat between the two branches was moved to the X11
+module.
+
+`tmp/split-generic.py` keeps double blank lines between members when a block holds
+several members (it only collapses runs of three or more).
+
+### Verification
+
+- Every removed line (2736) appears in the two modules.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
+  on Windows was 144 at startup and after `WM_DPICHANGED`.
+
+With this seam the drawing group is done. The classes below still hold platform
+branches in their core files.
+
 ## Next seams, in order
 
-1. **Drawing** (`FXDCWindow`). Presentation seam; needed
-   before a browser frontend and for the Wayland SHM surface.
+1. **Remaining core classes**, one class per seam, largest platform footprint
+   first: `FXTopWindow` (29 platform references), `FXRegion` (23), `fxutils` (9),
+   `fxkeyboard` (6), `FXStyle` (6), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
+   `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
+   seam; needed before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
 
