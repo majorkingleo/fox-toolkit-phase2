@@ -1053,10 +1053,31 @@ branch. The driver rewrites that condition per platform before resolving.
   from the rewritten `HAVE_XRENDER_H` conditions.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 
+## Seam 42: image
+
+Done. `FXImage.cpp` keeps the pixel operations (scale, mirror, rotate, crop,
+gradients, blend, streams, `detach()`, `release()` and the constructors). Six
+blocks moved into `FXImage_win32.cpp` and five into `FXImage_x11.cpp`:
+`create()`, `destroy()`, `restore()`, `render()` (with the 20 `render_*`
+converters and the `findshift()`/`lowbit()` helpers on X11), `resize()`, and on
+Windows `GetDC()`/`ReleaseDC()`. The X11 module owns `DISPLAY()`, `MAX_MAPSIZE`
+and `TOPIC_DETAIL`; the XShm tests inside it stay as `HAVE_XSHM_H` feature
+tests.
+
+The module guards in this file carried trailing comments (`#ifdef WIN32 //
+WINDOWS`, `#else // X11`). `tmp/seamlib.py` now ignores trailing comments when it
+recognises a platform test.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the platform guard lines.
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `FXImage` (6 platform references), `FXFont` (5), `FXRootWindow`,
+   first: `FXFont` (5 platform references), `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
 
