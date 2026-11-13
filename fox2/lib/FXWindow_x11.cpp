@@ -949,6 +949,30 @@ FXDragAction FXWindow::endDrag(FXbool drop){
   }
 
 
+// The string type is predefined and hardwired
+const FXDragType FXWindow::stringType=XA_STRING;
+
+
+// The image type is predefined and hardwired
+const FXDragType FXWindow::imageType=XA_PIXMAP;
+
+
+// The UTF-16 string type is predefined and hardwired
+FXDragType FXWindow::utf16Type=0;
+
+
+// Convert a logical length to device pixels
+FXint FXWindow::scale(FXint value) const {
+  return value;
+  }
+
+
+// Convert a device length to logical units
+FXint FXWindow::unscale(FXint value) const {
+  return value;
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){

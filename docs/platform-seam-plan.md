@@ -569,16 +569,33 @@ public header.
   DPI values. Every widget measures text, so the Win32 and XLFD metrics run at
   startup; the Xft variant is not compiled in the WSL image.
 
+## Seam 21: remaining window branches
+
+Done. `FXWindow.cpp` no longer contains a platform branch. The decision the
+earlier plan left open was settled in favor of per-module definitions: the
+three platform-valued statics are defined once in each window module, so no
+private header is needed and the public `FXWindow.h` is unchanged.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `stringType=CF_TEXT`, `imageType=CF_DIB`, `utf16Type=CF_UNICODETEXT`, and `scale()`/`unscale()` with `MulDiv()` |
+| X11 module | `FXWindow_x11.cpp`: `stringType=XA_STRING`, `imageType=XA_PIXMAP`, `utf16Type=0`, and `scale()`/`unscale()` returning the value unchanged |
+| Portable core | the `*TypeName` strings and the portable drag type atoms (`octetType`, `textType`, ...) stay in `FXWindow.cpp`, as does `getScale()` |
+
+The commented-out `setBackColor()` stub was left alone. `scale()` stays a
+real member on X11 because X11 has no per-window DPI yet; a Wayland module
+would implement it from the output scale.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values (`dpi` exercises `scale()` on Windows).
+
 ## Next seams, in order
 
-1. **Remaining `FXWindow.cpp` branches.** The `scale()`/`unscale()` DPI helpers,
-   the drag-type constants (`stringType`, `imageType` and the `*TypeName`
-   strings), and the commented-out `setBackColor()` stub. The constants are
-   data rather than behavior; moving them needs a private header or a per-module
-   definition, so decide that before touching them.
-2. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
+1. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
    `FXIODevice`). Large but self-contained; split only when a feature needs it.
-3. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.

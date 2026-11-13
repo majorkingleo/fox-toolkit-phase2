@@ -207,30 +207,6 @@ FXDragType FXWindow::utf8Type=0;
 FXDragType FXWindow::actionType=0;
 
 
-// The string type is predefined and hardwired
-#ifdef WIN32
-const FXDragType FXWindow::stringType=CF_TEXT;
-#else
-const FXDragType FXWindow::stringType=XA_STRING;
-#endif
-
-
-// The image type is predefined and hardwired
-#ifdef WIN32
-const FXDragType FXWindow::imageType=CF_DIB;
-#else
-const FXDragType FXWindow::imageType=XA_PIXMAP;
-#endif
-
-
-// The UTF-16 string type is predefined and hardwired
-#ifdef WIN32
-FXDragType FXWindow::utf16Type=CF_UNICODETEXT;
-#else
-FXDragType FXWindow::utf16Type=0;
-#endif
-
-
 /*******************************************************************************/
 
 
@@ -360,24 +336,6 @@ FXWindow::FXWindow(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h):F
 // Return the scale factor from 96-DPI logical units to device pixels
 FXdouble FXWindow::getScale() const {
   return dpi?FXdouble(dpi)/96.0:1.0;
-  }
-
-
-// Convert a logical length to device pixels
-FXint FXWindow::scale(FXint value) const {
-#if defined(WIN32)
-  if(dpi) return MulDiv(value,dpi,96);
-#endif
-  return value;
-  }
-
-
-// Convert a device length to logical units
-FXint FXWindow::unscale(FXint value) const {
-#if defined(WIN32)
-  if(dpi) return MulDiv(value,96,dpi);
-#endif
-  return value;
   }
 
 
