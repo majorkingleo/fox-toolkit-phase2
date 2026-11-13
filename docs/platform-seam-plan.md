@@ -1193,6 +1193,20 @@ from it.
 - No lossless check: the probe was adapted (out parameter instead of the file-local
   `schemename`), not moved verbatim.
 
+## Seam 52: data transfer helpers
+
+Done. `fxpriv.cpp` was one big `#ifdef WIN32 ... #else ... #endif`: the
+shared-memory helpers (`fxsenddata`, `fxrecvdata`, `fxsendrequest`) versus the
+X11 property helpers, plus the `FXApp` selection, clipboard and drag and drop
+data members for each. The whole implementation moved to `fxpriv_win32.cpp`
+and `fxpriv_x11.cpp`; `fxpriv.cpp` is an empty translation unit that keeps the
+notes. The declarations stay in `fxpriv.h`.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `fxpriv.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
