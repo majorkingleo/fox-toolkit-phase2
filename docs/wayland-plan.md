@@ -151,6 +151,9 @@ section per step, FOX formatting, no reformatting of moved code.
 
 ### Phase 1: software rasterizer (platform neutral)
 
+- Status: the rasterizer, the scene test and the pixel gate are done; the
+  portable `FXRegion`, text and the blits that need `FXBitmap` are still open
+  (text belongs to phase 2, `FXRegion` to phase 3).
 - Private header `fxraster.h` and `FXRaster.cpp`: ARGB8888 target with stride,
   clip region, foreground and background, line width and cap, dashes, fill
   style (solid, tile, stipple, opaque stipple), function codes
@@ -166,6 +169,72 @@ section per step, FOX formatting, no reformatting of moved code.
   tiles pixel-identical to X11 for the classic theme; arcs and polygons within
   a stated tolerance (X11 and the rasterizer differ in end-point rules, so each
   deviation is documented, not hidden).
+
+Done in this phase so far:
+
+- `FXRaster` is part of the library (common source list in
+  `fox2/lib/Makefile.am`, which the CMake build reads as well). Every pixel
+  written is opaque `0xAARRGGBB`, which is a valid premultiplied ARGB8888
+  buffer for `wl_shm`.
+- The 17 dither and 6 hatch bitmaps moved out of `FXApp_x11.cpp` into the
+  private header `fxstipples.h`, shared by the X11 module and the rasterizer;
+  the bitmaps were compared byte for byte with the originals.
+- `tests/raster` draws a 5x6 cell scene, one primitive per cell, with
+  `FXRaster` and — on the X11 build and with a display — with `FXDCWindow`
+  into an `FXImage`, then compares both buffers cell by cell, writes
+  `raster.ppm`, `x11.ppm` and `diff.ppm`, and exits non-zero when a cell is
+  outside its limit. `--raster-only` needs no display, so the same scene runs
+  on Windows and headless.
+- Gate: `scripts/build-fox2-linux.sh --cmake` then
+  `scripts/run-fox2-raster.sh` (add `--headless` to skip the X11 side).
+- The same scene run under Wine (`raster.exe --raster-only`) writes a byte
+  identical `raster.ppm` as on Linux, so the rasterizer is host independent.
+  The Win32 platform has no comparison path yet; the test reports
+  `no drawable platform in this build` there.
+- `scripts/build-fox2-wayland.sh --check` reports the build prerequisites
+  (Wayland client library, `libxkbcommon`, `wayland-scanner`, compositor
+  socket).
+
+Measured against the X11 build on 2026-11-13 (CachyOS, 64x64 cells): 805 of
+122880 pixels differ, 0.65%, all of them in the cells below.
+
+| cell | differing | of | reason |
+| --- | --- | --- | --- |
+| fill, tiled, stipple, opaque, points, line-hv, line-diag, rect | 0 | 4096 | identical |
+| gradv, gradh, hashbox, focus, image, stretch, area, clip | 0 | 4096 | identical |
+| lines | 32 | 4096 | one pixel per join |
+| dash | 33 | 4096 | dash phase over a polyline |
+| width | 52 | 4096 | wide line is a filled quad, not the X11 stroker |
+| roundrect | 58 | 4096 | the four corner arcs |
+| fillround | 23 | 4096 | corner arcs and the three rectangles |
+| arc | 99 | 4096 | analytic sampling vs the X11 midpoint rasterizer |
+| fillarc | 20 | 4096 | the arc boundary only |
+| chord | 59 | 4096 | the chord line of the boundary |
+| ellipse | 154 | 4096 | same rule as `arc`, full outline |
+| fillellipse | 63 | 4096 | the boundary only |
+| polygon, concave | 40 | 4096 | centre rule vs the X11 shape rule |
+| complex, winding | 66 | 4096 | same, with the even-odd and winding rules |
+
+Deviations, all on the one pixel outline unless noted:
+
+- Arcs and ellipses follow the analytic ellipse (a polyline sampled from the
+  exact curve), not the X11 integer midpoint algorithm, so some outline pixels
+  fall on the other side of the curve. The ellipse cell is the worst case with
+  154 of 4096 pixels (3.8%); no one pixel shift of the raster buffer reduces
+  the difference, so it is the rounding rule and not an offset.
+- Wide lines are filled quads; dashed wide lines are stamped along the centre
+  line, whereas the X11 server clips the whole stroke to the dash pattern.
+- Polygon fills cross the scan line at the pixel centres, the X11 shape rule
+  includes a slightly different set of edge pixels.
+- `fillVerticalGradient` and `fillHorizontalGradient` restore the previous
+  foreground colour; the X11 module leaves the last gradient colour set, which
+  is not reproduced.
+- The limits in `tests/raster` are the measured numbers plus a small margin, so
+  a regression fails the gate while the documented deviations pass.
+- `drawBitmap`, `drawIcon`, clip masks and bitmap stipples are implemented but
+  not covered by the scene yet: `FXBitmap` has no implementation in `fox2`, so
+  the test uses an image blit where a bitmap blit is planned.
+
 
 ### Phase 2: fonts without Xft
 
@@ -302,6 +371,11 @@ section per step, FOX formatting, no reformatting of moved code.
 
 - **Compile gates:** Windows, WSL X11 and, from phase 4, WSL Wayland must all
   build; each step must leave the other two outputs unchanged.
+- **Raster gate (phase 1):** `./scripts/run-fox2-raster.sh` draws the scene with
+  `FXRaster` and with `FXDCWindow` and compares the buffers; it fails when a
+  cell exceeds the limit recorded in the phase 1 table. The scene images are
+  kept under `screenshots/tests/fox2/x11/raster.png` (X11) and
+  `screenshots/tests/fox2/raster/raster.png`.
 - **Pixel gate:** phases 1 to 4 compare dumped buffers with X11 screenshots of
   the same widget tree and theme; each difference is either fixed or recorded
   with a reason.

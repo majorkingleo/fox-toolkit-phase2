@@ -9,8 +9,13 @@ noinst_PROGRAMS = hello button dpi
 hello_SOURCES = hello.cpp
 button_SOURCES = button.cpp
 dpi_SOURCES = dpi.cpp
+raster_SOURCES = raster.cpp
+noinst_PROGRAMS += raster
 
 noinst_PROGRAMS += codecs dictest expression format half match math memmap minheritance parallel process rex scan thread timefmt unicode units variant xml
+
+# The rasterizer test also uses the private fxraster.h in ../lib
+AM_CPPFLAGS = -I$(top_srcdir)/lib
 
 codecs_SOURCES = codecs.cpp
 dictest_SOURCES = dictest.cpp

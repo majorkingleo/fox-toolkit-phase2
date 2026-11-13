@@ -164,6 +164,9 @@ if [ "$use_cmake" = yes ]; then
         echo "warning: $prog exited with status $rc" >&2
         fi
       done
+    echo
+    echo "==> rasterizer scene (headless)"
+    "$BUILD/bin/raster" --raster-only || echo "warning: raster failed" >&2
     fi
 
   echo
@@ -262,12 +265,12 @@ echo "==> build library"
 run make -j"$jobs" -C lib
 
 echo "==> build tests"
-run make -j"$jobs" -C tests hello button dpi
+run make -j"$jobs" -C tests hello button dpi raster
 
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*FOX* 2>/dev/null || ls -l lib/*FOX* 2>/dev/null || true
-ls -l tests/hello tests/button tests/dpi 2>/dev/null || true
+ls -l tests/hello tests/button tests/dpi tests/raster 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   for prog in hello button dpi; do
@@ -281,6 +284,9 @@ if [ "$run_test" = yes ]; then
       echo "warning: $prog exited with status $rc" >&2
       fi
     done
+  echo
+  echo "==> rasterizer scene (headless)"
+  ( cd tests && PATH="$BUILD/lib/.libs:$PATH" ./raster --raster-only ) || echo "warning: raster failed" >&2
   fi
 
 echo
