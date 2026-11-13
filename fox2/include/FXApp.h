@@ -261,6 +261,8 @@ private:
   FXint            dpiawareness;        // Effective process DPI awareness
   FXint            dpi;                 // System DPI, 0 if unknown
   FXbool           dpiautoscale;        // Follow the DPI for the theme scale
+  FXint            dpicurrent;          // DPI of the monitor last reported, 0 if unknown
+  FXdouble         dpifactor;           // User factor on top of the monitor DPI scale
 
 private:
   static FXApp    *app;                 // Application pointer
@@ -573,8 +575,15 @@ public:
   /// Return true when the display scale follows the monitor DPI
   FXbool getDisplayScaleAuto() const { return dpiautoscale; }
 
+  /// Return the user factor applied on top of the monitor DPI scale
+  FXdouble getDisplayScaleFactor() const { return dpifactor; }
+
   /// Change the display scale explicitly; this disables automatic scaling
   void setDisplayScale(FXdouble scale);
+
+  /// Follow the monitor DPI, multiplied by a user factor; the scale keeps
+  /// following the DPI when a window moves to another monitor
+  void setDisplayScaleFactor(FXdouble factor);
 
   /// Follow the monitor DPI for the display scale
   void setDisplayScaleAuto();

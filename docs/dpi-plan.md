@@ -117,7 +117,10 @@ FOX DPI diagnostic
 `WM_DPICHANGED_AFTERPARENT`:
 
 1. records the new DPI on the window and its descendants,
-2. updates the theme scale and relayouts when `scale=auto` is active,
+2. updates the theme scale and relayouts when `scale=auto` is active
+   (`dpifactor * newdpi / 96`; the factor is 1.0 unless the application called
+   `setDisplayScaleFactor()`, which keeps a user zoom across monitors, whereas
+   `setDisplayScale()` pins an absolute scale and disables following the DPI),
 3. applies the suggested top-level rectangle from `lParam`.
 
 `tests/dpi simulate` sends a synthetic 144-DPI notification so the path can be

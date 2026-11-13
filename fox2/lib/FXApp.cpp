@@ -432,6 +432,8 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   dpiawareness=DPIAWARENESS_UNKNOWN;      // DPI awareness not established
   dpi=0;                                  // DPI not determined
   dpiautoscale=false;                     // Do not follow the DPI yet
+  dpicurrent=0;                           // Monitor DPI not reported yet
+  dpifactor=1.0;                          // No user factor
   fontsets=nullptr;                       // No per-DPI font sets
 
   // Clear sticky mod state
@@ -3483,10 +3485,12 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   if(scalespec){
     if(FXString::comparecase(scalespec,"auto")==0){
       dpiautoscale=true;
+      dpifactor=1.0;
       setThemeScale(dpi?FXdouble(dpi)/96.0:1.0);
       }
     else{
       dpiautoscale=false;
+      dpifactor=1.0;
       setThemeScale(FXdouble(FXString(scalespec).toInt())/100.0);
       }
     }
@@ -4341,7 +4345,8 @@ Alt key seems to repeat.
         if(newdpi<=0) newdpi=(FXint)LOWORD(wParam);
         if(newdpi<=0) break;
         applyWindowDPI(window,newdpi);
-        if(dpiautoscale) setThemeScale(FXdouble(newdpi)/96.0);
+        dpicurrent=newdpi;
+        if(dpiautoscale) setThemeScale(dpifactor*FXdouble(newdpi)/96.0);
         if(suggested){
           SetWindowPos((HWND)hwnd,nullptr,suggested->left,suggested->top,suggested->right-suggested->left,suggested->bottom-suggested->top,SWP_NOZORDER|SWP_NOACTIVATE);
           }
@@ -4867,14 +4872,26 @@ void FXApp::setScrollBarSize(FXint size){
 // Change the display scale explicitly
 void FXApp::setDisplayScale(FXdouble scale){
   dpiautoscale=false;
+  dpifactor=1.0;
   setThemeScale(scale);
+  }
+
+
+// Follow the DPI of the monitor, multiplied by a user factor
+void FXApp::setDisplayScaleFactor(FXdouble factor){
+  FXint monitor=dpicurrent?dpicurrent:dpi;
+  dpiautoscale=true;
+  dpifactor=factor;
+  setThemeScale(dpifactor*(monitor?FXdouble(monitor)/96.0:1.0));
   }
 
 
 // Follow the DPI for the display scale
 void FXApp::setDisplayScaleAuto(){
+  FXint monitor=dpicurrent?dpicurrent:dpi;
   dpiautoscale=true;
-  setThemeScale(dpi?FXdouble(dpi)/96.0:1.0);
+  dpifactor=1.0;
+  setThemeScale(monitor?FXdouble(monitor)/96.0:1.0);
   }
 
 

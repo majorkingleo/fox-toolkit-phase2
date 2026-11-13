@@ -321,6 +321,7 @@ FXIMPLEMENT(DPITest,FXObject,DPITestMap,ARRAYNUMBER(DPITestMap))
 // Refresh the information labels
 void DPITest::updateLabels(){
   FXint percent=FXint(app->getDisplayScale()*100.0+0.5);
+  slider->setValue(FXCLAMP(DPI_SCALE_MIN,percent,DPI_SCALE_MAX),false);
   awarenessLabel->setText(FXString::value("Process awareness: %s (%d)",awarenessName(app->getDPIAwareness()),app->getDPIAwareness()));
   dpiLabel->setText(FXString::value("System DPI: %d    Window DPI: %d",app->getDPI(),window->getWindowDPI()));
   scaleLabel->setText(FXString::value("%d%%",percent));
@@ -354,7 +355,7 @@ void DPITest::snapshot(const FXchar* reason){
   if(!log || !log->isOpen()) return;
   log->separator(reason);
   log->line("awareness=%s(%d) system_dpi=%d",awarenessName(app->getDPIAwareness()),app->getDPIAwareness(),app->getDPI());
-  log->line("theme_scale=%.3f (%d%%) auto=%s",app->getDisplayScale(),percent,app->getDisplayScaleAuto()?"yes":"no");
+  log->line("theme_scale=%.3f (%d%%) auto=%s factor=%.3f",app->getDisplayScale(),percent,app->getDisplayScaleAuto()?"yes":"no",app->getDisplayScaleFactor());
   log->line("window_dpi_fox=%d window_scale=%.3f",window->getWindowDPI(),window->getScale());
   log->line("window_pos=%d,%d window_size=%dx%d",window->getX(),window->getY(),window->getWidth(),window->getHeight());
   lastdpi=window->getWindowDPI();
@@ -453,13 +454,15 @@ long DPITest::onCmdSnapshot(FXObject*,FXSelector,void*){
   }
 
 
-// Slider moved
+// Slider moved; the percentage is the scale on the current monitor, and it
+// stays a factor of that monitor's DPI when the window moves to another one
 long DPITest::onScale(FXObject*,FXSelector,void* ptr){
   FXint percent=(FXint)(FXival)ptr;
+  FXint monitor=window->getWindowDPI();
   if(percent<DPI_SCALE_MIN) percent=DPI_SCALE_MIN;
   if(percent>DPI_SCALE_MAX) percent=DPI_SCALE_MAX;
-  app->setDisplayScale(FXdouble(percent)/100.0);
-  if(log) log->line("user: display scale %d%%",percent);
+  app->setDisplayScaleFactor((FXdouble(percent)/100.0)/(monitor?FXdouble(monitor)/96.0:1.0));
+  if(log) log->line("user: display scale %d%% (factor %.3f on window dpi %d)",percent,app->getDisplayScaleFactor(),monitor);
   update();
   return 1;
   }
