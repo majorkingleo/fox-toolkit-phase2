@@ -46,6 +46,7 @@ namespace FX {
 struct FXWinEntry {
   FXID    id;                   // Synthetic window id, never 0
   FXID    parent;               // Parent window, 0 for a shell
+  FXID    owner;                // Owner of a popup, 0 when there is none
   FXID    first;                // Bottom-most child, 0 when there is none
   FXID    last;                 // Top-most child, 0 when there is none
   FXID    prev;                 // Window below this one
@@ -111,6 +112,10 @@ public:
   FXID getLast(FXID id) const;
   FXID getPrev(FXID id) const;
   FXID getNext(FXID id) const;
+
+  /// Owner of a popup; the shell a popup surface hangs off
+  void setOwner(FXID id,FXID owner);
+  FXID getOwner(FXID id) const;
 
   /// Geometry relative to the parent
   void setGeometry(FXID id,FXint x,FXint y,FXint w,FXint h);

@@ -557,6 +557,14 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         }
       return false;
 
+    // The compositor dismissed the popup, or its parent went away
+    case FXXWL_POPUPDONE:
+      if((window=findWindowWithId(ev.id))!=nullptr){
+        window->hide();
+        return true;
+        }
+      return false;
+
     // The compositor asked the user's window to go away
     case FXXWL_CLOSE:
       if((window=findWindowWithId(ev.id))!=nullptr){

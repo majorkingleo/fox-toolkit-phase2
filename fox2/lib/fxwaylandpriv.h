@@ -61,7 +61,8 @@ enum {
   FXXWL_KEY        = 8,         // Key pressed or released
   FXXWL_WHEEL      = 9,         // Mouse wheel turned
   FXXWL_FOCUSIN    = 10,        // The keyboard focus is on a shell
-  FXXWL_FOCUSOUT   = 11         // The keyboard focus left a shell
+  FXXWL_FOCUSOUT   = 11,        // The keyboard focus left a shell
+  FXXWL_POPUPDONE  = 12         // The compositor dismissed a popup
   };
 
 
@@ -85,6 +86,7 @@ struct FXWaylandSurface {
   xdg_surface*               xdsurface;  // Shell surface role
   xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
+  FXWaylandSurface*          parent;     // Surface the popup hangs off
   FXWaylandBuffer*           buffers;    // Buffer pool
   FXColor*                   store;      // Content of the shell window tree
   FXint                      storew;     // Size of the backing store
@@ -126,6 +128,7 @@ struct FXWaylandApp {
   struct xkb_keymap*  xkbkeymap;        // Keymap of the keyboard
   struct xkb_state*   xkbstate;         // State of the modifiers
   FXID              pointerwindow;      // Window the pointer is over
+  FXuint            pointerserial;      // Serial of the last pointer enter
   FXint             pointerx;           // Position of the pointer in the shell
   FXint             pointery;
   FXuint            pointerbuttons;     // Buttons held down
@@ -176,6 +179,9 @@ FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window);
 
 /// Create the surface of a shell; returns nullptr on failure
 FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool popup);
+
+/// Give a window the popup role under the given parent window; false on failure
+FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h);
 
 /// Destroy the surface of a shell
 void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);

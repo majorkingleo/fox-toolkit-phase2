@@ -208,6 +208,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->window=window;
   s->popup=nullptr;
   s->toplevel=nullptr;
+  s->parent=nullptr;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -237,6 +238,103 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   wl_surface_commit(s->surface);
   wl_display_flush(app->display);
   return s;
+  }
+
+
+// The compositor dismissed a popup, or its parent went away
+static void popupDone(void* data,xdg_popup*){
+  FXWaylandSurface* s=(FXWaylandSurface*)data;
+  FXWaylandEvent ev;
+  clearElms(&ev,1);
+  ev.code=FXXWL_POPUPDONE;
+  ev.id=s->window;
+  fxwaylandPost(s->app,ev);
+  fxwaylandTrace("popup done %u\n",(unsigned int)s->window);
+  }
+
+
+// Where the popup ends up; the positioner already asked for what we want
+static void popupConfigure(void*,xdg_popup*,int32_t,int32_t,int32_t,int32_t){}
+
+static void popupRepositioned(void*,xdg_popup*,uint32_t){}
+
+
+static const xdg_popup_listener popupListener={
+  popupConfigure,
+  popupDone,
+  popupRepositioned
+  };
+
+
+// Give a window the popup role, hanging off the surface of its parent
+FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h){
+  FXWaylandSurface* s;
+  FXWaylandSurface* parent;
+  xdg_positioner* positioner;
+  FXRectangle place;
+  FXRectangle here;
+  if(!app || !app->wmbase || !app->compositor) return false;
+
+  // A popup hangs off the surface of the shell that owns it; without one there
+  // is nothing to hang off and the window stays a plain toplevel
+  if((parent=fxwaylandShellSurface(app,parentwindow))==nullptr) return false;
+
+  s=new FXWaylandSurface();
+  s->app=app;
+  s->window=window;
+  s->popup=nullptr;
+  s->toplevel=nullptr;
+  s->parent=parent;
+  s->buffers=nullptr;
+  s->store=nullptr;
+  s->storew=0;
+  s->storeh=0;
+  s->dirty=false;
+  s->configured=false;
+  s->wantw=0;
+  s->wanth=0;
+  s->state=0;
+  s->width=0;
+  s->height=0;
+  s->surface=wl_compositor_create_surface(app->compositor);
+  if(!s->surface){ delete s; return false; }
+  s->xdsurface=xdg_wm_base_get_xdg_surface(app->wmbase,s->surface);
+  if(!s->xdsurface){ wl_surface_destroy(s->surface); delete s; return false; }
+  xdg_surface_add_listener(s->xdsurface,&shellSurfaceListener,s);
+
+  // The core places every window in screen coordinates, the positioner wants
+  // the place inside the surface of the parent
+  place=app->childmap.getGlobalGeometry(parent->window);
+  here=app->childmap.getGlobalGeometry(window);
+  if(w<=0) w=here.w;
+  if(h<=0) h=here.h;
+  positioner=xdg_wm_base_create_positioner(app->wmbase);
+  xdg_positioner_set_size(positioner,w,h);
+  xdg_positioner_set_anchor_rect(positioner,x-place.x,y-place.y,1,1);
+  xdg_positioner_set_anchor(positioner,XDG_POSITIONER_ANCHOR_TOP_LEFT);
+  xdg_positioner_set_gravity(positioner,XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
+  xdg_positioner_set_constraint_adjustment(positioner,XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X|XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+  s->popup=xdg_surface_get_popup(s->xdsurface,parent->xdsurface,positioner);
+  xdg_positioner_destroy(positioner);
+  if(!s->popup){
+    xdg_surface_destroy(s->xdsurface);
+    wl_surface_destroy(s->surface);
+    delete s;
+    return false;
+    }
+  xdg_popup_add_listener(s->popup,&popupListener,s);
+
+  // A popup takes the pointer for as long as it lives, so that a click outside
+  // it dismisses it; without a serial from the pointer we cannot ask for that
+  if(app->seat && app->pointerserial){
+    xdg_popup_grab(s->popup,app->seat,app->pointerserial);
+    }
+  fxwaylandTrace("create popup for window %u under %u at %+d%+d %dx%d\n",(unsigned int)window,(unsigned int)parent->window,x-place.x,y-place.y,w,h);
+  s->next=app->surfaces;
+  app->surfaces=s;
+  wl_surface_commit(s->surface);
+  wl_display_flush(app->display);
+  return true;
   }
 
 

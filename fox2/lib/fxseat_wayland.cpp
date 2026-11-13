@@ -111,8 +111,8 @@ static void postPointer(FXWaylandApp* app,FXWaylandSurface* s,unsigned int code,
 static void pointerEnter(void* data,wl_pointer*,uint32_t serial,wl_surface* surface,wl_fixed_t sx,wl_fixed_t sy){
   FXWaylandApp* app=fxwayland(data);
   FXWaylandSurface* s=fxwaylandSurfaceOf(app,surface);
-  (void)serial;
   if(!s) return;
+  app->pointerserial=serial;
   app->pointersurface=s;
   app->pointerx=wl_fixed_to_int(sx);
   app->pointery=wl_fixed_to_int(sy);

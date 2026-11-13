@@ -95,7 +95,6 @@ FXWinEntry* FXWinMap::add(){
   return e;
   }
 
-
 // Remove an entry from its parent's child list
 void FXWinMap::unlinkEntry(FXWinEntry* e){
   FXWinEntry* p;
@@ -158,6 +157,7 @@ FXID FXWinMap::create(FXID parent,FXint x,FXint y,FXint w,FXint h,FXuint flgs){
   if(parent && !find(parent)) return 0;
   if(!(e=add())) return 0;
   e->parent=parent;
+  e->owner=0;
   e->x=x;
   e->y=y;
   e->w=FXMAX(w,1);
@@ -165,6 +165,20 @@ FXID FXWinMap::create(FXID parent,FXint x,FXint y,FXint w,FXint h,FXuint flgs){
   e->flags=flgs;
   linkTop(e);
   return e->id;
+  }
+
+
+// Set the owner of a popup
+void FXWinMap::setOwner(FXID id,FXID owner){
+  FXWinEntry* e=find(id);
+  if(e) e->owner=owner;
+  }
+
+
+// Owner of a popup
+FXID FXWinMap::getOwner(FXID id) const {
+  const FXWinEntry* e=find(id);
+  return e?e->owner:0;
   }
 
 

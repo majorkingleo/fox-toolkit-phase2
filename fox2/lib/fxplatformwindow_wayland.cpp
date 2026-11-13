@@ -60,10 +60,12 @@ FXID fxplatformCreateWindow(const FXWindowCreateInfo& info){
   FXuint flags=0;
   FXID parent=info.parent;
   FXID id;
+  FXbool popup=(info.flags&WINDOWINFO_OVERRIDEREDIRECT)!=0;
   fxwaylandTrace("create window parent %u %dx%d%+d%+d flags %u\n",(unsigned int)info.parent,info.w,info.h,info.x,info.y,info.flags);
   if(!app) return 0;
   if(info.flags&WINDOWINFO_SHELL) flags|=WINMAP_SHELL;
   if(info.flags&WINDOWINFO_SHOWN) flags|=WINMAP_SHOWN;
+  if(popup) flags|=WINMAP_POPUP;
 
   // A shell hangs off the root window, which has no row in the table
   if(!app->childmap.hasWindow(parent)){
@@ -73,7 +75,14 @@ FXID fxplatformCreateWindow(const FXWindowCreateInfo& info){
   id=app->childmap.create(parent,info.x,info.y,info.w,info.h,flags);
   if(!id) return 0;
   if(flags&WINMAP_SHELL){
-    if(!fxwaylandCreateSurface(app,id,(info.flags&WINDOWINFO_OVERRIDEREDIRECT)!=0)){
+
+    // A popup is made when it is shown, because its surface is sized by the
+    // positioner once and can not grow afterwards; the table keeps its owner
+    if(popup){
+      app->childmap.setOwner(id,info.ownershell?info.ownershell:info.owner);
+      return id;
+      }
+    if(!fxwaylandCreateSurface(app,id,false)){
       fxwaylandTrace("no surface for window %u\n",(unsigned int)id);
       app->childmap.destroy(id);
       return 0;
@@ -108,7 +117,19 @@ void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXi
 // Map or unmap a native window
 void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown){
   FXWaylandApp* app=fxwayland(display);
+  const FXWinEntry* entry;
+  FXRectangle place;
   if(!app) return;
+
+  // A popup gets its surface when it is shown: the positioner fixes its size
+  // and its place once, so a new show starts from a new surface
+  if((entry=app->childmap.getEntry(window))!=nullptr && (entry->flags&WINMAP_POPUP)){
+    fxwaylandDestroySurface(app,window);
+    if(shown && w>0 && h>0){
+      place=app->childmap.getGeometry(window);
+      fxwaylandCreatePopup(app,window,app->childmap.getOwner(window),place.x,place.y,w,h);
+      }
+    }
   app->childmap.setShown(window,shown);
 
   // Mapping a window exposes it, and with it everything below it, just like

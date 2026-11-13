@@ -633,6 +633,12 @@ Done in this phase so far (the protocol files and the platform seam):
   `SEL_FOCUSOUT`, because the compositor in the gate reports the leave of one
   surface twice, which would otherwise take the focus away from a widget
   between the press and the release of a key.
+- **Popup gate:** `scripts/gate-wayland-popup.sh` runs `tests/popup`, which
+  opens a menu pane over its main window on a timer, against headless weston
+  and collects the frames. It passes: the trace shows
+  `create popup for window 4 under 2 at +20+12 90x56` and two frames are
+  committed, one for the main window and one for the pane, which is kept as
+  `screenshots/tests/fox2/wayland/popup.png`.
 - **Compositors:** WSLg/Weston (client-side decorations, no `xdg-decoration`)
   and KWin on the development machine (server-side decorations, all optional
   protocols). For scripted runs `scripts/run-fox2-wayland-headless.sh` starts a

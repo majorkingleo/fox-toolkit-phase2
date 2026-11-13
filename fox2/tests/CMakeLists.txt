@@ -1,4 +1,4 @@
-foreach(prog hello button dpi)
+foreach(prog hello button dpi popup)
   add_executable(${prog} ${prog}.cpp)
   target_link_libraries(${prog} PRIVATE FOX::FOX m)
 endforeach()
