@@ -1663,45 +1663,6 @@ FXbool FXWindow::releaseClipboard(){
 /*******************************************************************************/
 
 
-// Get pointer location (in window coordinates)
-FXbool FXWindow::getCursorPosition(FXint& x,FXint& y,FXuint& buttons) const {
-  if(xid){
-#ifdef WIN32
-    POINT pt;
-    GetCursorPos(&pt);
-    ScreenToClient((HWND)xid,&pt);
-    x=pt.x; y=pt.y;
-    buttons=fxmodifierkeys();
-    return true;
-#else
-    Window dum; int rx,ry;
-    return XQueryPointer((Display*)getApp()->getDisplay(),xid,&dum,&dum,&rx,&ry,&x,&y,&buttons);
-#endif
-    }
-  return false;
-  }
-
-
-// Set pointer location (in window coordinates)
-// Contributed by David Heath <dave@hipgraphics.com>
-FXbool FXWindow::setCursorPosition(FXint x,FXint y){
-  if(xid){
-#ifdef WIN32
-    POINT pt;
-    pt.x=x;
-    pt.y=y;
-    ClientToScreen((HWND)xid,&pt);
-    SetCursorPos(pt.x,pt.y);
-    return true;
-#else
-    XWarpPointer((Display*)getApp()->getDisplay(),None,xid,0,0,0,0,x,y);
-    return true;
-#endif
-    }
-  return false;
-  }
-
-
 // Update this widget by sending SEL_UPDATE to its target.
 // If there is no target, onUpdate returns 0 on behalf of widgets
 // which have the autogray feature enabled.  If there is a target
@@ -2117,45 +2078,6 @@ void FXWindow::translateCoordinatesTo(FXint& tox,FXint& toy,const FXWindow* towi
   toy=fromy;
   }
 #endif
-
-// Get coordinates from another window (for symmetry)
-void FXWindow::translateCoordinatesFrom(FXint& tox,FXint& toy,const FXWindow* fromwindow,FXint fromx,FXint fromy) const {
-  if(!fromwindow){ fxerror("%s::translateCoordinatesFrom: from-window is NULL.\n",getClassName()); }
-  if(xid && fromwindow->id()){
-#ifdef WIN32
-    POINT pt;
-    pt.x=fromx;
-    pt.y=fromy;
-    ClientToScreen((HWND)fromwindow->id(),&pt);
-    ScreenToClient((HWND)xid,&pt);
-    tox=pt.x;
-    toy=pt.y;
-#else
-    Window tmp;
-    XTranslateCoordinates((Display*)getApp()->getDisplay(),fromwindow->id(),xid,fromx,fromy,&tox,&toy,&tmp);
-#endif
-    }
-  }
-
-
-// Get coordinates to another window (for symmetry)
-void FXWindow::translateCoordinatesTo(FXint& tox,FXint& toy,const FXWindow* towindow,FXint fromx,FXint fromy) const {
-  if(!towindow){ fxerror("%s::translateCoordinatesTo: to-window is NULL.\n",getClassName()); }
-  if(xid && towindow->id()){
-#ifdef WIN32
-    POINT pt;
-    pt.x=fromx;
-    pt.y=fromy;
-    ClientToScreen((HWND)xid,&pt);
-    ScreenToClient((HWND)towindow->id(),&pt);
-    tox=pt.x;
-    toy=pt.y;
-#else
-    Window tmp;
-    XTranslateCoordinates((Display*)getApp()->getDisplay(),xid,towindow->id(),fromx,fromy,&tox,&toy,&tmp);
-#endif
-    }
-  }
 
 /*******************************************************************************/
 

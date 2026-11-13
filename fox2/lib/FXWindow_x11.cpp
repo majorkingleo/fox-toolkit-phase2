@@ -339,6 +339,47 @@ void FXWindow::clearShape(){
   }
 
 
+// Get pointer location (in window coordinates)
+FXbool FXWindow::getCursorPosition(FXint& x,FXint& y,FXuint& buttons) const {
+  if(xid){
+    Window dum; int rx,ry;
+    return XQueryPointer((Display*)getApp()->getDisplay(),xid,&dum,&dum,&rx,&ry,&x,&y,&buttons);
+    }
+  return false;
+  }
+
+
+// Set pointer location (in window coordinates)
+// Contributed by David Heath <dave@hipgraphics.com>
+FXbool FXWindow::setCursorPosition(FXint x,FXint y){
+  if(xid){
+    XWarpPointer((Display*)getApp()->getDisplay(),None,xid,0,0,0,0,x,y);
+    return true;
+    }
+  return false;
+  }
+
+
+// Get coordinates from another window (for symmetry)
+void FXWindow::translateCoordinatesFrom(FXint& tox,FXint& toy,const FXWindow* fromwindow,FXint fromx,FXint fromy) const {
+  if(!fromwindow){ fxerror("%s::translateCoordinatesFrom: from-window is NULL.\n",getClassName()); }
+  if(xid && fromwindow->id()){
+    Window tmp;
+    XTranslateCoordinates((Display*)getApp()->getDisplay(),fromwindow->id(),xid,fromx,fromy,&tox,&toy,&tmp);
+    }
+  }
+
+
+// Get coordinates to another window (for symmetry)
+void FXWindow::translateCoordinatesTo(FXint& tox,FXint& toy,const FXWindow* towindow,FXint fromx,FXint fromy) const {
+  if(!towindow){ fxerror("%s::translateCoordinatesTo: to-window is NULL.\n",getClassName()); }
+  if(xid && towindow->id()){
+    Window tmp;
+    XTranslateCoordinates((Display*)getApp()->getDisplay(),xid,towindow->id(),fromx,fromy,&tox,&toy,&tmp);
+    }
+  }
+
+
 // Acquire grab; also switches to the drag cursor
 void FXWindow::grab(){
   if(xid){

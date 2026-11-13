@@ -429,11 +429,32 @@ with them as a `static` function.
   DPI values. No example exercises shaped windows, so the new code is only
   compile-checked.
 
+## Seam 15: pointer position and coordinate translation
+
+Done. `getCursorPosition()`, `setCursorPosition()`, `translateCoordinatesFrom()`
+and `translateCoordinatesTo()` moved as whole members into the window platform
+modules. The `#if 0` portable fallback of the two translate members stays in
+`FXWindow.cpp` untouched.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXWindow_win32.cpp`: `GetCursorPos()`/`SetCursorPos()` with `ScreenToClient()`/`ClientToScreen()` and `fxmodifierkeys()` for the button state |
+| X11 module | `FXWindow_x11.cpp`: `XQueryPointer()`, `XWarpPointer()`, `XTranslateCoordinates()` |
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values.
+
 ## Next seams, in order
 
-1. **Coordinates and remaining window branches** (`FXWindow.cpp`). The
-   `translateCoordinates*()` members, then the `#ifdef WIN32` blocks in focus
-   handling and the input method. Take each member whole.
+1. **Selection, clipboard and drag rectangle** (`FXWindow.cpp`).
+   `acquireSelection()`/`releaseSelection()`, `acquireClipboard()`/
+   `releaseClipboard()`, `setDragRectangle()` and `clearDragRectangle()`
+   mix portable bookkeeping with `XSetSelectionOwner()`/`OpenClipboard()`/
+   `XTranslateCoordinates()`; each moves whole into the matching module,
+   keeping the bookkeeping order intact. Then the remaining blocks in drag and
+   drop (`dropFinished()`, `beginDrag()`, `handleDrag()`).
 2. **Font realization** (`FXFont.cpp`). Keep the public `FXFont` API and move
    only face matching, metrics and glyph extents.
 3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
