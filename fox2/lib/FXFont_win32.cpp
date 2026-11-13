@@ -53,8 +53,8 @@
 /*
   Notes:
 
-  - Win32 (GDI) face matching, font realization and font enumeration.  The public
-    FXFont API and the text metrics stay in FXFont.cpp.
+  - Win32 (GDI) face matching, font realization, font enumeration and text
+    metrics.  The public FXFont API stays in FXFont.cpp.
 */
 
 using namespace FX;
@@ -62,6 +62,10 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+
+static const FXint LEAD_OFFSET=0xD800-(0x10000>>10);
+static const FXint TAIL_OFFSET=0xDC00;
 
 
 
@@ -513,6 +517,172 @@ FXbool FXFont::listFonts(FXFontDesc*& fonts,FXuint& numfonts,const FXString& fac
 
   return true;
   }
+
+
+// Does font have given character glyph?
+FXbool FXFont::hasChar(FXwchar ch) const {
+  if(font){
+    // FIXME may want to use GetGlyphIndices()
+    return ((TEXTMETRIC*)font)->tmFirstChar<=ch && ch<=((TEXTMETRIC*)font)->tmLastChar;
+    }
+  return false;
+  }
+
+
+// Get first character glyph in font
+FXwchar FXFont::getMinChar() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmFirstChar;
+    }
+  return 0;
+  }
+
+
+// Get last character glyph in font
+FXwchar FXFont::getMaxChar() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmLastChar;
+    }
+  return 0;
+  }
+
+
+// Get font leading [that is lead-ing as in Pb!]
+FXint FXFont::getFontLeading() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmExternalLeading;
+    }
+  return 0;
+  }
+
+
+// Get font line spacing [height+leading]
+FXint FXFont::getFontSpacing() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmHeight;               // Includes font point size plus internal leading
+    }
+  return 1;
+  }
+
+
+// Left bearing
+FXint FXFont::leftBearing(FXwchar ch) const {
+  if(font){
+    return 0;                                           // FIXME
+    }
+  return 0;
+  }
+
+
+// Right bearing
+FXint FXFont::rightBearing(FXwchar ch) const {
+  if(font){
+    return 0;                                           // FIXME
+    }
+  return 0;
+  }
+
+
+// Is it a mono space font
+FXbool FXFont::isFontMono() const {
+  if(font){
+    return !(((TEXTMETRIC*)font)->tmPitchAndFamily&TMPF_FIXED_PITCH);
+    }
+  return true;
+  }
+
+
+// Get font width
+FXint FXFont::getFontWidth() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmMaxCharWidth;
+    }
+  return 1;
+  }
+
+
+// Get font height
+FXint FXFont::getFontHeight() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmHeight;
+    }
+  return 1;
+  }
+
+
+// Get font ascent
+FXint FXFont::getFontAscent() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmAscent;
+    }
+  return 1;
+  }
+
+
+// Get font descent
+FXint FXFont::getFontDescent() const {
+  if(font){
+    return ((TEXTMETRIC*)font)->tmDescent;
+    }
+  return 0;
+  }
+
+
+// Calculate width of single wide character in this font
+FXint FXFont::getCharWidth(const FXwchar ch) const {
+  if(font){
+    FXnchar sbuffer[2]; SIZE size;
+    if(ch<0xFFFF){
+      sbuffer[0]=ch;
+      GetTextExtentPoint32W((HDC)dc,sbuffer,1,&size);
+      return size.cx;
+      }
+    sbuffer[0]=(ch>>10)+LEAD_OFFSET;    // Deal with surrogate pair
+    sbuffer[1]=(ch&0x3FF)+TAIL_OFFSET;
+    GetTextExtentPoint32W((HDC)dc,sbuffer,2,&size);
+    return size.cx;
+    }
+  return 1;
+  }
+
+
+// Text width
+FXint FXFont::getTextWidth(const FXchar *string,FXuint length) const {
+  if(!string && length){ fxerror("%s::getTextWidth: NULL string argument\n",getClassName()); }
+  if(font){
+    SIZE size;
+    FXint count;
+    if(length<=4096){
+      FXnchar sbuffer[4096];
+      count=utf2ncs(sbuffer,string,4096,length);
+      GetTextExtentPoint32W((HDC)dc,sbuffer,count,&size);
+      }
+    else{
+      FXnchar* dbuffer=nullptr;
+      if(!allocElms(dbuffer,length)){ throw FXResourceException("unable allocate memory in FXFont."); }
+      count=utf2ncs(dbuffer,string,length,length);
+      GetTextExtentPoint32W((HDC)dc,dbuffer,count,&size);
+      freeElms(dbuffer);
+      }
+    return size.cx;
+    }
+  return length;
+  }
+
+
+// Text height
+FXint FXFont::getTextHeight(const FXchar *string,FXuint length) const {
+  if(!string && length){ fxerror("%s::getTextHeight: NULL string argument\n",getClassName()); }
+  if(font){
+//    SIZE size;
+//    FXASSERT(dc);
+//    GetTextExtentPoint32((HDC)dc,string,length,&size);
+//    return size.cy;
+    return ((TEXTMETRIC*)font)->tmHeight;
+    }
+  return 1;
+  }
+
 
 }
 

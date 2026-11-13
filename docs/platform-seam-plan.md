@@ -544,6 +544,31 @@ locally in both modules, and the X11 module declares `__snprintf()` itself.
   variant is moved verbatim but not compiled, and `listFonts()` is
   compile-checked only.
 
+## Seam 20: font metrics
+
+Done. The 15 metric members of `FXFont.cpp` moved as whole members into
+`FXFont_win32.cpp` and `FXFont_x11.cpp`, again with a scratch script
+(`tmp/split-font-metrics.py`) that resolves the `WIN32` / `HAVE_XFT_H` / XLFD
+branches per platform.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXFont_win32.cpp`: `hasChar()`, `getMinChar()`, `getMaxChar()`, `getFontLeading()`, `getFontSpacing()`, `leftBearing()`, `rightBearing()`, `isFontMono()`, `getFontWidth()`, `getFontHeight()`, `getFontAscent()`, `getFontDescent()`, `getCharWidth()`, `getTextWidth()` and `getTextHeight()` from the `TEXTMETRIC` block and `GetTextExtentPoint32W()` on the dummy DC, plus the surrogate-pair constants `LEAD_OFFSET` and `TAIL_OFFSET` |
+| X11 module | `FXFont_x11.cpp`: the same members from `XftFont` with `XftTextExtents*()` or from `XFontStruct` and its `per_char` table |
+| Portable core | the `FXString` overloads of `getTextWidth()` and `getTextHeight()`, constructors, `setAngle()`, the encoding name table and the font string parser stay in `FXFont.cpp` |
+
+The `dc=nullptr` initialization in the four constructors is still a
+`#ifdef WIN32` in `FXFont.cpp`; the `dc` member itself is declared in the
+public header.
+
+### Verification
+
+- The removed lines of `FXFont.cpp` equal the added lines of the two modules
+  apart from the `#if defined(WIN32)` / `#elif defined(HAVE_XFT_H)` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. Every widget measures text, so the Win32 and XLFD metrics run at
+  startup; the Xft variant is not compiled in the WSL image.
+
 ## Next seams, in order
 
 1. **Remaining `FXWindow.cpp` branches.** The `scale()`/`unscale()` DPI helpers,
@@ -551,13 +576,9 @@ locally in both modules, and the X11 module declares `__snprintf()` itself.
    strings), and the commented-out `setBackColor()` stub. The constants are
    data rather than behavior; moving them needs a private header or a per-module
    definition, so decide that before touching them.
-2. **Font metrics** (`FXFont.cpp`). Text metrics and glyph extents
-   (`getTextWidth()`, `getTextHeight()`, `getFontAscent()`, `getTextExtent*()`
-   and friends), which use `dc`/`font` per backend. Keep the public `FXFont`
-   API; the surrogate-pair constants stay with the portable code.
-3. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
+2. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
    `FXIODevice`). Large but self-contained; split only when a feature needs it.
-4. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+3. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
