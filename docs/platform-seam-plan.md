@@ -830,10 +830,36 @@ split. Two helper changes were needed:
   window DPI on Windows depends on the monitor the window opens on (96 or 144
   between runs); the `WM_DPICHANGED` readings are 144.
 
+## Seam 32: path name functions
+
+Done. `FXPath.cpp` no longer contains a platform branch. Nineteen blocks moved
+into `FXPath_win32.cpp` and `FXPath_x11.cpp`; `tmp/split-path.py` drives the
+split. The file is organised in sections separated by `/****/` lines, so the
+driver splits on those and on double blank lines outside conditionals, and
+rebuilds the core with the separators of the kept sections.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXPath_win32.cpp`: `root()`, `share()`, `server()`, `drive()`, `isShare()`, `isServer()` for drive and UNC names, the drive-aware `directory()`, `name()`, `stem()`, `extension()`, `stripExtension()`, `expandEnvironmentVariables()` for `%VAR%`, `convert()`, `convertPathList()`, `contract()`, `simplify()`, `isAbsolute()`, `absolute()`, `relative(base,file)`, `isInside()`, `isTopDirectory()`, `isHidden()` on file attributes, `enquote()`/`dequote()` for cmd.exe, `parseArgs()` for the Windows command line, `hasExecExtension()`, `isReservedName()` |
+| X11 module | `FXPath_x11.cpp`: the same members with POSIX rules (single root, `$VAR`/`${VAR}`, dot-file hiding, shell quoting) and the Windows-only name queries as stubs |
+| Portable core | `expand()`, `convertToWindows()`, `convertFromWindows()`, `isRelative()`, `relative(file)`, `upLevel()`, `validPath()`, `isValidPath()`, `parseArgs(FXString)`, the `match()` family, `unique()`, `search()`, `relativize()` |
+
+`expandEnvironmentVariables()` was a file-local helper of `expand()` that also
+has a platform branch. It is now declared in the private header
+`fxpathpriv.h`, listed in `noinst_HEADERS`, and loses its `static`. The unused
+`<shellapi.h>` include moved to the Windows module.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the removed `static` and the two `WIN32` guard lines with trailing comments.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The initial
+  window DPI on Windows was 96 here; the `WM_DPICHANGED` readings are 144.
+
 ## Next seams, in order
 
-1. **Remaining services** (`FXThread`, `FXPath`),
-   one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
+1. **Remaining services** (`FXThread`),
+   one class per seam. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
