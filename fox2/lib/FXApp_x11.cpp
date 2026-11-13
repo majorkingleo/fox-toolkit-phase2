@@ -1951,6 +1951,484 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
     }
   return false;
   }
+
+
+
+// 17 stipple patterns which match up exactly with the 4x4 dither kernel
+static const unsigned char stipple_patterns[17][8]={
+  {0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00},   // 0 (white)
+  {0x00,0x00,0x00,0x88, 0x00,0x00,0x00,0x88},
+  {0x00,0x22,0x00,0x88, 0x00,0x22,0x00,0x88},
+  {0x00,0x22,0x00,0xaa, 0x00,0x22,0x00,0xaa},
+  {0x00,0xaa,0x00,0xaa, 0x00,0xaa,0x00,0xaa},
+  {0x00,0xaa,0x44,0xaa, 0x00,0xaa,0x44,0xaa},
+  {0x11,0xaa,0x44,0xaa, 0x11,0xaa,0x44,0xaa},
+  {0x11,0xaa,0x55,0xaa, 0x11,0xaa,0x55,0xaa},
+  {0x55,0xaa,0x55,0xaa, 0x55,0xaa,0x55,0xaa},   // 8 (50% grey)
+  {0x55,0xaa,0x55,0xee, 0x55,0xaa,0x55,0xee},
+  {0x55,0xbb,0x55,0xee, 0x55,0xbb,0x55,0xee},
+  {0x55,0xbb,0x55,0xff, 0x55,0xbb,0x55,0xff},
+  {0x55,0xff,0x55,0xff, 0x55,0xff,0x55,0xff},
+  {0x55,0xff,0xdd,0xff, 0x55,0xff,0xdd,0xff},
+  {0x77,0xff,0xdd,0xff, 0x77,0xff,0xdd,0xff},
+  {0x77,0xff,0xff,0xff, 0x77,0xff,0xff,0xff},
+  {0xff,0xff,0xff,0xff, 0xff,0xff,0xff,0xff}    // 16 (black)
+  };
+
+
+// Standard-issue cross hatch pattern
+static const unsigned char cross_bits[] = {
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0xff, 0xff, 0xff,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0xff, 0xff, 0xff, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0xff, 0xff, 0xff,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0xff, 0xff, 0xff, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20
+  };
+
+// Standard-issue diagonal cross hatch pattern
+static const unsigned char crossdiag_bits[] = {
+  0x22, 0x22, 0x14, 0x14, 0x08, 0x08, 0x14, 0x14, 0x22, 0x22, 0x41, 0x41,
+  0x80, 0x80, 0x41, 0x41, 0x22, 0x22, 0x14, 0x14, 0x08, 0x08, 0x14, 0x14,
+  0x22, 0x22, 0x41, 0x41, 0x80, 0x80, 0x41, 0x41
+  };
+
+// Standard-issue diagonal hatch pattern
+static const unsigned char diag_bits[] = {
+  0x20, 0x20, 0x10, 0x10, 0x08, 0x08, 0x04, 0x04, 0x02, 0x02, 0x01, 0x01,
+  0x80, 0x80, 0x40, 0x40, 0x20, 0x20, 0x10, 0x10, 0x08, 0x08, 0x04, 0x04,
+  0x02, 0x02, 0x01, 0x01, 0x80, 0x80, 0x40, 0x40
+  };
+
+// Standard-issue horizontal hatch pattern
+static const unsigned char hor_bits[] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+
+// Standard-issue reverse diagonal hatch pattern
+static const unsigned char revdiag_bits[] = {
+  0x02, 0x02, 0x04, 0x04, 0x08, 0x08, 0x10, 0x10, 0x20, 0x20, 0x40, 0x40,
+  0x80, 0x80, 0x01, 0x01, 0x02, 0x02, 0x04, 0x04, 0x08, 0x08, 0x10, 0x10,
+  0x20, 0x20, 0x40, 0x40, 0x80, 0x80, 0x01, 0x01
+  };
+
+// Standard-issue vertical hatch pattern
+static const unsigned char ver_bits[] = {
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20,
+  0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20, 0x08, 0x82, 0x20
+  };
+
+
+
+
+// Perhaps should do something else...
+static int xerrorhandler(Display* dpy,XErrorEvent* eev){
+  char buf[256];
+
+  // A BadWindow due to X_SendEvent is likely due to XDND
+  if(eev->error_code==BadWindow && eev->request_code==25) return 0;
+
+  // WM_TAKE_FOCUS causes sporadic errors for X_SetInputFocus
+  if(eev->request_code==42) return 0;
+
+  // Get error codes
+  XGetErrorText(dpy,eev->error_code,buf,sizeof(buf));
+
+  // Print out meaningful warning
+  fxwarning("X Error: code %d major %d minor %d: %s.\n",eev->error_code,eev->request_code,eev->minor_code,buf);
+  return 1;
+  }
+
+
+// Fatal error (e.g. lost connection)
+static int xfatalerrorhandler(Display*){
+  fxerror("X Fatal error.\n");
+  return 1;
+  }
+
+
+// Input method was created; unregister the callback, and initialize it
+void FXApp::imcreatecallback(void*,FXApp* a,void*){
+#ifndef NO_XIM
+  XIMCallback ximcallback;
+  fxwarning("Warning: input method server restarted.\n");
+  XUnregisterIMInstantiateCallback((Display*)app->getDisplay(),nullptr,nullptr,nullptr,(XIDProc)imcreatecallback,(XPointer)a);
+  a->xim=XOpenIM((Display*)app->display,nullptr,nullptr,nullptr);
+  if(a->xim){
+    ximcallback.callback=(XIMProc)imdestroycallback;
+    ximcallback.client_data=(XPointer)a;
+    XSetIMValues((XIM)a->xim,XNDestroyCallback,&ximcallback,nullptr);
+    }
+#endif
+  }
+
+
+// Input method was deleted; set callback to recreate it when the IM restarts.
+void FXApp::imdestroycallback(void*,FXApp* a,void*){
+#ifndef NO_XIM
+  fxwarning("Warning: input method server terminated.\n");
+  XRegisterIMInstantiateCallback((Display*)a->getDisplay(),nullptr,nullptr,nullptr,(XIDProc)imcreatecallback,(XPointer)a);
+  a->xim=nullptr;
+#endif
+  }
+
+
+// Open Input devices
+void FXApp::openInputDevices(){
+#if defined(HAVE_XINPUT2_H)
+  int majoropcode,eventbase,errorbase,ndevices;
+  if(XQueryExtension((Display*)display,"XInputExtension",&majoropcode,&eventbase,&errorbase)){
+    int majorversion=XI_2_Major,minorversion=XI_2_Minor;
+    FXTRACE(TOPIC_DETAIL,"XInputExtension maj:%d, evt:%d, err:%d\n",majoropcode,eventbase,errorbase);
+    if(XIQueryVersion((Display*)display,&majorversion,&minorversion)==Success){
+      FXTRACE(TOPIC_DETAIL,"XInput2 ver:%d.%d\n",majorversion,minorversion);
+      unsigned char maskbits[4]={0,0,0,0};
+      XIEventMask eventmask={XIAllDevices,sizeof(maskbits),maskbits};
+      XISetMask(eventmask.mask,XI_DeviceChanged);
+      XISetMask(eventmask.mask,XI_HierarchyChanged);
+      XISetMask(eventmask.mask,XI_PropertyEvent);
+      XISelectEvents((Display*)display,XDefaultRootWindow((Display*)display),&eventmask,1);
+      XIDeviceInfo *devices=XIQueryDevice((Display*)display,XIAllDevices,&ndevices);
+      if(devices){
+        for(FXint i=0; i<ndevices; i++){
+          FXTRACE(TOPIC_DETAIL,"Device %s id: %d enabled: %d attached to: %d is a ",devices[i].name,devices[i].deviceid,devices[i].enabled,devices[i].attachment);
+          switch(devices[i].use){
+            case XIMasterPointer: FXTRACE(TOPIC_DETAIL,"master pointer\n"); break;
+            case XIMasterKeyboard: FXTRACE(TOPIC_DETAIL,"master keyboard\n"); break;
+            case XISlavePointer: FXTRACE(TOPIC_DETAIL,"slave pointer\n"); break;
+            case XISlaveKeyboard: FXTRACE(TOPIC_DETAIL,"slave keyboard\n"); break;
+            case XIFloatingSlave: FXTRACE(TOPIC_DETAIL,"floating slave\n"); break;
+            }
+          }
+/*
+unsigned char maskbits[4]={0,0,0,0};
+XIEventMask eventmask={XIAllDevices,sizeof(maskbits),maskbits};
+XISetMask(eventmask.mask,XI_DeviceChanged);
+XISetMask(eventmask.mask,XI_HierarchyChanged);
+XISetMask(eventmask.mask,XI_PropertyEvent);
+XISelectEvents(DISPLAY(getApp()),xid,&eventmask,1);
+XIClearMask(eventmask.mask,XI_DeviceChanged);
+XIClearMask(eventmask.mask,XI_HierarchyChanged);
+XIClearMask(eventmask.mask,XI_PropertyEvent);
+eventmask.deviceid=12;
+XISetMask(eventmask.mask,XI_RawKeyPress);
+XISetMask(eventmask.mask,XI_RawKeyRelease);
+XISetMask(eventmask.mask,XI_RawButtonPress);
+XISetMask(eventmask.mask,XI_RawButtonRelease);
+XISetMask(eventmask.mask,XI_RawMotion);
+XISelectEvents(DISPLAY(getApp()),xid,&eventmask,1);
+*/
+        XIFreeDeviceInfo(devices);
+        xInputOpcode=majoropcode;
+        }
+      }
+    }
+#endif
+  }
+
+
+// Close Input devices
+void FXApp::closeInputDevices(){
+#if defined(HAVE_XINPUT2_H)
+  // FIXME
+#endif
+  }
+
+
+// Bunch-o-atoms
+const FXchar *const windowTypeAtoms[14]={
+  "_NET_WM_WINDOW_TYPE_DESKTOP",
+  "_NET_WM_WINDOW_TYPE_DOCK",
+  "_NET_WM_WINDOW_TYPE_TOOLBAR",
+  "_NET_WM_WINDOW_TYPE_MENU",
+  "_NET_WM_WINDOW_TYPE_UTILITY",
+  "_NET_WM_WINDOW_TYPE_SPLASH",
+  "_NET_WM_WINDOW_TYPE_DIALOG",
+  "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
+  "_NET_WM_WINDOW_TYPE_POPUP_MENU",
+  "_NET_WM_WINDOW_TYPE_TOOLTIP",
+  "_NET_WM_WINDOW_TYPE_NOTIFICATION",
+  "_NET_WM_WINDOW_TYPE_COMBO",
+  "_NET_WM_WINDOW_TYPE_DND",
+  "_NET_WM_WINDOW_TYPE_NORMAL"
+  };
+
+
+
+
+// Open the display
+FXbool FXApp::openDisplay(const FXchar* dpy){
+  if(!initialized){
+
+
+    // Using thread-safe X11 if possible
+    //XInitThreads();
+
+    // Set error handler
+    XSetErrorHandler(xerrorhandler);
+
+    // Set fatal handler
+    XSetIOErrorHandler(xfatalerrorhandler);
+
+    // What's going on
+    FXTRACE(TOPIC_DETAIL,"%s::openDisplay(%s)\n",getClassName(),dpy);
+
+    // Open display
+    display=XOpenDisplay(dpy);
+    if(!display) return false;
+
+    // For debugging
+    if(synchronize) XSynchronize((Display*)display,true);
+
+    // Setup locales and input method if given
+    if(XSupportsLocale()){
+      FXchar mods[100]="";
+      if(inputmethod[0]){
+        fxstrlcpy(mods,"@im=",sizeof(mods));
+        fxstrlcat(mods,inputmethod,sizeof(mods));
+        }
+      if(!XSetLocaleModifiers(mods)){
+        if(!XSetLocaleModifiers("")){
+          fxwarning("Cannot set locale modifiers.\n");
+          }
+        }
+      }
+
+#if defined(HAVE_XSHM_H)
+
+    // Displaying remotely turns it off for sure
+    if(!(dpy[0]==':' && Ascii::isDigit(dpy[1]))){
+      shmi=false;
+      shmp=false;
+      }
+
+    // Its potentially on, see if local display groks it
+    if(shmi || shmp){
+      int maj,min,dum; Bool pm;
+      shmi=false;
+      shmp=false;
+      if(XQueryExtension((Display*)display,"MIT-SHM",&dum,&dum,&dum)){
+        if(XShmQueryVersion((Display*)display,&maj,&min,&pm)){
+          shmp=pm && (XShmPixmapFormat((Display*)display)==ZPixmap);
+          shmi=true;
+          }
+        }
+      }
+
+#else
+
+    // Don't have it!
+    shmi=false;
+    shmp=false;
+
+#endif
+
+    // Report the result
+    FXTRACE(TOPIC_DETAIL,"X Shared Images  = %d\n",shmi);
+    FXTRACE(TOPIC_DETAIL,"X Shared Pixmaps = %d\n",shmp);
+
+    // X Render Extension
+#if defined(HAVE_XRENDER_H)
+    int xrenderevent,xrendererror;
+    if(XRenderQueryExtension((Display*)display,&xrenderevent,&xrendererror)){
+      int xrendermajor,xrenderminor;
+      if(XRenderQueryVersion((Display*)display,&xrendermajor,&xrenderminor)){
+        xrender=true;
+        FXTRACE(TOPIC_DETAIL,"X Render %d.%d available\n",xrendermajor,xrenderminor);
+        }
+      }
+#endif
+
+    // Initialize Xft and fontconfig
+#if defined(HAVE_XFT_H)
+    if(!XftInit(nullptr)) return false;
+    if(XftGetVersion()<XftVersion){
+      fxwarning("Expected Xft library version %d or greater; was %d.\n",XftVersion,XftGetVersion());
+      }
+#endif
+
+    // Open input method
+#ifndef NO_XIM
+    xim=XOpenIM((Display*)display,nullptr,nullptr,nullptr);
+    if(xim){
+      XIMCallback ximcallback;
+      ximcallback.callback=(XIMProc)imdestroycallback;
+      ximcallback.client_data=(XPointer)this;
+      XSetIMValues((XIM)xim,XNDestroyCallback,&ximcallback,nullptr);
+      FXTRACE(TOPIC_DETAIL,"Got Input Method\n");
+      }
+    else{
+      XRegisterIMInstantiateCallback((Display*)display,nullptr,nullptr,nullptr,(XIDProc)imcreatecallback,(XPointer)this);
+      }
+#endif
+
+    // Check for X Rotation and Reflection support
+#if defined(HAVE_XRANDR_H)
+    int rreventbase,rrerrorbase;
+    if(XRRQueryExtension((Display*)display,&rreventbase,&rrerrorbase)){
+      XRRSelectInput((Display*)display,XDefaultRootWindow((Display*)display),True);
+      xrrScreenChange=rreventbase+RRScreenChangeNotify;
+      FXTRACE(TOPIC_DETAIL,"xrrScreenChange: %d\n",xrrScreenChange);
+      }
+#endif
+
+    // Check for X Fixes support
+#if defined(HAVE_XFIXES_H)
+    int fxeventbase,fxerrorbase;
+    if(XFixesQueryExtension((Display*)display,&fxeventbase,&fxerrorbase)){
+      xfxFixesSelection=fxeventbase+XFixesSelectionNotify;
+      FXTRACE(TOPIC_DETAIL,"xfxFixesSelection: %d\n",xfxFixesSelection);
+      //int major_version=XFIXES_MAJOR;
+      //int minor_version=XFIXES_MINOR;
+      //XFixesQueryVersion((Display*)display,&major_version,&minor_version);
+      //XFixesSelectSelectionInput((Display*)display,XDefaultRootWindow((Display*)display),xcbSelection,XFixesSetSelectionOwnerNotifyMask|XFixesSelectionWindowDestroyNotifyMask|XFixesSelectionClientCloseNotifyMask);
+      }
+#endif
+
+    // Window Manager communication
+    wmDeleteWindow=XInternAtom((Display*)display,"WM_DELETE_WINDOW",0);
+    wmSaveYourself=XInternAtom((Display*)display,"WM_SAVE_YOURSELF",0);
+    wmQuitApp=XInternAtom((Display*)display,"_WM_QUIT_APP",0);
+    wmProtocols=XInternAtom((Display*)display,"WM_PROTOCOLS",0);
+    wmMotifHints=XInternAtom((Display*)display,"_MOTIF_WM_HINTS",0);
+    wmTakeFocus=XInternAtom((Display*)display,"WM_TAKE_FOCUS",0);
+    wmClientMachine=XInternAtom((Display*)display,"WM_CLIENT_MACHINE",0);
+    wmState=XInternAtom((Display*)display,"WM_STATE",0);
+
+    // Extended Window Manager support
+    wmNetState=XInternAtom((Display*)display,"_NET_WM_STATE",0);
+    wmNetIconName=XInternAtom((Display*)display,"_NET_WM_ICON_NAME",0);
+    wmNetWindowName=XInternAtom((Display*)display,"_NET_WM_NAME",0);
+    wmNetSupported=XInternAtom((Display*)display,"_NET_SUPPORTED",0);
+    wmNetHidden=XInternAtom((Display*)display,"_NET_WM_STATE_HIDDEN",0);
+    wmNetShaded=XInternAtom((Display*)display,"_NET_WM_STATE_SHADED",0);
+    wmNetHMaximized=XInternAtom((Display*)display,"_NET_WM_STATE_MAXIMIZED_HORZ",0);
+    wmNetVMaximized=XInternAtom((Display*)display,"_NET_WM_STATE_MAXIMIZED_VERT",0);
+    wmNetFullScreen=XInternAtom((Display*)display,"_NET_WM_STATE_FULLSCREEN",0);
+    wmNetBelowOthers=XInternAtom((Display*)display,"_NET_WM_STATE_BELOW",0);
+    wmNetAboveOthers=XInternAtom((Display*)display,"_NET_WM_STATE_ABOVE",0);
+    wmNetNeedAttention=XInternAtom((Display*)display,"_NET_WM_STATE_DEMANDS_ATTENTION",0);
+    wmNetActiveWindow=XInternAtom((Display*)display,"_NET_ACTIVE_WINDOW",0);
+
+    wmNetMoveResize=XInternAtom((Display*)display,"_NET_WM_MOVERESIZE",0);
+    wmNetRestack=XInternAtom((Display*)display,"_NET_RESTACK_WINDOW",0);
+    wmNetPing=XInternAtom((Display*)display,"_NET_WM_PING",0);
+    wmNetProcessId=XInternAtom((Display*)display,"_NET_WM_PID",0);
+    wmNetWindowType=XInternAtom((Display*)display,"_NET_WM_WINDOW_TYPE",0);
+
+    // Register window types
+    XInternAtoms((Display*)display,const_cast<char**>(windowTypeAtoms),14,0,wmWindowTypes);
+
+    // Session management
+    wmWindowRole=XInternAtom((Display*)display,"WM_WINDOW_ROLE",0);
+    wmClientLeader=XInternAtom((Display*)display,"WM_CLIENT_LEADER",0);
+    wmClientId=XInternAtom((Display*)display,"SM_CLIENT_ID",0);
+
+    // XEMBED support
+    embedAtom=XInternAtom((Display*)display,"_XEMBED",0);
+    embedInfoAtom=XInternAtom((Display*)display,"_XEMBED_INFO",0);
+    timestampAtom=XInternAtom((Display*)display,"FOX_TIMESTAMP_PROP",0);
+
+    // DDE property
+    ddeAtom=(FXID)XInternAtom((Display*)display,"_FOX_DDE",0);
+    ddeDelete=(FXID)XInternAtom((Display*)display,"DELETE",0);
+    ddeTargets=(FXID)XInternAtom((Display*)display,"TARGETS",0);
+    ddeIncr=(FXID)XInternAtom((Display*)display,"INCR",0);
+
+    // Clipboard
+    xcbSelection=(FXID)XInternAtom((Display*)display,"CLIPBOARD",0);
+
+    // XDND protocol awareness
+    xdndProxy=(FXID)XInternAtom((Display*)display,"XdndProxy",0);
+    xdndAware=(FXID)XInternAtom((Display*)display,"XdndAware",0);
+
+    // XDND Messages
+    xdndEnter=(FXID)XInternAtom((Display*)display,"XdndEnter",0);
+    xdndLeave=(FXID)XInternAtom((Display*)display,"XdndLeave",0);
+    xdndPosition=(FXID)XInternAtom((Display*)display,"XdndPosition",0);
+    xdndStatus=(FXID)XInternAtom((Display*)display,"XdndStatus",0);
+    xdndDrop=(FXID)XInternAtom((Display*)display,"XdndDrop",0);
+    xdndFinished=(FXID)XInternAtom((Display*)display,"XdndFinished",0);
+
+    // XDND Selection atom
+    xdndSelection=(FXID)XInternAtom((Display*)display,"XdndSelection",0);
+
+    // XDND Types list
+    xdndTypes=(FXID)XInternAtom((Display*)display,"XdndTypeList",0);
+
+    // XDND Action list
+    xdndActions=(FXID)XInternAtom((Display*)display,"XdndActionList",0);
+
+    // XDND Actions
+    xdndActionList[DRAG_REJECT]=None;
+    xdndActionList[DRAG_ASK]=(FXID)XInternAtom((Display*)display,"XdndActionAsk",0);
+    xdndActionList[DRAG_COPY]=(FXID)XInternAtom((Display*)display,"XdndActionCopy",0);
+    xdndActionList[DRAG_MOVE]=(FXID)XInternAtom((Display*)display,"XdndActionMove",0);
+    xdndActionList[DRAG_LINK]=(FXID)XInternAtom((Display*)display,"XdndActionLink",0);
+    xdndActionList[DRAG_PRIVATE]=(FXID)XInternAtom((Display*)display,"XdndActionPrivate",0);
+
+    // Standard stipples
+    stipples[STIPPLE_0]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_0],8,8);
+    stipples[STIPPLE_1]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_1],8,8);
+    stipples[STIPPLE_2]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_2],8,8);
+    stipples[STIPPLE_3]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_3],8,8);
+    stipples[STIPPLE_4]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_4],8,8);
+    stipples[STIPPLE_5]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_5],8,8);
+    stipples[STIPPLE_6]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_6],8,8);
+    stipples[STIPPLE_7]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_7],8,8);
+    stipples[STIPPLE_8]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_8],8,8);
+    stipples[STIPPLE_9]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_9],8,8);
+    stipples[STIPPLE_10]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_10],8,8);
+    stipples[STIPPLE_11]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_11],8,8);
+    stipples[STIPPLE_12]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_12],8,8);
+    stipples[STIPPLE_13]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_13],8,8);
+    stipples[STIPPLE_14]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_14],8,8);
+    stipples[STIPPLE_15]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_15],8,8);
+    stipples[STIPPLE_16]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)stipple_patterns[STIPPLE_16],8,8);
+
+    // Hatch patterns
+    stipples[STIPPLE_HORZ]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)hor_bits,24,24);
+    stipples[STIPPLE_VERT]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)ver_bits,24,24);
+    stipples[STIPPLE_CROSS]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)cross_bits,24,24);
+    stipples[STIPPLE_DIAG]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)diag_bits,16,16);
+    stipples[STIPPLE_REVDIAG]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)revdiag_bits,16,16);
+    stipples[STIPPLE_CROSSDIAG]=(FXID)XCreateBitmapFromData((Display*)display,XDefaultRootWindow((Display*)display),(const char*)crossdiag_bits,16,16);
+
+    // Preregister some drag types
+    FXWindow::octetType=(FXDragType)XInternAtom((Display*)display,FXWindow::octetTypeName,0);
+    FXWindow::deleteType=(FXDragType)XInternAtom((Display*)display,FXWindow::deleteTypeName,0);
+    FXWindow::textType=(FXDragType)XInternAtom((Display*)display,FXWindow::textTypeName,0);
+    FXWindow::colorType=(FXDragType)XInternAtom((Display*)display,FXWindow::colorTypeName,0);
+    FXWindow::urilistType=(FXDragType)XInternAtom((Display*)display,FXWindow::urilistTypeName,0);
+    FXWindow::utf8Type=(FXDragType)XInternAtom((Display*)display,FXWindow::utf8TypeName,0);
+    FXWindow::utf16Type=(FXDragType)XInternAtom((Display*)display,FXWindow::utf16TypeName,0);
+    FXWindow::actionType=(FXDragType)XInternAtom((Display*)display,FXWindow::actionTypeName,0);
+
+    // Open input devices
+    openInputDevices();
+
+    // Clear sticky mod state
+    stickyMods=0;
+
+    // Lock the global mutex
+    appMutex.lock();
+
+    // We have been initialized
+    initialized=true;
+    }
+  return true;
+  }
+
+
 }
 
 #endif

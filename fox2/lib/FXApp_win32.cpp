@@ -1554,6 +1554,372 @@ Alt key seems to repeat.
   return DefWindowProc((HWND)hwnd,iMsg,wParam,lParam);
   }
 
+
+
+// 17 stipple patterns which match up exactly with the 4x4 dither kernel
+// Note that each scan line must be word-aligned so we pad to the right
+// with zeroes.
+static const BYTE stipple_patterns[17][16]={
+  {0xff,0x00,0xff,0x00,0xff,0x00,0xff,0x00, 0xff,0x00,0xff,0x00,0xff,0x00,0xff,0x00},   // 0 (white)
+  {0xff,0x00,0xff,0x00,0xff,0x00,0x77,0x00, 0xff,0x00,0xff,0x00,0xff,0x00,0x77,0x00},
+  {0xff,0x00,0xdd,0x00,0xff,0x00,0x77,0x00, 0xff,0x00,0xdd,0x00,0xff,0x00,0x77,0x00},
+  {0xff,0x00,0xdd,0x00,0xff,0x00,0x55,0x00, 0xff,0x00,0xdd,0x00,0xff,0x00,0x55,0x00},
+  {0xff,0x00,0x55,0x00,0xff,0x00,0x55,0x00, 0xff,0x00,0x55,0x00,0xff,0x00,0x55,0x00},
+  {0xff,0x00,0x55,0x00,0xbb,0x00,0x55,0x00, 0xff,0x00,0x55,0x00,0xbb,0x00,0x55,0x00},
+  {0xee,0x00,0x55,0x00,0xbb,0x00,0x55,0x00, 0xee,0x00,0x55,0x00,0xbb,0x00,0x55,0x00},
+  {0xee,0x00,0x55,0x00,0xaa,0x00,0x55,0x00, 0xee,0x00,0x55,0x00,0xaa,0x00,0x55,0x00},
+  {0xaa,0x00,0x55,0x00,0xaa,0x00,0x55,0x00, 0xaa,0x00,0x55,0x00,0xaa,0x00,0x55,0x00},   // 8 (50% grey)
+  {0xaa,0x00,0x55,0x00,0xaa,0x00,0x11,0x00, 0xaa,0x00,0x55,0x00,0xaa,0x00,0x11,0x00},
+  {0xaa,0x00,0x44,0x00,0xaa,0x00,0x11,0x00, 0xaa,0x00,0x44,0x00,0xaa,0x00,0x11,0x00},
+  {0xaa,0x00,0x44,0x00,0xaa,0x00,0x00,0x00, 0xaa,0x00,0x44,0x00,0xaa,0x00,0x00,0x00},
+  {0xaa,0x00,0x00,0x00,0xaa,0x00,0x00,0x00, 0xaa,0x00,0x00,0x00,0xaa,0x00,0x00,0x00},
+  {0xaa,0x00,0x00,0x00,0x22,0x00,0x00,0x00, 0xaa,0x00,0x00,0x00,0x22,0x00,0x00,0x00},
+  {0x88,0x00,0x00,0x00,0x22,0x00,0x00,0x00, 0x88,0x00,0x00,0x00,0x22,0x00,0x00,0x00},
+  {0x88,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x88,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
+  {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}    // 16 (black)
+  };
+
+
+
+
+// Trick to find module handle of FOX library
+static HINSTANCE GetOwnModuleHandle(){
+  MEMORY_BASIC_INFORMATION mbi;
+  VirtualQuery((const void*)GetOwnModuleHandle,&mbi,sizeof(mbi));
+  return (HINSTANCE)mbi.AllocationBase;
+  }
+
+
+// Open Input devices
+void FXApp::openInputDevices(){
+#if 0 //(_WIN32_WINNT >= 0x0501)
+  RAWINPUTDEVICELIST *devlist;
+  RID_DEVICE_INFO devinfo;
+  RAWINPUTDEVICE dev;
+  FXuint num_devices;
+  FXchar devname[256];
+  FXuint i;
+  FXuint bc;
+
+  // Get the number of attached raw input devices
+  GetRawInputDeviceList(nullptr,&num_devices,sizeof(RAWINPUTDEVICELIST));
+  if(0<num_devices){
+
+    // Allocate the list
+    if(callocElms(devlist,num_devices)){
+
+      // Get the attached input device list
+      GetRawInputDeviceList(devlist,&num_devices,sizeof(RAWINPUTDEVICELIST));   // man page is wrong about arg2
+
+      // Get more info about each device
+      for(i=0; i<num_devices; i++){
+        bc=sizeof(devname);
+        GetRawInputDeviceInfo(devlist[i].hDevice,RIDI_DEVICENAME,devname,&bc);
+        FXTRACE(TOPIC_CONFIGURE,"device[%d] handle=%p type=%d name=%s\n",i,devlist[i].hDevice,devlist[i].dwType,devname);
+        bc=devinfo.cbSize=sizeof(devinfo);
+        GetRawInputDeviceInfo(devlist[i].hDevice,RIDI_DEVICEINFO,&devinfo,&bc);
+        switch(devinfo.dwType){
+        case RIM_TYPEMOUSE:
+#if 0
+          FXTRACE(TOPIC_CONFIGURE,"dwId:\t%d\n", devinfo.mouse.dwId);
+          FXTRACE(TOPIC_CONFIGURE,"dwNumberOfButtons:\t%d\n", devinfo.mouse.dwNumberOfButtons);
+          FXTRACE(TOPIC_CONFIGURE,"dwSampleRate:\t%d\n", devinfo.mouse.dwSampleRate);
+#endif
+          break;
+        case RIM_TYPEKEYBOARD:
+#if 0
+          FXTRACE(TOPIC_CONFIGURE,"dwType:\t%d\n", devinfo.keyboard.dwType);
+          FXTRACE(TOPIC_CONFIGURE,"dwSubType:\t%d\n", devinfo.keyboard.dwSubType);
+          FXTRACE(TOPIC_CONFIGURE,"dwKeyboardMode:\t%d\n", devinfo.keyboard.dwKeyboardMode);
+          FXTRACE(TOPIC_CONFIGURE,"dwNumberOfFunctionKeys:\t%d\n", devinfo.keyboard.dwNumberOfFunctionKeys);
+          FXTRACE(TOPIC_CONFIGURE,"dwNumberOfIndicators:\t%d\n", devinfo.keyboard.dwNumberOfIndicators);
+          FXTRACE(TOPIC_CONFIGURE,"dwNumberOfKeysTotal:\t%d\n", devinfo.keyboard.dwNumberOfKeysTotal);
+#endif
+          break;
+        case RIM_TYPEHID:
+          //   FXTRACE(TOPIC_CONFIGURE,"dwVendorId:\t0x%x (%s)\n", devinfo.hid.dwVendorId, fmt_vendor(devinfo.hid.dwVendorId));
+          //   FXTRACE(TOPIC_CONFIGURE,"dwProductId:\t0x%x (%s)\n", devinfo.hid.dwProductId, fmt_product(devinfo.hid.dwProductId));
+          //   FXTRACE(TOPIC_CONFIGURE,"dwVersionNumber:\t%d\n", devinfo.hid.dwVersionNumber);
+          //   FXTRACE(TOPIC_CONFIGURE,"usUsagePage:\t%d\n", devinfo.hid.usUsagePage);
+          //   FXTRACE(TOPIC_CONFIGURE,"usUsage:\t%d\n", devinfo.hid.usUsage);
+          //
+          // to receive input from the SpaceNavigator
+          //
+          //  See:
+          //      www.3dconnexion.com/forum/viewtopic.php?t=1031#5666
+          //      www.usb.org/developers/hidpage/
+          //
+
+          // Match 3Dconnexion SpaceNavigator / Generic Desktop Controls / Multi-axis Controller
+          if((devinfo.hid.dwVendorId==0x046d) && (devinfo.hid.dwProductId==0xc626) && (devinfo.hid.usUsagePage==1) && (devinfo.hid.usUsage==8)){
+            dev.usUsagePage=1;
+            dev.usUsage=8;
+            dev.dwFlags=0;
+            dev.hwndTarget=nullptr;               // follow keyboard focus
+            if(RegisterRawInputDevices(&dev,1,sizeof(dev))){
+              spaceNavHandle=devlist[i].hDevice;  // assume only one device is connected
+              // FXTRACE(TOPIC_CONFIGURE,"\nRegistered for WM_INPUT!\n");
+              }
+            }
+          break;
+          }
+        }
+      }
+    freeElms(devlist);
+    }
+#endif
+  }
+
+
+// Close Input devices
+void FXApp::closeInputDevices(){
+  }
+
+#if 0
+//
+//	onMotion
+//
+long SpaceNav::onMotion(FXObject *, FXSelector, void *vp){
+#if 1
+  //
+  // this is the "unbuffered read" method
+  //
+#pragma pack(1)
+  struct SpaceNavStruct {
+    RAWINPUTHEADER hdr;
+    unsigned long bc;       // sizeof(u + id)
+    unsigned long count;    // number of inputs
+    unsigned char id;       // 1=translation, 2=rotation, 3=buttons
+    union DataUnion {
+      struct AxesStruct {
+        signed short x,y,z;
+        } axes;
+      unsigned char buttons;
+      } u;
+    } snav;
+  FXuint bc=sizeof(snav);
+  FXint status;
+#pragma pack()
+  status = GetRawInputData(
+          (HRAWINPUT)vp,              // hRawInput
+          RID_INPUT,                  // uiCommand
+          &snav,                      // pData
+          &bc,                        // pcbSize
+          sizeof(RAWINPUTHEADER));    // cbSizeHeader
+  if(status==bc){
+    switch (snav.id){
+    case 1:
+      dofValue[0] = snav.u.axes.x;
+      dofValue[1] = snav.u.axes.y;
+      dofValue[2] = snav.u.axes.z;
+//    FXTRACE(TOPIC_CONFIGURE,"X{%6d %6d %6d}\n", snav.u.axes.x, snav.u.axes.y, snav.u.axes.z);
+      break;
+    case 2:
+      dofValue[3] = snav.u.axes.x;
+      dofValue[4] = snav.u.axes.y;
+      dofValue[5] = snav.u.axes.z;
+//    FXTRACE(TOPIC_CONFIGURE,"R{%6d %6d %6d}\n", snav.u.axes.x, snav.u.axes.y, snav.u.axes.z);
+      break;
+    case 3:
+      FXTRACE(TOPIC_CONFIGURE,"B(%d)\n", snav.u.buttons);
+      break;
+    default:
+      FXTRACE(TOPIC_CONFIGURE,"id=%d (?)\n", snav.id);
+      break;
+      }
+    }
+  else{
+    FXTRACE(TOPIC_CONFIGURE,"Error %d != %d\n",bc,status);
+    }
+#else
+  //
+  // and the "buffered read" method..
+  //
+  //  I cannot get this to work.
+  //  I posted a question on the MSDN forum to see if I'm doing something
+  //  wrong.  I'll post more info as I get it.  In the meantime, the
+  //  unbuffered read seems to work ok.
+  //
+  FXint status;
+  FXuint num_inputs;
+  FXuint sizeof_buffer;
+  // can a function's semantics get any more ridiculous???
+  sizeof_buffer=sizeof(RAWINPUT);
+#if 1
+  num_inputs=GetRawInputBuffer(nullptr, &sizeof_buffer, sizeof(RAWINPUTHEADER));
+  num_inputs=sizeof_buffer/sizeof(RAWINPUT);
+  if(bufAlloc<num_inputs){
+    bufAlloc=num_inputs;
+    resizeElms(inpBuffer,bufAlloc);
+    }
+#endif
+  num_inputs=GetRawInputBuffer(inpBuffer,&sizeof_buffer,sizeof(RAWINPUTHEADER));
+  FXTRACE(TOPIC_CONFIGURE,"onMotion(%d)\n",num_inputs);
+  status=DefRawInputProc(&inpBuffer, 1/*num_inputs*/,sizeof(RAWINPUTHEADER));
+#endif
+  onPaint(nullptr,0,nullptr);
+  return 1;
+  }
+#endif
+
+
+
+
+// Open the display
+FXbool FXApp::openDisplay(const FXchar* dpy){
+  if(!initialized){
+
+
+    // What's going on
+    FXTRACE(TOPIC_DETAIL,"%s::openDisplay(%s)\n",getClassName(),dpy);
+
+    // Set to HINSTANCE on Windows
+    display=GetOwnModuleHandle();
+
+    // Process DPI awareness was already established by init(), before the
+    // system font metrics were read.
+
+    // TARGETS
+    ddeTargets=GlobalAddAtomA("TARGETS");
+
+    // XDND protocol awareness
+    xdndAware=GlobalAddAtomA("XdndAware");
+
+    // DDE property
+    ddeDelete=RegisterClipboardFormatA("DELETE");
+
+    // Standard stipples
+    stipples[STIPPLE_0]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_0]);
+    stipples[STIPPLE_1]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_1]);
+    stipples[STIPPLE_2]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_2]);
+    stipples[STIPPLE_3]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_3]);
+    stipples[STIPPLE_4]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_4]);
+    stipples[STIPPLE_5]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_5]);
+    stipples[STIPPLE_6]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_6]);
+    stipples[STIPPLE_7]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_7]);
+    stipples[STIPPLE_8]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_8]);
+    stipples[STIPPLE_9]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_9]);
+    stipples[STIPPLE_10]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_10]);
+    stipples[STIPPLE_11]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_11]);
+    stipples[STIPPLE_12]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_12]);
+    stipples[STIPPLE_13]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_13]);
+    stipples[STIPPLE_14]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_14]);
+    stipples[STIPPLE_15]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_15]);
+    stipples[STIPPLE_16]=CreateBitmap(8,8,1,1,stipple_patterns[STIPPLE_16]);
+
+    // Register our child window classes
+    WNDCLASSEX wndclass;
+
+    // Child window
+    wndclass.cbSize=sizeof(WNDCLASSEX);
+    wndclass.style=CS_HREDRAW|CS_VREDRAW;     // Set to 0 for bit_gravity
+    //wndclass.style=0;
+    wndclass.lpfnWndProc=(WNDPROC) FXApp::wndproc;
+    wndclass.cbClsExtra=0;
+    wndclass.cbWndExtra=sizeof(FXWindow*);
+    wndclass.hInstance=(HINSTANCE)display;
+    wndclass.hIcon=nullptr;
+    wndclass.hIconSm=nullptr;
+    wndclass.hCursor=nullptr;
+    wndclass.hbrBackground=nullptr;
+    wndclass.lpszMenuName=nullptr;
+    wndclass.lpszClassName=TEXT("FXWindow");
+    RegisterClassEx(&wndclass);
+
+    // Top window class
+    wndclass.cbSize=sizeof(WNDCLASSEX);
+    wndclass.style=CS_HREDRAW|CS_VREDRAW;
+    //wndclass.style=0;
+    wndclass.lpfnWndProc=(WNDPROC) FXApp::wndproc;
+    wndclass.cbClsExtra=0;
+    wndclass.cbWndExtra=sizeof(FXWindow*);
+    wndclass.hInstance=(HINSTANCE)display;
+    wndclass.hIcon=LoadIcon((HINSTANCE)display,IDI_APPLICATION);
+    if(!wndclass.hIcon) wndclass.hIcon=LoadIcon(nullptr,IDI_APPLICATION);
+    wndclass.hIconSm=(HICON)LoadImage((HINSTANCE)display,IDI_APPLICATION,IMAGE_ICON,16,16,LR_DEFAULTCOLOR);
+    if(!wndclass.hIconSm) wndclass.hIconSm=wndclass.hIcon;
+    wndclass.hCursor=nullptr;
+    wndclass.hbrBackground=nullptr;
+    wndclass.lpszMenuName=nullptr;
+    wndclass.lpszClassName=TEXT("FXTopWindow");
+    RegisterClassEx(&wndclass);
+
+    // OpenGL window class
+    wndclass.cbSize=sizeof(WNDCLASSEX);
+    wndclass.style=CS_HREDRAW|CS_VREDRAW|CS_OWNDC;   // Redraw all when resized, OWNER DC for speed
+    wndclass.lpfnWndProc=(WNDPROC) FXApp::wndproc;
+    wndclass.cbClsExtra=0;
+    wndclass.cbWndExtra=sizeof(FXWindow*);
+    wndclass.hInstance=(HINSTANCE)display;
+    wndclass.hIcon=nullptr;
+    wndclass.hIconSm=nullptr;
+    wndclass.hCursor=LoadCursor(nullptr,IDC_ARROW);
+    wndclass.hbrBackground=nullptr;
+    wndclass.lpszMenuName=nullptr;
+    wndclass.lpszClassName=TEXT("FXGLCanvas");
+    RegisterClassEx(&wndclass);
+
+    // Dummy GL window class
+    wndclass.cbSize=sizeof(WNDCLASSEX);
+    wndclass.style=CS_HREDRAW|CS_VREDRAW|CS_OWNDC;   // Redraw all when resized, OWNER DC for speed
+    wndclass.lpfnWndProc=DefWindowProc;
+    wndclass.cbClsExtra=0;
+    wndclass.cbWndExtra=0;
+    wndclass.hInstance=(HINSTANCE)display;
+    wndclass.hIcon=nullptr;
+    wndclass.hIconSm=nullptr;
+    wndclass.hCursor=nullptr;
+    wndclass.hbrBackground=nullptr;
+    wndclass.lpszMenuName=nullptr;
+    wndclass.lpszClassName=TEXT("GLTEMP");
+    RegisterClassEx(&wndclass);
+
+    // Popup window class
+    wndclass.cbSize=sizeof(WNDCLASSEX);
+    wndclass.style=CS_HREDRAW|CS_VREDRAW|CS_SAVEBITS;   // Do save-under's
+    wndclass.lpfnWndProc=(WNDPROC) FXApp::wndproc;
+    wndclass.cbClsExtra=0;
+    wndclass.cbWndExtra=sizeof(FXWindow*);
+    wndclass.hInstance=(HINSTANCE)display;
+    wndclass.hIcon=nullptr;
+    wndclass.hIconSm=nullptr;
+    wndclass.hCursor=LoadCursor(nullptr,IDC_ARROW);
+    wndclass.hbrBackground=nullptr;
+    wndclass.lpszMenuName=nullptr;
+    wndclass.lpszClassName=TEXT("FXPopup");
+    RegisterClassEx(&wndclass);
+
+    // This should prevent the Abort/Retry/Ignore message
+    // when switching to drive w/no media mounted in it...
+    SetErrorMode(SEM_FAILCRITICALERRORS);
+
+    // Preregister some drag types
+    FXWindow::octetType=RegisterClipboardFormatA(FXWindow::octetTypeName);
+    FXWindow::deleteType=RegisterClipboardFormatA(FXWindow::deleteTypeName);
+    FXWindow::textType=RegisterClipboardFormatA(FXWindow::textTypeName);
+    FXWindow::colorType=RegisterClipboardFormatA(FXWindow::colorTypeName);
+    FXWindow::urilistType=RegisterClipboardFormatA(FXWindow::urilistTypeName);
+    FXWindow::utf8Type=RegisterClipboardFormatA(FXWindow::utf8TypeName);
+    FXWindow::utf16Type=CF_UNICODETEXT;
+    FXWindow::actionType=RegisterClipboardFormatA(FXWindow::actionTypeName);
+
+
+    // Open input devices
+    openInputDevices();
+
+    // Clear sticky mod state
+    stickyMods=0;
+
+    // Lock the global mutex
+    appMutex.lock();
+
+    // We have been initialized
+    initialized=true;
+    }
+  return true;
+  }
+
+
 }
 
 #endif

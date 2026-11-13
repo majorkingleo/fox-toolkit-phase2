@@ -591,11 +591,36 @@ would implement it from the output scale.
 - Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
   DPI values (`dpi` exercises `scale()` on Windows).
 
+## Seam 22: app display and input devices
+
+Done. The display connection, input device handling and X error plumbing left
+`FXApp.cpp` as whole members, with a scratch script
+(`tmp/split-app-display.py`) that resolves the `WIN32` branches per platform.
+`FXApp.cpp` shrank from 3121 to 2299 lines.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXApp_win32.cpp`: `GetOwnModuleHandle()`, `openInputDevices()`/`closeInputDevices()`, and `openDisplay()` with the stipple bitmaps created through `CreateBitmap()` |
+| X11 module | `FXApp_x11.cpp`: `xerrorhandler()`/`xfatalerrorhandler()`, the XIM callbacks, `openInputDevices()`/`closeInputDevices()`, `windowTypeAtoms`, and `openDisplay()` with the XRender, Xft, XRandR and XFixes probes and the `XCreateBitmapFromData()` stipples |
+| Portable core | the rest of `FXApp.cpp` |
+
+### Verification
+
+- The removed lines of `FXApp.cpp` equal the added lines of the two modules
+  apart from the `#if defined(WIN32)` / `#else` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run with unchanged
+  DPI values. `openDisplay()` runs at startup on both backends. The Xft,
+  XInput2 and XRandR paths are only compiled where the headers exist; the WSL
+  image has none of them.
+
 ## Next seams, in order
 
-1. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
+1. **Remaining `FXApp.cpp` branches**: the constructor inits, the
+   `getSystemColor()`/`getSystemFont()` helpers, the four branches in
+   `init()`, `getForegroundWindow()`, `stopModal()` and the destructor.
+2. **Services** (`FXThread`, `FXPath`, `FXSystem`, `FXFile`, `FXProcess`,
    `FXIODevice`). Large but self-contained; split only when a feature needs it.
-2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
+3. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
