@@ -975,10 +975,26 @@ only removes a define from the core when a module takes it over.
 - Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
   on Windows was 144 at startup and after `WM_DPICHANGED`.
 
+## Seam 38: clipping region
+
+Done. Every member of `FXRegion` wraps a GDI `HRGN` or an Xlib `Region`, so the
+whole implementation moved: 22 blocks into each of `FXRegion_win32.cpp` and
+`FXRegion_x11.cpp` (constructors, destructor, assignment, `empty()`,
+`contains()`, `bounds()`, `offset()`, the comparison and set operators, and
+`reset()`). `FXRegion.cpp` is now an empty translation unit that keeps its
+includes and the `FX` namespace so the file list stays stable. The header
+notes comment is carried into both modules.
+
+### Verification
+
+- The removed lines equal the added lines of the two modules apart from the
+  `WIN32` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
-   first: `FXRegion` (23 platform references), `fxutils` (9),
+   first: `fxutils` (9 platform references),
    `fxkeyboard` (6), `FXStyle` (6), `FXImage` (6), `FXFont` (5), `FXRootWindow`,
    `FXIcon`, `FXPopup`, then the files with one or two references. Presentation
    seam; needed before a browser frontend and for the Wayland SHM surface.
