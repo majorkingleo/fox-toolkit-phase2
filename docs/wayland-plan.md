@@ -530,6 +530,16 @@ Done in this phase so far:
   gives no serial.
 - `xdg_toplevel.close` becomes `SEL_CLOSE`, which is what the title bar close
   button and the window manager send.
+- A window that moves or resizes has to repaint the parent it leaves behind.
+  On X11 the server exposes the uncovered area; here every window shares one
+  buffer, so nobody does.  `fxplatformPlaceWindow()` therefore posts an
+  exposure for the parent and its whole subtree, parents before children, when
+  the place of a visible child really changes, and `fxplatformShowWindow()` does
+  the same for the parent when a window is unmapped.  Without it a widget that
+  moves keeps a ghost of itself: pressing *After Text* or *Centered* in
+  `tests/button` left the old button and the old radio buttons in the frame
+  (`screenshots/tests/fox2/wayland/button-iconpos-stale.png`), the same frame is
+  clean with the exposure (`button-iconpos.png`).
 
 - `xdg_surface.configure`/`ack_configure` handling, resize (`FXTopWindow` size
   from the compositor, `layout()`, new buffer), maximize, fullscreen, minimize,
@@ -543,6 +553,33 @@ Done in this phase so far:
   decorations) and WSLg/Weston (client-side decorations).
 
 ### Phase 6: input
+
+Done in this phase so far (the seat, the pointer, the keyboard and the two
+gates that drive them):
+
+- `fxseat_wayland.cpp` binds the seat's pointer and keyboard, tracks the
+  surface under the pointer and the surface with the keyboard focus, and turns
+  every protocol event into one neutral event: enter, leave, motion, button,
+  wheel, key, focus in, focus out.  Hit-testing adds the place of the shell in
+  the window table before it descends, because the pointer arrives in surface
+  coordinates and the table speaks screen coordinates.
+- `wl_pointer.button` carries **Linux event codes**, not the 1, 2, 3 of X11:
+  272 is the left button, 273 the right one and 274 the middle one.  The first
+  version passed them on unchanged, so every press arrived as button 272, FOX
+  matched no `SEL_LEFTBUTTONPRESS` and no widget ever reacted — the trace said
+  `button 272 down to FXButton` while nothing happened.  The module now
+  translates the code and the button mask together.
+- The keyboard uses the keymap the compositor sends, `xkbcommon` gives the
+  keysym (which is already a FOX key code) and the text, and the modifiers are
+  updated before the core sees the event.  A pointer enter remembers the serial
+  the popup grab and the interactive resize need.
+- A shell focuses its first focusable widget when the keyboard enters, and a
+  keyboard leave raises no `SEL_FOCUSOUT`, because the compositor reports the
+  leave of one surface twice, which would take the focus away between the press
+  and the release of a key.
+- Grabs are not a Wayland concept: `FXWindow::grab()` only sets
+  `mouseGrabWindow`, and because the press in the gate is followed by the
+  release on the same widget, the button still turns the pair into a command.
 
 - `wl_pointer`: enter, leave, motion, buttons, axis (vertical and horizontal
   wheel, discrete steps), frame; coordinates are the surface-local logical
@@ -653,15 +690,39 @@ Done in this phase so far:
   crashed on shutdown with `SIGSEGV`; and the compositor's configure was
   dispatched with the wrong event field, so a tiled window kept the size it
   asked for instead of the size the compositor gave it.
-- **Pointer buttons are not covered by that harness:** sway accepts the virtual
-  pointer and reports them as ready, but no `wl_pointer.button` ever arrives at
-  the client in this configuration, so the click path is written and compiles
-  but is not verified by a gate; it has to be checked on KWin by hand.
-  The first hand test found a real bug: `FXWinMap::hitTest()` wants coordinates
-  of the screen — a shell carries the place it was given — while the pointer
-  arrives in the coordinates of its surface, so every click hit the shell and
-  no widget ever saw a press. The surface place is added before the query now,
-  and `tests/winmap` has a case that moves a shell and checks both conventions.
+  The gate itself was flaky: `wtype -k space` sends the press and the release so
+  close together that sway drops the press, so it now separates them with
+  `wtype -s 200 -k space` and three runs in a row pass.
+- **Pointer gate:** `scripts/gate-wayland-click.sh` runs `tests/click` — one
+  button filling the window, which quits when it is clicked — against a private
+  headless sway and passes when the program ends with 0. The click comes from
+  `scripts/wlxinject.c`, a small client that keeps one
+  `zwlr_virtual_pointer_v1` alive for the whole gesture: a headless sway has no
+  input devices at all (its seat reports no capabilities), `swaymsg seat - cursor`
+  therefore does nothing, and `wlrctl` creates a virtual pointer and destroys it
+  again before the compositor delivers anything, which is why an earlier attempt
+  saw no `wl_pointer.button` in the client. The injector moves the pointer to a
+  layout position and then presses and releases it; the protocol XML is vendored
+  as `scripts/protocols/wlr-virtual-pointer-unstable-v1.xml` and the gate builds
+  the injector with `wayland-scanner` when it runs. The trace shows
+  `pointer button 272 as 1 down`, `button 1 down to FXButton at +510+293`, the
+  release on the same widget and `command from the button`.
+  The press must not be consumed by the test widget: a handler that returns 1
+  for `SEL_LEFTBUTTONPRESS` or `SEL_LEFTBUTTONRELEASE` stops `FXButton` from
+  arming and from sending its command.
+- **Two click bugs came before that gate:** `FXWinMap::hitTest()` wants
+  coordinates of the screen — a shell carries the place it was given — while the
+  pointer arrives in the coordinates of its surface, so every click hit the shell
+  and no widget ever saw a press (the surface place is added before the query
+  now, and `tests/winmap` has a case that moves a shell and checks both
+  conventions); and the button codes of `wl_pointer` are event codes, not X11
+  numbers, so no press matched a FOX selector.
+- **Repaint gate:** `scripts/gate-wayland-repaint.sh` needs no reference image.
+  It drives `tests/button` to the same state twice, once with one click on
+  *After Text* and once with *After Text*, *Centered* and *After Text* again, and
+  compares the two dumped frames byte for byte. A correct repaint makes them
+  identical; without the parent exposure of phase 5 the three click frame keeps
+  9 pixels of the states in between and the gate fails.
 - **Focus:** the core has no other way to learn that the compositor handed the
   keyboard to a shell, so the shell focuses its first focusable widget
   (`SEL_FOCUS_NEXT`) when the keyboard enters. A keyboard leave does not raise

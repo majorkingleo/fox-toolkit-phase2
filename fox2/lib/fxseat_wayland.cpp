@@ -160,20 +160,44 @@ static void pointerMotion(void* data,wl_pointer*,uint32_t time,wl_fixed_t sx,wl_
   }
 
 
-// A pointer button changed; the protocol counts 1,2,3 like X11 does
+// The FOX number of a button from the Linux event code the protocol sends:
+// 272 is the left button, 273 the right one and 274 the middle one, not the
+// 1, 2, 3 of X11.  Anything else is a side button and keeps its event code.
+static FXuint foxButtonNumber(FXuint button){
+  switch(button){
+    case 272: return 1;                 // BTN_LEFT
+    case 273: return 3;                 // BTN_RIGHT
+    case 274: return 2;                 // BTN_MIDDLE
+    case 275: return 8;                 // BTN_SIDE
+    case 276: return 9;                 // BTN_EXTRA
+    }
+  return button;
+  }
+
+
+// The button mask that belongs to a FOX button number
+static FXuint foxButtonMask(FXuint button){
+  switch(button){
+    case 1: return LEFTBUTTONMASK;
+    case 2: return MIDDLEBUTTONMASK;
+    case 3: return RIGHTBUTTONMASK;
+    }
+  return 0;
+  }
+
+
+// A pointer button changed
 static void pointerButton(void* data,wl_pointer*,uint32_t serial,uint32_t time,uint32_t button,uint32_t state){
   FXWaylandApp* app=fxwayland(data);
   FXWaylandSurface* s=app?app->pointersurface:nullptr;
-  FXuint mask=0;
+  FXuint number=foxButtonNumber(button);
+  FXuint mask=foxButtonMask(number);
   (void)serial;
   if(!app || !s) return;
-  if(button==1) mask=LEFTBUTTONMASK;
-  else if(button==2) mask=MIDDLEBUTTONMASK;
-  else if(button==3) mask=RIGHTBUTTONMASK;
   if(state==WL_POINTER_BUTTON_STATE_PRESSED) app->pointerbuttons|=mask;
   else app->pointerbuttons&=~mask;
-  fxwaylandTrace("pointer button %u %s\n",button,state==WL_POINTER_BUTTON_STATE_PRESSED?"down":"up");
-  postPointer(app,s,FXXWL_BUTTON,app->pointerx,app->pointery,button,app->pointerbuttons,time,state==WL_POINTER_BUTTON_STATE_PRESSED);
+  fxwaylandTrace("pointer button %u as %u %s\n",button,number,state==WL_POINTER_BUTTON_STATE_PRESSED?"down":"up");
+  postPointer(app,s,FXXWL_BUTTON,app->pointerx,app->pointery,number,app->pointerbuttons,time,state==WL_POINTER_BUTTON_STATE_PRESSED);
   }
 
 
@@ -346,6 +370,7 @@ FXString fxwaylandKeyText(FXWaylandApp* app,FXuint key){
 static void seatCapabilities(void* data,wl_seat* seat,uint32_t capabilities){
   FXWaylandApp* app=fxwayland(data);
   FXTRACE(TOPIC_EVENT,"seat capabilities %u\n",capabilities);
+  fxwaylandTrace("seat capabilities %u\n",capabilities);
   if(!app) return;
   if(capabilities&WL_SEAT_CAPABILITY_POINTER){
     if(!app->pointer){

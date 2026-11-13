@@ -109,8 +109,23 @@ void fxplatformDestroyWindow(void* display,FXID window,FXID shell,FXID colormap,
 // Move, resize, or both
 void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXint h,FXint oldw,FXint oldh,FXbool shown,FXuint placement){
   FXWaylandApp* app=fxwayland(display);
+  FXRectangle was;
+  FXID parent;
   if(!app) return;
+  parent=app->childmap.getParent(window);
+  was=app->childmap.getGeometry(window);
   app->childmap.setPlacement(window,x,y,w,h,placement);
+
+  // A child that moves or resizes leaves the pixels it painted behind in the
+  // parent.  On X11 the server exposes the uncovered area, here nobody does:
+  // everything shares one buffer.  Repaint the parent and the whole tree below
+  // it, parents before children, so the parent's background fills the hole and
+  // the widgets that are still in place paint over it again
+  if((was.x!=x || was.y!=y || was.w!=w || was.h!=h) && shown && app->childmap.isVisible(window)){
+    if(parent && app->childmap.isVisible(parent)){
+      fxwaylandExpose(app,parent);
+      }
+    }
   }
 
 
@@ -119,6 +134,7 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
   FXWaylandApp* app=fxwayland(display);
   const FXWinEntry* entry;
   FXRectangle place;
+  FXID parent;
   if(!app) return;
 
   // A popup gets its surface when it is shown: the positioner fixes its size
@@ -133,8 +149,14 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
   app->childmap.setShown(window,shown);
 
   // Mapping a window exposes it, and with it everything below it, just like
-  // the server does on X11
-  if(shown) fxwaylandExpose(app,window);
+  // the server does on X11; unmapping exposes what it uncovered in its parent
+  if(shown){
+    fxwaylandExpose(app,window);
+    }
+  else{
+    parent=app->childmap.getParent(window);
+    if(parent && app->childmap.isVisible(parent)) fxwaylandExpose(app,parent);
+    }
   }
 
 

@@ -119,6 +119,15 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
   no focus at all).
 - **Focus arrives from the compositor.** The client must focus its own initial
   widget when the keyboard enters a shell; the core has no other signal.
+- **`wl_pointer.button` carries Linux event codes**, not the 1, 2, 3 of X11:
+  272 is the left button, 273 the right one, 274 the middle one. Passing the
+  code straight to a toolkit that expects X11 numbers makes every click arrive
+  as one unknown button and nothing reacts.
+- **Nobody repaints what a moving window uncovers.** On X11 the server exposes
+  the area a child leaves behind; with one buffer per shell every window shares
+  the parent's pixels, so moving or resizing a widget must post an exposure for
+  the parent (and its subtree, parents before children) or the old pixels stay
+  as a ghost. Unmapping needs the same for its parent.
 
 ## Map of this repository
 
@@ -144,9 +153,19 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
   committed frame and diffs it against the X11 screenshot. Weston's headless
   backend has **no seat capabilities**, so input cannot be tested there.
 - `scripts/gate-wayland-input.sh` — headless sway + `wtype`; types a space into
-  the focused button and expects the application to quit by itself.
-- Interactive cursor/click injection on sway: `swaymsg seat - cursor set X Y`,
-  `swaymsg seat - cursor press button1`. Screenshot with `grim -o HEADLESS-1`.
+  the focused button and expects the application to quit by itself. Space the
+  press and the release apart (`wtype -s 200 -k space`): sway drops the press
+  when both arrive in the same compositor frame.
+- `scripts/gate-wayland-click.sh` — headless sway + `scripts/wlxinject.c`, which
+  keeps one `zwlr_virtual_pointer_v1` alive for the gesture and then moves,
+  presses and releases it. `swaymsg seat - cursor ...` and `wlrctl` both fail on
+  a headless sway: the seat has no pointer device, and `wlrctl` destroys its
+  virtual pointer before the click is delivered.
+- `scripts/gate-wayland-repaint.sh` — drives the same widget state in one click
+  and in three and compares the two dumped frames; needs no reference image and
+  catches ghosts of widgets that moved.
+- Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame
+  with `FOX_WAYLAND_DUMP`.
 - `FOX_WAYLAND_TRACE=1` prints connect, configure, expose, bind, commit, seat
   and key lines; `WAYLAND_DEBUG=1` prints the protocol stream. Read both before
   guessing.

@@ -93,7 +93,10 @@ app_pid=$!
 sleep 1.5
 
 echo "==> typing a space"
-wtype -k space >>"$RUN/input.log" 2>&1
+# The press and the release need to be at least one compositor frame apart:
+# sway drops the press when both arrive in the same one, which made this gate
+# fail intermittently
+wtype -s 200 -k space >>"$RUN/input.log" 2>&1
 sleep 0.8
 
 state=timeout
