@@ -76,7 +76,7 @@ namespace FX {
 
 
 // Construct for expose event painting
-FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0){
+FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0),oldpalette(0),oldbrush(0),oldpen(0),needsNewBrush(false),needsNewPen(false),needsPath(false),needsClipReset(false){
 #ifdef HAVE_XFT_H
   xftDraw=nullptr;
 #endif
@@ -94,7 +94,7 @@ FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()),sur
 
 
 // Construct for normal painting
-FXDCWindow::FXDCWindow(FXDrawable* draw):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0){
+FXDCWindow::FXDCWindow(FXDrawable* draw):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0),oldpalette(0),oldbrush(0),oldpen(0),needsNewBrush(false),needsNewPen(false),needsPath(false),needsClipReset(false){
 #ifdef HAVE_XFT_H
   xftDraw=nullptr;
 #endif

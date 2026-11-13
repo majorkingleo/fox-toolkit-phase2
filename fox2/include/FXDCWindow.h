@@ -52,7 +52,6 @@ protected:
   FXRectangle rect;           // Paint rectangle inside drawable
   FXPixel     devfg;          // Device foreground pixel value
   FXPixel     devbg;          // Device background pixel value
-#ifdef WIN32
   FXID        oldpalette;
   FXID        oldbrush;
   FXID        oldpen;
@@ -60,15 +59,11 @@ protected:
   FXbool      needsNewPen;
   FXbool      needsPath;
   FXbool      needsClipReset;
-#else
   void       *xftDraw;
   FXuint      flags;
-#endif
 private:
-#ifdef WIN32
   void updateBrush();
   void updatePen();
-#endif
 private:
   FXDCWindow();
   FXDCWindow(const FXDCWindow&);

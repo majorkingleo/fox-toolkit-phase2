@@ -1282,6 +1282,15 @@ the helpers and uses the tables; the Win32 constructors leave them untouched,
 as the X11 constructors already do for the tables. The cost on Win32 is the
 unused tables in each visual object. Both builds pass.
 
+## Seam 60: window device context header
+
+`FXDCWindow.h` declares the Win32 state (palette, brush and pen handles and the
+`needs*` flags), the Xft draw pointer and flags, and `updateBrush()` and
+`updatePen()` on every platform. All members are plain `FXID`, `FXbool`,
+`FXuint` or `void*`. The constructors of each module initialise the members of
+the other platform's set, so no member is left uninitialised; `updateBrush()`
+and `updatePen()` stay defined only in `FXDCWindow_win32.cpp`. Both builds pass.
+
 ## Next seams, in order
 
 None in `fox2/lib`. After seam 55 every platform conditional in the core classes of

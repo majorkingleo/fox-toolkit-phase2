@@ -81,7 +81,7 @@ namespace FX {
 #endif
 
 // Construct for expose event painting
-FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0),oldpalette(nullptr),oldbrush(nullptr),oldpen(nullptr),needsNewBrush(false),needsNewPen(false),needsPath(false),needsClipReset(false){
+FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0),oldpalette(nullptr),oldbrush(nullptr),oldpen(nullptr),needsNewBrush(false),needsNewPen(false),needsPath(false),needsClipReset(false),xftDraw(nullptr),flags(0){
   begin(draw);
   rect.x=clip.x=event->rect.x;
   rect.y=clip.y=event->rect.y;
@@ -94,7 +94,7 @@ FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()),sur
 
 
 // Construct for normal painting
-FXDCWindow::FXDCWindow(FXDrawable* draw):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0),oldpalette(nullptr),oldbrush(nullptr),oldpen(nullptr),needsNewBrush(false),needsNewPen(false),needsPath(false),needsClipReset(false){
+FXDCWindow::FXDCWindow(FXDrawable* draw):FXDC(draw->getApp()),surface(nullptr),rect(0,0,0,0),devfg(0),devbg(0),oldpalette(nullptr),oldbrush(nullptr),oldpen(nullptr),needsNewBrush(false),needsNewPen(false),needsPath(false),needsClipReset(false),xftDraw(nullptr),flags(0){
   begin(draw);
   }
 
