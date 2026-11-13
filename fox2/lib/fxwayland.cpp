@@ -201,7 +201,9 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->popup=nullptr;
   s->toplevel=nullptr;
   s->buffers=nullptr;
-  s->paint=nullptr;
+  s->store=nullptr;
+  s->storew=0;
+  s->storeh=0;
   s->dirty=false;
   s->configured=false;
   s->state=0;
@@ -237,6 +239,8 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
     if(s->window==window){
       *link=s->next;
       fxwaylandFreeBuffers(s);
+      freeElms(s->store);
+      s->store=nullptr;
       if(s->toplevel) xdg_toplevel_destroy(s->toplevel);
       if(s->popup) xdg_popup_destroy(s->popup);
       if(s->xdsurface) xdg_surface_destroy(s->xdsurface);
@@ -391,8 +395,6 @@ void fxwaylandFreeBuffers(FXWaylandSurface* surf){
     delete b;
     }
   surf->buffers=nullptr;
-  surf->paint=nullptr;
-  surf->dirty=false;
   surf->width=0;
   surf->height=0;
   }
@@ -400,7 +402,25 @@ void fxwaylandFreeBuffers(FXWaylandSurface* surf){
 
 /*******************************************************************************/
 
-// Bind a window to the frame buffer of its shell
+// Give the backing store of a surface the size of its shell; content that does
+// not fit is dropped, which is what a resize does to a window anyway
+static FXbool resizeStore(FXWaylandSurface* s,FXint w,FXint h){
+  if(s->store && s->storew==w && s->storeh==h) return true;
+  freeElms(s->store);
+  s->store=nullptr;
+  s->storew=0;
+  s->storeh=0;
+  if(w<=0 || h<=0) return false;
+  if(!allocElms(s->store,w*h)) return false;
+  clearElms(s->store,w*h);
+  s->storew=w;
+  s->storeh=h;
+  fxwaylandTrace("store of window %u is %dx%d\n",(unsigned int)s->window,w,h);
+  return true;
+  }
+
+
+// Bind a window to the backing store of its shell
 FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& stride){
   FXWaylandSurface* s;
   FXRectangle shell;
@@ -408,46 +428,42 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   FXRectangle here;
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
 
-  // A shell that the compositor did not configure yet cannot be painted; the
-  // configure handler posts the exposures that bring us back here
-  if(!s->configured) return false;
-
-  // The frame is as large as the shell; children are drawn into it at their
-  // place in the shell, so the whole window tree of a shell shares one buffer
+  // The store is as large as the shell; every window of the tree paints into
+  // it at its own place, which is why a window can be repainted on its own
   shell=app->childmap.getGeometry(s->window);
-  if(shell.w<=0 || shell.h<=0) return false;
+  if(!resizeStore(s,shell.w,shell.h)) return false;
 
-  // Acquire the frame once and keep it until the frame is committed
-  if(!s->paint){
-    if((s->paint=fxwaylandAcquireBuffer(s,shell.w,shell.h))==nullptr) return false;
-    }
-  if(s->paint->width!=shell.w || s->paint->height!=shell.h) return false;
-
-  // Origin of the window within the frame; the table reports screen
+  // Origin of the window inside the shell; the table reports screen
   // coordinates, so the place of the shell itself comes off again
   place=app->childmap.getGlobalGeometry(s->window);
   here=app->childmap.getGlobalGeometry(window);
-  pixels=s->paint->pixels+(FXival)(here.y-place.y)*s->paint->width+(here.x-place.x);
-  stride=s->paint->width;
+  pixels=s->store+(FXival)(here.y-place.y)*s->storew+(here.x-place.x);
+  stride=s->storew;
   s->dirty=true;
-  fxwaylandTrace("bind window %u frame %dx%d at %+d%+d pixels %p\n",(unsigned int)window,s->paint->width,s->paint->height,here.x-place.x,here.y-place.y,pixels);
+  fxwaylandTrace("bind window %u store %dx%d at %+d%+d pixels %p\n",(unsigned int)window,s->storew,s->storeh,here.x-place.x,here.y-place.y,pixels);
   return true;
   }
 
 
-// Commit the frames that were painted since the last call
+// Commit the shells that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app){
   FXWaylandSurface* s;
+  FXWaylandBuffer* b;
   if(!app) return;
   for(s=app->surfaces; s; s=s->next){
-    if(s->paint){
-      fxwaylandTrace("flush window %u dirty %d configured %d\n",(unsigned int)s->window,s->dirty,s->configured);
-      if(s->dirty && s->configured){
-        fxwaylandCommitBuffer(s,s->paint,0,0,s->paint->width,s->paint->height);
-        fxwaylandDumpBuffer(s,s->paint);
+    if(s->dirty && s->store){
+
+      // Nothing is shown before the compositor configured the shell
+      if(!s->configured) continue;
+
+      // A recycled buffer starts blank, so the whole store goes into it
+      if((b=fxwaylandAcquireBuffer(s,s->storew,s->storeh))!=nullptr){
+        memcpy(b->pixels,s->store,(FXuval)s->storew*s->storeh*sizeof(FXColor));
+        fxwaylandCommitBuffer(s,b,0,0,b->width,b->height);
+        fxwaylandDumpBuffer(s,b);
+        s->dirty=false;
+        fxwaylandTrace("commit window %u %dx%d\n",(unsigned int)s->window,b->width,b->height);
         }
-      s->paint=nullptr;
-      s->dirty=false;
       }
     }
   // The requests sit in the client buffer until we push them out
@@ -459,9 +475,8 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
 void fxwaylandHideSurface(FXWaylandSurface* surf){
   if(!surf || !surf->surface) return;
 
-  // Drop the frame that was being painted, so the flush does not bring the
-  // content back after all
-  surf->paint=nullptr;
+  // Nothing to commit for a hidden shell; the store keeps its content so that
+  // showing it again has something to copy from
   surf->dirty=false;
 
   // A surface without a buffer shows nothing

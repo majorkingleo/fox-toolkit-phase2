@@ -77,8 +77,10 @@ struct FXWaylandSurface {
   xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
   FXWaylandBuffer*           buffers;    // Buffer pool
-  FXWaylandBuffer*           paint;      // Buffer of the frame being painted
-  FXbool                     dirty;      // Something was drawn into the frame
+  FXColor*                   store;      // Content of the shell window tree
+  FXint                      storew;     // Size of the backing store
+  FXint                      storeh;
+  FXbool                     dirty;      // Something was drawn into the store
   FXbool                     configured; // The compositor configured the shell
   FXuint                     state;      // FXXWL_STATE_* of the toplevel
   FXint                      width;      // Width of the pool buffers

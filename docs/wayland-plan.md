@@ -454,6 +454,14 @@ Done in this phase so far (the protocol files and the platform seam):
   the event loop calls `fxwaylandFlushFrames()`, which damages, attaches and
   commits each frame and writes the dump; a flush of the connection makes sure
   the compositor sees the commit before the loop sleeps in `pselect`.
+- Each shell keeps a **backing store** of its whole window tree, and painting
+  goes into that store; a commit copies the store into whichever buffer the
+  pool hands out and then commits it. This is not an optimisation but a
+  correctness requirement: `wl_shm` buffers are recycled, and a recycled buffer
+  either starts blank or holds the content of two frames ago, so incremental
+  painting into buffers would lose every pixel that a frame did not touch. The
+  first version did exactly that and the dump showed it — a mostly black frame
+  wherever the pass had repainted only a small part.
 - The window state of a toplevel (maximized, full screen, activated) is read
   from the `xdg_toplevel.configure` state array and kept on the surface, so the
   shell classes answer `isMaximized()` and friends from what the compositor
