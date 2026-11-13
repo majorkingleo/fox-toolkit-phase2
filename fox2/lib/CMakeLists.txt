@@ -13,6 +13,9 @@ else()
   list(APPEND FOX_LIB_SOURCES FXCheckButton_unix.cpp FXDesktopSettings_unix.cpp FXRegistry_unix.cpp FXShell_unix.cpp FXSlider_unix.cpp)
   if(FOX_PLATFORM STREQUAL "x11")
     list(APPEND FOX_LIB_SOURCES FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp FXDCWindow_x11.cpp FXDragCorner_x11.cpp FXFont_x11.cpp FXIcon_x11.cpp FXImage_x11.cpp FXMainWindow_x11.cpp FXPopup_x11.cpp FXRegion_x11.cpp FXRootWindow_x11.cpp FXStyle_x11.cpp FXToolTip_x11.cpp FXTopWindow_x11.cpp FXVisual_x11.cpp FXWindow_x11.cpp fxpriv_x11.cpp)
+  elseif(FOX_PLATFORM STREQUAL "wayland")
+    # Wayland modules; the set grows phase by phase, see docs/wayland-plan.md
+    list(APPEND FOX_LIB_SOURCES FXRegion_wayland.cpp)
   endif()
 endif()
 

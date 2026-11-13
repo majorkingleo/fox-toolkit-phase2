@@ -276,6 +276,25 @@ struct FXWaylandEvent;
 #endif
 
 
+#if defined(FOX_WAYLAND)
+// Neutral raw event: the Wayland module fills it in and FXApp::dispatchEvent()
+// translates it into an FXEvent.  Only plain integers, no platform types.
+struct FXWaylandEvent {
+  unsigned int type;            // Event type
+  unsigned int id;              // Window id
+  int          x;               // Position
+  int          y;
+  int          w;               // Size
+  int          h;
+  unsigned int button;          // Button or key code
+  unsigned int state;           // Modifiers or state bits
+  unsigned int time;            // Timestamp in milliseconds
+  unsigned int code;            // Event specific code
+  int          data[4];         // Event specific payload
+  };
+#endif
+
+
 namespace FX {
 
 

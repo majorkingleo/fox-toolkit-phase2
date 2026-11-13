@@ -136,7 +136,9 @@ section per step, FOX formatting, no reformatting of moved code.
   `FXShell`; guard `#if defined(FOX_X11) || defined(FOX_WAYLAND)`) and 18
   X-specific `_x11` modules.
 - CMake option `FOX_PLATFORM` and Autotools `--with-wayland` (both fail with a
-  clear message until phase 4); module lists in `fox2/lib/Makefile.am` and
+  clear message until phase 3, where the Wayland platform starts to build;
+  from phase 4 on it builds the applications as well); module lists in
+  `fox2/lib/Makefile.am` and
   `fox2/lib/CMakeLists.txt` split into common, `win32`, `posix`, `unix` and
   `x11` lists (the `wayland` list is added with the first Wayland module).
 - `FXRawEvent` selection is in one place in `fxdefs.h`; the Wayland branch is a
@@ -309,6 +311,28 @@ Done in this phase so far (the glyph cache and rasterizer text; the
   PPM, compared with `tests/raster`.
 - Acceptance: widgets drawn into a standalone buffer (no compositor) look like
   the X11 screenshot for `hello` and `button`.
+
+Done in this phase so far:
+
+- `FOX_PLATFORM=wayland` configures and builds the library. The build defines
+  `FOX_WAYLAND`, requires `wayland-client` and `xkbcommon`, probes FreeType and
+  fontconfig for the glyph cache (`FOX_HAVE_FREETYPE`) and reports
+  `wayland-scanner` and `wayland-protocols` for phase 4. Protocols, codecs and
+  the POSIX modules are selected exactly as for X11.
+- `FXRegion_wayland.cpp`: the region is `FXRects` behind the opaque handle, so
+  the platform, the rasterizer and the browser frontend share one definition.
+- `fxpriv.h` keeps its X11 DnD helpers behind `FOX_X11` now, and the Wayland
+  `FXRawEvent` is a neutral integer struct in `fxdefs.h` (type, window id,
+  position, size, button, state, time, code and a four word payload), so the
+  core compiles before the connection exists.
+- `scripts/build-fox2-wayland.sh` builds the library target only until phase 4
+  (`FOX_WAYLAND_TARGET=all` builds everything once FXApp exists).
+- Measured on 2026-11-13: the library builds (2.2 MB) and still has 155
+  undefined platform symbols — `FXApp`, `FXWindow`, `FXDCWindow`, `FXVisual`,
+  `FXImage`, `FXIcon`, `FXFont`, `FXStyle`, `FXCursor`, `FXComposeContext` and
+  the DnD helpers. That list is the remaining work of this phase and of phase
+  4; the X11 build, the Windows cross build and the pixel and glyph gates are
+  unchanged.
 
 ### Phase 4: connection, event loop and virtual windows
 

@@ -2,9 +2,10 @@
 #
 # Build the fox2 library with the Wayland platform and check the Wayland gate.
 #
-# The Wayland platform is developed in the phases of docs/wayland-plan.md.
-# Until phase 4 the CMake configure fails with a clear message; the --check
-# option verifies the environment (compositor socket, client libraries) only.
+# The Wayland platform is developed in the phases of docs/wayland-plan.md.  Up
+# to phase 3 only the library is built: the test programs need FXApp, which
+# arrives with the connection in phase 4.  The --check option verifies the
+# environment (compositor socket, client libraries) only.
 #
 #   ./scripts/build-fox2-wayland.sh --check
 #   ./scripts/build-fox2-wayland.sh
@@ -14,11 +15,13 @@
 #   --jobs=N   parallel jobs (default: all cores)
 #   --clean    delete the build directory first
 #   --run      run hello, button and the DPI test for 3 s after building
+#              (from phase 4 on; earlier the library is built only)
 #   -h|--help  show this help
 #
 # Environment:
-#   FOX_BUILD_DIR  build directory (default: tmp/build-fox2-wayland); under WSL
-#                  use the Linux file system, e.g. ~/build/fox2-wayland
+#   FOX_BUILD_DIR        build directory (default: tmp/build-fox2-wayland);
+#                        under WSL use the Linux file system, e.g. ~/build/fox2-wayland
+#   FOX_WAYLAND_TARGET   build target (default: FOX; use all for everything)
 #
 set -euo pipefail
 
@@ -146,21 +149,16 @@ run(){
 echo "==> cmake configure"
 run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=OFF
 
-echo "==> build library, tools and tests"
-run cmake --build "$BUILD" -j "$jobs"
+echo "==> build library"
+run cmake --build "$BUILD" --target "${FOX_WAYLAND_TARGET:-FOX}" -j "$jobs"
+
+echo
+echo "==> artifacts"
+ls -l "$BUILD"/lib/*FOX* 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
-  for prog in hello button dpi; do
-    echo
-    echo "==> running $prog for 3 seconds"
-    rc=0
-    timeout 3 "$BUILD/bin/$prog" || rc=$?
-    if [ "$rc" -eq 124 ]; then
-      echo "$prog stayed in its event loop (expected)"
-    else
-      echo "warning: $prog exited with status $rc" >&2
-      fi
-    done
+  echo
+  echo "warning: --run needs the GUI tests, which arrive with FXApp in phase 4" >&2
   fi
 
 echo

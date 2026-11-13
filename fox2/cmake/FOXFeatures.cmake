@@ -168,9 +168,6 @@ endif()
 if(NOT WIN32 AND FOX_PLATFORM STREQUAL "win32")
   message(FATAL_ERROR "FOX_PLATFORM=win32 requires a Windows target")
 endif()
-if(FOX_PLATFORM STREQUAL "wayland")
-  message(FATAL_ERROR "FOX_PLATFORM=wayland: the Wayland platform is not implemented yet, see docs/wayland-plan.md")
-endif()
 message(STATUS "FOX: platform ${FOX_PLATFORM}")
 
 if(WIN32)
@@ -225,6 +222,7 @@ else()
   endif()
 
   # X11 backend
+  if(FOX_PLATFORM STREQUAL "x11")
   list(APPEND FOX_PUBLIC_DEFINITIONS FOX_X11)
   find_path(FOX_X11_INCLUDE_DIR NAMES X11/Xlib.h)
   find_library(FOX_X11_LIBRARY NAMES X11)
@@ -261,6 +259,47 @@ else()
     else()
       message(STATUS "FOX: Xft support disabled (not found)")
     endif()
+  endif()
+
+  # Wayland backend: libwayland-client and libxkbcommon are required, FreeType
+  # and fontconfig feed the glyph cache, wayland-protocols and wayland-scanner
+  # generate the protocol glue from phase 4 on
+  else()
+  list(APPEND FOX_PUBLIC_DEFINITIONS FOX_WAYLAND)
+  find_path(FOX_WAYLAND_INCLUDE_DIR NAMES wayland-client.h)
+  find_library(FOX_WAYLAND_CLIENT_LIBRARY NAMES wayland-client)
+  find_path(FOX_XKBCOMMON_INCLUDE_DIR NAMES xkbcommon/xkbcommon.h)
+  find_library(FOX_XKBCOMMON_LIBRARY NAMES xkbcommon)
+  if(NOT FOX_WAYLAND_INCLUDE_DIR OR NOT FOX_WAYLAND_CLIENT_LIBRARY)
+    message(FATAL_ERROR "Wayland development files (wayland-client.h, libwayland-client) not found")
+  endif()
+  if(NOT FOX_XKBCOMMON_INCLUDE_DIR OR NOT FOX_XKBCOMMON_LIBRARY)
+    message(FATAL_ERROR "libxkbcommon development files (xkbcommon/xkbcommon.h) not found")
+  endif()
+  fox_add_include_dir(FOX_PUBLIC_INCLUDE_DIRS "${FOX_WAYLAND_INCLUDE_DIR}" "${FOX_XKBCOMMON_INCLUDE_DIR}")
+  list(APPEND FOX_PUBLIC_LIBRARIES "${FOX_WAYLAND_CLIENT_LIBRARY}" "${FOX_XKBCOMMON_LIBRARY}")
+
+  # FreeType and fontconfig for the glyph cache
+  find_path(FOX_FREETYPE_INCLUDE_DIR NAMES ft2build.h PATH_SUFFIXES freetype2)
+  find_library(FOX_FREETYPE_LIBRARY NAMES freetype)
+  find_path(FOX_FONTCONFIG_INCLUDE_DIR NAMES fontconfig/fontconfig.h)
+  find_library(FOX_FONTCONFIG_LIBRARY NAMES fontconfig)
+  if(FOX_FREETYPE_INCLUDE_DIR AND FOX_FREETYPE_LIBRARY AND FOX_FONTCONFIG_INCLUDE_DIR AND FOX_FONTCONFIG_LIBRARY)
+    message(STATUS "FOX: glyph cache enabled (FreeType and fontconfig)")
+    list(APPEND FOX_PUBLIC_DEFINITIONS FOX_HAVE_FREETYPE=1)
+    fox_add_include_dir(FOX_PUBLIC_INCLUDE_DIRS "${FOX_FREETYPE_INCLUDE_DIR}" "${FOX_FONTCONFIG_INCLUDE_DIR}")
+    list(APPEND FOX_PUBLIC_LIBRARIES "${FOX_FONTCONFIG_LIBRARY}" "${FOX_FREETYPE_LIBRARY}")
+  else()
+    message(STATUS "FOX: glyph cache disabled (FreeType or fontconfig not found)")
+  endif()
+
+  # Protocol XML and generator, needed from phase 4 on
+  find_program(FOX_WAYLAND_SCANNER wayland-scanner)
+  find_path(FOX_WAYLAND_PROTOCOLS_DIR NAMES stable/xdg-shell/xdg-shell.xml
+            PATHS /usr/share/wayland-protocols /usr/local/share/wayland-protocols)
+  if(NOT FOX_WAYLAND_SCANNER OR NOT FOX_WAYLAND_PROTOCOLS_DIR)
+    message(WARNING "wayland-scanner or wayland-protocols not found; the protocol glue cannot be generated yet")
+  endif()
   endif()
 endif()
 

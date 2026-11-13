@@ -86,7 +86,7 @@ extern HANDLE fxsenddata(HWND window,FXuchar* data,FXuint size);
 extern HANDLE fxrecvdata(HANDLE hMap,FXuchar*& data,FXuint& size);
 
 
-#else ////////////////////////////// Unix ///////////////////////////////////////
+#elif defined(FOX_X11) //////////// X 1 1 /////////////////////////////////////
 
 
 // Basic events
