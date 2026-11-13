@@ -1243,12 +1243,10 @@ verbatim, only re-indented. Both builds pass.
 
 ## Next seams, in order
 
-1. **Remaining core classes**, one class per seam, largest platform footprint
-   first:
-   the files with one or two references. Presentation
-   seam; needed before a browser frontend and for the Wayland SHM surface.
-
-Do not start a later seam before the earlier one is accepted on both builds.
+None. After seam 55 every platform conditional in the core classes of
+`fox2/lib` lives in a `_win32.cpp` or `_x11.cpp` module. What remains are
+`va_copy` shims, comments, and private headers. Presentation work (browser
+frontend, Wayland SHM surface) builds on this and is planned separately.
 
 ## Constraints
 
