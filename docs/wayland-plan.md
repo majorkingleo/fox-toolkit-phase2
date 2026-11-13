@@ -321,18 +321,31 @@ Done in this phase so far:
   the POSIX modules are selected exactly as for X11.
 - `FXRegion_wayland.cpp`: the region is `FXRects` behind the opaque handle, so
   the platform, the rasterizer and the browser frontend share one definition.
-- `fxpriv.h` keeps its X11 DnD helpers behind `FOX_X11` now, and the Wayland
-  `FXRawEvent` is a neutral integer struct in `fxdefs.h` (type, window id,
-  position, size, button, state, time, code and a four word payload), so the
-  core compiles before the connection exists.
+- `FXVisual_wayland.cpp`: one fixed 32 bit truecolor format, no colormap and no
+  palette; `getPixel()` and `getColor()` are the identity on the color with an
+  opaque alpha, because a Wayland pixel is already premultiplied ARGB.
+- `FXImage_wayland.cpp` and `FXIcon_wayland.cpp`: the client buffer is the
+  image, so `render()` and `restore()` have nothing to move and `create()`
+  only sets up the visual and makes sure there is a buffer. Icons need no
+  shape or etch pixmap; the rasterizer takes the shape from the alpha channel
+  or the transparent color.
+- `FXDCWindow_wayland.cpp`: the DC carries an `FXRaster` in its context handle
+  and copies the `FXDC` state into it from every setter; all primitives, the
+  text, the gradients and the clipping go straight to the rasterizer.
+  `clipChildren()` and the window buffer need the virtual window table of
+  phase 4; only images can be drawn into so far.
+- `FXFont::getGlyphCache()` is a neutral accessor on the font (nullptr on X11
+  and Win32, where the platform draws text itself) so the Wayland DC can hand
+  the glyph cache to the rasterizer without knowing the font internals.
 - `scripts/build-fox2-wayland.sh` builds the library target only until phase 4
   (`FOX_WAYLAND_TARGET=all` builds everything once FXApp exists).
-- Measured on 2026-11-13: the library builds (2.2 MB) and still has 155
-  undefined platform symbols — `FXApp`, `FXWindow`, `FXDCWindow`, `FXVisual`,
-  `FXImage`, `FXIcon`, `FXFont`, `FXStyle`, `FXCursor`, `FXComposeContext` and
-  the DnD helpers. That list is the remaining work of this phase and of phase
-  4; the X11 build, the Windows cross build and the pixel and glyph gates are
-  unchanged.
+- Measured on 2026-11-13: the library builds (2.2 MB) and the remaining
+  undefined platform symbols went from 155 to 121 — they are `FXApp`,
+  `FXWindow`, `FXShell`, `FXTopWindow`, `FXMainWindow`, `FXPopup`,
+  `FXRootWindow`, `FXToolTip`, `FXDragCorner`, `FXFont`, `FXStyle`,
+  `FXCursor` and `FXComposeContext`. That list is the work of phase 4, together
+  with the virtual window table; the X11 build, the Windows cross build and the
+  pixel, region and glyph gates are unchanged.
 
 ### Phase 4: connection, event loop and virtual windows
 

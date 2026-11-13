@@ -628,6 +628,12 @@ FXint FXFont::getFontDescent() const {
   }
 
 
+// GDI draws the text itself; the software rasterizer is not used here
+void* FXFont::getGlyphCache() const {
+  return nullptr;
+  }
+
+
 // Calculate width of single wide character in this font
 FXint FXFont::getCharWidth(const FXwchar ch) const {
   if(font){

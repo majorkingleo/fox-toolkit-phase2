@@ -374,9 +374,12 @@ public:
   /// Descent from baseline
   virtual FXint getFontDescent() const;
 
+  /// Get the glyph cache the software rasterizer draws with, or nullptr when
+  /// the platform draws text itself
+  virtual void* getGlyphCache() const;
+
   /// Get font leading [that is lead-ing as in Pb!]
   virtual FXint getFontLeading() const;
-
   /// Get font line spacing
   virtual FXint getFontSpacing() const;
 
