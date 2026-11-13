@@ -394,9 +394,22 @@ Done in this phase so far (the protocol files and the platform seam):
   process DPI awareness, no system DPI (the compositor reports a scale per
   output in phase 9), `WAYLAND_DISPLAY` as the display name, "Sans,90" as the
   default font and no configured scale.
-- The library builds with 90 undefined platform symbols left: the `FXApp`
-  connection, the windows of this phase, `FXDragCorner` and
-  `FXComposeContext`.
+- `FXApp_wayland.cpp`: `wl_display_connect`, the registry walk that binds
+  `wl_compositor`, `wl_shm`, `wl_seat`, `wl_output` and `xdg_wm_base`, the
+  `shm` format probe (ARGB8888 is remembered; its absence only warns, since an
+  opaque buffer still works) and the ping/pong. `getNextEvent()` keeps the
+  timer, signal, chore, refresh, repaint and input-fd handling of the X11
+  module and adds the connection as one more input, with `wl_display_pending`
+  and `wl_display_dispatch` filling a queue of neutral `FXWaylandEvent`s that
+  `dispatchEvent()` translates. A compositor without `wl_compositor`, `wl_shm`
+  or `xdg_wm_base` is reported by name and the connection is refused; a missing
+  compositor only warns, so a test can still run the library headless. The
+  selection, clipboard and drag-and-drop entry points exist as empty stubs
+  until phase 8.
+- The library builds with 71 undefined platform symbols left: the windows of
+  this phase (`FXWindow`, `FXRootWindow`, `FXShell`, `FXTopWindow`,
+  `FXMainWindow`, `FXPopup`, `FXToolTip`), the `fxplatformCreateWindow` family,
+  `FXDragCorner` and `FXComposeContext`.
 
 ### Phase 5: window management
 
