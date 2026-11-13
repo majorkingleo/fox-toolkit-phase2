@@ -147,7 +147,8 @@ public:
   /// Move a window under a new parent, keeping its place on the screen
   void reparent(FXID id,FXID parent);
 
-  /// Return the deepest visible child at the given shell coordinates
+  /// Return the deepest visible window at a point of the screen; the shells
+  /// carry the place they were given, so screen coordinates are what it needs
   FXID hitTest(FXint gx,FXint gy) const;
 
   /// Return the window itself or its nearest ancestor that is a shell

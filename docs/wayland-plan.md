@@ -656,8 +656,12 @@ Done in this phase so far:
 - **Pointer buttons are not covered by that harness:** sway accepts the virtual
   pointer and reports them as ready, but no `wl_pointer.button` ever arrives at
   the client in this configuration, so the click path is written and compiles
-  but is not verified yet; it has to be checked on KWin by hand until a harness
-  that delivers buttons exists.
+  but is not verified by a gate; it has to be checked on KWin by hand.
+  The first hand test found a real bug: `FXWinMap::hitTest()` wants coordinates
+  of the screen — a shell carries the place it was given — while the pointer
+  arrives in the coordinates of its surface, so every click hit the shell and
+  no widget ever saw a press. The surface place is added before the query now,
+  and `tests/winmap` has a case that moves a shell and checks both conventions.
 - **Focus:** the core has no other way to learn that the compositor handed the
   keyboard to a shell, so the shell focuses its first focusable widget
   (`SEL_FOCUS_NEXT`) when the keyboard enters. A keyboard leave does not raise

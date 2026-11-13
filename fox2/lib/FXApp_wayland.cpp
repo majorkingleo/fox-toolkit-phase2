@@ -525,6 +525,11 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   FXint rx,ry;
   FXEvent event;
   if(!app) return false;
+
+  // A fresh event for every dispatch: the click counting and the moved flag
+  // read fields that only a previous event would have set.  It is assigned
+  // rather than cleared, because the text is an FXString
+  event=FXEvent();
   switch(ev.code){
     case FXXWL_EXPOSE:
       if(ev.id){
@@ -698,6 +703,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
         }
       else if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+      fxwaylandTrace("button %u %s to %s at %+d%+d\n",ev.button,ev.data[1]?"down":"up",window->getClassName(),event.win_x,event.win_y);
       event.last_x=event.win_x;
       event.last_y=event.win_y;
       return true;

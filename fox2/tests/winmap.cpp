@@ -249,6 +249,15 @@ static FXint runTests(){
     check(map.hitTest(15,15)==content,"content is hit beside the button");
     check(map.hitTest(5,5)==shell,"shell is hit outside the content");
     check(map.hitTest(250,300)==0,"nothing outside the shell");
+
+    // Hit testing is in screen coordinates: a shell that was placed somewhere
+    // else moves its whole tree with it, so a point inside the shell is only
+    // found once the place of the shell is added
+    map.setPlacement(shell,40,28,200,150,FXWinMap::PLACE_X|FXWinMap::PLACE_Y);
+    check(map.hitTest(35,35)==0,"surface coordinates find nothing once the shell moved");
+    check(map.hitTest(40+35,28+35)==button,"the place of the shell has to be added");
+    check(map.hitTest(40+5,28+5)==shell,"the shell is hit at its new place");
+    map.setPlacement(shell,0,0,200,150,FXWinMap::PLACE_X|FXWinMap::PLACE_Y);
   }
 
   // Stacking: raising the left button puts it on top of the right one
