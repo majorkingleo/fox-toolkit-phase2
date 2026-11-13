@@ -904,9 +904,31 @@ module only if its moved code calls them.
 - Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
   on Windows was 144 at startup and after `WM_DPICHANGED`.
 
+## Seam 35: visuals
+
+Done. `FXVisual.cpp` no longer contains a platform branch. Everything that
+depends on the native visual moved into `FXVisual_win32.cpp` and
+`FXVisual_x11.cpp`: both constructors (the X11 ones also clear `gc` and
+`scrollgc`), `create()`, `destroy()`, `getPixel()` and `getColor()`. The Win32
+module also holds the generic palette helpers; the X11 module holds the true,
+direct, pseudo, static colour and grayscale setup, the standard colormap lookup,
+`setupgc()` and the dither tables. `detach()`, `setMaxColors()`, the stream
+functions, the destructor and the `FXIMPLEMENT` stay in the core.
+
+`tmp/split-generic.py` now treats a conditional block of `#define` lines as one
+unit, so `MAX_MAPSIZE` with its `HIGHENDGRAPHICS` selector moved to the X11
+module together with its comment; `TOPIC_DEBUG` moved to both modules.
+
+### Verification
+
+- The removed lines equal the added lines of the core and the two modules apart
+  from the `WIN32` guards.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The window DPI
+  on Windows was 96 at startup (monitor placement) and 144 after `WM_DPICHANGED`.
+
 ## Next seams, in order
 
-1. **Drawing** (`FXVisual`, `FXDCWindow`). Presentation seam; needed
+1. **Drawing** (`FXDCWindow`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
 
 Do not start a later seam before the earlier one is accepted on both builds.
