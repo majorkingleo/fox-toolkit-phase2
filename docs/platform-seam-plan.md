@@ -1207,6 +1207,20 @@ notes. The declarations stay in `fxpriv.h`.
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `fxpriv.cpp`: only guard lines differ.
 
+## Seam 53: compose context
+
+Done. `FXComposeContext.cpp` was one `#ifdef WIN32 ... #else ... #endif`: the
+trivial Windows implementation (the window is the input context) versus the
+X11 XIM implementation (input method, input contexts, edit and status
+callbacks). Both moved whole to `FXComposeContext_win32.cpp` and
+`FXComposeContext_x11.cpp`. `FXComposeContext.cpp` keeps the notes and
+`FXIMPLEMENT`.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXComposeContext.cpp`: only guard lines differ.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
