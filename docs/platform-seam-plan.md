@@ -802,9 +802,37 @@ instrument. `created(file)` shared a block with the platform-specific
 - Fast builds on both backends; `hello`, `button` and `dpi` run with 144 DPI
   on Windows.
 
+## Seam 31: system functions
+
+Done. `FXSystem.cpp` no longer contains a platform branch. Nineteen members
+(plus the `__snprintf` declaration, which both modules need) moved into
+`FXSystem_win32.cpp` and `FXSystem_x11.cpp`; `tmp/split-system.py` drives the
+split. Two helper changes were needed:
+
+- `tmp/seamlib.py` now resolves `#elif` on a platform conditional: the platform
+  that owns the first branch drops the remaining branches, the other platform
+  turns the first `#elif` into the opening `#if` and keeps the rest.
+- The split script chunks members on two blank lines only outside of
+  conditionals, because `setCurrentDrive()`/`getCurrentDrive()` and
+  `system()` have blank-line gaps inside their `#if`/`#else` region.
+
+| Part | Location |
+| --- | --- |
+| Windows module | `FXSystem_win32.cpp`: `user()`/`group()` stubs, user and group names via `GetUserName`, environment on `GetEnvironmentVariable`, current directory and drive, `PATHEXT`, `GetModuleFileName`, home, temp and system directories, `getUserSID()` and `getUserDirectory()` on the registry, `system()` on `CreateProcess`, `localeIsUTF8()` on `GetACP`, `dllName()` |
+| X11 module | `FXSystem_x11.cpp`: the same members on `geteuid()`/`getpwuid_r()`/`getgrgid_r()`/`getenv()`/`setenv()`/`chdir()`/`getcwd()`/`/proc/self/exe`/`system()`, with `lib<name>.so` and its HP-UX and macOS variants |
+| Portable core | `modeString()`, `getExecPath()` and `getHostName()` stay in `FXSystem.cpp` |
+
+### Verification
+
+- The removed lines equal the added lines of the two modules apart from the
+  `WIN32` guards and the five `#elif` lines that became `#if` on the X11 side.
+- Fast builds on both backends; `hello`, `button` and `dpi` run. The initial
+  window DPI on Windows depends on the monitor the window opens on (96 or 144
+  between runs); the `WM_DPICHANGED` readings are 144.
+
 ## Next seams, in order
 
-1. **Remaining services** (`FXThread`, `FXPath`, `FXSystem`),
+1. **Remaining services** (`FXThread`, `FXPath`),
    one class per seam, smallest first. Large but self-contained; split only when a feature needs it.
 2. **Drawing** (`FXDCWindow`, `FXVisual`, `FXCursor`). Presentation seam; needed
    before a browser frontend and for the Wayland SHM surface.
