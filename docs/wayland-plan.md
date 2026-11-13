@@ -497,7 +497,9 @@ Done in this phase so far (the protocol files and the platform seam):
   with a reason.
 - **Compositors:** WSLg/Weston (client-side decorations, no `xdg-decoration`)
   and KWin on the development machine (server-side decorations, all optional
-  protocols). A headless Weston can be added for scripted runs.
+  protocols). For scripted runs `scripts/run-fox2-wayland-headless.sh` starts a
+  private headless Weston (15.0.1 offers `xdg_wm_base` 5 and `wl_shm` with AR24
+  and XR24) in its own runtime directory and runs a command against it.
 - **In-process observation** (the approach already used for the theme tests)
   replaces desktop screenshots wherever the compositor blocks capture.
 - **Run-time failure behaviour:** missing optional protocols are detected at
