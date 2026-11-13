@@ -48,14 +48,11 @@
 */
 
 
-#define DISPLAY(app) ((Display*)((app)->display))
-
 using namespace FX;
 
 /*******************************************************************************/
 
 namespace FX {
-
 
 // Object implementation
 FXIMPLEMENT(FXMainWindow,FXTopWindow,nullptr,0)
@@ -63,20 +60,6 @@ FXIMPLEMENT(FXMainWindow,FXTopWindow,nullptr,0)
 
 // Make main window
 FXMainWindow::FXMainWindow(FXApp* a,const FXString& name,FXIcon *ic,FXIcon *mi,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs):FXTopWindow(a,name,ic,mi,opts,x,y,w,h,pl,pr,pt,pb,hs,vs){
-  }
-
-
-// Create server-side resources
-void FXMainWindow::create(){
-  FXTopWindow::create();
-  if(xid){
-    if(getApp()->isInitialized()){
-#ifndef WIN32
-      // Set the WM_COMMAND hint on non-owned toplevel windows
-      XSetCommand(DISPLAY(getApp()),xid,const_cast<char**>(getApp()->getArgv()),getApp()->getArgc());
-#endif
-      }
-    }
   }
 
 

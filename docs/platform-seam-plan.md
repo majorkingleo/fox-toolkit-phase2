@@ -1152,6 +1152,17 @@ Done. `FXToolTip_win32.cpp` holds `GetClass` and `place` (monitor work area);
 - Fast builds on both backends; `hello`, `button` and `dpi` run.
 - Lossless check against the previous `FXToolTip.cpp`: only guard lines differ.
 
+## Seam 49: main window
+
+Done. `create` moved whole: `FXMainWindow_x11.cpp` sets the `WM_COMMAND` hint
+with `XSetCommand`; `FXMainWindow_win32.cpp` has the same `create` without
+the hint. The constructor and destructor stay in `FXMainWindow.cpp`.
+
+### Verification
+
+- Fast builds on both backends; `hello`, `button` and `dpi` run.
+- Lossless check against the previous `FXMainWindow.cpp`: only the guard line differs.
+
 ## Next seams, in order
 
 1. **Remaining core classes**, one class per seam, largest platform footprint
