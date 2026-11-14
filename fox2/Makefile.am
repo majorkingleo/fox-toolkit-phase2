@@ -4,4 +4,9 @@ AUTOMAKE_OPTIONS = foreign
 
 SUBDIRS = include lib tools tests
 
-EXTRA_DIST = LICENSE LICENSE_ADDENDUM
+EXTRA_DIST = LICENSE LICENSE_ADDENDUM fox-1.7.pc.in fox-config.in
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = fox-1.7.pc
+
+bin_SCRIPTS = fox-config

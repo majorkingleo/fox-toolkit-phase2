@@ -5,7 +5,7 @@ INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
 
 lib_LTLIBRARIES = libFOX-1.7.la
 
-libFOX_1_7_la_LIBADD  = $(X_LIBS) $(X_PRE_LIBS) $(X_BASE_LIBS) $(X_EXTRA_LIBS) $(GL_LIBS)
+libFOX_1_7_la_LIBADD  = $(PLATFORM_LIBS) $(GL_LIBS) $(LIBS)
 libFOX_1_7_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) -export-dynamic -no-undefined
 
 if COND_OSWINDOWS
@@ -158,6 +158,151 @@ libFOX_1_7_la_SOURCES += FXAutoThreadStorageKey_posix.cpp FXDir_posix.cpp FXFile
 libFOX_1_7_la_SOURCES += FXCheckButton_unix.cpp FXDesktopSettings_unix.cpp FXRegistry_unix.cpp FXShell_unix.cpp FXSlider_unix.cpp
 if COND_WAYLAND
 AM_CXXFLAGS += -DFOX_WAYLAND
+AM_CPPFLAGS =
+BUILT_SOURCES =
+CLEANFILES =
+nodist_libFOX_1_7_la_SOURCES =
+
+# Client glue generated from the vendored protocol XML, the same list the CMake
+# build uses; the headers land in the build tree and are found through INCLUDES
+WP_GEN = $(top_builddir)/lib/protocols
+AM_CPPFLAGS += -I$(WP_GEN)
+
+$(WP_GEN)/xdg-shell-client-protocol.h: $(top_srcdir)/protocols/stable/xdg-shell/xdg-shell.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/xdg-shell-protocol.c: $(top_srcdir)/protocols/stable/xdg-shell/xdg-shell.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/viewporter-client-protocol.h: $(top_srcdir)/protocols/stable/viewporter/viewporter.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/viewporter-protocol.c: $(top_srcdir)/protocols/stable/viewporter/viewporter.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/tablet-v2-client-protocol.h: $(top_srcdir)/protocols/stable/tablet/tablet-v2.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/tablet-v2-protocol.c: $(top_srcdir)/protocols/stable/tablet/tablet-v2.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/xdg-decoration-unstable-v1-client-protocol.h: $(top_srcdir)/protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/xdg-decoration-unstable-v1-protocol.c: $(top_srcdir)/protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/primary-selection-unstable-v1-client-protocol.h: $(top_srcdir)/protocols/unstable/primary-selection/primary-selection-unstable-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/primary-selection-unstable-v1-protocol.c: $(top_srcdir)/protocols/unstable/primary-selection/primary-selection-unstable-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/text-input-unstable-v3-client-protocol.h: $(top_srcdir)/protocols/unstable/text-input/text-input-unstable-v3.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/text-input-unstable-v3-protocol.c: $(top_srcdir)/protocols/unstable/text-input/text-input-unstable-v3.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/xdg-output-unstable-v1-client-protocol.h: $(top_srcdir)/protocols/unstable/xdg-output/xdg-output-unstable-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/xdg-output-unstable-v1-protocol.c: $(top_srcdir)/protocols/unstable/xdg-output/xdg-output-unstable-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/fractional-scale-v1-client-protocol.h: $(top_srcdir)/protocols/staging/fractional-scale/fractional-scale-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/fractional-scale-v1-protocol.c: $(top_srcdir)/protocols/staging/fractional-scale/fractional-scale-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/cursor-shape-v1-client-protocol.h: $(top_srcdir)/protocols/staging/cursor-shape/cursor-shape-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/cursor-shape-v1-protocol.c: $(top_srcdir)/protocols/staging/cursor-shape/cursor-shape-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/xdg-activation-v1-client-protocol.h: $(top_srcdir)/protocols/staging/xdg-activation/xdg-activation-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/xdg-activation-v1-protocol.c: $(top_srcdir)/protocols/staging/xdg-activation/xdg-activation-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+$(WP_GEN)/xdg-toplevel-icon-v1-client-protocol.h: $(top_srcdir)/protocols/staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/xdg-toplevel-icon-v1-protocol.c: $(top_srcdir)/protocols/staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
+BUILT_SOURCES += $(WP_GEN)/xdg-shell-client-protocol.h \
+	$(WP_GEN)/viewporter-client-protocol.h \
+	$(WP_GEN)/tablet-v2-client-protocol.h \
+	$(WP_GEN)/xdg-decoration-unstable-v1-client-protocol.h \
+	$(WP_GEN)/primary-selection-unstable-v1-client-protocol.h \
+	$(WP_GEN)/text-input-unstable-v3-client-protocol.h \
+	$(WP_GEN)/xdg-output-unstable-v1-client-protocol.h \
+	$(WP_GEN)/fractional-scale-v1-client-protocol.h \
+	$(WP_GEN)/cursor-shape-v1-client-protocol.h \
+	$(WP_GEN)/xdg-activation-v1-client-protocol.h \
+	$(WP_GEN)/xdg-toplevel-icon-v1-client-protocol.h
+
+nodist_libFOX_1_7_la_SOURCES += $(WP_GEN)/xdg-shell-protocol.c \
+	$(WP_GEN)/viewporter-protocol.c \
+	$(WP_GEN)/tablet-v2-protocol.c \
+	$(WP_GEN)/xdg-decoration-unstable-v1-protocol.c \
+	$(WP_GEN)/primary-selection-unstable-v1-protocol.c \
+	$(WP_GEN)/text-input-unstable-v3-protocol.c \
+	$(WP_GEN)/xdg-output-unstable-v1-protocol.c \
+	$(WP_GEN)/fractional-scale-v1-protocol.c \
+	$(WP_GEN)/cursor-shape-v1-protocol.c \
+	$(WP_GEN)/xdg-activation-v1-protocol.c \
+	$(WP_GEN)/xdg-toplevel-icon-v1-protocol.c
+
+CLEANFILES += $(WP_GEN)/xdg-shell-client-protocol.h \
+	$(WP_GEN)/viewporter-client-protocol.h \
+	$(WP_GEN)/tablet-v2-client-protocol.h \
+	$(WP_GEN)/xdg-decoration-unstable-v1-client-protocol.h \
+	$(WP_GEN)/primary-selection-unstable-v1-client-protocol.h \
+	$(WP_GEN)/text-input-unstable-v3-client-protocol.h \
+	$(WP_GEN)/xdg-output-unstable-v1-client-protocol.h \
+	$(WP_GEN)/fractional-scale-v1-client-protocol.h \
+	$(WP_GEN)/cursor-shape-v1-client-protocol.h \
+	$(WP_GEN)/xdg-activation-v1-client-protocol.h \
+	$(WP_GEN)/xdg-toplevel-icon-v1-client-protocol.h \
+	$(WP_GEN)/xdg-shell-protocol.c \
+	$(WP_GEN)/viewporter-protocol.c \
+	$(WP_GEN)/tablet-v2-protocol.c \
+	$(WP_GEN)/xdg-decoration-unstable-v1-protocol.c \
+	$(WP_GEN)/primary-selection-unstable-v1-protocol.c \
+	$(WP_GEN)/text-input-unstable-v3-protocol.c \
+	$(WP_GEN)/xdg-output-unstable-v1-protocol.c \
+	$(WP_GEN)/fractional-scale-v1-protocol.c \
+	$(WP_GEN)/cursor-shape-v1-protocol.c \
+	$(WP_GEN)/xdg-activation-v1-protocol.c \
+	$(WP_GEN)/xdg-toplevel-icon-v1-protocol.c
+libFOX_1_7_la_SOURCES += FXApp_wayland.cpp fxactivation_wayland.cpp FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp FXWindow_wayland.cpp FXRootWindow_wayland.cpp FXTopWindow_wayland.cpp FXMainWindow_wayland.cpp FXPopup_wayland.cpp FXToolTip_wayland.cpp FXDragCorner_wayland.cpp FXComposeContext_wayland.cpp FXDesktopSettings_wayland.cpp fxclipboard_wayland.cpp fxcsd_wayland.cpp fxscale_wayland.cpp fxtextinput_wayland.cpp fxtoplevelicon_wayland.cpp fxwayland.cpp fxseat_wayland.cpp fxplatform_wayland.cpp fxplatformwindow_wayland.cpp
 else
 AM_CXXFLAGS += -DFOX_X11
 libFOX_1_7_la_SOURCES += FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp FXDCWindow_x11.cpp FXDragCorner_x11.cpp FXFont_x11.cpp FXIcon_x11.cpp FXImage_x11.cpp FXMainWindow_x11.cpp FXPopup_x11.cpp FXRegion_x11.cpp FXRootWindow_x11.cpp FXStyle_x11.cpp FXToolTip_x11.cpp FXTopWindow_x11.cpp FXVisual_x11.cpp FXWindow_x11.cpp fxpriv_x11.cpp

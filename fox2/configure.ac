@@ -60,14 +60,27 @@ esac
 AM_CONDITIONAL(COND_OSWINDOWS, test x$OS_WINDOWS = x1)
 
 # Windowing platform: win32 on Windows, otherwise x11 (default) or wayland
-AC_ARG_WITH(wayland,[  --with-wayland         build the Wayland platform instead of X11 (not available yet)])
+AC_ARG_WITH(wayland,[  --with-wayland         build the Wayland platform instead of X11])
 if test "x$with_wayland" = "xyes"; then
   if test x$OS_WINDOWS = x1; then
     AC_MSG_ERROR([--with-wayland cannot be used for a Windows target])
   fi
-  AC_MSG_ERROR([the Wayland platform is not implemented yet, see docs/wayland-plan.md])
+  PKG_CHECK_MODULES([WAYLAND],[wayland-client >= 1.20])
+  PKG_CHECK_MODULES([XKBCOMMON],[xkbcommon])
+  AC_PATH_PROG([WAYLAND_SCANNER],[wayland-scanner],[no])
+  if test "x$WAYLAND_SCANNER" = "xno"; then
+    AC_MSG_ERROR([wayland-scanner is needed to build the Wayland platform])
+  fi
+  AC_MSG_CHECKING([for the wayland protocol files of this tree])
+  for proto in stable/xdg-shell/xdg-shell.xml staging/xdg-activation/xdg-activation-v1.xml; do
+    if test ! -f "$srcdir/protocols/$proto"; then
+      AC_MSG_ERROR([protocols/$proto is missing])
+    fi
+  done
+  AC_MSG_RESULT([found])
 fi
 AM_CONDITIONAL(COND_WAYLAND, test "x$with_wayland" = "xyes")
+AC_SUBST([WAYLAND_SCANNER])
 
 # Substitute variables in output files
 AC_SUBST(LT_RELEASE)
@@ -100,9 +113,11 @@ X_BASE_LIBS="-lX11 -lXext"
 LIBGLU="-lGLU"
 LIBGL="-lGL"
 
-# Checks for header files.
+# Checks for header files; a Wayland build has no X11 to look for
+if test "x$with_wayland" != "xyes"; then
 AC_PATH_X
 AC_PATH_XTRA
+fi
 AC_HEADER_SYS_WAIT
 AC_HEADER_DIRENT
 
@@ -111,6 +126,7 @@ X_BASE_LIBS="-lcomctl32 -lwsock32 -lwinspool -lmpr -lgdi32 -limm32"
 LIBGLU="-lglu32"
 LIBGL="-lopengl32"
 fi
+
 
 # Threads
 AC_CHECK_LIB(rt,clock_gettime)
@@ -360,7 +376,7 @@ AC_ARG_WITH(freetype_include,AS_HELP_STRING([--with-freetype-include],[freetype 
 AC_CHECK_HEADER(ft2build.h)
 AC_ARG_WITH(freetype_library,AS_HELP_STRING([--with-freetype-library],[freetype library directory]),
             [LDFLAGS="${LDFLAGS} -L${with_freetype_library}"])
-AC_CHECK_LIB(freetype,FT_New_Face,X_BASE_LIBS="${X_BASE_LIBS} -lfreetype")
+AC_CHECK_LIB(freetype,FT_New_Face,FOX_TEXT_LIBS="${FOX_TEXT_LIBS} -lfreetype")
 
 dnl fontconfig location
 AC_ARG_WITH(fontconfig_include,AS_HELP_STRING([--with-fontconfig-include],[fontconfig include directory]),
@@ -368,7 +384,7 @@ AC_ARG_WITH(fontconfig_include,AS_HELP_STRING([--with-fontconfig-include],[fontc
 AC_CHECK_HEADER(fontconfig/fontconfig.h,CXXFLAGS="${CXXFLAGS} -DHAVE_XFT_H=1")
 AC_ARG_WITH(fontconfig_library,AS_HELP_STRING([--with-fontconfig-library],[fontconfig library directory]),
             [LDFLAGS="${LDFLAGS} -L${with_fontconfig_library}"])
-AC_CHECK_LIB(fontconfig,FcPatternCreate,X_BASE_LIBS="${X_BASE_LIBS} -lfontconfig ")
+AC_CHECK_LIB(fontconfig,FcPatternCreate,FOX_TEXT_LIBS="${FOX_TEXT_LIBS} -lfontconfig")
 
 dnl check Xft
 AC_CHECK_HEADER(X11/Xft/Xft.h,CXXFLAGS="${CXXFLAGS} -DHAVE_XFT_H=1",, [#include <X11/Xlib.h>])
@@ -400,11 +416,24 @@ AC_SUBST(GLU_LIBS)
 # To find all preprocessor defines in GCC, run:
 # echo | gcc -E -dM -
 
+# The libraries a program using this library has to link against, which is what
+# fox-config and the pkg-config file report; every check has run by now
+X_BASE_LIBS="${X_BASE_LIBS} ${FOX_TEXT_LIBS}"
+if test "x$with_wayland" = "xyes"; then
+PLATFORM_LIBS="$WAYLAND_LIBS $XKBCOMMON_LIBS $FOX_TEXT_LIBS"
+else
+PLATFORM_LIBS="$X_LIBS $X_PRE_LIBS $X_BASE_LIBS $X_EXTRA_LIBS"
+fi
+AC_SUBST(PLATFORM_LIBS)
+
 # Done.
 AC_CONFIG_FILES([Makefile
 include/Makefile
 include/fxver.h
 lib/Makefile
 tools/Makefile
-tests/Makefile])
+tests/Makefile
+fox-1.7.pc
+fox-config])
+AC_CONFIG_COMMANDS([chmod],[chmod +x fox-config])
 AC_OUTPUT

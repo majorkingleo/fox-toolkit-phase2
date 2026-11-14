@@ -47,6 +47,43 @@ Platform conditional blocks per file, counted as `defined(WIN32)` occurrences in
 
 `fxpriv.h` and `xincs.h` choose platform headers and must stay private.
 
+### The Wayland backend, module by module
+
+The Wayland platform is the second consumer of every seam, which is what turns
+the seam from a Windows port into a platform layer.  Its modules follow the same
+naming rule as the others: `<Class>_wayland.cpp` implements one seam file, and
+`fx*_wayland.cpp` holds a feature that no seam covers.
+
+| Module | Seam it fills |
+| --- | --- |
+| `FXApp_wayland.cpp` | connection, registry, event loop, dispatch of the neutral events |
+| `FXWindow_wayland.cpp`, `FXRootWindow_wayland.cpp` | seam 1 to 4 and 8: window creation, placement, input queries |
+| `FXTopWindow_wayland.cpp`, `FXMainWindow_wayland.cpp`, `FXPopup_wayland.cpp`, `FXToolTip_wayland.cpp` | toplevel and popup behaviour, decorations, title, icons |
+| `FXDCWindow_wayland.cpp`, `FXVisual_wayland.cpp`, `FXImage_wayland.cpp`, `FXIcon_wayland.cpp`, `FXFont_wayland.cpp`, `FXStyle_wayland.cpp`, `FXCursor_wayland.cpp` | drawing, visuals, images, fonts, theme, cursors |
+| `FXRegion_wayland.cpp`, `FXDragCorner_wayland.cpp`, `FXComposeContext_wayland.cpp` | region data, drag corner, input method spot |
+| `fxplatformwindow_wayland.cpp` | the window seam of `fxplatformwindow.h` |
+| `fxplatform_wayland.cpp` | the small seam of `fxplatform.h` |
+| `fxwayland.cpp` | surfaces, buffer pool, backing store, protocol glue that several modules share |
+| `fxseat_wayland.cpp` | seat, pointer, keyboard, xkb, focus |
+| `fxclipboard_wayland.cpp` | clipboard, primary selection, drag and drop |
+| `fxcsd_wayland.cpp` | the client side title bar |
+| `fxscale_wayland.cpp` | outputs, scale, viewporter |
+| `fxtextinput_wayland.cpp` | `zwp_text_input_v3` |
+| `FXDesktopSettings_wayland.cpp` | the light/dark preference, through the portal |
+| `fxactivation_wayland.cpp`, `fxtoplevelicon_wayland.cpp` | `xdg_activation_v1`, `xdg_toplevel_icon_v1` |
+
+What the seam had to grow for this platform, in the order it happened: a neutral
+event struct that carries no platform types, a virtual window table so that a
+window need not own a native surface, a display scale that is not a DPI, and a
+text field in the neutral event for the string an input method commits.  None of
+them is Wayland specific; each one is what a compositor architecture needs and
+an X11 server does not.
+
+The build chooses the platform: `FOX_PLATFORM=wayland` in CMake, or
+`--with-wayland` with Autotools, which detects `wayland-client`, `xkbcommon` and
+`wayland-scanner` and generates the client glue from the vendored XML in
+`fox2/protocols/` the same way CMake does.
+
 ## Pilot: DPI awareness and DPI queries
 
 Done. The operation chosen is the smallest one the DPI workstream already

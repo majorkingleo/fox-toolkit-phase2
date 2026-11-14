@@ -900,17 +900,44 @@ settings and the window icon):
 
 ### Phase 10: packaging and documentation
 
-- Autotools and CMake wiring complete, `fox-config`/pkg-config flags for the
-  Wayland build, install of nothing extra.
-- Document the build in `scripts/build-fox2-wayland.sh` and in WSL notes in the
-  style of `docs/windows-mingw-plan.md`, and add the Wayland module table to
-  `docs/platform-seam-plan.md`.
-- Screenshots stored under `screenshots/tests/fox2/wayland/` as the rules ask.
+Done in this phase so far (the build wiring, the metadata and the screenshots):
+
+- Autotools builds the Wayland platform: `./configure --with-wayland` looks for
+  `wayland-client` and `xkbcommon` with pkg-config and for `wayland-scanner` in
+  the path, generates the client glue out of `fox2/protocols/` with `make`, and
+  compiles the same module list CMake compiles.  A Wayland build looks for no
+  X11 at all, and the libraries configure finds (freetype, fontconfig, the image
+  codecs) are gathered in `PLATFORM_LIBS` so that both the link line and the
+  metadata are right.
+- `fox2/fox-1.7.pc.in` and `fox2/fox-config.in` are installed and report the
+  platform: on Wayland `fox-config --libs` prints `-lwayland-client -lxkbcommon`
+  where X11 prints `-lX11 -lXext`, and nothing else changed about them.
+- `docs/platform-seam-plan.md` has the Wayland module table: which module fills
+  which seam, and what the seam had to grow for a compositor architecture (a
+  neutral event struct, a virtual window table, a display scale that is not a
+  DPI, a text field for the committed string of an input method).
+- `scripts/capture-wayland-screenshots.sh` stores what the later tests draw:
+  `dnd.png`, `icon.png` and `dpi-scale2.png` next to the earlier `hello.png`,
+  `csd.png`, `popup.png`, `menu.png` and `tooltip.png`, all under
+  `screenshots/tests/fox2/wayland/`, all from dumped frames rather than from a
+  compositor screenshot.
+
+**Not done:** `zwp_idle_inhibit_manager_v1` waits for an `FXApp` API that says
+"do not blank the screen"; there is none, so a module would have nobody to call
+it.
+
+- `scripts/gate-wayland-autotools.sh` is the check that the second build system
+  works: it runs `autoreconf`, configures with `--with-wayland` in a scratch
+  directory and builds the library and one test program.
 
 ## Verification
 
 - **Compile gates:** Windows, WSL X11 and, from phase 4, WSL Wayland must all
   build; each step must leave the other two outputs unchanged.
+- **Autotools gate:** `scripts/gate-wayland-autotools.sh` runs `autoreconf -if`,
+  `configure --with-wayland` and `make -C lib -C tests hello` in a scratch
+  directory, and passes when the library and the test program are built; the same
+  script with the default platform checks that X11 did not regress.
 - **Raster gate (phase 1):** `./scripts/run-fox2-raster.sh` draws the scene with
   `FXRaster` and with `FXDCWindow` and compares the buffers; it fails when a
   cell exceeds the limit recorded in the phase 1 table. The scene images are
