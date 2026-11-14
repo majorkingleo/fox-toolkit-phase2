@@ -78,11 +78,14 @@ gives an xkb keymap as a file descriptor: `mmap`, `xkb_keymap_new_from_string`,
 `xkb_state_new`, then `xkb_state_key_get_one_sym(keycode+8)` (the +8 is the
 evdev offset) and `xkb_state_update_key` to keep modifiers current.
 
-**Clipboard.** `wl_data_device_manager_get_data_device(manager, seat)`; set the
-selection from a `wl_data_source` (`offer(mime)` + `send(mime,fd)` handler,
-`cancelled` on loss) using the serial of the last keyboard event; read a paste
-through the `selection` offer with `wl_data_offer_receive(offer,mime,pipefd)` and
-read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
+**Clipboard.** `wl_data_device_manager_get_data_device(manager, seat)`.  Copying
+creates a `wl_data_source`, offers mime types, and calls
+`wl_data_device_set_selection(source, serial)` with the serial of an input event;
+the client then *answers* peers that ask for a mime type by writing into the pipe
+they hand to the `send` handler.  Pasting asks the current offer (which arrives
+with `wl_data_device.selection`) for a mime type and reads the pipe.  Primary
+selection is the same with `zwp_primary_selection_device_manager_v1`.  Text mime
+types are `text/plain` and `text/plain;charset=utf-8`.
 
 ## Rules that each cost a bug here
 
@@ -144,6 +147,16 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
   previous one. Without it a menu entry never becomes active and a press on it
   does nothing, and `FXWindow::onEnter` needs `event.code=CROSSINGNORMAL` (a
   stale code from the previous event silently disarms the tool tip).
+- **The clipboard selection only reaches the client with the keyboard focus.** A
+  script or peer without a window never gets `wl_data_device.selection`; for
+  that, and for clipboard managers, use `zwlr_data_control_v1`, which has no
+  focus requirement and sets the selection without a serial.
+- **`cancelled` on a data source is the only signal that the clipboard went to
+  somebody else.** Without acting on it the application keeps answering with its
+  own copy and a paste returns stale data.
+- **An offer arrives twice** (`data_offer`, then `selection`) with the *same*
+  proxy. Destroying it in between, or installing the listener twice, loses its
+  mime types and crashes on the second destroy; track it by identity.
 
 ## Map of this repository
 
@@ -186,6 +199,9 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
   that the tool tip is a popup without a grab. The injector must stay alive
   during the wait (`sleep:`); when it exits the compositor removes the virtual
   pointer and the client sees the pointer leave.
+- `scripts/gate-wayland-clipboard.sh` — `tests/clipboard` plus `scripts/wlclip.c`
+  as the peer, in both directions (FOX copies, peer reads; peer writes, FOX
+  pastes). wlclip uses `zwlr_data_control_v1`.
 - Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame
   with `FOX_WAYLAND_DUMP`.
 - `FOX_WAYLAND_TRACE=1` prints connect, configure, expose, bind, commit, seat

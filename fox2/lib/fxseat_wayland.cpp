@@ -272,9 +272,12 @@ static void keyboardEnter(void* data,wl_keyboard*,uint32_t serial,wl_surface* su
   FXWaylandApp* app=fxwayland(data);
   FXWaylandSurface* s=fxwaylandSurfaceOf(app,surface);
   FXWaylandEvent ev;
-  (void)serial;
   (void)keys;
   if(!app || !s) return;
+
+  // The clipboard and the selection want the serial of an input event, and this
+  // is the freshest one a keyboard user produces before copying
+  app->keyboardserial=serial;
   app->keyboardsurface=s;
   clearElms(&ev,1);
   ev.type=0;
@@ -307,8 +310,8 @@ static void keyboardKey(void* data,wl_keyboard*,uint32_t serial,uint32_t time,ui
   FXWaylandApp* app=fxwayland(data);
   FXWaylandEvent ev;
   FXbool pressed=state==WL_KEYBOARD_KEY_STATE_PRESSED;
-  (void)serial;
   if(!app) return;
+  app->keyboardserial=serial;
   if(app->xkbstate){
     xkb_state_update_key(app->xkbstate,key+8,pressed?XKB_KEY_DOWN:XKB_KEY_UP);
     app->modstate=xkb_state_serialize_mods(app->xkbstate,XKB_STATE_MODS_DEPRESSED);

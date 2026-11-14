@@ -671,6 +671,58 @@ Done in this phase so far (the popup role, menus with a submenu and tool tips):
 
 ### Phase 8: clipboard, selection, drag and drop
 
+Done in this phase so far (the clipboard and the primary selection; drag and drop
+is the next step):
+
+- `fxclipboard_wayland.cpp` binds `wl_data_device_manager` (core protocol, no XML
+  needed) and `zwp_primary_selection_device_manager_v1` (vendored already), makes
+  a data device on the seat as soon as manager and seat both exist, and keeps
+  what the clipboard offers: the offer of a peer, its mime types, and the drag
+  type each of them maps to.
+- A Wayland drag type is the index of a mime type in a table of the connection,
+  because `FXDragType` has to be a number.  The nine standard FOX types are
+  registered at `openDisplay()` in the order that keeps `FXWindow::stringType`
+  and `FXWindow::utf16Type` at their fixed values, and `registerDragType()` adds
+  the rest.  Incoming mime types collapse onto them where the spelling differs
+  (`UTF8_STRING` and `text/plain;charset=utf-8` are one type to FOX), and the
+  mime type that came with the offer is kept next to the type: a peer has to be
+  asked for the name *it* offered, not for our canonical one.
+- Copying is not "put the text in the board": the client creates a
+  `wl_data_source`, offers the mime types, calls `set_selection()` with the
+  serial of the last input event, and then **answers** peers that ask for a mime
+  type by writing it into a pipe.  The text is asked from the application at that
+  moment, through `SEL_CLIPBOARD_REQUEST`, so a widget that changes its data does
+  not have to tell the clipboard about it.
+- Pasting asks the offer of the peer for a mime type and reads the pipe.  It is a
+  synchronous read with a two second limit, because the answer comes from another
+  process and there is no way to ask whether it will come at all.
+- The compositor hands the clipboard to somebody else through `cancelled` on our
+  source; that raises `SEL_CLIPBOARD_LOST` and clears the owner, so a paste after
+  a peer took over reads the peer's data and not ours.  Without it the
+  application kept serving its own copy, which is what the gate showed first.
+- The X11 primary selection works the same way through
+  `zwp_primary_selection_*`, and is skipped when the compositor does not offer
+  the protocol.
+- `scripts/gate-wayland-clipboard.sh` runs `tests/clipboard` against headless
+  sway, copies in FOX and reads the text with `scripts/wlclip.c`, then has
+  wlclip write a text and pastes it in FOX.  Both directions pass: the peer is
+  never a FOX client, which is the acceptance of this phase.
+- wlclip speaks `zwlr_data_control_v1` rather than `wl_data_device`, and that is
+  a finding of its own: **a compositor sends the clipboard selection of
+  `wl_data_device` only to the client that holds the keyboard focus**, so a
+  script without a window never receives it.  The data control protocol exists
+  for clipboard managers and needs no focus, and it sets the selection without a
+  serial.  The XML is vendored next to the virtual pointer in `scripts/protocols/`.
+- Two crashes came out of the first pass and both were ours: the platform members
+  of the clipboard (`xcbTypeList`, `xselTypeList`, the offer arrays) were never
+  initialised, so `resizeElms()` reallocated a wild pointer; and `clearOffer()`
+  reset the pointers but not the allocation counts, so the next offer wrote
+  through a freed one.
+- A third one was older: the rasterizer writes straight into the backing store,
+  so a window whose geometry hangs out of the store ran past the end of the
+  buffer and crashed in `FXRaster::blend()`.  `fxwaylandBindWindow()` now clips
+  the drawable to the store and reports an empty drawable when nothing is left.
+
 - `wl_data_device`: clipboard via data source/offer; `primary-selection` for
   the X-style primary selection; lazy data (the offer is read when the peer
   asks, through a pipe handled as an input handle).
@@ -682,7 +734,8 @@ Done in this phase so far (the popup role, menus with a submenu and tool tips):
   `wl_data_device.start_drag` and the drag surface; drop actions mapped to
   `DRAG_COPY/MOVE/LINK/ASK`.
 - Acceptance: copy and paste of text between FOX and a non-FOX Wayland client,
-  and a drag of a file list in both directions.
+  and a drag of a file list in both directions.  The first half is done; drag and
+  drop itself is not.
 
 ### Phase 9: input method, scale, settings, polish
 
@@ -806,6 +859,12 @@ Done in this phase so far (the popup role, menus with a submenu and tool tips):
   on a button of `tests/tooltip` and passes when the tool tip becomes a popup
   *without* a grab (`create popup for window 2 under 3 at +197+143 52x24 without
   grab`).  A tool tip never grabs, so the click that follows is not eaten.
+- **Clipboard gate:** `scripts/gate-wayland-clipboard.sh` runs `tests/clipboard`
+  against headless sway with `scripts/wlclip.c` as the peer in both directions:
+  FOX copies `fox text for the peer` and wlclip prints it, then wlclip writes
+  `peer text for fox` and FOX prints `pasted "peer text for fox"`.  wlclip uses
+  the wlr data control protocol, since `wl_data_device` would only reach a client
+  with the keyboard focus.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

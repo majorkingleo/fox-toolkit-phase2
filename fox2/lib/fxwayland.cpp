@@ -625,11 +625,12 @@ FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window){
 
 
 // Bind a window to the backing store of its shell
-FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& stride){
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride){
   FXWaylandSurface* s;
   FXRectangle shell;
   FXRectangle place;
   FXRectangle here;
+  FXint ox,oy;
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
 
   // The store is as large as the shell, plus the client side title bar; every
@@ -643,10 +644,26 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   // pushes the whole tree down
   place=app->childmap.getGlobalGeometry(s->window);
   here=app->childmap.getGlobalGeometry(window);
-  pixels=s->store+(FXival)(here.y-place.y+s->barh)*s->storew+(here.x-place.x);
+  ox=here.x-place.x;
+  oy=here.y-place.y+s->barh;
+  pixels=s->store+(FXival)oy*s->storew+ox;
   stride=s->storew;
+
+  // Whatever the geometry says, the rasterizer writes straight into the store,
+  // so a window that hangs out of it is clipped here instead of running past
+  // the end of the buffer
+  if(ox<0){ pixels-=ox; w+=ox; ox=0; }
+  if(oy<0){ pixels-=(FXival)oy*s->storew; h+=oy; oy=0; }
+  w=FXMIN(w,FXMAX(s->storew-ox,0));
+  h=FXMIN(h,FXMAX(s->storeh-oy,0));
   s->dirty=true;
-  fxwaylandTrace("bind window %u store %dx%d at %+d%+d pixels %p\n",(unsigned int)window,s->storew,s->storeh,here.x-place.x,here.y-place.y,pixels);
+
+  // A window entirely outside the store has nothing to paint into
+  if(w<=0 || h<=0){
+    pixels=nullptr;
+    return false;
+    }
+  fxwaylandTrace("bind window %u store %dx%d at %+d%+d size %dx%d pixels %p\n",(unsigned int)window,s->storew,s->storeh,ox,oy,w,h,pixels);
   return true;
   }
 

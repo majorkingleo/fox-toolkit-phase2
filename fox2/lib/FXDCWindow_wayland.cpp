@@ -99,7 +99,7 @@ static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXi
   stride=w;
   pixels=nullptr;
   if((window=dynamic_cast<FXWindow*>(draw))!=nullptr && window->id()){
-    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,stride);
+    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,w,h,stride);
     }
   return false;
   }

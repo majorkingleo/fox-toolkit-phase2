@@ -325,6 +325,74 @@ void FXWindow::disable(){
     }
   }
 
+// Acquire the PRIMARY selection; the data is offered through the data source of
+// the connection, which asks this window when a peer wants it
+FXbool FXWindow::acquireSelection(const FXDragType* types,FXuint numtypes){
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  if(!types || !numtypes){ fxerror("%s::acquireSelection: should have at least one type to select.\n",getClassName()); }
+  if(getApp()->selectionWindow){
+    getApp()->selectionWindow->handle(getApp(),FXSEL(SEL_SELECTION_LOST,0),&getApp()->event);
+    getApp()->selectionWindow=nullptr;
+    freeElms(getApp()->xselTypeList);
+    getApp()->xselNumTypes=0;
+    }
+  if(!fxwaylandAcquireSelection(app,xid,types,numtypes)) return false;
+  getApp()->selectionWindow=this;
+  resizeElms(getApp()->xselTypeList,numtypes);
+  copyElms(getApp()->xselTypeList,types,numtypes);
+  getApp()->xselNumTypes=numtypes;
+  getApp()->selectionWindow->handle(getApp(),FXSEL(SEL_SELECTION_GAINED,0),&getApp()->event);
+  return true;
+  }
+
+
+// Give up the PRIMARY selection
+FXbool FXWindow::releaseSelection(){
+  if(getApp()->selectionWindow==this){
+    getApp()->selectionWindow->handle(getApp(),FXSEL(SEL_SELECTION_LOST,0),&getApp()->event);
+    getApp()->selectionWindow=nullptr;
+    freeElms(getApp()->xselTypeList);
+    getApp()->xselNumTypes=0;
+    fxwaylandReleaseSelection(fxwayland(getApp()->getDisplay()),xid);
+    return true;
+    }
+  return false;
+  }
+
+
+// Acquire the clipboard
+FXbool FXWindow::acquireClipboard(const FXDragType* types,FXuint numtypes){
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  if(!types || !numtypes){ fxerror("%s::acquireClipboard: should have at least one type to select.\n",getClassName()); }
+  if(getApp()->clipboardWindow){
+    getApp()->clipboardWindow->handle(getApp(),FXSEL(SEL_CLIPBOARD_LOST,0),&getApp()->event);
+    getApp()->clipboardWindow=nullptr;
+    freeElms(getApp()->xcbTypeList);
+    getApp()->xcbNumTypes=0;
+    }
+  if(!fxwaylandAcquireClipboard(app,xid,types,numtypes)) return false;
+  getApp()->clipboardWindow=this;
+  resizeElms(getApp()->xcbTypeList,numtypes);
+  copyElms(getApp()->xcbTypeList,types,numtypes);
+  getApp()->xcbNumTypes=numtypes;
+  getApp()->clipboardWindow->handle(getApp(),FXSEL(SEL_CLIPBOARD_GAINED,0),&getApp()->event);
+  return true;
+  }
+
+
+// Give up the clipboard
+FXbool FXWindow::releaseClipboard(){
+  if(getApp()->clipboardWindow==this){
+    getApp()->clipboardWindow->handle(getApp(),FXSEL(SEL_CLIPBOARD_LOST,0),&getApp()->event);
+    getApp()->clipboardWindow=nullptr;
+    freeElms(getApp()->xcbTypeList);
+    getApp()->xcbNumTypes=0;
+    fxwaylandReleaseClipboard(fxwayland(getApp()->getDisplay()),xid);
+    return true;
+    }
+  return false;
+  }
+
 }
 
 #endif

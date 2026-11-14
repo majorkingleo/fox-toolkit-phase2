@@ -92,6 +92,7 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
     if(!app->seat){
       app->seat=(wl_seat*)wl_registry_bind(registry,name,&wl_seat_interface,FXMIN(version,5u));
       fxwaylandOpenSeat(app);
+      fxwaylandOpenDataDevice(app);
       }
     }
   else if(strcmp(interface,wl_output_interface.name)==0){
@@ -105,6 +106,24 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
   else if(strcmp(interface,zxdg_decoration_manager_v1_interface.name)==0){
     if(!app->decomanager){
       app->decomanager=(zxdg_decoration_manager_v1*)wl_registry_bind(registry,name,&zxdg_decoration_manager_v1_interface,1);
+      }
+    }
+
+  // Clipboard and drag and drop; the data device is made as soon as both the
+  // manager and the seat are there, whichever arrives first
+  else if(strcmp(interface,wl_data_device_manager_interface.name)==0){
+    if(!app->ddmanager){
+      app->ddmanager=(wl_data_device_manager*)wl_registry_bind(registry,name,&wl_data_device_manager_interface,FXMIN(version,3u));
+      fxwaylandOpenDataDevice(app);
+      }
+    }
+
+  // The X11 style primary selection, offered by some compositors only
+  else if(strcmp(interface,zwp_primary_selection_device_manager_v1_interface.name)==0){
+    if(!app->psmanager){
+      app->psmanager=(zwp_primary_selection_device_manager_v1*)wl_registry_bind(registry,name,&zwp_primary_selection_device_manager_v1_interface,1);
+      fxwaylandOpenDataDevice(app);
+      fxwaylandAttachSelectionDevice(app);
       }
     }
   }
@@ -187,6 +206,40 @@ void FXApp::initPlatformMembers(){
   app->output=nullptr;
   app->wmbase=nullptr;
   app->decomanager=nullptr;
+  app->ddmanager=nullptr;
+  app->ddevice=nullptr;
+  app->dsource=nullptr;
+  app->doffer=nullptr;
+  app->psmanager=nullptr;
+  app->psdevice=nullptr;
+  app->pssource=nullptr;
+  app->psoffer=nullptr;
+  app->offertypes=nullptr;
+  app->numoffertypes=0;
+  app->offermimes=nullptr;
+  app->allocedoffer=0;
+  app->psoffertypes=nullptr;
+  app->numpsoffertypes=0;
+  app->psoffermimes=nullptr;
+  app->allocedpsoffer=0;
+  app->typenames=nullptr;
+  app->numtypes=0;
+  app->allocedtypes=0;
+  app->keyboardserial=0;
+
+  // Clipboard, selection and drag and drop: the type lists are ours, the data
+  // exchange fields are shared with the other platforms
+  xcbSelection=0;
+  xcbTypeList=nullptr;
+  xcbNumTypes=0;
+  xselTypeList=nullptr;
+  xselNumTypes=0;
+  ddeTypeList=nullptr;
+  ddeNumTypes=0;
+  ddeAction=DRAG_REJECT;
+  ansAction=DRAG_REJECT;
+  xdndTypeList=nullptr;
+  xdndNumTypes=0;
   app->screenwidth=0;
   app->screenheight=0;
   app->rootwindow=0;
@@ -217,6 +270,7 @@ void FXApp::freePlatformMembers(){
   FXWaylandApp* app=fxwayland(display);
   if(app){
     freeElms(app->events);
+    freeElms(app->typenames);
     delete app;
     display=nullptr;
     }
@@ -267,15 +321,19 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
     fxwarning("%s::openDisplay: the compositor has no ARGB8888 shared memory format.\n",getClassName());
     }
 
-  // Preregister some drag types; a Wayland drag type is the index of a mime
-  // type in the table of the data device, which phase 8 fills in
-  FXWindow::octetType=3;
-  FXWindow::deleteType=4;
-  FXWindow::textType=5;
-  FXWindow::colorType=6;
-  FXWindow::urilistType=7;
-  FXWindow::utf8Type=8;
-  FXWindow::actionType=9;
+  // Preregister the drag types of FOX itself: a Wayland drag type is the index
+  // of a mime type in a table of this connection, and the first two entries are
+  // the fixed ones FXWindow declares as stringType and utf16Type
+  fxwaylandRegisterType(app,"STRING");         // Must be the first: FXWindow::stringType is 1
+  FXWindow::utf16Type=fxwaylandRegisterType(app,FXWindow::utf16TypeName);
+  FXWindow::octetType=fxwaylandRegisterType(app,FXWindow::octetTypeName);
+  FXWindow::deleteType=fxwaylandRegisterType(app,FXWindow::deleteTypeName);
+  FXWindow::textType=fxwaylandRegisterType(app,FXWindow::textTypeName);
+  FXWindow::colorType=fxwaylandRegisterType(app,FXWindow::colorTypeName);
+  FXWindow::urilistType=fxwaylandRegisterType(app,FXWindow::urilistTypeName);
+  FXWindow::utf8Type=fxwaylandRegisterType(app,FXWindow::utf8TypeName);
+  FXWindow::actionType=fxwaylandRegisterType(app,FXWindow::actionTypeName);
+  fxwaylandTrace("registered %u drag types\n",app->numtypes);
 
   // Clear sticky mod state
   stickyMods=0;
@@ -309,6 +367,8 @@ FXbool FXApp::closeDisplay(){
     fxwaylandDestroySurface(app,app->surfaces->window);
     }
 
+  // The data devices hang off the seat, so they go before it
+  fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
   if(app->decomanager){ zxdg_decoration_manager_v1_destroy(app->decomanager); app->decomanager=nullptr; }
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
@@ -862,17 +922,218 @@ FXWindow* FXApp::findWindowAt(FXint rx,FXint ry,FXID window) const {
 
 /*******************************************************************************/
 
-// Selection and clipboard data; the data device of wl_data_device arrives in
-// phase 8, so the entry points exist but do nothing yet
-void FXApp::selectionSetData(const FXWindow*,FXDragType,FXuchar*,FXuint){}
-void FXApp::selectionGetData(const FXWindow*,FXDragType,FXuchar*& data,FXuint& size){ data=nullptr; size=0; }
-void FXApp::selectionGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){ types=nullptr; numtypes=0; }
-void FXApp::clipboardSetData(const FXWindow*,FXDragType,FXuchar*,FXuint){}
-void FXApp::clipboardGetData(const FXWindow*,FXDragType,FXuchar*& data,FXuint& size){ data=nullptr; size=0; }
-void FXApp::clipboardGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){ types=nullptr; numtypes=0; }
-void FXApp::dragdropSetData(const FXWindow*,FXDragType,FXuchar*,FXuint){}
-void FXApp::dragdropGetData(const FXWindow*,FXDragType,FXuchar*& data,FXuint& size){ data=nullptr; size=0; }
-void FXApp::dragdropGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){ types=nullptr; numtypes=0; }
+// Register a drag type; a Wayland drag type is the index of a mime type in a
+// table of the connection, and the name of the type is that mime type
+FXDragType fxwaylandRegisterType(FXWaylandApp* app,const FXString& mime){
+  FXString* grown;
+  FXuint i;
+  if(!app || mime.empty()) return 0;
+  for(i=0; i<app->numtypes; i++){
+    if(app->typenames[i]==mime) return i+1;
+    }
+  if(app->numtypes>=app->allocedtypes){
+    FXuint n=app->allocedtypes?app->allocedtypes*2:16;
+    if((grown=(FXString*)realloc(app->typenames,n*sizeof(FXString)))==nullptr) return 0;
+    app->typenames=grown;
+    app->allocedtypes=n;
+    }
+  constructElms(&app->typenames[app->numtypes],1);
+  app->typenames[app->numtypes]=mime;
+  app->numtypes+=1;
+  fxwaylandTrace("drag type %u is %s\n",app->numtypes,mime.text());
+  return app->numtypes;
+  }
+
+
+// Mime type of a drag type of this connection
+FXString fxwaylandTypeName(FXWaylandApp* app,FXDragType type){
+  if(app && type>=1 && type<=app->numtypes) return app->typenames[type-1];
+  return FXString::null;
+  }
+
+
+// Drag type of a mime type a peer offers; the well known spellings of the same
+// thing collapse onto the type FOX already knows, everything else is new
+FXDragType fxwaylandTypeFromMime(FXWaylandApp* app,const FXchar* mime){
+  FXString name(mime?mime:"");
+  if(!app || name.empty()) return 0;
+  if(name=="text/plain;charset=utf-8" || name=="UTF8_STRING" || name=="text/plain;charset=UTF-8"){
+    return FXWindow::utf8Type;
+    }
+  if(name=="text/plain" || name=="TEXT" || name=="COMPOUND_TEXT"){
+    return FXWindow::textType;
+    }
+  if(name=="STRING") return FXWindow::stringType;
+  if(name=="text/utf16" || name=="text/plain;charset=utf-16") return FXWindow::utf16Type;
+  if(name=="text/uri-list") return FXWindow::urilistType;
+  if(name=="application/x-color") return FXWindow::colorType;
+  if(name=="application/octet-stream") return FXWindow::octetType;
+  return fxwaylandRegisterType(app,name);
+  }
+
+
+// Ask the window that owns the clipboard for the data of a type; going through
+// FXWindow::getDNDData keeps the SEL_CLIPBOARD_REQUEST dance in one place
+FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size){
+  FXApp* foxapp;
+  FXWindow* owner;
+  data=nullptr;
+  size=0;
+  if(!app || !(foxapp=(FXApp*)app->foxapp)) return false;
+  if((owner=foxapp->getClipboardWindow())==nullptr) return false;
+  return owner->getDNDData(FROM_CLIPBOARD,type,data,size);
+  }
+
+
+// The compositor handed the clipboard to somebody else.  FXWindow::releaseClipboard()
+// does the bookkeeping FOX expects (SEL_CLIPBOARD_LOST, the type list, the owner)
+// and the module has already dropped the source, so nothing is cleared twice
+void fxwaylandClipboardLost(FXWaylandApp* app){
+  FXApp* foxapp;
+  FXWindow* owner;
+  if(!app || !(foxapp=(FXApp*)app->foxapp)) return;
+  if((owner=foxapp->getClipboardWindow())!=nullptr){
+    owner->releaseClipboard();
+    }
+  }
+
+
+void fxwaylandSelectionLost(FXWaylandApp* app){
+  FXApp* foxapp;
+  FXWindow* owner;
+  if(!app || !(foxapp=(FXApp*)app->foxapp)) return;
+  if((owner=foxapp->getSelectionWindow())!=nullptr){
+    owner->releaseSelection();
+    }
+  }
+
+
+/*******************************************************************************/
+
+// Selection and clipboard data.  While this application owns the board the data
+// comes from the window that owns it, exactly as on X11; otherwise it comes from
+// the offer of the peer, which the data device keeps up to date
+void FXApp::selectionSetData(const FXWindow*,FXDragType,FXuchar* data,FXuint size){
+  freeElms(ddeData);
+  ddeData=data;
+  ddeSize=size;
+  }
+
+
+void FXApp::selectionGetData(const FXWindow*,FXDragType type,FXuchar*& data,FXuint& size){
+  FXWaylandApp* app=fxwayland(display);
+  data=nullptr;
+  size=0;
+  if(selectionWindow){
+    event.type=SEL_SELECTION_REQUEST;
+    event.target=type;
+    ddeData=nullptr;
+    ddeSize=0;
+    selectionWindow->handle(this,FXSEL(SEL_SELECTION_REQUEST,0),&event);
+    data=ddeData;
+    size=ddeSize;
+    ddeData=nullptr;
+    ddeSize=0;
+    }
+  else{
+    fxwaylandSelectionData(app,type,data,size);
+    }
+  }
+
+
+void FXApp::selectionGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){
+  FXWaylandApp* app=fxwayland(display);
+  types=nullptr;
+  numtypes=0;
+  if(selectionWindow){
+    if(xselTypeList && xselNumTypes){
+      dupElms(types,xselTypeList,xselNumTypes);
+      numtypes=xselNumTypes;
+      }
+    }
+  else{
+    fxwaylandSelectionTypes(app,types,numtypes);
+    }
+  }
+
+
+void FXApp::clipboardSetData(const FXWindow*,FXDragType,FXuchar* data,FXuint size){
+  freeElms(ddeData);
+  ddeData=data;
+  ddeSize=size;
+  }
+
+
+void FXApp::clipboardGetData(const FXWindow*,FXDragType type,FXuchar*& data,FXuint& size){
+  FXWaylandApp* app=fxwayland(display);
+  data=nullptr;
+  size=0;
+
+  // Our own clipboard: ask the window that owns it
+  if(clipboardWindow){
+    event.type=SEL_CLIPBOARD_REQUEST;
+    event.target=type;
+    ddeData=nullptr;
+    ddeSize=0;
+    clipboardWindow->handle(this,FXSEL(SEL_CLIPBOARD_REQUEST,0),&event);
+    data=ddeData;
+    size=ddeSize;
+    ddeData=nullptr;
+    ddeSize=0;
+    }
+  else{
+    fxwaylandClipboardData(app,type,data,size);
+    }
+  }
+
+
+void FXApp::clipboardGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){
+  FXWaylandApp* app=fxwayland(display);
+  types=nullptr;
+  numtypes=0;
+  if(clipboardWindow){
+    if(xcbTypeList && xcbNumTypes){
+      dupElms(types,xcbTypeList,xcbNumTypes);
+      numtypes=xcbNumTypes;
+      }
+    }
+  else{
+    fxwaylandClipboardTypes(app,types,numtypes);
+    }
+  }
+
+
+void FXApp::dragdropSetData(const FXWindow*,FXDragType,FXuchar* data,FXuint size){
+  freeElms(ddeData);
+  ddeData=data;
+  ddeSize=size;
+  }
+
+
+void FXApp::dragdropGetData(const FXWindow*,FXDragType,FXuchar*& data,FXuint& size){
+  data=nullptr;
+  size=0;
+  }
+
+
+void FXApp::dragdropGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){
+  types=nullptr;
+  numtypes=0;
+  }
+
+
+/*******************************************************************************/
+
+// Register a drag type; a Wayland drag type is the index of a mime type
+FXDragType FXApp::registerDragType(const FXString& name) const {
+  return fxwaylandRegisterType(fxwayland(display),name);
+  }
+
+
+// Get name of registered drag type
+FXString FXApp::getDragTypeName(FXDragType type) const {
+  return fxwaylandTypeName(fxwayland(display),type);
+  }
 
 }
 

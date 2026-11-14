@@ -39,6 +39,7 @@
 #include <wayland-client.h>
 #include "xdg-shell-client-protocol.h"
 #include "xdg-decoration-unstable-v1-client-protocol.h"
+#include "primary-selection-unstable-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -133,7 +134,8 @@ struct FXWaylandApp {
   struct xkb_keymap*  xkbkeymap;        // Keymap of the keyboard
   struct xkb_state*   xkbstate;         // State of the modifiers
   FXID              pointerwindow;      // Window the pointer is over
-  FXuint            pointerserial;      // Serial of the last pointer enter
+  FXuint            pointerserial;      // Serial of the last pointer event
+  FXuint            keyboardserial;     // Serial of the last keyboard event
   FXint             pointerx;           // Position of the pointer in the shell
   FXint             pointery;
   FXuint            pointerbuttons;     // Buttons held down
@@ -143,6 +145,26 @@ struct FXWaylandApp {
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
+  wl_data_device_manager*  ddmanager;       // Clipboard and drag and drop
+  wl_data_device*          ddevice;         // The seat's data device
+  wl_data_source*          dsource;         // What we offer on the clipboard
+  wl_data_offer*           doffer;          // What somebody else offers
+  zwp_primary_selection_device_manager_v1* psmanager; // The X11 primary selection
+  zwp_primary_selection_device_v1*         psdevice;
+  zwp_primary_selection_source_v1*         pssource;
+  zwp_primary_selection_offer_v1*          psoffer;
+  FXString*         typenames;          // Mime name of every drag type
+  FXuint            numtypes;           // Number of registered drag types
+  FXuint            allocedtypes;       // Allocated entries
+  FXDragType*       offertypes;         // Drag types the clipboard offers
+  FXString*         offermimes;         // Mime type of each of them
+  FXuint            numoffertypes;      // Number of types on the clipboard
+  FXuint            allocedoffer;       // Allocated entries
+  FXDragType*       psoffertypes;       // Drag types the selection offers
+  FXString*         psoffermimes;       // Mime type of each of them
+  FXuint            numpsoffertypes;    // Number of types on the selection
+  FXuint            allocedpsoffer;     // Allocated entries
+  FXString          clipboardtext;      // Data we offer on the clipboard
   FXint             screenwidth;        // Size of the first output
   FXint             screenheight;
   FXID              rootwindow;         // Id of the virtual root window
@@ -212,7 +234,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);
 FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window);
 
 /// Bind a window to the frame buffer of its shell; false when it has none
-FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& stride);
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride);
 
 /// Commit the frames that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app);
@@ -234,6 +256,48 @@ void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf);
 
 /// Drop the buffer pool of a surface
 void fxwaylandFreeBuffers(FXWaylandSurface* surf);
+
+/// Register a mime type and return its drag type; an empty name is a failure
+FXDragType fxwaylandRegisterType(FXWaylandApp* app,const FXString& mime);
+
+/// Mime name of a drag type, or an empty string when it is not ours
+FXString fxwaylandTypeName(FXWaylandApp* app,FXDragType type);
+
+/// Drag type that stands for a mime type of a peer, registering it if needed
+FXDragType fxwaylandTypeFromMime(FXWaylandApp* app,const FXchar* mime);
+
+/// Bind the data devices of the connection and drop them again
+void fxwaylandOpenDataDevice(FXWaylandApp* app);
+void fxwaylandCloseDataDevice(FXWaylandApp* app);
+
+/// Offer the clipboard to the compositor from a window; false when it failed
+FXbool fxwaylandAcquireClipboard(FXWaylandApp* app,FXID window,
+const FXDragType* types,FXuint numtypes);
+
+/// Drop our ownership of the clipboard
+FXbool fxwaylandReleaseClipboard(FXWaylandApp* app,FXID window);
+
+/// Take the primary selection
+FXbool fxwaylandAcquireSelection(FXWaylandApp* app,FXID window,const FXDragType* types,FXuint numtypes);
+FXbool fxwaylandReleaseSelection(FXWaylandApp* app,FXID window);
+
+/// Types offered by the clipboard or the selection of a peer
+void fxwaylandClipboardTypes(FXWaylandApp* app,FXDragType*& types,FXuint& numtypes);
+void fxwaylandSelectionTypes(FXWaylandApp* app,FXDragType*& types,FXuint& numtypes);
+
+/// Read the clipboard or the selection; the caller frees the data
+void fxwaylandClipboardData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
+void fxwaylandSelectionData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
+
+/// Ask the application for the data of a drag type it offers
+FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
+
+/// Tell the application that the clipboard or the selection went to a peer
+void fxwaylandClipboardLost(FXWaylandApp* app);
+void fxwaylandSelectionLost(FXWaylandApp* app);
+
+/// Add the listener of the primary selection device once it exists
+void fxwaylandAttachSelectionDevice(FXWaylandApp* app);
 
 }
 
