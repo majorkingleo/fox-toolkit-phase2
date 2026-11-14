@@ -96,6 +96,14 @@ answers with `wl_data_offer_set_actions()` and
 `wl_data_offer_finish()`.  Both sides read the payload from the pipe that
 `wl_data_offer_receive()` produces.
 
+**Text input.** `zwp_text_input_manager_v3_get_text_input(manager, seat)` makes
+one context per seat; the compositor decides which surface it belongs to with
+`enter`/`leave`, following the keyboard focus. `enable()`, `set_content_type()`,
+`set_cursor_rectangle()` and `disable()` do nothing until `commit()` follows, and
+`disable()` is only legal after `enable()`.  The caret rectangle is what places
+the pre-edit window.  Committed text goes to the focus widget as a key event with
+`event.text`, as XIM does on X11.
+
 ## Rules that each cost a bug here
 
 - **One field for the event code.** The neutral event struct in this repository
@@ -235,6 +243,12 @@ answers with `wl_data_offer_set_actions()` and
   source, `move:` out of its surface, `move:` onto the target, release. The
   intermediate moves are required, because the compositor only starts delivering
   the drag once the pointer has left the surface of the source.
+- `scripts/gate-wayland-ime.sh` — `WAYLAND_DEBUG=1` and a `wtype` key for the
+  focus; checks on the wire that the text input is bound, enabled, given a caret
+  rectangle and committed. A committed string needs an input method client, which
+  a headless compositor does not have.
+- `WAYLAND_DEBUG=1` spells proxies `name#id`, not `name@id`; grep the log
+  accordingly.
 - Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame
   with `FOX_WAYLAND_DUMP`.
 - `FOX_WAYLAND_TRACE=1` prints connect, configure, expose, bind, commit, seat

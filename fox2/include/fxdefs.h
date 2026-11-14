@@ -291,6 +291,7 @@ struct FXWaylandEvent {
   unsigned int time;            // Timestamp in milliseconds
   unsigned int code;            // Event specific code
   int          data[4];         // Event specific payload
+  char         text[256];       // Text of an input method commit
   };
 #endif
 

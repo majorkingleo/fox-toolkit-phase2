@@ -787,6 +787,33 @@ selection:
 
 ### Phase 9: input method, scale, settings, polish
 
+Done in this phase so far (the input method; the scale, the settings and the
+activation are the next steps):
+
+- `fxtextinput_wayland.cpp` binds `zwp_text_input_manager_v3` and makes one
+  `zwp_text_input_v3` for the seat, since the compositor does not hand out a
+  context per widget: the input method follows the keyboard focus and the client
+  enables its context while a window of its own has it.  Enable and disable are
+  driven by `FXXWL_FOCUSIN`/`FXXWL_FOCUSOUT`, as `SEL_IME_START`/`SEL_IME_END`
+  are on X11.
+- The protocol is double buffered: `enable`, `disable`, the content type and the
+  caret rectangle only take effect when `commit()` follows, so every change in
+  the module ends with a commit and a flush.
+- The caret rectangle is what decides where the pre-edit window goes.  It comes
+  from `FXComposeContext::setSpot()` and `setArea()`, which are called by the
+  widget that knows where it is typing; the rectangle is kept in the platform and
+  re-sent on enable.
+- A committed string is delivered as a key press and a key release that carry the
+  text, which is what XIM does on X11, so a widget that inserts `event.text` does
+  not care where the text came from.  The neutral event grew a `text[256]` field
+  for it and `FXXWL_IME` joins the event codes.
+- `scripts/gate-wayland-ime.sh` runs an application against headless sway with
+  `WAYLAND_DEBUG=1` and checks the wire, not our trace: the manager is bound, the
+  context is created, and `enable`, `set_cursor_rectangle` and `commit` are sent
+  after the focus arrives.  A committed string cannot be tested here, because
+  there is no input method client on a headless sway; the half that belongs to
+  the toolkit is what the gate covers.
+
 - `FXComposeContext_wayland.cpp` on `zwp_text_input_v3` (preedit, commit,
   cursor rectangle).
 - Fractional scale and `wp_viewporter`; per-output scale; rescale on output
@@ -921,6 +948,10 @@ selection:
   surface), move to `500,140` (the target), release.  It passes when the trace
   says `drag started from window 3 with 2 types`, `drag entered the target` and
   `dropped "dragged text for the target"`.
+- **Text input gate:** `scripts/gate-wayland-ime.sh` runs an application against
+  headless sway, gives it the keyboard focus with `wtype` and passes when the
+  wayland debug log shows `zwp_text_input_v3#N.enable()`,
+  `set_cursor_rectangle(...)` and `commit()` on the wire.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

@@ -40,6 +40,7 @@
 #include "FXFont.h"
 #include "FXComposeContext.h"
 #include "FXException.h"
+#include "fxwaylandpriv.h"
 
 #if defined(FOX_WAYLAND)
 
@@ -49,10 +50,11 @@
   - Composing text on Wayland goes through text-input-v3, which the seat
     enables: the compositor picks the context for the surface that has the
     keyboard focus, so there is nothing to create per text entry widget.
-  - The protocol XML is vendored already; the text input modules of phase 6
-    fill in the commit string, the pre-edit and the caret rectangle.  Until
-    then the context exists, so widgets can hold one, and composition does not
-    happen.
+  - A context of our own is only a place for a widget to say where its caret
+    is: the text input of the seat is enabled while a window has the focus, and
+    the compositor asks us for the caret rectangle through this object.  The
+    committed text arrives as a key event of the focus widget, as it does with
+    XIM on X11.
 */
 
 #define TOPIC_CONSTRUCT 1000
@@ -99,26 +101,40 @@ void FXComposeContext::destroy(){
 
 // Set focus to it
 void FXComposeContext::focusIn(){
+  if(xid){
+    fxwaylandEnableTextInput(fxwayland(getApp()->getDisplay()));
+    }
   }
 
 
 // Kill focus to it
 void FXComposeContext::focusOut(){
+  if(xid){
+    fxwaylandDisableTextInput(fxwayland(getApp()->getDisplay()));
+    }
   }
 
 
-// Set the font
+// Set the font; the compositor draws the pre-edit with its own font
 void FXComposeContext::setFont(FXFont*){
   }
 
 
-// Set the spot
-void FXComposeContext::setSpot(FXint,FXint){
+// Set the spot; where the caret is decides where the pre-edit window goes
+void FXComposeContext::setSpot(FXint x,FXint y){
+  if(xid){
+    FXWindow* win=window;
+    fxwaylandSetTextInputSpot(fxwayland(getApp()->getDisplay()),x+(win?win->getX():0),y+(win?win->getY():0));
+    }
   }
 
 
-// Set the area
-void FXComposeContext::setArea(FXint,FXint,FXint,FXint){
+// Set the area, for widgets that compose more than one line
+void FXComposeContext::setArea(FXint x,FXint y,FXint w,FXint h){
+  if(xid){
+    FXWindow* win=window;
+    fxwaylandSetTextInputArea(fxwayland(getApp()->getDisplay()),x+(win?win->getX():0),y+(win?win->getY():0),w,h);
+    }
   }
 
 

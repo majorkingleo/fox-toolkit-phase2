@@ -40,6 +40,7 @@
 #include "xdg-shell-client-protocol.h"
 #include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "primary-selection-unstable-v1-client-protocol.h"
+#include "text-input-unstable-v3-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -69,7 +70,8 @@ enum {
   FXXWL_DNDENTER   = 13,        // A drag entered a window
   FXXWL_DNDMOTION  = 14,        // A drag moved, or went to another window
   FXXWL_DNDLEAVE   = 15,        // A drag left the window
-  FXXWL_DNDDROP    = 16         // A drag was dropped
+  FXXWL_DNDDROP    = 16,        // A drag was dropped
+  FXXWL_IME        = 17         // An input method committed text
   };
 
 
@@ -149,6 +151,15 @@ struct FXWaylandApp {
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
+  zwp_text_input_manager_v3* timanager;     // Input method, when offered
+  zwp_text_input_v3*         tiinput;       // Our context on the seat
+  wl_surface*                tisurface;     // Surface the context is on
+  FXString                   preedit;       // Text the method is composing
+  FXint                      tix;           // Caret rectangle of that surface
+  FXint                      tiy;
+  FXint                      tiw;
+  FXint                      tih;
+  FXbool                     tienabled;     // The context is enabled
   wl_data_device_manager*  ddmanager;       // Clipboard and drag and drop
   wl_data_device*          ddevice;         // The seat's data device
   wl_data_source*          dsource;         // What we offer on the clipboard
@@ -349,6 +360,21 @@ void fxwaylandFinishDrop(FXWaylandApp* app,FXuint action);
 
 /// Add the listener of the primary selection device once it exists
 void fxwaylandAttachSelectionDevice(FXWaylandApp* app);
+
+/// Create and drop the input method context of the seat
+void fxwaylandOpenTextInput(FXWaylandApp* app);
+void fxwaylandCloseTextInput(FXWaylandApp* app);
+
+/// Enable and disable the input method while a window has the focus
+void fxwaylandEnableTextInput(FXWaylandApp* app);
+void fxwaylandDisableTextInput(FXWaylandApp* app);
+
+/// Where the caret is, so the input method can put its window next to it
+void fxwaylandSetTextInputSpot(FXWaylandApp* app,FXint x,FXint y);
+void fxwaylandSetTextInputArea(FXWaylandApp* app,FXint x,FXint y,FXint w,FXint h);
+
+/// Text the input method is composing, empty when it is not composing
+FXString fxwaylandPreedit(FXWaylandApp* app);
 
 }
 

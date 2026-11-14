@@ -93,6 +93,7 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       app->seat=(wl_seat*)wl_registry_bind(registry,name,&wl_seat_interface,FXMIN(version,5u));
       fxwaylandOpenSeat(app);
       fxwaylandOpenDataDevice(app);
+      fxwaylandOpenTextInput(app);
       }
     }
   else if(strcmp(interface,wl_output_interface.name)==0){
@@ -115,6 +116,14 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
     if(!app->ddmanager){
       app->ddmanager=(wl_data_device_manager*)wl_registry_bind(registry,name,&wl_data_device_manager_interface,FXMIN(version,3u));
       fxwaylandOpenDataDevice(app);
+      }
+    }
+
+  // Text input, offered by compositors that run an input method
+  else if(strcmp(interface,zwp_text_input_manager_v3_interface.name)==0){
+    if(!app->timanager){
+      app->timanager=(zwp_text_input_manager_v3*)wl_registry_bind(registry,name,&zwp_text_input_manager_v3_interface,1);
+      fxwaylandOpenTextInput(app);
       }
     }
 
@@ -206,6 +215,14 @@ void FXApp::initPlatformMembers(){
   app->output=nullptr;
   app->wmbase=nullptr;
   app->decomanager=nullptr;
+  app->timanager=nullptr;
+  app->tiinput=nullptr;
+  app->tisurface=nullptr;
+  app->tix=0;
+  app->tiy=0;
+  app->tiw=0;
+  app->tih=0;
+  app->tienabled=false;
   app->ddmanager=nullptr;
   app->ddevice=nullptr;
   app->dsource=nullptr;
@@ -370,6 +387,8 @@ FXbool FXApp::closeDisplay(){
   // The data devices hang off the seat, so they go before it
   fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
+  fxwaylandCloseTextInput(app);
+  if(app->timanager){ zwp_text_input_manager_v3_destroy(app->timanager); app->timanager=nullptr; }
   if(app->decomanager){ zxdg_decoration_manager_v1_destroy(app->decomanager); app->decomanager=nullptr; }
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
   if(app->output){ wl_output_destroy(app->output); app->output=nullptr; }
@@ -864,6 +883,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         if(ev.code==FXXWL_FOCUSOUT && activeWindow==window){
           if(window->handle(this,FXSEL(SEL_FOCUSOUT,0),&event)) refresh();
           activeWindow=nullptr;
+          fxwaylandDisableTextInput(app);
           }
         if(ev.code==FXXWL_FOCUSIN && activeWindow!=window){
 
@@ -875,6 +895,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
             }
           if(window->handle(this,FXSEL(SEL_FOCUSIN,0),&event)) refresh();
           activeWindow=window;
+          fxwaylandEnableTextInput(app);
           }
         return true;
         }
@@ -893,6 +914,23 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         return true;
         }
       fxwaylandTrace("key %s dropped, no focus window\n",ev.button?"press":"release");
+      return false;
+
+    case FXXWL_IME:
+
+      // An input method does not press keys; it hands over the text it composed
+      window=keyboardGrabWindow?keyboardGrabWindow:getFocusWindow();
+      if(window){
+        event.code=0;
+        event.state=0;
+        event.text=ev.text;
+        event.type=SEL_KEYPRESS;
+        if(window->handle(this,FXSEL(SEL_KEYPRESS,0),&event)) refresh();
+        event.type=SEL_KEYRELEASE;
+        if(window->handle(this,FXSEL(SEL_KEYRELEASE,0),&event)) refresh();
+        fxwaylandTrace("ime \"%s\" to %s\n",ev.text,window->getClassName());
+        return true;
+        }
       return false;
     }
   return false;
