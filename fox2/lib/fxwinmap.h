@@ -63,7 +63,8 @@ struct FXWinEntry {
 enum {
   WINMAP_SHOWN  = 1,            // Window is mapped
   WINMAP_SHELL  = 2,            // Window owns the surface
-  WINMAP_POPUP  = 4             // Window is a popup surface
+  WINMAP_POPUP  = 4,            // Window is a popup surface
+  WINMAP_NOGRAB = 8             // Popup that must not take the pointer grab
   };
 
 

@@ -192,8 +192,12 @@ static void pointerButton(void* data,wl_pointer*,uint32_t serial,uint32_t time,u
   FXWaylandSurface* s=app?app->pointersurface:nullptr;
   FXuint number=foxButtonNumber(button);
   FXuint mask=foxButtonMask(number);
-  (void)serial;
   if(!app || !s) return;
+
+  // The popup grab and the interactive resize want the serial of the user
+  // action that caused them, which is this press, not the enter of long ago
+  app->pointerserial=serial;
+
   if(state==WL_POINTER_BUTTON_STATE_PRESSED) app->pointerbuttons|=mask;
   else app->pointerbuttons&=~mask;
   fxwaylandTrace("pointer button %u as %u %s\n",button,number,state==WL_POINTER_BUTTON_STATE_PRESSED?"down":"up");

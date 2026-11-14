@@ -188,7 +188,7 @@ FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window);
 FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool popup);
 
 /// Give a window the popup role under the given parent window; false on failure
-FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h);
+FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h,FXbool grab);
 
 /// Ask the compositor to resize a toplevel with the corner under the pointer
 FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window);

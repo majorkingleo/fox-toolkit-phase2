@@ -4,13 +4,15 @@ AM_CXXFLAGS = @X_CFLAGS@
 INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
 LDADD = $(top_builddir)/lib/libFOX-1.7.la -lm
 
-noinst_PROGRAMS = hello button dpi popup click
+noinst_PROGRAMS = hello button dpi popup click menus tooltip
 
 hello_SOURCES = hello.cpp
 button_SOURCES = button.cpp
 dpi_SOURCES = dpi.cpp
 popup_SOURCES = popup.cpp
 click_SOURCES = click.cpp
+menus_SOURCES = menus.cpp
+tooltip_SOURCES = tooltip.cpp
 raster_SOURCES = raster.cpp
 noinst_PROGRAMS += raster
 

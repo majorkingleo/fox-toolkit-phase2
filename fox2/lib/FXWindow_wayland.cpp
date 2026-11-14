@@ -135,13 +135,24 @@ void FXWindow::clearShape(){
   }
 
 
-// Get pointer location (in window coordinates); the pointer position arrives
-// with the seat in phase 6
+// Get pointer location (in window coordinates).  Wayland has no query, so the
+// answer is the position the seat last reported, turned from the coordinates of
+// the surface it is over into the coordinates of this window.  The tool tip
+// needs it: it places itself at the pointer.
 FXbool FXWindow::getCursorPosition(FXint& x,FXint& y,FXuint& buttons) const {
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  FXRectangle here;
+  FXRectangle there;
   x=0;
   y=0;
   buttons=0;
-  return false;
+  if(!app || !app->pointersurface) return false;
+  here=screenRect(app,this);
+  there=app->childmap.getGlobalGeometry(app->pointersurface->window);
+  x=there.x+app->pointerx-here.x;
+  y=there.y+app->pointery-here.y;
+  buttons=app->pointerbuttons;
+  return true;
   }
 
 
@@ -170,8 +181,8 @@ void FXWindow::translateCoordinatesTo(FXint& tox,FXint& toy,const FXWindow* towi
   if(!towindow){ fxerror("%s::translateCoordinatesTo: to-window is NULL.\n",getClassName()); }
   from=screenRect(app,this);
   to=screenRect(app,towindow);
-  tox=to.x-from.x+fromx;
-  toy=to.y-from.y+fromy;
+  tox=from.x+fromx-to.x;
+  toy=from.y+fromy-to.y;
   }
 
 

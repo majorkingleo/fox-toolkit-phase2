@@ -80,6 +80,12 @@ void FXRootWindow::create(){
     if(app){
       if(!app->rootwindow) app->rootwindow=app->childmap.newId();
       xid=app->rootwindow;
+
+      // The screen size, like the X11 module reads it from the display: without
+      // it the root window stays 1x1 and every window FOX centers lands at a
+      // negative place, which is also where a menu computes its anchor from
+      width=getDefaultWidth();
+      height=getDefaultHeight();
       }
 
     // Create the children

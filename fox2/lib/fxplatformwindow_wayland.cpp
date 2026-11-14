@@ -30,6 +30,8 @@
 #include "fxplatformwindow.h"
 #include "fxwinmap.h"
 #include "fxwaylandpriv.h"
+#include "FXMetaClass.h"
+#include "FXWindow.h"
 
 #if defined(FOX_WAYLAND)
 
@@ -66,6 +68,13 @@ FXID fxplatformCreateWindow(const FXWindowCreateInfo& info){
   if(info.flags&WINDOWINFO_SHELL) flags|=WINMAP_SHELL;
   if(info.flags&WINDOWINFO_SHOWN) flags|=WINMAP_SHOWN;
   if(popup) flags|=WINMAP_POPUP;
+
+  // Both a menu and a tool tip are override redirect shells.  The menu is an
+  // FXPopup and takes the pointer grab, the tool tip is a plain shell and must
+  // not, or it would eat the click meant for the window below it
+  if(popup && !((FXWindow*)info.userdata)->isMemberOf(FXMetaClass::getMetaClassFromName("FXPopup"))){
+    flags|=WINMAP_NOGRAB;
+    }
 
   // A shell hangs off the root window, which has no row in the table
   if(!app->childmap.hasWindow(parent)){
@@ -135,15 +144,30 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
   const FXWinEntry* entry;
   FXRectangle place;
   FXID parent;
+  FXID owner;
+  FXbool grab;
   if(!app) return;
 
   // A popup gets its surface when it is shown: the positioner fixes its size
-  // and its place once, so a new show starts from a new surface
+  // and its place once, so a new show starts from a new surface.  Whether it
+  // takes the pointer grab was decided when the window was made.
   if((entry=app->childmap.getEntry(window))!=nullptr && (entry->flags&WINMAP_POPUP)){
+    grab=(entry->flags&WINMAP_NOGRAB)==0;
     fxwaylandDestroySurface(app,window);
     if(shown && w>0 && h>0){
+
+      // A tool tip has no owner in FOX, but a popup needs a parent surface to
+      // hang off: take the shell the pointer is over, which is the window the
+      // tip belongs to
+      owner=app->childmap.getOwner(window);
+      if(!owner && app->pointersurface){
+        owner=app->pointersurface->window;
+        app->childmap.setOwner(window,owner);
+        }
       place=app->childmap.getGeometry(window);
-      fxwaylandCreatePopup(app,window,app->childmap.getOwner(window),place.x,place.y,w,h);
+      if(!fxwaylandCreatePopup(app,window,owner,place.x,place.y,w,h,grab)){
+        fxwaylandTrace("no popup for window %u, it has no parent surface\n",(unsigned int)window);
+        }
       }
     }
   app->childmap.setShown(window,shown);

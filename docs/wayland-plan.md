@@ -597,6 +597,65 @@ gates that drive them):
 
 ### Phase 7: popups, menus, tooltips
 
+Done in this phase so far (the popup role, menus with a submenu and tool tips):
+
+- A popup gets its `xdg_popup` when it is **shown**, not when it is created: the
+  positioner fixes the size once and a popup cannot grow afterwards, so every
+  show starts from a fresh surface.  The anchor rectangle is the place the core
+  asked for, relative to the surface of the owner, with `SLIDE_X`, `SLIDE_Y`,
+  `FLIP_X` and `FLIP_Y` so a menu near the edge stays on the output.
+- The grab is taken with the serial of the **press** that opened the popup, not
+  with the pointer enter of long ago; a stale serial is what a compositor may
+  refuse, and the grab is requested before the first commit because the protocol
+  calls grabbing a mapped popup an error.
+- Menus nest: the submenu is a popup whose parent is the popup, and the protocol
+  is strict about that chain — a grabbing popup may only have a toplevel or
+  another grabbing popup as its parent, and only the topmost popup of a chain may
+  be destroyed.  `fxwaylandDestroySurface()` therefore posts `popup_done` for the
+  popups hanging off a popup and destroys them first, top down.
+- A tool tip is a popup that must **not** grab: it appears while the pointer is
+  only resting, and a grab would eat the click meant for the window below.  FOX
+  makes a tool tip an override redirect shell without an owner, so the module
+  decides from the class (an `FXPopup` grabs, an `FXToolTip` does not) and hangs
+  an ownerless popup off the shell the pointer is over.
+- FOX itself dismisses a menu on a press outside it through the grab: with the
+  popup as grab owner, our dispatch sends the press to the popup, which unposts.
+  The compositor's own dismissal arrives as `popup_done` and becomes the FOX
+  popdown, so both paths end in the same place.
+- Hit testing and `SEL_ENTER`/`SEL_LEAVE` now follow the pointer from widget to
+  widget, not only per surface: the compositor never says which widget the
+  pointer left, so the module compares the window under the pointer with the one
+  before it.  Without that a menu entry never became *active*, and a press on it
+  did nothing; the tool tip flag is set on the same path, because
+  `FXWindow::onEnter` needs the crossing mode (`CROSSINGNORMAL`, not the stale
+  code of the previous event).
+- The menu widgets were missing from the port: `FXMenuCaption`, `FXMenuCommand`,
+  `FXMenuCascade`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator`, `FXMenuTitle`
+  and the menu bar came over from the original tree unchanged.  `FXMenuBar`,
+  `FXMenuButton` and `FXOptionMenu` stay out for now: they inherit `FXToolBar` and
+  with it the docking family (`FXDockBar`, `FXDockSite`, `FXToolBarGrip`,
+  `FXToolBarShell`, `FXToolBarTab`), about 4,900 lines that the library does not
+  have yet.  Menus opened from a plain button work, a menu bar waits for that
+  port.
+- Two old bugs of the window base came out of making menus land in the right
+  place.  `FXRootWindow::create()` never took the size of the output, so the root
+  window stayed 1x1 and every window FOX centers landed at a negative place; and
+  `translateCoordinatesTo()` **subtracted** the target place instead of adding
+  it, which put every root coordinate at the mirror image of where it belongs.
+  Both were invisible until a menu computed its anchor from them.
+- Gates: `scripts/gate-wayland-menu.sh` runs `tests/menus` (a menu with a
+  submenu, opened from a button) and checks the grab, the nesting and both
+  dismissal paths — open and click outside must end in `popup_done` with the
+  application still running, open, submenu and pick the third entry must end in
+  `command three` and status 0.  `scripts/gate-wayland-tooltip.sh` rests the
+  virtual pointer on a button and checks that the tool tip becomes a popup
+  *without* grab.  The frames are kept as `menu.png`, `menu-nested.png` and
+  `tooltip.png` under `screenshots/tests/fox2/wayland/`.
+- The tests report what they do on stdout, which is what the gates assert on;
+  the pointer has to stay alive during a wait (the injector holds the virtual
+  pointer with `sleep:`), because a compositor that loses the device sends the
+  pointer leave and cancels the tool tip.
+
 - `FXPopup`/`FXMenuPane`: `xdg_popup` parented to the owner shell, anchor
   rectangle computed from the requested absolute position relative to the owner,
   `xdg_positioner` constraint adjustment (slide, flip), explicit grab taken in
@@ -607,6 +666,8 @@ gates that drive them):
   pointer; no parent grab.
 - Acceptance: menu bar, nested menus, option menus, tooltips and combo boxes
   open at the right place and close correctly on outside click and Escape.
+  Escape is not covered yet: the gate has no keyboard focus on the popup, and
+  the menu bar, option menu and combo box wait for the docking and list widgets.
 
 ### Phase 8: clipboard, selection, drag and drop
 
@@ -735,6 +796,16 @@ gates that drive them):
   `create popup for window 4 under 2 at +20+12 90x56` and two frames are
   committed, one for the main window and one for the pane, which is kept as
   `screenshots/tests/fox2/wayland/popup.png`.
+- **Menu gate:** `scripts/gate-wayland-menu.sh` runs `tests/menus` against
+  headless sway and clicks with the virtual pointer.  It passes when the menu
+  and its submenu both become grabbing popups with the submenu hanging off the
+  menu (`create popup for window 10 under 5`), when a click outside the menu
+  ends in `popup_done` with the application still running, and when picking the
+  third entry prints `command three` and ends the program with 0.
+- **Tool tip gate:** `scripts/gate-wayland-tooltip.sh` rests the virtual pointer
+  on a button of `tests/tooltip` and passes when the tool tip becomes a popup
+  *without* a grab (`create popup for window 2 under 3 at +197+143 52x24 without
+  grab`).  A tool tip never grabs, so the click that follows is not eaten.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

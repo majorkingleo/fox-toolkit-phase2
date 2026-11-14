@@ -615,24 +615,26 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         ry=ev.y;
         }
 
-      // The pointer arrived on or left a window: keep the chain of windows
-      // that see SEL_ENTER and SEL_LEAVE up to date
-      if(ev.code==FXXWL_ENTER || ev.code==FXXWL_LEAVE){
-        event.type=(ev.code==FXXWL_ENTER)?SEL_ENTER:SEL_LEAVE;
-        event.root_x=rx;
-        event.root_y=ry;
-        if(ev.code==FXXWL_LEAVE){
-          if(cursorWindow==window) leaveWindow(window,window->getParent());
-          }
-        else{
-          if(cursorWindow!=window){
-            ancestor=FXWindow::commonAncestor(window,cursorWindow);
-            leaveWindow(cursorWindow,ancestor);
-            enterWindow(window,ancestor);
-            }
-          }
+      // The pointer arrived at another window: the chain of SEL_ENTER and
+      // SEL_LEAVE is kept here, because the compositor only reports where the
+      // pointer is inside a surface and never says which widget it left.  The
+      // helpers read the event of the application, not this local one, and the
+      // crossing mode decides whether a widget arms its tool tip.
+      this->event.time=ev.time;
+      this->event.state=ev.state;
+      this->event.code=mouseGrabWindow?CROSSINGGRAB:CROSSINGNORMAL;
+      this->event.root_x=rx;
+      this->event.root_y=ry;
+      if(ev.code==FXXWL_LEAVE){
+        if(cursorWindow) leaveWindow(cursorWindow,root);
         return true;
         }
+      if(cursorWindow!=window){
+        ancestor=FXWindow::commonAncestor(window,cursorWindow);
+        leaveWindow(cursorWindow,ancestor);
+        enterWindow(window,ancestor);
+        }
+      if(ev.code==FXXWL_ENTER) return true;
 
       // Where the point is inside the window that gets the event
       event.time=ev.time;
@@ -703,7 +705,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
         }
       else if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
-      fxwaylandTrace("button %u %s to %s at %+d%+d\n",ev.button,ev.data[1]?"down":"up",window->getClassName(),event.win_x,event.win_y);
+      fxwaylandTrace("button %u %s to %s at %+d%+d\n",ev.button,ev.data[1]?"down":"up",(mouseGrabWindow?mouseGrabWindow:window)->getClassName(),event.win_x,event.win_y);
       event.last_x=event.win_x;
       event.last_y=event.win_y;
       return true;

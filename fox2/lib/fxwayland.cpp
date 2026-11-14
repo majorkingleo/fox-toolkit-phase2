@@ -280,6 +280,32 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   }
 
 
+// Take away the popups that hang off a popup surface.  The protocol only lets
+// the topmost popup be destroyed, so a parent is always dismissed from its
+// children down; the core is told about each one so it hides the widget too.
+static void fxwaylandDismissChildPopups(FXWaylandApp* app,FXWaylandSurface* parent){
+  FXWaylandSurface* child;
+  FXWaylandEvent ev;
+  FXbool again;
+  do{
+    again=false;
+    for(child=app->surfaces; child; child=child->next){
+      if(child->parent==parent && child->popup){
+        fxwaylandDismissChildPopups(app,child);
+        clearElms(&ev,1);
+        ev.code=FXXWL_POPUPDONE;
+        ev.id=child->window;
+        fxwaylandPost(app,ev);
+        fxwaylandDestroySurface(app,child->window);
+        again=true;                   // The list changed, start over
+        break;
+        }
+      }
+    }
+  while(again);
+  }
+
+
 // The compositor dismissed a popup, or its parent went away
 static void popupDone(void* data,xdg_popup*){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
@@ -306,7 +332,7 @@ static const xdg_popup_listener popupListener={
 
 
 // Give a window the popup role, hanging off the surface of its parent
-FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h){
+FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h,FXbool grab){
   FXWaylandSurface* s;
   FXWaylandSurface* parent;
   xdg_positioner* positioner;
@@ -354,7 +380,10 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   xdg_positioner_set_anchor_rect(positioner,x-place.x,y-place.y,1,1);
   xdg_positioner_set_anchor(positioner,XDG_POSITIONER_ANCHOR_TOP_LEFT);
   xdg_positioner_set_gravity(positioner,XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-  xdg_positioner_set_constraint_adjustment(positioner,XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X|XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+  xdg_positioner_set_constraint_adjustment(positioner,XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X|
+                                                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y|
+                                                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X|
+                                                    XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y);
   s->popup=xdg_surface_get_popup(s->xdsurface,parent->xdsurface,positioner);
   xdg_positioner_destroy(positioner);
   if(!s->popup){
@@ -366,11 +395,16 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   xdg_popup_add_listener(s->popup,&popupListener,s);
 
   // A popup takes the pointer for as long as it lives, so that a click outside
-  // it dismisses it; without a serial from the pointer we cannot ask for that
-  if(app->seat && app->pointerserial){
+  // it dismisses it; without a serial from the pointer we cannot ask for that.
+  // A tool tip must not grab: it appears while the user is only moving the
+  // pointer, and a grab would eat the click that is meant for the window below.
+  // A nested popup does grab, because the protocol wants the parent of a
+  // grabbing popup to be a toplevel or another grabbing popup.
+  if(grab && app->seat && app->pointerserial){
     xdg_popup_grab(s->popup,app->seat,app->pointerserial);
     }
-  fxwaylandTrace("create popup for window %u under %u at %+d%+d %dx%d\n",(unsigned int)window,(unsigned int)parent->window,x-place.x,y-place.y,w,h);
+  fxwaylandTrace("create popup for window %u under %u at %+d%+d %dx%d %s\n",(unsigned int)window,(unsigned int)parent->window,x-place.x,y-place.y,w,h,
+                 (grab && app->seat && app->pointerserial)?"with grab":"without grab");
   s->next=app->surfaces;
   app->surfaces=s;
   wl_surface_commit(s->surface);
@@ -387,6 +421,11 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
   for(link=&app->surfaces; (s=*link)!=nullptr; link=&s->next){
     if(s->window==window){
       *link=s->next;
+      fxwaylandTrace("destroy surface of window %u%s\n",(unsigned int)window,s->popup?" (popup)":"");
+
+      // The protocol only allows the topmost popup of a chain to go first, so
+      // the popups hanging off this one are dismissed before it
+      if(s->popup) fxwaylandDismissChildPopups(app,s);
       fxwaylandFreeBuffers(s);
       freeElms(s->store);
       s->store=nullptr;

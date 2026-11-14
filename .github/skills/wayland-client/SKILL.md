@@ -128,6 +128,22 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
   the parent's pixels, so moving or resizing a widget must post an exposure for
   the parent (and its subtree, parents before children) or the old pixels stay
   as a ghost. Unmapping needs the same for its parent.
+- **A popup grabbing its parent chain is mandatory.** A grabbing popup may only
+  have a toplevel or *another grabbing popup* as its parent, so a submenu grabs
+  too; and only the topmost popup of a chain may be destroyed, so a parent is
+  dismissed from its children down. `xdg_popup.grab` must come before the first
+  commit (grabbing a mapped popup is an error) and wants the serial of the
+  press, not of an old pointer enter.
+- **A tool tip must not grab.** It shows while the pointer only rests, and a
+  grab would swallow the click meant for the window below. It is also the one
+  popup FOX makes without an owner, so it needs the shell under the pointer as
+  its parent surface.
+- **The compositor never says which widget the pointer left.** Only surface
+  enter/leave arrive; the chain of `SEL_ENTER`/`SEL_LEAVE` between widgets has to
+  be synthesised from motion by comparing the window under the pointer with the
+  previous one. Without it a menu entry never becomes active and a press on it
+  does nothing, and `FXWindow::onEnter` needs `event.code=CROSSINGNORMAL` (a
+  stale code from the previous event silently disarms the tool tip).
 
 ## Map of this repository
 
@@ -164,6 +180,12 @@ read the other end. Text mime types are `text/plain` and `UTF8_STRING`.
 - `scripts/gate-wayland-repaint.sh` — drives the same widget state in one click
   and in three and compares the two dumped frames; needs no reference image and
   catches ghosts of widgets that moved.
+- `scripts/gate-wayland-menu.sh` — menu and submenu of `tests/menus`, checks the
+  grab, the nesting and both dismissal paths (click outside, pick an entry).
+- `scripts/gate-wayland-tooltip.sh` — rests the pointer on a button and checks
+  that the tool tip is a popup without a grab. The injector must stay alive
+  during the wait (`sleep:`); when it exits the compositor removes the virtual
+  pointer and the client sees the pointer leave.
 - Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame
   with `FOX_WAYLAND_DUMP`.
 - `FOX_WAYLAND_TRACE=1` prints connect, configure, expose, bind, commit, seat

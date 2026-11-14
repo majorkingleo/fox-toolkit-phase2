@@ -52,7 +52,14 @@ fxkeysym.cpp \
 FXLabel.cpp \
 FXMainWindow.cpp \
 FXMemoryStream.cpp \
+FXMenuCaption.cpp \
+FXMenuCascade.cpp \
+FXMenuCheck.cpp \
+FXMenuCommand.cpp \
 FXMenuPane.cpp \
+FXMenuRadio.cpp \
+FXMenuSeparator.cpp \
+FXMenuTitle.cpp \
 FXMetaClass.cpp \
 FXMutex.cpp \
 FXObject.cpp \
