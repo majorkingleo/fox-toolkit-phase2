@@ -49,9 +49,9 @@
 
   - The seam functions that only answer questions about the platform.
   - Wayland has no process DPI awareness and no DPI per window: the compositor
-    reports a scale factor per output, which reaches the window through the
-    per-window DPI storage of docs/dpi-plan.md when phase 9 reads wl_output and
-    wp_fractional_scale_v1.  Until then the answers are the neutral ones.
+    reports a scale factor per output, and fxscale_wayland.cpp turns it into the
+    display scale of the application, so the answers about DPI stay neutral and
+    the scale is the one thing the platform really knows.
   - The display is the wayland socket name in WAYLAND_DISPLAY, exactly like
     X11 reads DISPLAY; libwayland falls back to "wayland-0" itself, so an empty
     answer is also valid.
@@ -94,9 +94,10 @@ const FXchar* fxplatformDefaultFont(){
   }
 
 
-// The compositor tells the client the scale, so nothing is configured
+// A Wayland compositor always announces a scale per output, so the display
+// scale follows the compositor unless the registry asks for a fixed one
 const FXchar* fxplatformDefaultScale(){
-  return nullptr;
+  return "auto";
   }
 
 }

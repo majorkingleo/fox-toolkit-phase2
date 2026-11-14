@@ -41,6 +41,8 @@
 #include "xdg-decoration-unstable-v1-client-protocol.h"
 #include "primary-selection-unstable-v1-client-protocol.h"
 #include "text-input-unstable-v3-client-protocol.h"
+#include "viewporter-client-protocol.h"
+#include "fractional-scale-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -84,9 +86,14 @@ enum {
   };
 
 
+/// A surface can be on a handful of outputs at once; more is a clone setup
+enum { FXMAX_OUTPUTS = 4 };
+
+
 /// The surface of one shell, and the buffers it draws into
 struct FXWaylandApp;
 struct FXWaylandBuffer;
+struct FXWaylandOutput;
 
 struct FXWaylandSurface {
   FXWaylandApp*              app;        // The connection
@@ -96,6 +103,15 @@ struct FXWaylandSurface {
   xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
   zxdg_toplevel_decoration_v1* decoration;// Who draws the title bar
+  wp_viewport*               viewport;   // Maps the buffer onto the logical size
+  wp_fractional_scale_v1*    fscale;     // The scale the compositor prefers
+  FXint                      fscale120;  // That scale in 1/120 steps, 0 if none
+  wl_output*                 outputs[FXMAX_OUTPUTS]; // Outputs the surface is on
+  FXuint                     numoutputs; // Number of them
+  FXdouble                   scale;      // Scale this surface is drawn at
+  FXint                      bufscale;   // Scale told to the compositor
+  FXint                      logicalw;   // Size the compositor asked for, in
+  FXint                      logicalh;   // logical pixels
   FXWaylandSurface*          parent;     // Surface the popup hangs off
   FXString                   btitle;     // Title shown in the client side bar
   FXint                      barh;       // Height of that bar, 0 when the compositor draws it
@@ -111,6 +127,17 @@ struct FXWaylandSurface {
   FXint                      width;      // Width of the pool buffers
   FXint                      height;     // Height of the pool buffers
   FXWaylandSurface*          next;       // Next surface
+  };
+
+
+/// One output of the compositor, and the scale it wants
+struct FXWaylandOutput {
+  FXWaylandApp*      app;               // The connection
+  wl_output*         output;            // The output itself
+  FXint              scale;             // Scale it prefers
+  FXint              width;             // Current mode, in device pixels
+  FXint              height;
+  FXWaylandOutput*   next;              // Next output
   };
 
 
@@ -151,6 +178,9 @@ struct FXWaylandApp {
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
+  wp_viewporter*             viewporter;    // Scales a buffer to a logical size
+  wp_fractional_scale_manager_v1* fsmanager;// Exact scales, when offered
+  FXWaylandOutput*           outputs;       // All outputs of the compositor
   zwp_text_input_manager_v3* timanager;     // Input method, when offered
   zwp_text_input_v3*         tiinput;       // Our context on the seat
   wl_surface*                tisurface;     // Surface the context is on
@@ -360,6 +390,25 @@ void fxwaylandFinishDrop(FXWaylandApp* app,FXuint action);
 
 /// Add the listener of the primary selection device once it exists
 void fxwaylandAttachSelectionDevice(FXWaylandApp* app);
+
+/// Remember an output of the registry, and drop them all again
+void fxwaylandAddOutput(FXWaylandApp* app,wl_output* output);
+void fxwaylandFreeOutputs(FXWaylandApp* app);
+
+/// Give a new surface its viewport and its fractional scale, and drop them
+void fxwaylandPrepareScale(FXWaylandApp* app,FXWaylandSurface* surf);
+void fxwaylandFreeScale(FXWaylandSurface* surf);
+
+/// Follow the scale of the outputs before the first window is created
+void fxwaylandApplyStartupScale(FXWaylandApp* app);
+
+/// Scale a surface is drawn at, and the conversions of the protocol to it
+FXdouble fxwaylandSurfaceScale(FXWaylandSurface* surf);
+FXint fxwaylandScaleIn(FXWaylandSurface* surf,FXint v);
+FXint fxwaylandScaleOut(FXWaylandSurface* surf,FXint v);
+
+/// Tell the core that the compositor asked for a logical size
+void fxwaylandPostConfigure(FXWaylandSurface* surf,FXint logicalw,FXint logicalh);
 
 /// Create and drop the input method context of the seat
 void fxwaylandOpenTextInput(FXWaylandApp* app);

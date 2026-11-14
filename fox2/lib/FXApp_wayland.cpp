@@ -97,8 +97,23 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       }
     }
   else if(strcmp(interface,wl_output_interface.name)==0){
-    if(!app->output){
-      app->output=(wl_output*)wl_registry_bind(registry,name,&wl_output_interface,FXMIN(version,2u));
+    wl_output* output=(wl_output*)wl_registry_bind(registry,name,&wl_output_interface,FXMIN(version,2u));
+    if(output){
+      if(!app->output) app->output=output;      // The first one sizes the root
+      fxwaylandAddOutput(app,output);
+      }
+    }
+
+  // Exact scales and the viewport that maps a buffer onto a logical size; the
+  // compositor's fractional scale is what a HiDPI screen with 1.5 asks for
+  else if(strcmp(interface,wp_viewporter_interface.name)==0){
+    if(!app->viewporter){
+      app->viewporter=(wp_viewporter*)wl_registry_bind(registry,name,&wp_viewporter_interface,1);
+      }
+    }
+  else if(strcmp(interface,wp_fractional_scale_manager_v1_interface.name)==0){
+    if(!app->fsmanager){
+      app->fsmanager=(wp_fractional_scale_manager_v1*)wl_registry_bind(registry,name,&wp_fractional_scale_manager_v1_interface,1);
       }
     }
   else if(strcmp(interface,xdg_wm_base_interface.name)==0){
@@ -157,40 +172,13 @@ static void shmFormat(void* data,wl_shm*,uint32_t format){
   }
 
 
-// Output: the physical size and the current mode give us the screen size
-static void outputGeometry(void* data,wl_output*,int32_t,int32_t,int32_t width,int32_t height,int32_t,const char*,const char*,int32_t){
-  FXWaylandApp* app=fxwayland(data);
-  if(width>0 && height>0){
-    app->screenwidth=width;
-    app->screenheight=height;
-    }
-  }
-
-
-static void outputMode(void* data,wl_output*,uint32_t flags,int32_t width,int32_t height,int32_t){
-  FXWaylandApp* app=fxwayland(data);
-  if((flags&WL_OUTPUT_MODE_CURRENT) && width>0 && height>0){
-    app->screenwidth=width;
-    app->screenheight=height;
-    }
-  }
-
-
-static void outputDone(void*,wl_output*){}
-
-static void outputScale(void*,wl_output*,int32_t){}
+// The outputs and the scale they prefer are handled by the scale module; the
+// first output is also the one whose mode sizes the root window
 
 
 static const wl_registry_listener registryListener={
   registryGlobal,
   registryGlobalRemove
-  };
-
-static const wl_output_listener outputListener={
-  outputGeometry,
-  outputMode,
-  outputDone,
-  outputScale
   };
 
 static const xdg_wm_base_listener wmBaseListener={
@@ -215,6 +203,9 @@ void FXApp::initPlatformMembers(){
   app->output=nullptr;
   app->wmbase=nullptr;
   app->decomanager=nullptr;
+  app->viewporter=nullptr;
+  app->fsmanager=nullptr;
+  app->outputs=nullptr;
   app->timanager=nullptr;
   app->tiinput=nullptr;
   app->tisurface=nullptr;
@@ -324,7 +315,6 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   wl_display_roundtrip(app->display);
   if(app->wmbase){ xdg_wm_base_add_listener(app->wmbase,&wmBaseListener,app); }
   if(app->shm){ wl_shm_add_listener(app->shm,&shmListener,app); }
-  if(app->output){ wl_output_add_listener(app->output,&outputListener,app); }
   wl_display_roundtrip(app->display);
   if(!app->compositor || !app->shm || !app->wmbase){
     fxwarning("%s::openDisplay: the compositor lacks %s%s%s.\n",getClassName(),
@@ -337,6 +327,10 @@ FXbool FXApp::openDisplay(const FXchar* dpy){
   if(!app->argb){
     fxwarning("%s::openDisplay: the compositor has no ARGB8888 shared memory format.\n",getClassName());
     }
+
+  // The scale of the outputs is the display scale; it must be known before the
+  // application creates its first window
+  fxwaylandApplyStartupScale(app);
 
   // Preregister the drag types of FOX itself: a Wayland drag type is the index
   // of a mime type in a table of this connection, and the first two entries are
@@ -388,10 +382,13 @@ FXbool FXApp::closeDisplay(){
   fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
   fxwaylandCloseTextInput(app);
+  if(app->fsmanager){ wp_fractional_scale_manager_v1_destroy(app->fsmanager); app->fsmanager=nullptr; }
+  if(app->viewporter){ wp_viewporter_destroy(app->viewporter); app->viewporter=nullptr; }
+  fxwaylandFreeOutputs(app);
   if(app->timanager){ zwp_text_input_manager_v3_destroy(app->timanager); app->timanager=nullptr; }
   if(app->decomanager){ zxdg_decoration_manager_v1_destroy(app->decomanager); app->decomanager=nullptr; }
   if(app->wmbase){ xdg_wm_base_destroy(app->wmbase); app->wmbase=nullptr; }
-  if(app->output){ wl_output_destroy(app->output); app->output=nullptr; }
+  app->output=nullptr;                    // The outputs are dropped above
   if(app->seat){ wl_seat_destroy(app->seat); app->seat=nullptr; }
   if(app->shm){ wl_shm_destroy(app->shm); app->shm=nullptr; }
   if(app->compositor){ wl_compositor_destroy(app->compositor); app->compositor=nullptr; }

@@ -787,7 +787,7 @@ selection:
 
 ### Phase 9: input method, scale, settings, polish
 
-Done in this phase so far (the input method; the scale, the settings and the
+Done in this phase so far (the input method and the scale; the settings and the
 activation are the next steps):
 
 - `fxtextinput_wayland.cpp` binds `zwp_text_input_manager_v3` and makes one
@@ -813,6 +813,31 @@ activation are the next steps):
   after the focus arrives.  A committed string cannot be tested here, because
   there is no input method client on a headless sway; the half that belongs to
   the toolkit is what the gate covers.
+- `fxscale_wayland.cpp` reads the scale of the compositor: `wl_output.scale` per
+  output, `wp_fractional_scale_v1.preferred_scale` per surface, and
+  `wl_surface.enter`/`leave` to know which outputs a surface is on.  The scale of
+  a surface is the largest of its outputs, and the fractional one wins where the
+  compositor offers it, because a 1.5 screen cannot be expressed otherwise.
+- The device pixels of the toolkit stay what the application draws into.  A
+  window of 400 logical pixels is 600 device pixels at scale 1.5, metrics and
+  fonts grow with the scale through `FXApp::setMonitorScale()` (which is
+  `setDisplayScaleAuto()` in the shape of a compositor scale), and
+  `wp_viewport.set_destination()` tells the compositor how many logical pixels
+  the buffer covers.  That keeps the drawing crisp: the rasterizer really fills
+  600 pixels instead of 400 that the compositor would have to stretch.
+- A compositor without `wp_viewporter` gets `wl_surface.set_buffer_scale()` with
+  the rounded scale instead, which is the only tool it understands.
+- Everything that crosses the protocol is in logical pixels and is converted at
+  the seam: the configure size, the pointer and drag positions (they become
+  device pixels), the popup positioner and size (they go back to logical).
+- The scale is applied once from the first output at `openDisplay()`, before the
+  application makes its first window, so metrics and fonts start out right
+  instead of being corrected on the first configure; and the display scale of the
+  platform defaults to `auto`, so a registry entry is what is needed to opt out.
+- `scripts/gate-wayland-scale.sh` runs `tests/dpi` on a headless sway twice, with
+  the output at scale 1 and at scale 2, and passes when the theme scale is 1.00
+  and 2.00 and the dumped frame grew from 520x320 to 1040x640 — the same window,
+  drawn in twice the pixels.
 
 - `FXComposeContext_wayland.cpp` on `zwp_text_input_v3` (preedit, commit,
   cursor rectangle).
@@ -952,6 +977,11 @@ activation are the next steps):
   headless sway, gives it the keyboard focus with `wtype` and passes when the
   wayland debug log shows `zwp_text_input_v3#N.enable()`,
   `set_cursor_rectangle(...)` and `commit()` on the wire.
+- **Scale gate:** `scripts/gate-wayland-scale.sh` runs `tests/dpi` against a
+  headless sway with the output at scale 1 and again at scale 2, and passes when
+  the theme scale is 1.00 and 2.00 and the dumped frame doubled (520x320 to
+  1040x640).  It is the check that the scale of the compositor reaches the
+  application, not just the platform.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

@@ -390,7 +390,10 @@ static void deviceEnter(void* data,wl_data_device*,uint32_t serial,wl_surface* s
   app->dragfinished=false;
   app->dragaction=FXXWL_DRAG_REJECT;
   fxwaylandTrace("drag entered a window at %d,%d\n",wl_fixed_to_int(sx),wl_fixed_to_int(sy));
-  postDrag(app,FXXWL_DNDENTER,surface,wl_fixed_to_int(sx),wl_fixed_to_int(sy),app->dragactions);
+  postDrag(app,FXXWL_DNDENTER,surface,
+           fxwaylandScaleIn(fxwaylandSurfaceOf(app,surface),wl_fixed_to_int(sx)),
+           fxwaylandScaleIn(fxwaylandSurfaceOf(app,surface),wl_fixed_to_int(sy)),
+           app->dragactions);
   }
 
 
@@ -399,7 +402,10 @@ static void deviceMotion(void* data,wl_data_device*,uint32_t time,wl_fixed_t sx,
   FXWaylandApp* app=fxwayland(data);
   if(!app || !app->dragoffer) return;
   (void)time;
-  postDrag(app,FXXWL_DNDMOTION,app->dragsurface,wl_fixed_to_int(sx),wl_fixed_to_int(sy),app->dragactions);
+  postDrag(app,FXXWL_DNDMOTION,app->dragsurface,
+           fxwaylandScaleIn(fxwaylandSurfaceOf(app,app->dragsurface),wl_fixed_to_int(sx)),
+           fxwaylandScaleIn(fxwaylandSurfaceOf(app,app->dragsurface),wl_fixed_to_int(sy)),
+           app->dragactions);
   }
 
 

@@ -145,12 +145,14 @@ static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   FXWaylandEvent ev;
   xdg_surface_ack_configure(xdsurface,serial);
   s->configured=true;
-  fxwaylandTrace("configure %u serial %u size %dx%d\n",(unsigned int)s->window,serial,s->wantw,s->wanth);
+  fxwaylandTrace("configure %u serial %u size %dx%d at scale %.3f\n",(unsigned int)s->window,serial,s->wantw,s->wanth,s->scale);
   clearElms(&ev,1);
   ev.code=FXXWL_CONFIGURE;
   ev.id=s->window;
-  ev.w=s->wantw;
-  ev.h=s->wanth;
+  s->logicalw=s->wantw;
+  s->logicalh=s->wanth;
+  ev.w=fxwaylandScaleIn(s,s->wantw);
+  ev.h=fxwaylandScaleIn(s,s->wanth);
   s->wantw=0;
   s->wanth=0;
   fxwaylandPost(s->app,ev);
@@ -246,6 +248,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->height=0;
   s->surface=wl_compositor_create_surface(app->compositor);
   if(!s->surface){ delete s; return nullptr; }
+  fxwaylandPrepareScale(app,s);
   s->xdsurface=xdg_wm_base_get_xdg_surface(app->wmbase,s->surface);
   if(!s->xdsurface){ wl_surface_destroy(s->surface); delete s; return nullptr; }
   xdg_surface_add_listener(s->xdsurface,&shellSurfaceListener,s);
@@ -365,6 +368,7 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->height=0;
   s->surface=wl_compositor_create_surface(app->compositor);
   if(!s->surface){ delete s; return false; }
+  fxwaylandPrepareScale(app,s);
   s->xdsurface=xdg_wm_base_get_xdg_surface(app->wmbase,s->surface);
   if(!s->xdsurface){ wl_surface_destroy(s->surface); delete s; return false; }
   xdg_surface_add_listener(s->xdsurface,&shellSurfaceListener,s);
@@ -376,8 +380,8 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   if(w<=0) w=here.w;
   if(h<=0) h=here.h;
   positioner=xdg_wm_base_create_positioner(app->wmbase);
-  xdg_positioner_set_size(positioner,w,h);
-  xdg_positioner_set_anchor_rect(positioner,x-place.x,y-place.y,1,1);
+  xdg_positioner_set_size(positioner,fxwaylandScaleOut(parent,w),fxwaylandScaleOut(parent,h));
+  xdg_positioner_set_anchor_rect(positioner,fxwaylandScaleOut(parent,x-place.x),fxwaylandScaleOut(parent,y-place.y),1,1);
   xdg_positioner_set_anchor(positioner,XDG_POSITIONER_ANCHOR_TOP_LEFT);
   xdg_positioner_set_gravity(positioner,XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
   xdg_positioner_set_constraint_adjustment(positioner,XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X|
@@ -429,6 +433,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
       fxwaylandFreeBuffers(s);
       freeElms(s->store);
       s->store=nullptr;
+      fxwaylandFreeScale(s);
       if(s->decoration) zxdg_toplevel_decoration_v1_destroy(s->decoration);
       if(s->toplevel) xdg_toplevel_destroy(s->toplevel);
       if(s->popup) xdg_popup_destroy(s->popup);
@@ -541,6 +546,25 @@ FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h){
 // Attach, damage and commit
 void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,FXint y,FXint w,FXint h){
   if(!surf || !buf) return;
+
+  // The buffer holds device pixels; the viewport says how many logical pixels
+  // they cover, which is where the scale of the output comes in
+  if(surf->viewport && surf->scale>0.0){
+    wp_viewport_set_destination(surf->viewport,
+                                FXint(buf->width/surf->scale+0.5),
+                                FXint(buf->height/surf->scale+0.5));
+    }
+  else{
+
+    // No viewporter: the integer scale of the surface is all the compositor
+    // knows, and a fractional one is rounded to the nearest step
+    FXint iscale=FXint(surf->scale+0.5);
+    if(iscale<1) iscale=1;
+    if(iscale!=surf->bufscale){
+      surf->bufscale=iscale;
+      wl_surface_set_buffer_scale(surf->surface,iscale);
+      }
+    }
   wl_surface_damage_buffer(surf->surface,x,y,w,h);
   wl_surface_attach(surf->surface,buf->buffer,0,0);
   wl_surface_commit(surf->surface);

@@ -194,6 +194,15 @@ the pre-edit window.  Committed text goes to the focus widget as a key event wit
   application never leaves it and the compositor sends `enter` once. Resolve the
   widget per motion event and raise `SEL_DND_ENTER`/`SEL_DND_LEAVE` yourself,
   the same way the `SEL_ENTER` chain is synthesised for menus.
+- **The scale of the compositor is not a DPI.** `wl_output.scale` is per output,
+  `wp_fractional_scale_v1.preferred_scale` is per surface in 1/120 steps, and a
+  surface learns which outputs it is on only through `wl_surface.enter/leave`.
+  Draw the bigger buffer yourself and tell the compositor the logical size with
+  `wp_viewport.set_destination()`; the fallback for a compositor without the
+  viewporter is `wl_surface.set_buffer_scale()` with a whole number.
+- **Everything on the wire is in logical pixels.** Configure sizes, pointer and
+  drag positions, and popup placement all have to be converted at the seam once
+  the client draws at the scale instead of letting the compositor stretch it.
 
 ## Map of this repository
 
@@ -247,6 +256,9 @@ the pre-edit window.  Committed text goes to the focus widget as a key event wit
   focus; checks on the wire that the text input is bound, enabled, given a caret
   rectangle and committed. A committed string needs an input method client, which
   a headless compositor does not have.
+- `scripts/gate-wayland-scale.sh` — the same application twice, with
+  `output HEADLESS-1 ... scale 1` and `scale 2`; compares the theme scale it
+  reports and the size of the dumped frame.
 - `WAYLAND_DEBUG=1` spells proxies `name#id`, not `name@id`; grep the log
   accordingly.
 - Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame

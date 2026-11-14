@@ -121,8 +121,8 @@ static void pointerEnter(void* data,wl_pointer*,uint32_t serial,wl_surface* surf
   if(!s) return;
   app->pointerserial=serial;
   app->pointersurface=s;
-  app->pointerx=wl_fixed_to_int(sx);
-  app->pointery=wl_fixed_to_int(sy);
+  app->pointerx=fxwaylandScaleIn(s,wl_fixed_to_int(sx));
+  app->pointery=fxwaylandScaleIn(s,wl_fixed_to_int(sy));
   fxwaylandTrace("pointer enter window %u at %d,%d\n",(unsigned int)s->window,app->pointerx,app->pointery);
   postPointer(app,s,FXXWL_ENTER,app->pointerx,app->pointery,0,app->pointerbuttons,0,0);
   }
@@ -154,8 +154,8 @@ static void pointerMotion(void* data,wl_pointer*,uint32_t time,wl_fixed_t sx,wl_
   FXWaylandApp* app=fxwayland(data);
   FXWaylandSurface* s=app?app->pointersurface:nullptr;
   if(!app) return;
-  app->pointerx=wl_fixed_to_int(sx);
-  app->pointery=wl_fixed_to_int(sy);
+  app->pointerx=fxwaylandScaleIn(s,wl_fixed_to_int(sx));
+  app->pointery=fxwaylandScaleIn(s,wl_fixed_to_int(sy));
   postPointer(app,s,FXXWL_MOTION,app->pointerx,app->pointery,0,app->pointerbuttons,time,0);
   }
 

@@ -565,6 +565,9 @@ public:
   /// Follow the monitor DPI for the display scale
   void setDisplayScaleAuto();
 
+  /// Follow a scale the platform reports, in the manner of setDisplayScaleAuto()
+  void setMonitorScale(FXdouble scale);
+
   /// Connection to display; this is called by init()
   virtual FXbool openDisplay(const FXchar* dpy=nullptr);
 

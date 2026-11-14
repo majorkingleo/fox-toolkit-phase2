@@ -1712,6 +1712,15 @@ void FXApp::setDisplayScaleAuto(){
 
 
 // Change theme; updates the default palette colors
+// Follow a scale the platform reports for a monitor, such as the one a Wayland
+// compositor announces per output: it is the monitor DPI in another shape
+void FXApp::setMonitorScale(FXdouble scale){
+  if(scale<=0.0) return;
+  dpicurrent=FXint(96.0*scale+0.5);
+  if(dpiautoscale) setThemeScale(dpifactor*scale);
+  }
+
+
 void FXApp::setTheme(const FXTheme& thm){
   FXbool relayout=false;
   FXint m;
