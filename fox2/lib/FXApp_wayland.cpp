@@ -134,6 +134,13 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       }
     }
 
+  // Window icons, offered by some compositors only
+  else if(strcmp(interface,xdg_toplevel_icon_manager_v1_interface.name)==0){
+    if(!app->iconmanager){
+      app->iconmanager=(xdg_toplevel_icon_manager_v1*)wl_registry_bind(registry,name,&xdg_toplevel_icon_manager_v1_interface,1);
+      }
+    }
+
   // Activation, so that a window we show can ask for the focus on its own
   else if(strcmp(interface,xdg_activation_v1_interface.name)==0){
     if(!app->activation){
@@ -210,6 +217,7 @@ void FXApp::initPlatformMembers(){
   app->output=nullptr;
   app->wmbase=nullptr;
   app->decomanager=nullptr;
+  app->iconmanager=nullptr;
   app->activation=nullptr;
   app->activtoken=nullptr;
   app->viewporter=nullptr;
@@ -390,6 +398,7 @@ FXbool FXApp::closeDisplay(){
   // The data devices hang off the seat, so they go before it
   fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
+  if(app->iconmanager){ xdg_toplevel_icon_manager_v1_destroy(app->iconmanager); app->iconmanager=nullptr; }
   fxwaylandCloseActivation(app);
   fxwaylandCloseTextInput(app);
   if(app->fsmanager){ wp_fractional_scale_manager_v1_destroy(app->fsmanager); app->fsmanager=nullptr; }

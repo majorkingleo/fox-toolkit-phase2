@@ -309,14 +309,18 @@ void FXTopWindow::place(FXuint placement){
   }
 
 
-// Set icons; the icon protocol is not bound yet, so nothing reaches the
-// compositor
+// Set icons; a compositor that offers xdg_toplevel_icon gets the pixels, the
+// others keep whatever the desktop puts there
 void FXTopWindow::seticons(){
+  FXIcon* best=icon?icon:miniIcon;
   if(icon){
     if(!icon->id()){ fxerror("%s::setIcon: illegal icon specified.\n",getClassName()); }
     }
   else if(miniIcon){
     if(!miniIcon->id()){ fxerror("%s::setMiniIcon: illegal icon specified.\n",getClassName()); }
+    }
+  if(best && xid){
+    fxwaylandSetWindowIcon(fxwayland(getApp()->getDisplay()),xid,best);
     }
   }
 

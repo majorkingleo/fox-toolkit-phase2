@@ -44,6 +44,7 @@
 #include "viewporter-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
+#include "xdg-toplevel-icon-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -53,6 +54,10 @@ struct xkb_state;
 
 
 namespace FX {
+
+
+// An icon is an image; only the pointer is ever used here
+class FXImage;
 
 
 /// Codes of the neutral raw event
@@ -109,6 +114,8 @@ struct FXWaylandSurface {
   FXint                      fscale120;  // That scale in 1/120 steps, 0 if none
   wl_output*                 outputs[FXMAX_OUTPUTS]; // Outputs the surface is on
   FXuint                     numoutputs; // Number of them
+  xdg_toplevel_icon_v1*      ticon;      // Icon of a toplevel, while setting it
+  FXWaylandBuffer*           iconbuffer; // Buffer the compositor copies it from
   FXdouble                   scale;      // Scale this surface is drawn at
   FXint                      bufscale;   // Scale told to the compositor
   FXint                      logicalw;   // Size the compositor asked for, in
@@ -179,6 +186,7 @@ struct FXWaylandApp {
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
+  xdg_toplevel_icon_manager_v1* iconmanager; // Window icons, when offered
   xdg_activation_v1*         activation;    // Tokens that justify taking the focus
   xdg_activation_token_v1*   activtoken;    // The one token we are waiting for
   wp_viewporter*             viewporter;    // Scales a buffer to a logical size
@@ -308,6 +316,10 @@ void fxwaylandExpose(FXWaylandApp* app,FXID window);
 /// Return an idle buffer of the given size, creating the pool when needed
 FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);
 
+/// Make and drop a shared memory buffer that is not part of a surface pool
+FXWaylandBuffer* fxwaylandCreateImageBuffer(FXWaylandApp* app,FXint w,FXint h);
+void fxwaylandDestroyImageBuffer(FXWaylandBuffer* buf);
+
 /// Attach the buffer, damage the rectangle and commit the surface
 void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,FXint y,FXint w,FXint h);
 
@@ -401,6 +413,10 @@ void fxwaylandFreeOutputs(FXWaylandApp* app);
 /// Give a new surface its viewport and its fractional scale, and drop them
 void fxwaylandPrepareScale(FXWaylandApp* app,FXWaylandSurface* surf);
 void fxwaylandFreeScale(FXWaylandSurface* surf);
+
+/// Give a toplevel the icon of the application, and drop the buffer again
+void fxwaylandSetWindowIcon(FXWaylandApp* app,FXID window,FXImage* image);
+void fxwaylandFreeWindowIcon(FXWaylandSurface* surf);
 
 /// Ask the compositor to activate a window of ours, and drop the plumbing
 void fxwaylandActivateWindow(FXWaylandApp* app,FXID window);

@@ -433,6 +433,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
       fxwaylandFreeBuffers(s);
       freeElms(s->store);
       s->store=nullptr;
+      fxwaylandFreeWindowIcon(s);
       fxwaylandFreeScale(s);
       if(s->decoration) zxdg_toplevel_decoration_v1_destroy(s->decoration);
       if(s->toplevel) xdg_toplevel_destroy(s->toplevel);
@@ -569,6 +570,24 @@ void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,F
   wl_surface_attach(surf->surface,buf->buffer,0,0);
   wl_surface_commit(surf->surface);
   buf->busy=true;
+  }
+
+
+// Make a buffer that belongs to no surface, such as the icon of a toplevel
+FXWaylandBuffer* fxwaylandCreateImageBuffer(FXWaylandApp* app,FXint w,FXint h){
+  if(!app || w<=0 || h<=0) return nullptr;
+  return createBuffer(app,w,h);
+  }
+
+
+// Drop such a buffer again
+void fxwaylandDestroyImageBuffer(FXWaylandBuffer* buf){
+  FXuval size;
+  if(!buf) return;
+  size=(FXuval)buf->width*buf->height*sizeof(FXColor);
+  if(buf->buffer) wl_buffer_destroy(buf->buffer);
+  if(buf->map) munmap(buf->map,size);
+  delete buf;
   }
 
 

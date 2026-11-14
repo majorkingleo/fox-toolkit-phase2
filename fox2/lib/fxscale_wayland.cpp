@@ -260,6 +260,8 @@ void fxwaylandPrepareScale(FXWaylandApp* app,FXWaylandSurface* surf){
   if(!app || !surf) return;
   surf->viewport=nullptr;
   surf->fscale=nullptr;
+  surf->ticon=nullptr;
+  surf->iconbuffer=nullptr;
   surf->fscale120=0;
   surf->numoutputs=0;
   surf->scale=1.0;

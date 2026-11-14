@@ -787,8 +787,8 @@ selection:
 
 ### Phase 9: input method, scale, settings, polish
 
-Done in this phase so far (the input method, the scale, the activation and the
-desktop settings):
+Done in this phase (the input method, the scale, the activation, the desktop
+settings and the window icon):
 
 - `fxtextinput_wayland.cpp` binds `zwp_text_input_manager_v3` and makes one
   `zwp_text_input_v3` for the seat, since the compositor does not hand out a
@@ -871,6 +871,20 @@ desktop settings):
   stands in for `gdbus` and `gsettings` with two scripts of its own and checks
   every step of the chain — nothing set, `GTK_THEME`, the GTK settings file, the
   KDE color scheme, and that the portal is asked *before* gsettings.
+- `fxtoplevelicon_wayland.cpp` binds `xdg_toplevel_icon_v1` and fills the hole in
+  `FXTopWindow::seticons()`: the pixels of the icon become a shared memory buffer
+  (premultiplied on the way, since the data of an `FXImage` is not), an icon
+  object carries them to the compositor with `set_icon()` on the toplevel, and
+  the buffer lives as long as the surface, because the compositor may read it
+  after the request.  A compositor without the protocol is told nothing and the
+  window keeps whatever the desktop puts there.
+- Idle inhibition is not done: `zwp_idle_inhibit_manager_v1` is the protocol for
+  it, but `FXApp` has no way for an application to say "do not blank the screen",
+  so there is nothing to hook it to yet.  It needs an API first, not a module.
+- `scripts/gate-wayland-icon.sh` uses KWin's virtual backend, the one compositor
+  here that offers the protocol, and checks the wire for `add_buffer` and
+  `set_icon`; it then runs the same application against headless sway and expects
+  the documented fallback.
 
 - `FXComposeContext_wayland.cpp` on `zwp_text_input_v3` (preedit, commit,
   cursor rectangle).
@@ -1023,6 +1037,10 @@ desktop settings):
   `tests/desktop` (no display) in six environments and passes when it reports
   `unknown`, `dark`, `light`, `dark`, `light` and `dark`, with the portal winning
   over gsettings.
+- **Toplevel icon gate:** `scripts/gate-wayland-icon.sh` runs `tests/icon`
+  against KWin's virtual backend and passes when the log shows `add_buffer` and
+  `set_icon`; the same application against headless sway has to report that the
+  protocol is missing.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

@@ -271,6 +271,9 @@ which is what happens for the first window of an application.
 - `scripts/gate-wayland-settings.sh` — no display at all; stands in for `gdbus`
   and `gsettings` with scripts in a private `PATH` and checks each step of the
   light/dark chain, portal first.
+- `scripts/gate-wayland-icon.sh` — KWin virtual for `xdg_toplevel_icon_v1` and
+  headless sway for the fallback; KWin is the only compositor here that offers
+  the protocol, so the icon path is checked against it.
 - **A pixel gate must hide the session bus.** The desktop preference comes from
   the portal on the bus even when `HOME` is private, so unset
   `DBUS_SESSION_BUS_ADDRESS` and `XDG_CONFIG_HOME` or the reference frame depends
