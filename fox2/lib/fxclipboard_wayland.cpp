@@ -167,9 +167,10 @@ static void clearOffer(FXWaylandApp* app,FXbool primary){
 // Hand over the data a peer asks for, if the clipboard is ours
 static void sourceSend(void* data,wl_data_source*,const char* mime,int32_t fd){
   FXWaylandApp* app=fxwayland(data);
-  FXDragType type;
   FXuchar* bytes=nullptr;
   FXuint size=0;
+  FXDragType type;
+  if(!app){ ::close(fd); return; }
   type=fxwaylandTypeFromMime(app,mime);
   if(type && fxwaylandOfferData(app,type,bytes,size,FXXWL_FROM_CLIPBOARD)){
     fxwaylandTrace("clipboard send %s, %u bytes\n",mime,size);
@@ -187,9 +188,9 @@ static void sourceSend(void* data,wl_data_source*,const char* mime,int32_t fd){
 static void sourceCancelled(void* data,wl_data_source* source){
   FXWaylandApp* app=fxwayland(data);
   if(app && app->dsource==source){
+    fxwaylandTrace("clipboard cancelled\n");
     wl_data_source_destroy(app->dsource);
     app->dsource=nullptr;
-    fxwaylandTrace("clipboard lost to a peer\n");
     fxwaylandClipboardLost(app);
     }
   }
@@ -207,14 +208,21 @@ static const wl_data_source_listener sourceListener={
 
 /*******************************************************************************/
 
-// A mime type of the offer of a peer
+static void addDragType(FXWaylandApp* app,FXDragType type,const FXString& mime);
+
+
+// A mime type of the offer of a peer; it may be the clipboard or a drag
 static void offerOffer(void* data,wl_data_offer* offer,const char* mime){
   FXWaylandApp* app=fxwayland(data);
   FXDragType type;
-  if(!app || offer!=app->doffer) return;
+  if(!app) return;
   type=fxwaylandTypeFromMime(app,mime);
-  if(type){
+  if(!type) return;
+  if(offer==app->pendingoffer || offer==app->doffer){
     addOfferType(app,type,FXString(mime),false);
+    }
+  if(offer==app->pendingoffer || offer==app->dragoffer){
+    addDragType(app,type,FXString(mime));
     }
   }
 
@@ -231,19 +239,31 @@ static const wl_data_offer_listener offerListener={
   };
 
 
-// Take over the offer of the clipboard; the compositor announces the same offer
-// twice, once as data_offer and once as the selection, and destroying it in
-// between loses its mime types and crashes on the second destroy
+// Which slot owns an offer is settled by the selection or the enter that follows
+static void takeDragOffer(FXWaylandApp* app,wl_data_offer* offer);
+static void clearDragTypes(FXWaylandApp* app);
+static void clearDrag(FXWaylandApp* app);
+static FXString mimeOfDragType(FXWaylandApp* app,FXDragType type);
+
+
 static void takeOffer(FXWaylandApp* app,wl_data_offer* offer){
   if(offer==app->doffer) return;
   if(app->doffer){
-    wl_data_offer_destroy(app->doffer);
+    clearOffer(app,false);
     app->doffer=nullptr;
     }
-  clearOffer(app,false);
   if(offer){
+    if(offer!=app->dragoffer && offer!=app->pendingoffer){
+      wl_data_offer_add_listener(offer,&offerListener,app);
+      }
     app->doffer=offer;
-    wl_data_offer_add_listener(offer,&offerListener,app);
+    }
+  app->pendingoffer=nullptr;
+
+  // The proxy belongs to the clipboard now, so the drag does not get to use it
+  if(app->dragoffer==offer){
+    app->dragoffer=nullptr;
+    clearDragTypes(app);
     }
   }
 
@@ -257,19 +277,150 @@ static void deviceSelection(void* data,wl_data_device*,wl_data_offer* offer){
   }
 
 
-// An offer announced before the selection itself
+// An offer is announced before the protocol says what it is for: enter makes it a
+// drag, selection makes it the clipboard.  Both slots take it for now, and each
+// mime type is recorded in both lists until that is settled.
 static void deviceDataOffer(void* data,wl_data_device*,wl_data_offer* offer){
   FXWaylandApp* app=fxwayland(data);
-  if(!app) return;
-  takeOffer(app,offer);
+  if(!app || !offer) return;
+  if(offer==app->pendingoffer || offer==app->doffer || offer==app->dragoffer) return;
+  // The peer of the old clipboard offer is gone, so are the types it had
+  if(app->doffer){
+    wl_data_offer_destroy(app->doffer);
+    app->doffer=nullptr;
+    clearOffer(app,false);
+    }
+  app->pendingoffer=offer;
+  wl_data_offer_add_listener(offer,&offerListener,app);
   fxwaylandTrace("data offer %p\n",(void*)offer);
   }
 
 
-static void deviceEnter(void*,wl_data_device*,uint32_t,wl_surface*,wl_fixed_t,wl_fixed_t,wl_data_offer*){}
-static void deviceLeave(void*,wl_data_device*){}
-static void deviceMotion(void*,wl_data_device*,uint32_t,wl_fixed_t,wl_fixed_t){}
-static void deviceDrop(void*,wl_data_device*){}
+// Remember one mime type of the drag that is over us
+static void addDragType(FXWaylandApp* app,FXDragType type,const FXString& mime){
+  FXString* mimes;
+  FXDragType* types;
+  if(app->numdragtypes>=app->alloceddrag){
+    FXuint n=app->alloceddrag?app->alloceddrag*2:8;
+    if(!(types=(FXDragType*)realloc(app->dragtypes,n*sizeof(FXDragType)))) return;
+    app->dragtypes=types;
+    if(!(mimes=(FXString*)realloc(app->dragmimes,n*sizeof(FXString)))) return;
+    app->dragmimes=mimes;
+    app->alloceddrag=n;
+    }
+  constructElms(&app->dragmimes[app->numdragtypes],1);
+  app->dragtypes[app->numdragtypes]=type;
+  app->dragmimes[app->numdragtypes]=mime;
+  app->numdragtypes+=1;
+  }
+
+
+// Tell the core that a drag arrived, moved, left or was dropped
+static void postDrag(FXWaylandApp* app,FXuint code,wl_surface* surface,FXint x,FXint y,FXuint action){
+  FXWaylandSurface* s;
+  FXWaylandEvent ev;
+  if(!app || !(s=fxwaylandSurfaceOf(app,surface))) return;
+  clearElms(&ev,1);
+  ev.code=code;
+  ev.id=s->window;
+  ev.x=x;
+  ev.y=y;
+  ev.button=(FXint)action;
+  fxwaylandPost(app,ev);
+  }
+
+
+// Drop what we know about the drag offer
+// Forget the mime types of the drag, without touching the proxy
+static void clearDragTypes(FXWaylandApp* app){
+  FXuint i;
+  for(i=0; i<app->numdragtypes; i++){
+    app->dragmimes[i].clear();
+    }
+  freeElms(app->dragmimes);
+  app->dragmimes=nullptr;
+  freeElms(app->dragtypes);
+  app->dragtypes=nullptr;
+  app->numdragtypes=0;
+  app->alloceddrag=0;
+  }
+
+
+static void clearDrag(FXWaylandApp* app){
+  clearDragTypes(app);
+  if(app->dragoffer && app->dragoffer!=app->doffer && app->dragoffer!=app->pendingoffer){
+    wl_data_offer_destroy(app->dragoffer);
+    }
+  app->dragoffer=nullptr;
+  }
+
+
+// Adopt the offer of the data that is being dragged
+static void takeDragOffer(FXWaylandApp* app,wl_data_offer* offer){
+  if(offer==app->dragoffer) return;
+
+  // The offer was announced before the enter, so its mime types are recorded
+  if(offer && offer==app->pendingoffer){
+    app->dragoffer=offer;
+    }
+  else{
+    clearDrag(app);
+    if(offer){
+      wl_data_offer_add_listener(offer,&offerListener,app);
+      app->dragoffer=offer;
+      }
+    }
+  app->pendingoffer=nullptr;
+
+  // The proxy is the dragged data now, not the clipboard
+  if(app->doffer==offer){
+    app->doffer=nullptr;
+    clearOffer(app,false);
+    }
+  }
+
+
+// A drag came over one of our surfaces
+static void deviceEnter(void* data,wl_data_device*,uint32_t serial,wl_surface* surface,wl_fixed_t sx,wl_fixed_t sy,wl_data_offer* offer){
+  FXWaylandApp* app=fxwayland(data);
+  if(!app || !offer) return;
+  takeDragOffer(app,offer);
+  app->dragsurface=surface;
+  app->dragserial=serial;
+  app->dragfinished=false;
+  app->dragaction=FXXWL_DRAG_REJECT;
+  fxwaylandTrace("drag entered a window at %d,%d\n",wl_fixed_to_int(sx),wl_fixed_to_int(sy));
+  postDrag(app,FXXWL_DNDENTER,surface,wl_fixed_to_int(sx),wl_fixed_to_int(sy),app->dragactions);
+  }
+
+
+// The drag moved inside the same surface
+static void deviceMotion(void* data,wl_data_device*,uint32_t time,wl_fixed_t sx,wl_fixed_t sy){
+  FXWaylandApp* app=fxwayland(data);
+  if(!app || !app->dragoffer) return;
+  (void)time;
+  postDrag(app,FXXWL_DNDMOTION,app->dragsurface,wl_fixed_to_int(sx),wl_fixed_to_int(sy),app->dragactions);
+  }
+
+
+// The drag left without a drop
+static void deviceLeave(void* data,wl_data_device*){
+  FXWaylandApp* app=fxwayland(data);
+  if(!app) return;
+  if(app->dragoffer){
+    postDrag(app,FXXWL_DNDLEAVE,app->dragsurface,0,0,app->dragaction);
+    clearDrag(app);
+    }
+  }
+
+
+// The drag was dropped on us
+static void deviceDrop(void* data,wl_data_device*){
+  FXWaylandApp* app=fxwayland(data);
+  if(!app || !app->dragoffer) return;
+  fxwaylandTrace("drag dropped, action %u\n",app->dragaction);
+  postDrag(app,FXXWL_DNDDROP,app->dragsurface,0,0,app->dragaction);
+  }
 
 
 static const wl_data_device_listener deviceListener={
@@ -280,6 +431,178 @@ static const wl_data_device_listener deviceListener={
   deviceDrop,
   deviceSelection
   };
+
+
+/*******************************************************************************/
+
+// Move between the actions of the protocol and those of the core
+static uint32_t toWaylandActions(FXuint action){
+  switch(action){
+    case FXXWL_DRAG_COPY: return WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
+    case FXXWL_DRAG_MOVE: return WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+    case FXXWL_DRAG_ASK: return WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK;
+    case FXXWL_DRAG_ACCEPT: return WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY|
+                                   WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE|
+                                   WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK;
+    }
+  return WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE;  // This protocol has no LINK
+  }
+
+
+static FXuint fromWaylandAction(uint32_t action){
+  switch(action){
+    case WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY: return FXXWL_DRAG_COPY;
+    case WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE: return FXXWL_DRAG_MOVE;
+    case WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK: return FXXWL_DRAG_ASK;
+    }
+  return FXXWL_DRAG_REJECT;
+  }
+
+
+// The actions the source allows, as a set the target can choose from
+static uint32_t preferredActions(uint32_t actions){
+  if(actions&WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY) return WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
+  if(actions&WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE) return WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+  if(actions&WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK) return WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK;
+  return WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE;
+  }
+
+
+/*******************************************************************************/
+
+// The drag source answers a peer that asks for the data, exactly like the
+// clipboard source does, with the data of the window that started the drag
+static void dragSourceSend(void* data,wl_data_source*,const char* mime,int32_t fd){
+  FXWaylandApp* app=fxwayland(data);
+  FXDragType type;
+  FXuchar* bytes=nullptr;
+  FXuint size=0;
+  type=fxwaylandTypeFromMime(app,mime);
+  if(type && fxwaylandOfferData(app,type,bytes,size,FXXWL_FROM_DRAGNDROP)){
+    fxwaylandTrace("drag send %s, %u bytes\n",mime,size);
+    writeAll(fd,bytes,size);
+    freeElms(bytes);
+    }
+  else{
+    fxwaylandTrace("drag send %s, we have no such data\n",mime);
+    ::close(fd);
+    }
+  }
+
+
+static void dragSourceTarget(void*,wl_data_source*,const char*){}
+
+static void dragSourceCancelled(void* data,wl_data_source* source){
+  FXWaylandApp* app=fxwayland(data);
+  if(app && app->dragsource==source){
+    fxwaylandTrace("drag cancelled\n");
+    app->dragaction=FXXWL_DRAG_REJECT;
+    app->dragfinished=true;
+    wl_data_source_destroy(app->dragsource);
+    app->dragsource=nullptr;
+    }
+  }
+
+
+static void dragSourceAction(void* data,wl_data_source*,uint32_t action){
+  FXWaylandApp* app=fxwayland(data);
+  if(app) app->dragaction=fromWaylandAction(action);
+  }
+
+
+static void dragSourceDropPerformed(void* data,wl_data_source*){
+  FXWaylandApp* app=fxwayland(data);
+  if(app) app->dragfinished=true;
+  }
+
+
+static void dragSourceFinished(void* data,wl_data_source*){
+  FXWaylandApp* app=fxwayland(data);
+  if(app) app->dragfinished=true;
+  }
+
+
+static const wl_data_source_listener dragSourceListener={
+  dragSourceTarget,
+  dragSourceSend,
+  dragSourceCancelled,
+  dragSourceDropPerformed,
+  dragSourceFinished,
+  dragSourceAction
+  };
+
+
+// Start dragging the types of a window; the compositor takes it from here and
+// tells us what the target does with them
+FXbool fxwaylandStartDrag(FXWaylandApp* app,FXID window,const FXDragType* types,FXuint numtypes){
+  FXWaylandSurface* s;
+  FXuint i;
+  FXuint serial;
+  FXString mime;
+  if(!app || !app->ddevice || !numtypes) return false;
+  if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
+  serial=app->pointerserial;
+  if(!serial){ fxwaylandTrace("no serial to start a drag with\n"); return false; }
+  if(app->dragsource){
+    wl_data_source_destroy(app->dragsource);
+    app->dragsource=nullptr;
+    }
+  app->dragsource=wl_data_device_manager_create_data_source(app->ddmanager);
+  if(!app->dragsource) return false;
+  wl_data_source_add_listener(app->dragsource,&dragSourceListener,app);
+  for(i=0; i<numtypes; i++){
+    if(!(mime=fxwaylandTypeName(app,types[i])).empty()){
+      wl_data_source_offer(app->dragsource,mime.text());
+      }
+    }
+  app->dragactions=toWaylandActions(FXXWL_DRAG_COPY);
+  app->dragaction=FXXWL_DRAG_REJECT;
+  app->dragfinished=false;
+  wl_data_source_set_actions(app->dragsource,toWaylandActions(FXXWL_DRAG_COPY)|toWaylandActions(FXXWL_DRAG_MOVE));
+  wl_data_device_start_drag(app->ddevice,app->dragsource,s->surface,nullptr,serial);
+  wl_display_flush(app->display);
+  fxwaylandTrace("drag started from window %u with %u types\n",(unsigned int)window,numtypes);
+  return true;
+  }
+
+
+// The drag is over; hand back the action the target took
+FXuint fxwaylandEndDrag(FXWaylandApp* app,FXID window,FXbool drop){
+  FXuint action=FXXWL_DRAG_REJECT;
+  struct pollfd pfd;
+  FXint i;
+  (void)window;
+  if(!app) return FXXWL_DRAG_REJECT;
+
+  // The drop is the release of the pointer, and the compositor tells the target
+  // about it after we get the release, so the source has to stay alive until the
+  // drag is finished: destroying it here cancels the drag before the drop lands
+  if(drop){
+    for(i=0; i<100 && !app->dragfinished; i++){
+      wl_display_flush(app->display);
+      pfd.fd=wl_display_get_fd(app->display);
+      pfd.events=POLLIN;
+      pfd.revents=0;
+      if(poll(&pfd,1,10)>0){
+        wl_display_dispatch(app->display);
+        }
+      else{
+        wl_display_dispatch_pending(app->display);
+        }
+      }
+    action=app->dragaction;
+    }
+  if(app->dragsource){
+    wl_data_source_destroy(app->dragsource);
+    app->dragsource=nullptr;
+    wl_display_flush(app->display);
+    }
+  fxwaylandTrace("drag ended with action %u\n",(unsigned int)action);
+  app->dragfinished=false;
+  app->dragaction=FXXWL_DRAG_REJECT;
+  return action;
+  }
+
 
 
 /*******************************************************************************/
@@ -538,6 +861,72 @@ static FXuchar* readOffer(FXWaylandApp* app,FXDragType type,FXuint& size,FXbool 
   data=readAll(filedes[0],size);
   fxwaylandTrace("clipboard read %s as type %u, %u bytes\n",mime.text(),(unsigned int)type,size);
   return data;
+  }
+
+
+/*******************************************************************************/
+
+// Accept the drag with a type and an action, so the source can show what will
+// happen.  The wayland of this build still names a mime type in accept().
+void fxwaylandAcceptDrag(FXWaylandApp* app,FXuint action,FXDragType type){
+  FXString mime;
+  if(!app || !app->dragoffer) return;
+  app->dragaction=action;
+  if((mime=mimeOfDragType(app,type)).empty()) return;
+  wl_data_offer_set_actions(app->dragoffer,toWaylandActions(FXXWL_DRAG_ACCEPT),toWaylandActions(action));
+  wl_data_offer_accept(app->dragoffer,app->dragserial,mime.text());
+  wl_display_flush(app->display);
+  }
+
+
+// The drop was handled: tell the source, and forget the offer
+void fxwaylandFinishDrop(FXWaylandApp* app,FXuint action){
+  if(!app || !app->dragoffer) return;
+  app->dragaction=action;
+  if(action!=FXXWL_DRAG_REJECT){
+    wl_data_offer_finish(app->dragoffer);
+    wl_display_flush(app->display);
+    }
+  clearDrag(app);
+  }
+
+
+// Types of the drag that is over us; the caller frees the list
+void fxwaylandDragTypes(FXWaylandApp* app,FXDragType*& types,FXuint& numtypes){
+  types=nullptr;
+  numtypes=0;
+  if(app && app->dragoffer && app->numdragtypes){
+    dupElms(types,app->dragtypes,app->numdragtypes);
+    numtypes=app->numdragtypes;
+    }
+  }
+
+
+// Mime type to ask the dragged data for
+static FXString mimeOfDragType(FXWaylandApp* app,FXDragType type){
+  FXuint i;
+  for(i=0; i<app->numdragtypes; i++){
+    if(app->dragtypes[i]==type) return app->dragmimes[i];
+    }
+  return FXString::null;
+  }
+
+
+// Read a type out of the data that is being dragged
+void fxwaylandDragData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size){
+  int filedes[2];
+  FXString mime;
+  data=nullptr;
+  size=0;
+  if(!app || !app->dragoffer) return;
+  if((mime=mimeOfDragType(app,type)).empty()) return;
+  if(pipe(filedes)<0) return;
+  wl_data_offer_receive(app->dragoffer,mime.text(),filedes[1]);
+  ::close(filedes[1]);
+  wl_display_flush(app->display);
+  wl_display_roundtrip(app->display);
+  data=readAll(filedes[0],size);
+  fxwaylandTrace("drag read %s as type %u, %u bytes\n",mime.text(),(unsigned int)type,size);
   }
 
 

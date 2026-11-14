@@ -325,6 +325,43 @@ void FXWindow::disable(){
     }
   }
 
+// Start dragging; the compositor takes it from here and the target tells us what
+// it does with the data
+FXbool FXWindow::beginDrag(const FXDragType* types,FXuint numtypes){
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  if(xid==0){ fxerror("%s::beginDrag: window has not yet been created.\n",getClassName()); }
+  if(!isDragging()){
+    if(!types || numtypes<1){ fxerror("%s::beginDrag: should have at least one type to drag.\n",getClassName()); }
+    if(!fxwaylandStartDrag(app,xid,types,numtypes)) return false;
+    resizeElms(getApp()->xdndTypeList,numtypes);
+    copyElms(getApp()->xdndTypeList,types,numtypes);
+    getApp()->xdndNumTypes=numtypes;
+    getApp()->ddeAction=DRAG_COPY;
+    getApp()->ansAction=DRAG_REJECT;
+    getApp()->dragWindow=this;
+    return true;
+    }
+  return false;
+  }
+
+
+// End the drag and report what the target did with it
+FXDragAction FXWindow::endDrag(FXbool drop){
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  FXDragAction action=DRAG_REJECT;
+  if(xid==0){ fxerror("%s::endDrag: window has not yet been created.\n",getClassName()); }
+  if(isDragging()){
+    action=(FXDragAction)fxwaylandEndDrag(app,xid,drop);
+    freeElms(getApp()->xdndTypeList);
+    getApp()->xdndNumTypes=0;
+    getApp()->ddeAction=DRAG_COPY;
+    getApp()->ansAction=DRAG_REJECT;
+    getApp()->dragWindow=nullptr;
+    }
+  return action;
+  }
+
+
 // Acquire the PRIMARY selection; the data is offered through the data source of
 // the connection, which asks this window when a peer wants it
 FXbool FXWindow::acquireSelection(const FXDragType* types,FXuint numtypes){

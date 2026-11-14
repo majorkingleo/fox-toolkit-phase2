@@ -575,6 +575,24 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
 /*******************************************************************************/
 
 // Dispatch a raw event
+// The widget under a point of a shell surface: the drag events of the protocol
+// give the position in surface coordinates, the table speaks screen coordinates
+static FXWindow* widgetAt(FXApp* foxapp,FXWaylandApp* app,FXID shell,FXint x,FXint y){
+  FXWaylandSurface* s;
+  const FXWinEntry* entry;
+  FXint rx=x;
+  FXint ry=y;
+  FXID id;
+  if((entry=app->childmap.getEntry(shell))!=nullptr){
+    s=fxwaylandFindSurface(app,shell);
+    rx=entry->x+x;
+    ry=entry->y+y-(s?s->barh:0);
+    }
+  id=app->childmap.hitTest(rx,ry);
+  return id?foxapp->findWindowWithId(id):nullptr;
+  }
+
+
 FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   const FXTime milliseconds=1000000;
   FXWaylandApp* app=fxwayland(display);
@@ -583,6 +601,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   FXWindow* window;
   FXWindow* ancestor;
   FXint rx,ry;
+  FXbool fresh;
   FXEvent event;
   if(!app) return false;
 
@@ -647,6 +666,73 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         return true;
         }
       return false;
+
+    // A drag is over one of our windows: the widget under the pointer decides
+    // whether it takes the drop, and with which action
+    case FXXWL_DNDENTER:
+    case FXXWL_DNDMOTION:
+    case FXXWL_DNDLEAVE:
+    case FXXWL_DNDDROP:
+      if(ev.code==FXXWL_DNDLEAVE){
+        if(dropWindow){
+          event.type=SEL_DND_LEAVE;
+          if(dropWindow->handle(this,FXSEL(SEL_DND_LEAVE,0),&event)) refresh();
+          dropWindow=nullptr;
+          }
+        return true;
+        }
+      if(ev.code==FXXWL_DNDDROP){
+        if(dropWindow){
+          fxwaylandTrace("dispatch drop to %s\n",dropWindow->getClassName());
+          event.type=SEL_DND_DROP;
+          event.target=0;
+          ansAction=DRAG_REJECT;
+          if(dropWindow->handle(this,FXSEL(SEL_DND_DROP,0),&event)) refresh();
+          fxwaylandFinishDrop(app,ansAction);
+          dropWindow=nullptr;
+          }
+        return true;
+        }
+      window=widgetAt(this,app,ev.id,ev.x,ev.y);
+      fresh=false;
+      if(window!=dropWindow){
+        if(dropWindow){
+          event.type=SEL_DND_LEAVE;
+          if(dropWindow->handle(this,FXSEL(SEL_DND_LEAVE,0),&event)) refresh();
+          }
+        dropWindow=nullptr;
+        if(window && window->isDropEnabled()){
+          dropWindow=window;
+          fresh=true;
+          }
+        }
+      if(dropWindow==nullptr) return true;
+
+      // What the source allows becomes the action the core knows
+      if(ev.button&WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY) ddeAction=DRAG_COPY;
+      else if(ev.button&WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE) ddeAction=DRAG_MOVE;
+      else if(ev.button&WL_DATA_DEVICE_MANAGER_DND_ACTION_ASK) ddeAction=DRAG_ASK;
+      else ddeAction=DRAG_COPY;
+      ansAction=DRAG_REJECT;
+      event.type=(ev.code==FXXWL_DNDENTER || fresh)?SEL_DND_ENTER:SEL_DND_MOTION;
+      event.target=0;
+      event.root_x=ev.x;
+      event.root_y=ev.y;
+      dropWindow->translateCoordinatesFrom(event.win_x,event.win_y,root,ev.x,ev.y);
+      if(dropWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+
+      // Tell the source whether we take it, and which type we would read
+      {
+        FXDragType want=event.target;
+        FXDragType* types=nullptr;
+        FXuint numtypes=0;
+        fxwaylandDragTypes(app,types,numtypes);
+        if(want==0 && numtypes) want=types[0];
+        freeElms(types);
+        fxwaylandAcceptDrag(app,ansAction,want);
+      }
+      fxwaylandTrace("drag %s on %s, action %u\n",event.type==SEL_DND_ENTER?"enter":"motion",dropWindow->getClassName(),(unsigned int)ansAction);
+      return true;
 
     // Pointer and keyboard; where the pointer is inside the shell is in the
     // event, and the place of the shell on the screen is in the table
@@ -1115,15 +1201,43 @@ void FXApp::dragdropSetData(const FXWindow*,FXDragType,FXuchar* data,FXuint size
   }
 
 
-void FXApp::dragdropGetData(const FXWindow*,FXDragType,FXuchar*& data,FXuint& size){
+void FXApp::dragdropGetData(const FXWindow*,FXDragType type,FXuchar*& data,FXuint& size){
+  FXWaylandApp* app=fxwayland(display);
   data=nullptr;
   size=0;
+
+  // We are the source: ask the window that started the drag, the way X11 asks it
+  // through SEL_DND_REQUEST
+  if(dragWindow && dragWindow->id()){
+    event.type=SEL_DND_REQUEST;
+    event.target=type;
+    ddeData=nullptr;
+    ddeSize=0;
+    dragWindow->handle(this,FXSEL(SEL_DND_REQUEST,0),&event);
+    data=ddeData;
+    size=ddeSize;
+    ddeData=nullptr;
+    ddeSize=0;
+    }
+  else{
+    fxwaylandDragData(app,type,data,size);
+    }
   }
 
 
 void FXApp::dragdropGetTypes(const FXWindow*,FXDragType*& types,FXuint& numtypes){
+  FXWaylandApp* app=fxwayland(display);
   types=nullptr;
   numtypes=0;
+  if(dragWindow){
+    if(xdndTypeList && xdndNumTypes){
+      dupElms(types,xdndTypeList,xdndNumTypes);
+      numtypes=xdndNumTypes;
+      }
+    }
+  else{
+    fxwaylandDragTypes(app,types,numtypes);
+    }
   }
 
 

@@ -11,9 +11,11 @@
  * Usage:  wlxinject <x> <y> [<action> ...]
  *         wlxinject 40 46 down up
  *
- * Actions:  down, up, move, sleep:<ms>, rightdown, rightup
+ * Actions:  down, up, move, move:<x>,<y>, sleep:<ms>, rightdown, rightup
  *
- * The coordinates are layout coordinates, the same ones grim reports.
+ * The coordinates are layout coordinates, the same ones grim reports.  A plain
+ * move goes to the point given on the command line, move:<x>,<y> goes to a new
+ * one, which is what a drag needs.
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -108,6 +110,18 @@ int main(int argc,char* argv[]){
       }
     else if(strcmp(argv[i],"move")==0){
       zwlr_virtual_pointer_v1_motion_absolute(pointer,timestamp(),(uint32_t)x,(uint32_t)y,extentw,extenth);
+      }
+    else if(strncmp(argv[i],"move:",5)==0){
+      int nx=x,ny=y;
+      if(sscanf(argv[i]+5,"%d,%d",&nx,&ny)==2){
+        x=nx;
+        y=ny;
+        zwlr_virtual_pointer_v1_motion_absolute(pointer,timestamp(),(uint32_t)x,(uint32_t)y,extentw,extenth);
+        }
+      else{
+        fprintf(stderr,"wlxinject: bad position %s\n",argv[i]);
+        return 2;
+        }
       }
     else if(strncmp(argv[i],"sleep:",6)==0){
       pause_ms((unsigned)atoi(argv[i]+6));

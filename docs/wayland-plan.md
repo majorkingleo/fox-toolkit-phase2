@@ -671,8 +671,7 @@ Done in this phase so far (the popup role, menus with a submenu and tool tips):
 
 ### Phase 8: clipboard, selection, drag and drop
 
-Done in this phase so far (the clipboard and the primary selection; drag and drop
-is the next step):
+Done in this phase (the clipboard, the primary selection and drag and drop):
 
 - `fxclipboard_wayland.cpp` binds `wl_data_device_manager` (core protocol, no XML
   needed) and `zwp_primary_selection_device_manager_v1` (vendored already), makes
@@ -731,6 +730,46 @@ is the next step):
   buffer and crashed in `FXRaster::blend()`.  `fxwaylandBindWindow()` now clips
   the drawable to the store and reports an empty drawable when nothing is left.
 
+Drag and drop is the same data path, started by a gesture instead of by a
+selection:
+
+- A press that turns into a drag calls `wl_data_device.start_drag()` with a
+  `wl_data_source` of the window, the serial of the press, and no icon.  The
+  source only reports `dnd_finished` or `cancelled`, so `endDrag()` waits up to a
+  second for that answer before it destroys the source: destroying it earlier
+  tells the compositor the drag is off and the drop of the target is lost, which
+  is exactly what the gate showed when the wait was missing.
+- The target sees `enter`, `motion`, `leave` and `drop` on the data device with a
+  `wl_data_offer`; the mime types of that offer are read when it is announced,
+  and `accept(mime)` with `set_actions()` tells the source which mime type and
+  which action the target wants.  In this wayland build `wl_data_offer.accept()`
+  still takes a mime type rather than an action, and the action enum has no
+  `LINK`, so `FXXWL_DRAG_LINK` is dropped and `COPY` and `MOVE` are preferred.
+- **An offer arrives before the protocol says what it is for**: `data_offer`
+  carries the mime types, `selection` makes it the clipboard and `enter` makes it
+  a drag, and the two may follow in either order.  Both slots of the platform
+  take the offer while it is pending and every mime type is recorded in both
+  lists; the slot that loses the race drops its list, not the proxy, because the
+  same proxy is still held by the other one.  Adopting a sticky offer at `enter`
+  used to clear the list that had just been filled, and that is what made the
+  target accept nothing and the compositor cancel the drag.
+- A stale clipboard offer is dropped when the next one is announced, not when the
+  `selection` event comes: the mime types of the new offer are already recorded
+  by then, and clearing the list at `selection` threw them away with the old
+  ones.  Same symptom, different place.
+- All windows share one `wl_surface`, so a drag that stays inside the
+  application never leaves the surface and the compositor sends `enter` once,
+  over the widget that started the drag.  The target therefore has to be found
+  per motion event: the window under the pointer is resolved through `FXWinMap`
+  and, when it changes, `SEL_DND_ENTER` is raised for it and the previous one
+  gets `SEL_DND_LEAVE`.  Without that the widget under the pointer never hears
+  about the drag.
+- `scripts/gate-wayland-dnd.sh` runs `tests/dnd` and drags the label of the
+  source into the target: press, move out of the source, move over the target,
+  release.  The moves matter, since the compositor only starts delivering the
+  drag after the pointer left the surface of the source; `wlxinject` got
+  `move:<x>,<y>` for it.
+
 - `wl_data_device`: clipboard via data source/offer; `primary-selection` for
   the X-style primary selection; lazy data (the offer is read when the peer
   asks, through a pipe handled as an input handle).
@@ -742,8 +781,9 @@ is the next step):
   `wl_data_device.start_drag` and the drag surface; drop actions mapped to
   `DRAG_COPY/MOVE/LINK/ASK`.
 - Acceptance: copy and paste of text between FOX and a non-FOX Wayland client,
-  and a drag of a file list in both directions.  The first half is done; drag and
-  drop itself is not.
+  and a drag of a file list in both directions.  Text is done in both
+  directions; the file list (`text/uri-list` on the source, `urilistType` on the
+  target) still has no gate.
 
 ### Phase 9: input method, scale, settings, polish
 
@@ -875,6 +915,12 @@ is the next step):
   `selection pasted "peer selection for fox"`).  wlclip uses the wlr data control
   protocol, since `wl_data_device` would only reach a client with the keyboard
   focus.
+- **Drag and drop gate:** `scripts/gate-wayland-dnd.sh` runs `tests/dnd` against
+  headless sway and drags the text label of the source into the target with the
+  virtual pointer: press at `500,60`, move to `500,200` (out of the source
+  surface), move to `500,140` (the target), release.  It passes when the trace
+  says `drag started from window 3 with 2 types`, `drag entered the target` and
+  `dropped "dragged text for the target"`.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

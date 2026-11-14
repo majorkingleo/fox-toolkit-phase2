@@ -65,7 +65,11 @@ enum {
   FXXWL_WHEEL      = 9,         // Mouse wheel turned
   FXXWL_FOCUSIN    = 10,        // The keyboard focus is on a shell
   FXXWL_FOCUSOUT   = 11,        // The keyboard focus left a shell
-  FXXWL_POPUPDONE  = 12         // The compositor dismissed a popup
+  FXXWL_POPUPDONE  = 12,        // The compositor dismissed a popup
+  FXXWL_DNDENTER   = 13,        // A drag entered a window
+  FXXWL_DNDMOTION  = 14,        // A drag moved, or went to another window
+  FXXWL_DNDLEAVE   = 15,        // A drag left the window
+  FXXWL_DNDDROP    = 16         // A drag was dropped
   };
 
 
@@ -153,6 +157,18 @@ struct FXWaylandApp {
   zwp_primary_selection_device_v1*         psdevice;
   zwp_primary_selection_source_v1*         pssource;
   zwp_primary_selection_offer_v1*          psoffer;
+  wl_data_source*          dragsource;      // What we are dragging
+  wl_data_offer*           dragoffer;       // What a peer drags over us
+  wl_data_offer*           pendingoffer;    // Announced, not yet a drag or clipboard
+  FXDragType*              dragtypes;       // Drag types of that offer
+  FXString*               dragmimes;       // Mime type of each of them
+  FXuint                   numdragtypes;    // Number of types being dragged
+  FXuint                   alloceddrag;     // Allocated entries
+  FXuint                   dragactions;     // Actions the source allows
+  FXuint                   dragaction;      // Action the target picked
+  FXuint                   dragserial;      // Serial of the drag enter
+  FXbool                   dragfinished;    // The drag is over
+  wl_surface*              dragsurface;     // Surface the drag is over
   FXString*         typenames;          // Mime name of every drag type
   FXuint            numtypes;           // Number of registered drag types
   FXuint            allocedtypes;       // Allocated entries
@@ -297,12 +313,39 @@ enum {
   FXXWL_FROM_DRAGNDROP=2                // Drag and drop
   };
 
+/// Drag and drop actions, with the values of FXDragAction of the core
+enum {
+  FXXWL_DRAG_REJECT=0,                  // Reject all drop actions
+  FXXWL_DRAG_ASK=1,                     // Ask
+  FXXWL_DRAG_COPY=2,                    // Copy
+  FXXWL_DRAG_MOVE=3,                    // Move
+  FXXWL_DRAG_LINK=4,                    // Link
+  FXXWL_DRAG_PRIVATE=5,                 // Private
+  FXXWL_DRAG_ACCEPT=6                   // Accept any of them
+  };
+
 /// Ask the application for the data of a drag type it offers
 FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size,FXuint origin);
 
 /// Tell the application that the clipboard or the selection went to a peer
 void fxwaylandClipboardLost(FXWaylandApp* app);
 void fxwaylandSelectionLost(FXWaylandApp* app);
+
+/// Offer a drag of the given types from a window; false when it could not start
+FXbool fxwaylandStartDrag(FXWaylandApp* app,FXID window,const FXDragType* types,FXuint numtypes);
+
+/// End the drag a window started, and report the action the target took
+FXuint fxwaylandEndDrag(FXWaylandApp* app,FXID window,FXbool drop);
+
+/// Types offered by the drag that is over us, and their data
+void fxwaylandDragTypes(FXWaylandApp* app,FXDragType*& types,FXuint& numtypes);
+void fxwaylandDragData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
+
+/// Accept the drag with a type and an action, so the source can show it
+void fxwaylandAcceptDrag(FXWaylandApp* app,FXuint action,FXDragType type);
+
+/// Finish the drag that was dropped and drop what we know about it
+void fxwaylandFinishDrop(FXWaylandApp* app,FXuint action);
 
 /// Add the listener of the primary selection device once it exists
 void fxwaylandAttachSelectionDevice(FXWaylandApp* app);

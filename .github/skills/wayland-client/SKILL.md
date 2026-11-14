@@ -87,6 +87,15 @@ with `wl_data_device.selection`) for a mime type and reads the pipe.  Primary
 selection is the same with `zwp_primary_selection_device_manager_v1`.  Text mime
 types are `text/plain` and `text/plain;charset=utf-8`.
 
+**Drag and drop.** A gesture calls
+`wl_data_device_start_drag(device, source, origin_surface, icon, serial)`; the
+source then only reports `cancelled`, `drop_performed` or `dnd_finished`.  The
+target receives `enter`, `motion`, `leave` and `drop` with a `wl_data_offer`,
+answers with `wl_data_offer_set_actions()` and
+`wl_data_offer_accept(offer, serial, mime)`, and finishes with
+`wl_data_offer_finish()`.  Both sides read the payload from the pipe that
+`wl_data_offer_receive()` produces.
+
 ## Rules that each cost a bug here
 
 - **One field for the event code.** The neutral event struct in this repository
@@ -157,6 +166,26 @@ types are `text/plain` and `text/plain;charset=utf-8`.
 - **An offer arrives twice** (`data_offer`, then `selection`) with the *same*
   proxy. Destroying it in between, or installing the listener twice, loses its
   mime types and crashes on the second destroy; track it by identity.
+- **A `data_offer` carries the mime types before anything says what it is for.**
+  `selection` makes it the clipboard, `enter` makes it a drag, and either can
+  come first. Keep the pending offer and record every mime type in both lists;
+  the slot that loses the race drops its *list*, never the shared proxy.
+- **Do not clear the clipboard list at `selection` or the drag list at `enter`.**
+  The mime types of the new offer are already recorded by then, so clearing
+  there throws away the offer that is being adopted — the target then accepts
+  nothing and the source sees `cancelled` after the drop. Drop the stale offer
+  when the next `data_offer` is announced instead.
+- **`endDrag()` must not destroy the source before the compositor answers.** In
+  a self-drag (both widgets in one client) `drop` reaches the target only after
+  the source has answered; destroying the `wl_data_source` early cancels the
+  drag and the target never reads the data. Wait for `dnd_finished`/`cancelled`.
+- **`wl_data_offer_accept()` takes a mime type in this wayland build**
+  (`wl_data_offer.accept(offer, serial, mime)`), not an action, and the action
+  enum has only `NONE`, `COPY`, `MOVE` and `ASK` — there is no `LINK`.
+- **All windows of the client may share one `wl_surface`**, so a drag inside the
+  application never leaves it and the compositor sends `enter` once. Resolve the
+  widget per motion event and raise `SEL_DND_ENTER`/`SEL_DND_LEAVE` yourself,
+  the same way the `SEL_ENTER` chain is synthesised for menus.
 
 ## Map of this repository
 
@@ -202,6 +231,10 @@ types are `text/plain` and `text/plain;charset=utf-8`.
 - `scripts/gate-wayland-clipboard.sh` — `tests/clipboard` plus `scripts/wlclip.c`
   as the peer, in both directions (FOX copies, peer reads; peer writes, FOX
   pastes). wlclip uses `zwlr_data_control_v1`.
+- `scripts/gate-wayland-dnd.sh` — `tests/dnd` and the same injector: press on the
+  source, `move:` out of its surface, `move:` onto the target, release. The
+  intermediate moves are required, because the compositor only starts delivering
+  the drag once the pointer has left the surface of the source.
 - Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame
   with `FOX_WAYLAND_DUMP`.
 - `FOX_WAYLAND_TRACE=1` prints connect, configure, expose, bind, commit, seat
