@@ -268,6 +268,13 @@ which is what happens for the first window of an application.
   reports and the size of the dumped frame.
 - `scripts/gate-wayland-activation.sh` — `WAYLAND_DEBUG=1`; follows the token
   request, the `done` answer and the `activate` call on the wire.
+- `scripts/gate-wayland-settings.sh` — no display at all; stands in for `gdbus`
+  and `gsettings` with scripts in a private `PATH` and checks each step of the
+  light/dark chain, portal first.
+- **A pixel gate must hide the session bus.** The desktop preference comes from
+  the portal on the bus even when `HOME` is private, so unset
+  `DBUS_SESSION_BUS_ADDRESS` and `XDG_CONFIG_HOME` or the reference frame depends
+  on the desktop of whoever runs the gate.
 - A build that only prints `exit: 0` can still have failed in CMake: grep the
   build log for `CMake Error`, not only for compiler errors, and check that the
   object file of a file you just edited is newer than it.

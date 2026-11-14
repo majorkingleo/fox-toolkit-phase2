@@ -9,8 +9,9 @@
 # no decorations, so the frame also exercises the client side title bar. The bar
 # height is part of the dumped file name and is skipped before comparing.
 #
-# The application gets a private HOME so that it reads the built-in "classic"
-# theme instead of the desktop's light/dark preference, and every committed
+# The application gets a private HOME and no session bus, so that it reads the
+# built-in "classic" theme instead of the desktop's light/dark preference (the
+# portal answers on the bus even when HOME is private), and every committed
 # buffer is dumped. The dump is compared with the X11 screenshot, pixel by
 # pixel.
 #
@@ -96,6 +97,11 @@ chmod 700 "$RUN/runtime"
 export XDG_RUNTIME_DIR="$RUN/runtime"
 export HOME="$RUN/home"
 unset DISPLAY WAYLAND_DISPLAY
+
+# The desktop preference is asked from the portal on the session bus, and from
+# the GTK and KDE files in HOME; both have to be out of reach, or the frame
+# depends on the desktop of whoever runs the gate
+unset DBUS_SESSION_BUS_ADDRESS DBUS_SYSTEM_BUS_ADDRESS XDG_CONFIG_HOME
 
 echo "==> starting headless weston"
 weston --backend=headless-backend.so --socket=wayland-fox --no-config --idle-time=0 --log="$RUN/weston.log" &

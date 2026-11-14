@@ -6,7 +6,11 @@ LDADD = $(top_builddir)/lib/libFOX-1.7.la -lm
 
 noinst_PROGRAMS = hello button dpi popup click menus tooltip clipboard dnd
 
+# Console tests need no display
+noinst_PROGRAMS += desktop
+
 hello_SOURCES = hello.cpp
+desktop_SOURCES = desktop.cpp
 button_SOURCES = button.cpp
 dpi_SOURCES = dpi.cpp
 popup_SOURCES = popup.cpp

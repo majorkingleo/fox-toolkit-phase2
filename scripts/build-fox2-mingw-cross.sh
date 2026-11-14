@@ -184,7 +184,7 @@ echo "==> build library"
 run make -j"$jobs" -C lib
 
 echo "==> build tests"
-run make -j"$jobs" -C tests hello.exe button.exe dpi.exe raster.exe region.exe glyphs.exe winmap.exe
+run make -j"$jobs" -C tests hello.exe button.exe dpi.exe desktop.exe raster.exe region.exe glyphs.exe winmap.exe
 
 echo
 echo "==> artifacts"

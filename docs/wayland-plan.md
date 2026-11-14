@@ -787,8 +787,8 @@ selection:
 
 ### Phase 9: input method, scale, settings, polish
 
-Done in this phase so far (the input method, the scale and the activation; the
-settings are the next step):
+Done in this phase so far (the input method, the scale, the activation and the
+desktop settings):
 
 - `fxtextinput_wayland.cpp` binds `zwp_text_input_manager_v3` and makes one
   `zwp_text_input_v3` for the seat, since the compositor does not hand out a
@@ -853,6 +853,24 @@ settings are the next step):
   sway with wayland debug output and follows the whole round trip on the wire:
   the token is requested and committed, `done(...)` comes back with a name, and
   `activate(...)` is called with it.
+- `FXDesktopSettings_wayland.cpp` replaces the POSIX module on this platform and
+  asks the desktop for its light/dark preference through
+  `org.freedesktop.portal.Settings` first, since that is the only source a
+  sandboxed application can reach, and through gsettings when no portal runs.
+  The library links no D-Bus: the one call that is needed is made with gdbus,
+  which is part of GLib and present wherever a portal is.  The environment
+  variable, the GTK settings file and the KDE globals are still read by the
+  platform neutral `FXDesktopSettings.cpp` before either is asked, so nothing
+  was duplicated.
+- The first thing this step broke was the hello pixel gate: the portal answers on
+  the session bus even when `HOME` is private, so the frame came out in the
+  light or dark classic theme depending on the desktop of whoever ran the gate.
+  The gate now hides `DBUS_SESSION_BUS_ADDRESS` and `XDG_CONFIG_HOME` as well as
+  `HOME`, which is what a pixel gate needs from now on.
+- `scripts/gate-wayland-settings.sh` needs no display and no compositor: it
+  stands in for `gdbus` and `gsettings` with two scripts of its own and checks
+  every step of the chain — nothing set, `GTK_THEME`, the GTK settings file, the
+  KDE color scheme, and that the portal is asked *before* gsettings.
 
 - `FXComposeContext_wayland.cpp` on `zwp_text_input_v3` (preedit, commit,
   cursor rectangle).
@@ -1001,6 +1019,10 @@ settings are the next step):
   against a headless sway with wayland debug output and passes when the log
   shows `get_activation_token`, the token `commit`, the `done(...)` answer and
   the `activate(...)` that follows.
+- **Desktop settings gate:** `scripts/gate-wayland-settings.sh` runs
+  `tests/desktop` (no display) in six environments and passes when it reports
+  `unknown`, `dark`, `light`, `dark`, `light` and `dark`, with the portal winning
+  over gsettings.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the
