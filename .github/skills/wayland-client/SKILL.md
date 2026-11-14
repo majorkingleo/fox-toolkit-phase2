@@ -104,6 +104,13 @@ one context per seat; the compositor decides which surface it belongs to with
 the pre-edit window.  Committed text goes to the focus widget as a key event with
 `event.text`, as XIM does on X11.
 
+**Activation.** A client cannot raise or focus its own windows. It calls
+`xdg_activation_v1.get_activation_token()`, sets the serial of the input event
+that caused the request (and the surface) on the token, commits it, and then
+calls `xdg_activation_v1.activate(name, surface)` with the name that arrives in
+the token's `done` event. Without a serial the compositor may still grant it,
+which is what happens for the first window of an application.
+
 ## Rules that each cost a bug here
 
 - **One field for the event code.** The neutral event struct in this repository
@@ -259,6 +266,11 @@ the pre-edit window.  Committed text goes to the focus widget as a key event wit
 - `scripts/gate-wayland-scale.sh` — the same application twice, with
   `output HEADLESS-1 ... scale 1` and `scale 2`; compares the theme scale it
   reports and the size of the dumped frame.
+- `scripts/gate-wayland-activation.sh` — `WAYLAND_DEBUG=1`; follows the token
+  request, the `done` answer and the `activate` call on the wire.
+- A build that only prints `exit: 0` can still have failed in CMake: grep the
+  build log for `CMake Error`, not only for compiler errors, and check that the
+  object file of a file you just edited is newer than it.
 - `WAYLAND_DEBUG=1` spells proxies `name#id`, not `name@id`; grep the log
   accordingly.
 - Screenshot a session with `grim -o HEADLESS-1` (sway) or from a dumped frame

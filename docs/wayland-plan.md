@@ -787,8 +787,8 @@ selection:
 
 ### Phase 9: input method, scale, settings, polish
 
-Done in this phase so far (the input method and the scale; the settings and the
-activation are the next steps):
+Done in this phase so far (the input method, the scale and the activation; the
+settings are the next step):
 
 - `fxtextinput_wayland.cpp` binds `zwp_text_input_manager_v3` and makes one
   `zwp_text_input_v3` for the seat, since the compositor does not hand out a
@@ -838,6 +838,21 @@ activation are the next steps):
   the output at scale 1 and at scale 2, and passes when the theme scale is 1.00
   and 2.00 and the dumped frame grew from 520x320 to 1040x640 — the same window,
   drawn in twice the pixels.
+- `fxactivation_wayland.cpp` binds `xdg_activation_v1`.  A Wayland compositor
+  does not let a client raise or focus its own windows: the client asks for an
+  activation token, the token carries the evidence that the user did something
+  that justifies the request (the serial of an input event), and only the token
+  the compositor hands back may be used, with `activate(name, surface)`.  That is
+  what `_NET_ACTIVE_WINDOW` asks for on X11, and it is why the first show of a
+  toplevel and every raise go through the same request.
+- The answer is asynchronous and the compositor may refuse, so nothing waits for
+  the focus; a client started from a terminal has no serial to show and gets a
+  token anyway, which the compositor grants for the first window of an
+  application.
+- `scripts/gate-wayland-activation.sh` runs an application against a headless
+  sway with wayland debug output and follows the whole round trip on the wire:
+  the token is requested and committed, `done(...)` comes back with a name, and
+  `activate(...)` is called with it.
 
 - `FXComposeContext_wayland.cpp` on `zwp_text_input_v3` (preedit, commit,
   cursor rectangle).
@@ -982,6 +997,10 @@ activation are the next steps):
   the theme scale is 1.00 and 2.00 and the dumped frame doubled (520x320 to
   1040x640).  It is the check that the scale of the compositor reaches the
   application, not just the platform.
+- **Activation gate:** `scripts/gate-wayland-activation.sh` runs an application
+  against a headless sway with wayland debug output and passes when the log
+  shows `get_activation_token`, the token `commit`, the `done(...)` answer and
+  the `activate(...)` that follows.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

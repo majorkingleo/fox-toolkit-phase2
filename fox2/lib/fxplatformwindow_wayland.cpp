@@ -172,6 +172,10 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
     }
   app->childmap.setShown(window,shown);
 
+  // A toplevel that appears asks for the focus; a window that is only mapped
+  // inside the client has no surface of its own and nothing to ask for
+  if(shown) fxwaylandActivateWindow(app,window);
+
   // Mapping a window exposes it, and with it everything below it, just like
   // the server does on X11; unmapping exposes what it uncovered in its parent
   if(shown){
@@ -196,8 +200,16 @@ void fxplatformReparentWindow(void* display,FXID window,FXID parent){
 void fxplatformRaiseWindow(void* display,FXID window,FXbool raised){
   FXWaylandApp* app=fxwayland(display);
   if(!app) return;
-  if(raised) app->childmap.raise(window);
-  else app->childmap.lower(window);
+  if(raised){
+    app->childmap.raise(window);
+
+    // Raising is how the application asks for the focus; the compositor is the
+    // one that decides, so this is a request with a token and not a command
+    fxwaylandActivateWindow(app,window);
+    }
+  else{
+    app->childmap.lower(window);
+    }
   }
 
 

@@ -134,6 +134,13 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       }
     }
 
+  // Activation, so that a window we show can ask for the focus on its own
+  else if(strcmp(interface,xdg_activation_v1_interface.name)==0){
+    if(!app->activation){
+      app->activation=(xdg_activation_v1*)wl_registry_bind(registry,name,&xdg_activation_v1_interface,1);
+      }
+    }
+
   // Text input, offered by compositors that run an input method
   else if(strcmp(interface,zwp_text_input_manager_v3_interface.name)==0){
     if(!app->timanager){
@@ -203,6 +210,8 @@ void FXApp::initPlatformMembers(){
   app->output=nullptr;
   app->wmbase=nullptr;
   app->decomanager=nullptr;
+  app->activation=nullptr;
+  app->activtoken=nullptr;
   app->viewporter=nullptr;
   app->fsmanager=nullptr;
   app->outputs=nullptr;
@@ -381,6 +390,7 @@ FXbool FXApp::closeDisplay(){
   // The data devices hang off the seat, so they go before it
   fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
+  fxwaylandCloseActivation(app);
   fxwaylandCloseTextInput(app);
   if(app->fsmanager){ wp_fractional_scale_manager_v1_destroy(app->fsmanager); app->fsmanager=nullptr; }
   if(app->viewporter){ wp_viewporter_destroy(app->viewporter); app->viewporter=nullptr; }

@@ -43,6 +43,7 @@
 #include "text-input-unstable-v3-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
+#include "xdg-activation-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -178,6 +179,8 @@ struct FXWaylandApp {
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
+  xdg_activation_v1*         activation;    // Tokens that justify taking the focus
+  xdg_activation_token_v1*   activtoken;    // The one token we are waiting for
   wp_viewporter*             viewporter;    // Scales a buffer to a logical size
   wp_fractional_scale_manager_v1* fsmanager;// Exact scales, when offered
   FXWaylandOutput*           outputs;       // All outputs of the compositor
@@ -398,6 +401,10 @@ void fxwaylandFreeOutputs(FXWaylandApp* app);
 /// Give a new surface its viewport and its fractional scale, and drop them
 void fxwaylandPrepareScale(FXWaylandApp* app,FXWaylandSurface* surf);
 void fxwaylandFreeScale(FXWaylandSurface* surf);
+
+/// Ask the compositor to activate a window of ours, and drop the plumbing
+void fxwaylandActivateWindow(FXWaylandApp* app,FXID window);
+void fxwaylandCloseActivation(FXWaylandApp* app);
 
 /// Follow the scale of the outputs before the first window is created
 void fxwaylandApplyStartupScale(FXWaylandApp* app);
