@@ -171,7 +171,7 @@ static void sourceSend(void* data,wl_data_source*,const char* mime,int32_t fd){
   FXuchar* bytes=nullptr;
   FXuint size=0;
   type=fxwaylandTypeFromMime(app,mime);
-  if(type && fxwaylandOfferData(app,type,bytes,size)){
+  if(type && fxwaylandOfferData(app,type,bytes,size,FXXWL_FROM_CLIPBOARD)){
     fxwaylandTrace("clipboard send %s, %u bytes\n",mime,size);
     writeAll(fd,bytes,size);
     freeElms(bytes);
@@ -367,7 +367,7 @@ static void selectionSourceSend(void* data,zwp_primary_selection_source_v1*,cons
   FXuchar* bytes=nullptr;
   FXuint size=0;
   type=fxwaylandTypeFromMime(app,mime);
-  if(type && fxwaylandOfferData(app,type,bytes,size)){
+  if(type && fxwaylandOfferData(app,type,bytes,size,FXXWL_FROM_SELECTION)){
     fxwaylandTrace("selection send %s, %u bytes\n",mime,size);
     writeAll(fd,bytes,size);
     freeElms(bytes);
@@ -413,7 +413,7 @@ static const zwp_primary_selection_offer_v1_listener selectionOfferListener={
 
 static void primarySelection(void* data,zwp_primary_selection_device_v1*,zwp_primary_selection_offer_v1* offer){
   FXWaylandApp* app=fxwayland(data);
-  if(!app) return;
+  if(!app || offer==app->psoffer) return;
   if(app->psoffer){
     zwp_primary_selection_offer_v1_destroy(app->psoffer);
     app->psoffer=nullptr;

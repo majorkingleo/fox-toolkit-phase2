@@ -24,8 +24,12 @@ DC_XML=scripts/protocols/wlr-data-control-unstable-v1.xml
 
 COPY_BUTTON=500,60
 PASTE_BUTTON=500,100
+COPY_SELECTION_BUTTON=500,140
+PASTE_SELECTION_BUTTON=500,180
 FOXTEXT="fox text for the peer"
 PEERTEXT="peer text for fox"
+FOXSELECTION="fox selection for the peer"
+PEERSELECTION="peer selection for fox"
 
 # The pointer injector and the peer client --------------------------------
 mkdir -p -- "$OUT"
@@ -82,7 +86,7 @@ click(){
   }
 
 # FOX application ----------------------------------------------------------
-FOX_CLIPBOARD_TEXT="$FOXTEXT" FOX_WAYLAND_TRACE=1 tmp/build-fox2-wayland/bin/clipboard >>"$RUN/app.log" 2>&1 &
+FOX_CLIPBOARD_TEXT="$FOXTEXT" FOX_SELECTION_TEXT="$FOXSELECTION" FOX_WAYLAND_TRACE=1 tmp/build-fox2-wayland/bin/clipboard >>"$RUN/app.log" 2>&1 &
 app_pid=$!
 sleep 2.0
 kill -0 "$app_pid" 2>/dev/null || fail "the application did not start"
@@ -109,5 +113,26 @@ kill "$peer_pid" 2>/dev/null
 wait "$peer_pid" 2>/dev/null
 peer_pid=""
 
-echo "PASS: the clipboard works in both directions with a client that is not FOX"
+# Direction three: FOX copies to the primary selection, the peer reads -------
+echo "==> copy to the selection in FOX, read with wlclip"
+click "$COPY_SELECTION_BUTTON"
+grep -q "selection taken" "$RUN/app.log" || fail "FOX did not take the primary selection"
+got=$("$OUT/wlclip" --read-primary 2>>"$RUN/peer.log")
+[ "$got" = "$FOXSELECTION" ] || fail "the peer read \"$got\" from the selection instead of \"$FOXSELECTION\""
+echo "==> peer read from the selection: $got"
+
+# Direction four: the peer writes the selection, FOX pastes -----------------
+echo "==> write the selection with wlclip, paste in FOX"
+"$OUT/wlclip" --write-primary "$PEERSELECTION" 6 >>"$RUN/peer.log" 2>&1 &
+peer_pid=$!
+sleep 1.0
+click "$PASTE_SELECTION_BUTTON"
+sleep 0.5
+grep -q "selection pasted \"$PEERSELECTION\"" "$RUN/app.log" || fail "FOX did not paste the selection of the peer"
+echo "==> FOX pasted: $(grep 'selection pasted' "$RUN/app.log" | tail -1)"
+kill "$peer_pid" 2>/dev/null
+wait "$peer_pid" 2>/dev/null
+peer_pid=""
+
+echo "PASS: clipboard and primary selection work in both directions with a client that is not FOX"
 exit 0

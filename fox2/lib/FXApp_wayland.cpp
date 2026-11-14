@@ -972,16 +972,21 @@ FXDragType fxwaylandTypeFromMime(FXWaylandApp* app,const FXchar* mime){
   }
 
 
-// Ask the window that owns the clipboard for the data of a type; going through
-// FXWindow::getDNDData keeps the SEL_CLIPBOARD_REQUEST dance in one place
-FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size){
+// Ask the window that owns the clipboard or the selection for the data of a
+// type; going through FXWindow::getDNDData keeps the request dance in one place
+FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size,FXuint origin){
   FXApp* foxapp;
-  FXWindow* owner;
+  FXWindow* owner=nullptr;
   data=nullptr;
   size=0;
   if(!app || !(foxapp=(FXApp*)app->foxapp)) return false;
-  if((owner=foxapp->getClipboardWindow())==nullptr) return false;
-  return owner->getDNDData(FROM_CLIPBOARD,type,data,size);
+  switch(origin){
+    case FXXWL_FROM_CLIPBOARD: owner=foxapp->getClipboardWindow(); break;
+    case FXXWL_FROM_SELECTION: owner=foxapp->getSelectionWindow(); break;
+    default: break;
+    }
+  if(!owner) return false;
+  return owner->getDNDData((FXDNDOrigin)origin,type,data,size);
   }
 
 

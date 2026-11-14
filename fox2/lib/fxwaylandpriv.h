@@ -289,8 +289,16 @@ void fxwaylandSelectionTypes(FXWaylandApp* app,FXDragType*& types,FXuint& numtyp
 void fxwaylandClipboardData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
 void fxwaylandSelectionData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
 
+/// Which board a data request is about; the values are those of FXDNDOrigin of
+/// the core, which the platform modules cannot include
+enum {
+  FXXWL_FROM_SELECTION=0,               // Primary selection
+  FXXWL_FROM_CLIPBOARD=1,               // Clipboard
+  FXXWL_FROM_DRAGNDROP=2                // Drag and drop
+  };
+
 /// Ask the application for the data of a drag type it offers
-FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size);
+FXbool fxwaylandOfferData(FXWaylandApp* app,FXDragType type,FXuchar*& data,FXuint& size,FXuint origin);
 
 /// Tell the application that the clipboard or the selection went to a peer
 void fxwaylandClipboardLost(FXWaylandApp* app);

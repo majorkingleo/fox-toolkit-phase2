@@ -701,12 +701,16 @@ is the next step):
   a peer took over reads the peer's data and not ours.  Without it the
   application kept serving its own copy, which is what the gate showed first.
 - The X11 primary selection works the same way through
-  `zwp_primary_selection_*`, and is skipped when the compositor does not offer
-  the protocol.
+  `zwp_primary_selection_*`, with the data asked from the window that owns the
+  selection (`SEL_SELECTION_REQUEST`), and is skipped when the compositor does
+  not offer the protocol.  `wlclip` got `--read-primary` and `--write-primary`
+  for it, since the data control protocol carries the primary selection from
+  version 2 on.
 - `scripts/gate-wayland-clipboard.sh` runs `tests/clipboard` against headless
-  sway, copies in FOX and reads the text with `scripts/wlclip.c`, then has
-  wlclip write a text and pastes it in FOX.  Both directions pass: the peer is
-  never a FOX client, which is the acceptance of this phase.
+  sway and checks all four directions: copy in FOX and read with
+  `scripts/wlclip.c`, write with wlclip and paste in FOX, and the same pair for
+  the primary selection.  The peer is never a FOX client, which is the
+  acceptance of this phase for text.
 - wlclip speaks `zwlr_data_control_v1` rather than `wl_data_device`, and that is
   a finding of its own: **a compositor sends the clipboard selection of
   `wl_data_device` only to the client that holds the keyboard focus**, so a
@@ -718,6 +722,10 @@ is the next step):
   initialised, so `resizeElms()` reallocated a wild pointer; and `clearOffer()`
   reset the pointers but not the allocation counts, so the next offer wrote
   through a freed one.
+- Offers have to be tracked by identity: the compositor announces the same offer
+  twice (`data_offer`, then `selection`) and both slots of the peer client can
+  end up holding the same proxy, which then gets destroyed twice.  This cost one
+  crash in the module and one in `wlclip` before the guards were in place.
 - A third one was older: the rasterizer writes straight into the backing store,
   so a window whose geometry hangs out of the store ran past the end of the
   buffer and crashed in `FXRaster::blend()`.  `fxwaylandBindWindow()` now clips
@@ -860,11 +868,13 @@ is the next step):
   *without* a grab (`create popup for window 2 under 3 at +197+143 52x24 without
   grab`).  A tool tip never grabs, so the click that follows is not eaten.
 - **Clipboard gate:** `scripts/gate-wayland-clipboard.sh` runs `tests/clipboard`
-  against headless sway with `scripts/wlclip.c` as the peer in both directions:
-  FOX copies `fox text for the peer` and wlclip prints it, then wlclip writes
-  `peer text for fox` and FOX prints `pasted "peer text for fox"`.  wlclip uses
-  the wlr data control protocol, since `wl_data_device` would only reach a client
-  with the keyboard focus.
+  against headless sway with `scripts/wlclip.c` as the peer and checks four
+  directions: FOX copies `fox text for the peer` and wlclip prints it, wlclip
+  writes `peer text for fox` and FOX prints `pasted "peer text for fox"`, and the
+  same pair for the primary selection (`fox selection for the peer` and
+  `selection pasted "peer selection for fox"`).  wlclip uses the wlr data control
+  protocol, since `wl_data_device` would only reach a client with the keyboard
+  focus.
 - **Decoration gate:** `scripts/gate-wayland-decoration.sh` runs the
   application against KWin's virtual backend, which is the only compositor here
   that offers `xdg-decoration` (headless weston does not), and passes when the

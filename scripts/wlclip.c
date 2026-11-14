@@ -14,6 +14,8 @@
  * Usage:
  *   wlclip --read [<mime>]          print the clipboard, exit 1 when it is empty
  *   wlclip --write <text> [<secs>]  offer a text for a while (default 5 s)
+ *   wlclip --read-primary [<mime>]  the same for the primary selection
+ *   wlclip --write-primary <text> [<secs>]
  */
 
 #define _POSIX_C_SOURCE 200809L
@@ -33,11 +35,15 @@
 static struct wl_display* display;
 static struct wl_seat* seat;
 static struct zwlr_data_control_manager_v1* manager;
+static int managerversion;
 static struct zwlr_data_control_device_v1* device;
 static struct zwlr_data_control_source_v1* source;
 static struct zwlr_data_control_offer_v1* offer;
+static struct zwlr_data_control_offer_v1* primaryoffer;
 static char offermime[8][128];
+static char primarymime[8][128];
 static int numoffermimes;
+static int numprimarymimes;
 static const char* writetext;
 
 static void writeAll(int fd,const char* text){
@@ -80,7 +86,14 @@ static const struct zwlr_data_control_source_v1_listener sourceListener={
 
 // The offer side: the mime types the clipboard holds
 static void offerOffer(void* data,struct zwlr_data_control_offer_v1* o,const char* mime){
-  (void)data; (void)o;
+  (void)data;
+  if(o==primaryoffer){
+    if(numprimarymimes<8){
+      snprintf(primarymime[numprimarymimes],sizeof(primarymime[0]),"%s",mime);
+      numprimarymimes++;
+      }
+    return;
+    }
   if(numoffermimes<8){
     snprintf(offermime[numoffermimes],sizeof(offermime[0]),"%s",mime);
     numoffermimes++;
@@ -98,13 +111,12 @@ static void takeOffer(struct zwlr_data_control_offer_v1* o){
   // as the selection; the second time there is nothing to do and the offer must
   // not be destroyed, or its mime types are lost
   if(o==offer) return;
-  if(offer){
+  if(offer && offer!=primaryoffer){
     zwlr_data_control_offer_v1_destroy(offer);
-    offer=NULL;
     }
+  offer=o;
   numoffermimes=0;
   if(o){
-    offer=o;
     zwlr_data_control_offer_v1_add_listener(o,&offerListener,NULL);
     }
   }
@@ -114,7 +126,6 @@ static void deviceDataOffer(void* data,struct zwlr_data_control_device_v1* d,str
   (void)data; (void)d;
   takeOffer(o);
   }
-
 
 static void deviceSelection(void* data,struct zwlr_data_control_device_v1* d,struct zwlr_data_control_offer_v1* o){
   (void)data; (void)d;
@@ -130,7 +141,17 @@ static void deviceFinished(void* data,struct zwlr_data_control_device_v1* d){
 
 
 static void devicePrimarySelection(void* data,struct zwlr_data_control_device_v1* d,struct zwlr_data_control_offer_v1* o){
-  (void)data; (void)d; (void)o;
+  (void)data; (void)d;
+  if(o==primaryoffer) return;
+  if(primaryoffer && primaryoffer!=offer){
+    zwlr_data_control_offer_v1_destroy(primaryoffer);
+    }
+  primaryoffer=o;
+  numprimarymimes=0;
+  if(o){
+    zwlr_data_control_offer_v1_add_listener(o,&offerListener,NULL);
+    }
+  fprintf(stderr,"wlclip: selection %s\n",o?"offered":"empty");
   }
 
 
@@ -150,7 +171,8 @@ static void registryGlobal(void* data,struct wl_registry* registry,uint32_t name
     seat=wl_registry_bind(registry,name,&wl_seat_interface,version<5?version:5);
     }
   else if(strcmp(interface,zwlr_data_control_manager_v1_interface.name)==0){
-    manager=wl_registry_bind(registry,name,&zwlr_data_control_manager_v1_interface,version<2?version:2);
+    managerversion=version<2?version:2;
+    manager=wl_registry_bind(registry,name,&zwlr_data_control_manager_v1_interface,managerversion);
     }
   }
 
@@ -194,7 +216,7 @@ int main(int argc,char** argv){
   struct timespec ts;
 
   if(argc<2){
-    fprintf(stderr,"usage: wlclip --read [<mime>] | wlclip --write <text> [<secs>]\n");
+    fprintf(stderr,"usage: wlclip --read [<mime>] | --write <text> [<secs>] | --read-primary | --write-primary <text> [<secs>]\n");
     return 2;
     }
   display=wl_display_connect(NULL);
@@ -209,12 +231,19 @@ int main(int argc,char** argv){
     fprintf(stderr,"wlclip: no data control manager or seat\n");
     return 1;
     }
+
+  // The primary selection of the data control protocol arrived in version 2
+  if(strstr(argv[1],"primary") && managerversion<2){
+    fprintf(stderr,"wlclip: the compositor data control protocol is version %d, it has no primary selection\n",managerversion);
+    return 1;
+    }
   device=zwlr_data_control_manager_v1_get_data_device(manager,seat);
   zwlr_data_control_device_v1_add_listener(device,&deviceListener,NULL);
   wl_display_roundtrip(display);
 
   // Offer a text to whoever asks for it
-  if(strcmp(argv[1],"--write")==0){
+  if(strcmp(argv[1],"--write")==0 || strcmp(argv[1],"--write-primary")==0){
+    int primary=strcmp(argv[1],"--write-primary")==0;
     int secs=argc>3?atoi(argv[3]):5;
     writetext=argc>2?argv[2]:"";
     source=zwlr_data_control_manager_v1_create_data_source(manager);
@@ -222,9 +251,14 @@ int main(int argc,char** argv){
     zwlr_data_control_source_v1_offer(source,"text/plain;charset=utf-8");
     zwlr_data_control_source_v1_offer(source,"UTF8_STRING");
     zwlr_data_control_source_v1_offer(source,"text/plain");
-    zwlr_data_control_device_v1_set_selection(device,source);
+    if(primary){
+      zwlr_data_control_device_v1_set_primary_selection(device,source);
+      }
+    else{
+      zwlr_data_control_device_v1_set_selection(device,source);
+      }
     wl_display_flush(display);
-    fprintf(stderr,"wlclip: offering \"%s\" for %d s\n",writetext,secs);
+    fprintf(stderr,"wlclip: offering \"%s\" on the %s for %d s\n",writetext,primary?"selection":"clipboard",secs);
     for(i=0; i<secs*10; i++){
       ts.tv_sec=0;
       ts.tv_nsec=100000000L;
@@ -238,13 +272,27 @@ int main(int argc,char** argv){
     return 0;
     }
 
-  // Read what the clipboard holds
+  // Read what the clipboard or the primary selection holds
   if(argc>2) mime=argv[2];
-  if(!waitForOffer(3000)){
+  if(strcmp(argv[1],"--read-primary")==0){
+    for(i=0; i<30 && !primaryoffer; i++){
+      pfd.fd=wl_display_get_fd(display);
+      pfd.events=POLLIN;
+      pfd.revents=0;
+      if(poll(&pfd,1,100)>0) wl_display_dispatch(display);
+      }
+    if(!primaryoffer){
+      fprintf(stderr,"wlclip: the selection is empty\n");
+      return 1;
+      }
+    for(i=0; i<numprimarymimes; i++) fprintf(stderr,"wlclip: offer %s\n",primarymime[i]);
+    offer=primaryoffer;
+    }
+  else if(!waitForOffer(3000)){
     fprintf(stderr,"wlclip: the clipboard is empty\n");
     return 1;
     }
-  for(i=0; i<numoffermimes; i++) fprintf(stderr,"wlclip: offer %s\n",offermime[i]);
+  for(i=0; i<numoffermimes && offer!=primaryoffer; i++) fprintf(stderr,"wlclip: offer %s\n",offermime[i]);
   if(pipe(fd)<0) return 1;
   zwlr_data_control_offer_v1_receive(offer,mime,fd[1]);
   close(fd[1]);
