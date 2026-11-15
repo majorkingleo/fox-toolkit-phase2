@@ -940,7 +940,14 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
       return false;
 
     case FXXWL_KEY:
-      window=keyboardGrabWindow?keyboardGrabWindow:getFocusWindow();
+
+      // A keyboard grab gets the key itself; otherwise it goes to the shell,
+      // which bounces it to the focus widget and then checks the accelerators,
+      // just as the X11 backend dispatches to the active window
+      window=keyboardGrabWindow;
+      if(!window && (window=getFocusWindow())!=nullptr){
+        window=window->getShell();
+        }
       if(window){
         event.type=ev.button?SEL_KEYPRESS:SEL_KEYRELEASE;
         event.time=ev.time;
@@ -957,7 +964,11 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
     case FXXWL_IME:
 
       // An input method does not press keys; it hands over the text it composed
-      window=keyboardGrabWindow?keyboardGrabWindow:getFocusWindow();
+      // to the focus widget through the shell, like a key event
+      window=keyboardGrabWindow;
+      if(!window && (window=getFocusWindow())!=nullptr){
+        window=window->getShell();
+        }
       if(window){
         event.code=0;
         event.state=0;

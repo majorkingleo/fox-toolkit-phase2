@@ -1065,6 +1065,10 @@ it.
   `tests/desktop` (no display) in six environments and passes when it reports
   `unknown`, `dark`, `light`, `dark`, `light` and `dark`, with the portal winning
   over gsettings.
+- **Keyboard gate:** `scripts/gate-wayland-keys.sh` runs the calculator against
+  headless sway, types `6/2=` with `wtype` and passes when the trace shows the
+  keys reaching the Calculator (the shell, whose accelerator table then acts)
+  and the display area of the committed frame changed.
 - **Cursor gate:** `scripts/gate-wayland-cursor.sh` runs the calculator against
   headless sway, moves one virtual pointer from the text display to a button and
   to a label, and passes when the debug log shows `set_shape(...,9)` (text) for

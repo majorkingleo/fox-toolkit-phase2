@@ -189,7 +189,7 @@ headless compositor, clicks with the virtual pointer and compares the frame
 with the X11 reference (0 of 104000 pixels differ); `scripts/run-fox2-calculator.sh`
 runs it against the current display with a private HOME.
 
-The port found and fixed three library bugs:
+The port and the first real desktop use found and fixed these library bugs:
 
 - the classic style drew button and frame chrome with theme colours instead of
   the widget's own highlight/shadow/border colours, which changed every button
@@ -198,7 +198,16 @@ The port found and fixed three library bugs:
   allocation but wrote at the tail index, so a window with ~100 children wrote
   past the queue;
 - the software rasterizer accepted an expose rectangle larger than its buffer,
-  so a compositor resize crashed it while repainting.
+  so a compositor resize crashed it while repainting;
+- the Wayland toplevel icon was not square, which KWin rejects with
+  `invalid_buffer` and a closed connection, so no window appeared on KWin;
+- a pending activation token was destroyed before its `done`, which also cost
+  the connection;
+- the Wayland backend never set a pointer cursor, so a text field kept the
+  default arrow;
+- Wayland dispatched keys straight to the focused widget instead of to the
+  shell, so the accelerator table was never consulted and the calculator's
+  digit and operator hot keys did nothing.
 
 The calculator's `main()` also needed the Wayland signal seam
 (`FXApp::addSignal`), which the other backends had.
