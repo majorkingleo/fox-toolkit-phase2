@@ -1065,6 +1065,12 @@ it.
   `tests/desktop` (no display) in six environments and passes when it reports
   `unknown`, `dark`, `light`, `dark`, `light` and `dark`, with the portal winning
   over gsettings.
+- **Preferences gate:** `scripts/gate-wayland-prefs.sh` opens the calculator's
+  preferences dialog, keeps the first committed frame of its surface and
+  compares the content area with the X11 reference (a budget of 200 pixels
+  covers the text antialiasing of the two compositors).  Without the visibility
+  check the colour page, hidden by the switcher, was painted over the settings
+  page in that first frame (8151 differing pixels).
 - **Keyboard gate:** `scripts/gate-wayland-keys.sh` runs the calculator against
   headless sway, types `6/2=` with `wtype` and passes when the trace shows the
   keys reaching the Calculator (the shell, whose accelerator table then acts)

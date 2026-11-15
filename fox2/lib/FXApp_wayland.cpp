@@ -660,8 +660,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   switch(ev.code){
     case FXXWL_EXPOSE:
       if(ev.id){
+
+        // A repaint can be queued while the widget is still visible and be
+        // dispatched after it was hidden; painting it would put a hidden pane
+        // of a switcher on top of the visible one
         window=findWindowWithId(ev.id);
-        if(window){
+        if(window && app->childmap.isVisible(ev.id)){
           event.type=SEL_PAINT;
           event.rect.x=ev.x;
           event.rect.y=ev.y;

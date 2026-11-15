@@ -207,7 +207,10 @@ The port and the first real desktop use found and fixed these library bugs:
   default arrow;
 - Wayland dispatched keys straight to the focused widget instead of to the
   shell, so the accelerator table was never consulted and the calculator's
-  digit and operator hot keys did nothing.
+  digit and operator hot keys did nothing;
+- a repaint queued while a widget was visible was still dispatched after the
+  widget had been hidden, so the first frame of the preferences dialog showed
+  the hidden colour page painted over the settings page.
 
 The calculator's `main()` also needed the Wayland signal seam
 (`FXApp::addSignal`), which the other backends had.
