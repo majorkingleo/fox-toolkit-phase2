@@ -4,8 +4,9 @@ Plan for a native Wayland platform module for `fox2`: windows backed by
 `xdg_toplevel`/`xdg_popup` surfaces, pixels delivered through `wl_shm`, input
 through `wl_seat`. It builds on the platform seam (`docs/platform-seam-plan.md`,
 seams 1 to 62) and is the first test of whether that seam is wide enough for a
-third platform. The browser thin client in `docs/modernization-plan.md` shares
-its presentation layer (phases 1 and 2 below).
+third platform. The browser thin client in `docs/modernization-plan.md` is
+deferred, but it is meant to share this presentation layer (phases 1 and 2
+below) when it is resumed, so the layers stay free of platform types.
 
 ## Goals and non-goals
 

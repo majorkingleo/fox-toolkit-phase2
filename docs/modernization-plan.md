@@ -15,8 +15,8 @@ The goals are:
 
 1. Provide configurable, consistent themes.
 2. Make Windows builds correctly DPI-aware, including DPI changes at runtime.
-3. Create an architecture seam that can support additional native platforms
-   and, as a separate experiment, a browser thin client.
+3. Create an architecture seam that can support additional native platforms;
+   a browser thin client is a separate experiment and is currently deferred.
 
 This is a proposal, not a commitment to preserve every internal ABI. Public API
 and serialization changes should be versioned and reviewed separately.
@@ -122,6 +122,9 @@ The platform adapter and presentation implementation should be selected at
 framework, or a dependency on a browser runtime for native FOX applications.
 Use small interfaces and opaque platform handles; avoid leaking X11, Win32, or
 browser-specific types into public cross-platform headers.
+
+**The browser target is deferred (2026-11-15).** The paragraphs below stay as
+constraints for when it is picked up again; they are not current work.
 
 The browser is not simply another native window backend. A browser client has
 its own event loop, input model, rendering, accessibility, and process/security
@@ -331,7 +334,13 @@ ordered next seams are in `docs/platform-seam-plan.md`.
 - The internal contract is small enough that new backends do not force
   unrelated widget rewrites.
 
-### 4. Browser thin-client prototype
+### 4. Browser thin-client prototype (deferred)
+
+**Deferred (2026-11-15).** This workstream is not part of the current sequence.
+The native backends and the platform seam come first, and the prototype needs
+both a stable seam and a stable rasterizer to build on. Nothing below is
+withdrawn: it records the design constraints and acceptance criteria for when
+the target is resumed.
 
 Treat this as a separate, optional proof of concept after the platform and
 presentation seams exist. The C++ FOX application remains authoritative for
@@ -489,11 +498,10 @@ the FOX event loop, and document the compositor versions tested.
 
 ## Recommended sequencing
 
-Status as of 2026-11-12: step 0 done on Linux/X11 and Windows/MinGW, step 1
-done (policy recorded above), step 2 core done with a defined remainder,
-step 3 core done — awareness, scale wiring, DPI-change handling, the hit-test
-audit, per-monitor font realization and the first platform seam are done;
-per-window metrics, icon/bitmap caches, and real 150/200% validation next.
+Status as of 2026-11-15: steps 0 to 3 done; the platform seam is complete for
+the core classes (seams 1 to 62 in `docs/platform-seam-plan.md`); the
+Wayland-native adapter is implemented and documented in `docs/wayland-plan.md`;
+the browser prototype is deferred.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
    baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was
@@ -516,17 +524,17 @@ per-window metrics, icon/bitmap caches, and real 150/200% validation next.
    per-window metrics, which the platform seam (step 4) must provide. Next are
    per-window metrics, DPI-aware icon/bitmap caches, and validation on real
    150/200% monitors. Reuse theme metrics.
-4. **Internal platform seam**: started. DPI awareness and DPI queries are
-   extracted behind `lib/fxplatform.h` and verified on Windows/minGW; see
-   `docs/platform-seam-plan.md` for the inventory and the ordered next seams
-   (window creation, event translation, font realization, services, drawing).
-   X11 modules still need a Linux build and run.
-5. **Browser prototype**: compare drawing-surface versus semantic-widget
-   transport on a small demo before committing to a production protocol. Ship it
-   as a separate build configuration, not as a run-time mode of the X11 build.
-6. **Additional native backend**: execute the Wayland pre-scope (workstream 5)
-   against the stable seam, then define production protocol, rendering, and
-   packaging goals from its results.
+4. **Internal platform seam** — done for the core classes: seams 1 to 62 in
+   `docs/platform-seam-plan.md` moved window creation, placement, the event
+   queue, message translation, fonts, services and drawing behind per-platform
+   modules, each gated by the X11, Win32 and cross builds.
+5. **Additional native backend**: the Wayland adapter is implemented through
+   phase 9 and documented in `docs/wayland-plan.md`; the remaining polish is
+   ordered there.
+6. **Browser prototype** — deferred: compare drawing-surface versus
+   semantic-widget transport on a small demo before committing to a production
+   protocol, once the native backends and the rasterizer are settled. Ship it as
+   a separate build configuration, not as a run-time mode of the X11 build.
 
 Do not combine a geometry/API migration, broad renderer rewrite, theme rollout,
 and browser protocol launch into one release. Each phase should be independently
@@ -541,7 +549,7 @@ usable and revertible.
 | Native backends | Build and run representative examples for each supported backend |
 | Wayland (pre-scope) | SHM rendering parity at 100/150/200% + fractional; input/keymap; `xdg_popup` dismiss; clipboard/drag-drop on ≥2 compositors |
 | Cross compile | Build Windows target from a non-Windows host; verify optional backends are excluded |
-| Browser prototype | Browser input/output, reconnect, malformed/oversized messages, loopback default, native build unaffected |
+| Browser prototype (deferred) | Browser input/output, reconnect, malformed/oversized messages, loopback default, native build unaffected |
 | Compatibility | Existing examples, public API checks, serialized settings/geometry compatibility |
 
 ## Risks and open decisions
@@ -558,12 +566,12 @@ usable and revertible.
 - **ABI/build matrix:** internal extraction must keep Autotools and Visual
   Studio projects in sync. Public class layout changes may affect ABI even when
   source compatibility is preserved.
-- **Browser fidelity:** text rendering, accessibility, IME, focus, modal
-  dialogs, OpenGL, clipboard, and drag/drop are not automatically solved by
-  serializing drawing commands.
-- **Remote operation:** exposing a server changes FOX's threat model. Keep the
-  initial prototype local-only and security review the protocol before any
-  remote deployment.
+- **Browser fidelity (deferred):** text rendering, accessibility, IME, focus,
+  modal dialogs, OpenGL, clipboard, and drag/drop are not automatically solved
+  by serializing drawing commands.
+- **Remote operation (deferred):** exposing a server changes FOX's threat model.
+  Keep the initial prototype local-only and security review the protocol before
+  any remote deployment.
 - **Wayland compositor diversity:** Mutter, KWin, and wlroots differ in
   decorations, scaling, and popup behavior. Verify the pre-scope on at least
   one of each and keep X11/XWayland as the explicit fallback until coverage is

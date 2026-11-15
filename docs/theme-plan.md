@@ -218,8 +218,8 @@ a style object. `onPaint` stays where it is, collects state, and delegates.
   event dispatches per control.
 
 The subclass/wrapper approach becomes appropriate only where the interaction
-model itself differs — a browser-presented control (workstream 4) or a genuine
-native system control — not for a native theme.
+model itself differs — a browser-presented control (workstream 4, deferred) or a
+genuine native system control — not for a native theme.
 
 ### Contract
 
