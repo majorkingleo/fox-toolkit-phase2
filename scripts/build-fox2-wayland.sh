@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 #
-# Build the fox2 library with the Wayland platform and check the Wayland gate.
+# Build the fox2 library with the Wayland platform, its tools and its tests,
+# and optionally run the applications against the compositor.
 #
-# The Wayland platform is developed in the phases of docs/wayland-plan.md.  Up
-# to phase 3 only the library is built: the test programs need FXApp, which
-# arrives with the connection in phase 4.  The --check option verifies the
+# The Wayland platform is developed in the phases of docs/wayland-plan.md.  The
+# applications (hello, button, dpi, popup, click, menus, tooltip, clipboard,
+# dnd, icon) and the console tests are built together with the library, so a
+# phase can be run as soon as it compiles.  The --check option verifies the
 # environment (compositor socket, client libraries) only.
 #
 #   ./scripts/build-fox2-wayland.sh --check
@@ -15,13 +17,13 @@
 #   --jobs=N   parallel jobs (default: all cores)
 #   --clean    delete the build directory first
 #   --run      run hello, button and the DPI test for 3 s after building
-#              (from phase 4 on; earlier the library is built only)
 #   -h|--help  show this help
 #
 # Environment:
 #   FOX_BUILD_DIR        build directory (default: tmp/build-fox2-wayland);
 #                        under WSL use the Linux file system, e.g. ~/build/fox2-wayland
-#   FOX_WAYLAND_TARGET   build target (default: FOX; use all for everything)
+#   FOX_WAYLAND_TARGET   build one CMake target instead of everything
+#                        (e.g. FOX for the library alone)
 #
 set -euo pipefail
 
@@ -36,7 +38,7 @@ clean=no
 run_test=no
 
 usage(){
-  sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -149,16 +151,30 @@ run(){
 echo "==> cmake configure"
 run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=OFF
 
-echo "==> build library"
-run cmake --build "$BUILD" --target "${FOX_WAYLAND_TARGET:-FOX}" -j "$jobs"
+echo "==> build library, tools and tests"
+if [ -n "${FOX_WAYLAND_TARGET-}" ]; then
+  run cmake --build "$BUILD" --target "$FOX_WAYLAND_TARGET" -j "$jobs"
+else
+  run cmake --build "$BUILD" -j "$jobs"
+  fi
 
 echo
 echo "==> artifacts"
 ls -l "$BUILD"/lib/*FOX* 2>/dev/null || true
+echo "$(ls "$BUILD"/bin 2>/dev/null | wc -l) test and tool binaries in $BUILD/bin"
 
 if [ "$run_test" = yes ]; then
-  echo
-  echo "warning: --run needs the GUI tests, which arrive with FXApp in phase 4" >&2
+  for prog in hello button dpi; do
+    echo
+    echo "==> running $prog for 3 seconds"
+    rc=0
+    timeout 3 "$BUILD/bin/$prog" || rc=$?
+    if [ "$rc" -eq 124 ]; then
+      echo "$prog stayed in its event loop (expected)"
+    else
+      echo "warning: $prog exited with status $rc" >&2
+      fi
+    done
   fi
 
 echo

@@ -347,8 +347,8 @@ Done in this phase so far:
   from `FXRaster`'s arcs, so `drawRoundRect()` reports false and the shared
   theme code takes its plain path. `FXCursor_wayland.cpp` only marks the cursor
   as created; the pointer surfaces are phase 6 work.
-- `scripts/build-fox2-wayland.sh` builds the library target only until phase 4
-  (`FOX_WAYLAND_TARGET=all` builds everything once FXApp exists).
+- `scripts/build-fox2-wayland.sh` builds the library, the tools and every test
+  program by default; `FOX_WAYLAND_TARGET=FOX` builds the library alone.
 - Measured on 2026-11-13: the library builds (2.3 MB) and the remaining
   undefined platform symbols went from 155 to 96 — they are `FXApp`,
   `FXWindow`, `FXShell`, `FXTopWindow`, `FXMainWindow`, `FXPopup`,

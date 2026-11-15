@@ -50,7 +50,7 @@ if ! command -v kwin_wayland >/dev/null 2>&1; then
   echo "skip: kwin_wayland not installed, no compositor here offers xdg-decoration" >&2
   exit 2
   fi
-[ -x "$BIN" ] || { echo "error: no binary at $BIN (build with FOX_WAYLAND_TARGET=all)" >&2; exit 2; }
+[ -x "$BIN" ] || { echo "error: no binary at $BIN (build with scripts/build-fox2-wayland.sh)" >&2; exit 2; }
 
 rm -rf -- "$RUN"
 mkdir -p -- "$RUN/home" "$RUN/dump"

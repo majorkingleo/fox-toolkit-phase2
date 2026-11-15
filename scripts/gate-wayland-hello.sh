@@ -75,7 +75,7 @@ while [ $# -gt 0 ]; do
 [ -n "$DUMP" ] || DUMP="$RUN/dump"
 
 if [ ! -x "$BIN" ]; then
-  echo "error: no binary at $BIN (build with FOX_WAYLAND_TARGET=all scripts/build-fox2-wayland.sh)" >&2
+  echo "error: no binary at $BIN (build with scripts/build-fox2-wayland.sh)" >&2
   exit 2
   fi
 command -v weston >/dev/null 2>&1 || { echo "error: weston not found; install weston for the headless compositor" >&2; exit 2; }

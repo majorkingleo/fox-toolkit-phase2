@@ -49,7 +49,7 @@ while [ $# -gt 0 ]; do
 [ -n "$BIN" ] || BIN="$BUILD/bin/hello"
 command -v weston >/dev/null 2>&1 || { echo "error: weston not found" >&2; exit 2; }
 python3 -c 'import PIL' >/dev/null 2>&1 || { echo "error: python3 with Pillow is needed" >&2; exit 2; }
-[ -x "$BIN" ] || { echo "error: no binary at $BIN (build with FOX_WAYLAND_TARGET=all)" >&2; exit 2; }
+[ -x "$BIN" ] || { echo "error: no binary at $BIN (build with scripts/build-fox2-wayland.sh)" >&2; exit 2; }
 
 rm -rf -- "$RUN"
 mkdir -p -- "$RUN/runtime" "$RUN/home" "$RUN/dump"
