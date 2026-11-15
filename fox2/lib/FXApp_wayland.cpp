@@ -486,6 +486,15 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
       }
     }
 
+  // Everything painted has to reach the compositor before more input is read.
+  // The idle branch further down is the other place that flushes, but a
+  // continuous stream of events (a live resize, a pointer moving over the
+  // window) keeps the queue non-empty and the poll busy, so the idle branch is
+  // never reached and the compositor stays on an old frame
+  if(initialized && app && app->display && !app->lost && app->eventcount==app->eventhead && repaints==nullptr){
+    fxwaylandFlushFrames(app);
+    }
+
   // Anything queued?
   if(!initialized || !app || !app->display || app->eventcount==app->eventhead){
 

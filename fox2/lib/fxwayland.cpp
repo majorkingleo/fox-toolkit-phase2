@@ -63,7 +63,11 @@ void fxwaylandTrace(const FXchar* format,...){
   va_list args;
   if(!traceon()) return;
   va_start(args,format);
-  fputs("fxwayland: ",stderr);
+  {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC,&ts);
+    fprintf(stderr,"fxwayland: [%ld.%03ld] ",(long)ts.tv_sec,(long)(ts.tv_nsec/1000000));
+  }
   vfprintf(stderr,format,args);
   va_end(args);
   fflush(stderr);

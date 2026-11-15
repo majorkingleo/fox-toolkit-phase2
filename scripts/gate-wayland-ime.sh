@@ -86,7 +86,7 @@ sleep 0.8
 
 failed=""
 grep -q "zwp_text_input_manager_v3" "$RUN/app.log" || failed="the manager was not bound"
-grep -q "fxwayland: text input created" "$RUN/app.log" || failed="${failed:-the text input of the seat was not created}"
+grep -q "text input created" "$RUN/app.log" || failed="${failed:-the text input of the seat was not created}"
 grep -qE "zwp_text_input_v3#[0-9]+\.enable" "$RUN/app.log" || failed="${failed:-the text input was never enabled}"
 grep -qE "zwp_text_input_v3#[0-9]+\.set_cursor_rectangle" "$RUN/app.log" || failed="${failed:-the caret rectangle was never reported}"
 grep -qE "zwp_text_input_v3#[0-9]+\.commit" "$RUN/app.log" || failed="${failed:-the text input state was never committed}"
