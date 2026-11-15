@@ -133,6 +133,8 @@
 #include "FXDesktopSettings.h"
 #include "FXApp.h"
 #include "FXGIFIcon.h"
+#include "FXBMPIcon.h"
+#include "FXBMPImage.h"
 #include "FXRegion.h"
 #include "FXDC.h"
 #include "FXDCWindow.h"

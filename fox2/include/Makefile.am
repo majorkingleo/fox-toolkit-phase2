@@ -47,6 +47,8 @@ FXArray.h \
 fxascii.h \
 FXAutoThreadStorageKey.h \
 FXBitmap.h \
+FXBMPIcon.h \
+FXBMPImage.h \
 FXButton.h \
 FXCallback.h \
 fxchar.h \

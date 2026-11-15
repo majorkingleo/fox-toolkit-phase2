@@ -18,6 +18,8 @@ FX88591Codec.cpp \
 FXAccelTable.cpp \
 FXApp.cpp \
 fxascii.cpp \
+FXBMPIcon.cpp \
+FXBMPImage.cpp \
 FXButton.cpp \
 fxchar.cpp \
 FXCheckButton.cpp \
@@ -40,6 +42,7 @@ FXFrame.cpp \
 fxfsquantize.cpp \
 FXGIFIcon.cpp \
 FXGlyphs.cpp \
+fxbmpio.cpp \
 fxgifio.cpp \
 FXGroupBox.cpp \
 FXHash.cpp \
