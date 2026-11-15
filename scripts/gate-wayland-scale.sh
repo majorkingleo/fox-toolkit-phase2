@@ -7,8 +7,11 @@
 # A Wayland compositor has no DPI: it announces a scale per output, and a client
 # that draws its own pixels has to follow it with its metrics and its fonts,
 # while telling the compositor through wp_viewport how many logical pixels the
-# buffer covers.  So the two things worth checking are the display scale the
-# application reports and that the window really grew in device pixels.
+# buffer covers.  So the three things checked are the display scale the
+# application reports, that the window grew to twice its logical size, and that
+# the buffer at scale 2 is twice that again in device pixels.  The window is
+# floated on a large output; tiled, the compositor sizes it and the two runs
+# are not comparable.
 #
 set -uo pipefail
 
@@ -33,7 +36,12 @@ run_at_scale(){
   local sock
   mkdir -p -- "$dir/home" "$dir/frames"
   chmod 700 "$dir" "$dir/home"
-  printf 'output HEADLESS-1 resolution 1024x640 scale %s bg #101010 solid_color\n' "$scale" >"$dir/config"
+  # A floating window keeps the size the application asks for; a tiled one is
+  # sized by the output, which makes the two runs incomparable
+  printf '%s\n' \
+    "output HEADLESS-1 resolution 2560x1600 scale $scale bg #101010 solid_color" \
+    'default_border pixel 0' \
+    'for_window [title="FOX DPI test"] floating enable' >"$dir/config"
   (
     export XDG_RUNTIME_DIR="$dir"
     export HOME="$dir/home"
@@ -50,7 +58,7 @@ run_at_scale(){
     export WAYLAND_DISPLAY=$(basename "$sock")
     FOX_WAYLAND_TRACE=1 FOX_WAYLAND_DUMP="$dir/frames" "$BUILD/bin/dpi" >"$dir/app.out" 2>&1 &
     local app_pid=$!
-    sleep 2.5
+    sleep 3.0
     kill "$app_pid" 2>/dev/null
     wait "$app_pid" 2>/dev/null
     kill "$sway_pid" 2>/dev/null
@@ -69,20 +77,33 @@ grep -q "compositor scale 1.000" "$RUN/scale1/app.out" || { echo "FAIL: scale 1 
 grep -q "compositor scale 2.000" "$RUN/scale2/app.out" || { echo "FAIL: scale 2 was not seen"; tail -5 "$RUN/scale2/app.out"; exit 1; }
 
 # The frame of the scaled run is the same window in more device pixels
-frame1=$(ls "$RUN/scale1/frames"/*.ppm 2>/dev/null | head -1)
-frame2=$(ls "$RUN/scale2/frames"/*.ppm 2>/dev/null | head -1)
+# The newest frame is the settled size; the first commits may still carry the
+# initial 520x320 window before the scale is known
+frame1=$(ls -t "$RUN/scale1/frames"/*.ppm 2>/dev/null | head -1)
+frame2=$(ls -t "$RUN/scale2/frames"/*.ppm 2>/dev/null | head -1)
 [ -n "$frame1" ] && [ -n "$frame2" ] || { echo "FAIL: no frames were dumped"; exit 1; }
 size1=$(sed -n 2p "$frame1")
 size2=$(sed -n 2p "$frame2")
 w1=${size1% *}
 w2=${size2% *}
 
-echo "==> scale 1: theme scale $one, frame $size1"
-echo "==> scale 2: theme scale $two, frame $size2"
+# The logical size the compositor configured; the last one is the settled size
+logical1=$(grep "configure 2 serial" "$RUN/scale1/app.out" | tail -1 | awk '{print $8}')
+logical2=$(grep "configure 2 serial" "$RUN/scale2/app.out" | tail -1 | awk '{print $8}')
+lw1=${logical1%x*}; lh1=${logical1#*x}
+lw2=${logical2%x*}; lh2=${logical2#*x}
+
+echo "==> scale 1: theme scale $one, logical ${lw1}x${lh1}, frame $size1"
+echo "==> scale 2: theme scale $two, logical ${lw2}x${lh2}, frame $size2"
 
 [ "$one" = "1.00" ] || { echo "FAIL: the theme scale at output scale 1 is $one"; exit 1; }
 [ "$two" = "2.00" ] || { echo "FAIL: the theme scale at output scale 2 is $two"; exit 1; }
-[ "$w2" -gt "$w1" ] || { echo "FAIL: the window did not grow with the scale ($w1 then $w2)"; exit 1; }
+[ "$lw2" -eq $((2*lw1)) ] && [ "$lh2" -eq $((2*lh1)) ] || {
+  echo "FAIL: the window did not grow with the scale (${lw1}x${lh1} then ${lw2}x${lh2} logical)" >&2
+  exit 1
+  }
+[ "$w1" -eq "$lw1" ] || { echo "FAIL: the scale 1 buffer is $w1 wide, the window is $lw1" >&2; exit 1; }
+[ "$w2" -eq $((2*lw2)) ] || { echo "FAIL: the scale 2 buffer is $w2 wide, the window is $lw2 logical" >&2; exit 1; }
 
 echo "PASS: the output scale reaches the application and its window grows with it"
 exit 0

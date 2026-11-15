@@ -1071,9 +1071,12 @@ it.
   `set_cursor_rectangle(...)` and `commit()` on the wire.
 - **Scale gate:** `scripts/gate-wayland-scale.sh` runs `tests/dpi` against a
   headless sway with the output at scale 1 and again at scale 2, and passes when
-  the theme scale is 1.00 and 2.00 and the dumped frame doubled (520x320 to
-  1040x640).  It is the check that the scale of the compositor reaches the
-  application, not just the platform.
+  the theme scale is 1.00 and 2.00, the window the compositor configured grew
+  from 520x320 to 1040x640 logical pixels, and the dumped frame is 520x320 and
+  2080x1280 (twice the logical size at scale 2).  It is the check that the
+  scale of the compositor reaches the application, not just the platform.  The
+  window is floated on a 2560x1600 output: a tiled window is sized by the
+  compositor, which made the two runs incomparable and the old gate fail.
 - **Activation gate:** `scripts/gate-wayland-activation.sh` runs an application
   against a headless sway with wayland debug output and passes when the log
   shows `get_activation_token`, the token `commit`, the `done(...)` answer and
