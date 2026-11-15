@@ -110,6 +110,11 @@ in `docs/modernization-plan.md`:
    compile-time build target, taken up after the native backends settle; a
    dual-mode X11 + browser binary is not planned.
 
+The next concrete milestone after these workstreams is the first real
+application: `docs/calculator-port-plan.md` ports the FOX `calculator` to
+`fox2`, lists the widgets that must exist before it builds, and defines the
+staged verification for X11, Win32 and Wayland.
+
 ## Ground rules
 
 - Do not modify code in `fox-1.7.95/` except for debugging or testing.
