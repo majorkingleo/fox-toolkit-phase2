@@ -281,11 +281,26 @@ if [ -f apps/Makefile ]; then
   run make -j"$jobs" -C apps
   fi
 
+echo "==> build utilities"
+run make -j"$jobs" -C utils
+
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*FOX* 2>/dev/null || ls -l lib/*FOX* 2>/dev/null || true
 ls -l tests/hello tests/button tests/dpi tests/raster tests/region tests/glyphs tests/winmap 2>/dev/null || true
 ls -l apps/calculator/calculator 2>/dev/null || true
+ls -l utils/reswrap 2>/dev/null || true
+
+# reswrap is standalone; a small file proves it still emits a resource array
+echo
+echo "==> reswrap smoke test"
+mkdir -p "$BUILD/reswrap-smoke"
+if run utils/reswrap -o "$BUILD/reswrap-smoke/icon.cpp" "$SRC/apps/calculator/bigcalc.gif" >/dev/null &&
+   grep -q 'const unsigned char bigcalc\[\]=' "$BUILD/reswrap-smoke/icon.cpp"; then
+  echo "reswrap generated the bigcalc array"
+else
+  echo "warning: reswrap did not generate the expected array" >&2
+  fi
 
 if [ "$run_test" = yes ]; then
   for prog in hello button dpi; do

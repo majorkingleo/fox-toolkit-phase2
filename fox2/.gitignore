@@ -18,6 +18,7 @@
 /include/fxver.h
 /include/stamp-h1
 /lib/Makefile.in
+/utils/Makefile.in
 /tools/Makefile.in
 /apps/Makefile.in
 /apps/calculator/Makefile.in

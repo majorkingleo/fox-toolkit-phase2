@@ -127,9 +127,10 @@ Exit: a smoke test opens the font dialog and lists faces.
 - New `fox2/apps/` with `apps/Makefile.am` and `apps/calculator/`.
 - Copy `Calculator.{h,cpp}`, `Preferences.{h,cpp}`, `HelpWindow.{h,cpp}`,
   `help.cpp`, `main.cpp`, `LICENSE`, the six images and `calculator.1`.
-- Reuse the checked-in `icons.cpp`/`icons.h`; the `reswrap` rule of the
-  original `Makefile.am` stays out until `fox2/utils/reswrap` is ported, so the
-  build does not depend on a tool that does not exist yet.
+- Reuse the checked-in `icons.cpp`/`icons.h`; `utils/reswrap` is ported in
+  `fox2/utils/` now, but the generated files stay checked in so the build does
+  not have to run the tool before the application.  The tool reproduces both
+  files byte for byte from the checked-in images.
 - Add `calculator` to `configure.ac` (`AC_CONFIG_FILES`) and `SUBDIRS`.
 - Build and fix API drift only: the application code is copied, not rewritten.
 Exit: `apps/calculator/calculator` builds on X11 and as a Windows cross build.
@@ -161,9 +162,11 @@ Exit: all three backends pass the checklist; differences are documented.
 - **Font enumeration**: `FXFontSelector` depends on listing faces through the
   font code the per-DPI cache changed. If enumeration regressed, fix it in the
   font seam, not in the application.
-- **Generated icons**: keeping the checked-in `icons.cpp` avoids porting
-  `utils/reswrap` (699 lines) now; port it when the generated file must change,
-  and keep both build systems in sync then.
+- **Generated icons**: `utils/reswrap` is ported (both build systems build it,
+  and the Linux/cross scripts smoke-test it).  The checked-in `icons.cpp` and
+  `icons.h` are still kept so the application builds without a generated
+  source; regenerate them with the tool when an image changes and keep both
+  build systems in sync.
 - **Theme drift**: fox2 draws buttons and labels through `FXStyle`. The classic
   theme must keep the reference pixels; if the application exposes a themed
   widget that drifts, that is a theme bug found by this port, not a reason to
@@ -254,5 +257,6 @@ JPEG, TIFF and other image codecs, `FXFileDialog`/`FXDirDialog`/
 `FXTreeList`, `FXTable`, `FXSplitter`/`FX4Splitter`, `FXToolBar`/`FXDockBar`/
 `FXMenuBar` (their headers exist, the implementations do not), `FXSwatch`,
 `FX7Segment`, `FXScrollPane`, `FXSpring`, `FXRealSpinner` and `FXCalendarView`.
-`utils/reswrap` is still unported, so the calculator keeps its checked-in
-`icons.cpp` and `icons.h`.
+`utils/reswrap` is ported in `fox2/utils/` and built by both build systems;
+the calculator still carries its checked-in `icons.cpp` and `icons.h`, which
+the tool reproduces byte for byte.

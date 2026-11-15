@@ -428,6 +428,7 @@ AC_SUBST(PLATFORM_LIBS)
 
 # Done.
 AC_CONFIG_FILES([Makefile
+utils/Makefile
 include/Makefile
 include/fxver.h
 lib/Makefile

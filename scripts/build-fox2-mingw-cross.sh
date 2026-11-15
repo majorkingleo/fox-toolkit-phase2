@@ -191,11 +191,15 @@ if [ -f apps/Makefile ]; then
   run make -j"$jobs" -C apps
   fi
 
+echo "==> build utilities"
+run make -j"$jobs" -C utils
+
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*.dll lib/.libs/*.dll.a 2>/dev/null || true
 ls -l tests/.libs/hello.exe tests/.libs/button.exe tests/.libs/dpi.exe tests/.libs/raster.exe tests/.libs/region.exe tests/.libs/glyphs.exe tests/.libs/winmap.exe 2>/dev/null || true
 ls -l apps/calculator/.libs/calculator.exe 2>/dev/null || true
+ls -l utils/.libs/reswrap.exe utils/reswrap.exe 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   # A dedicated prefix keeps the user's Wine setup untouched; the first run
@@ -265,6 +269,20 @@ if [ "$run_test" = yes ]; then
   rc=0
   timeout "$run_seconds" wine "$exe" || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: winmap exited with status $rc" >&2
+
+  echo
+  echo "==> reswrap under Wine"
+  mkdir -p reswrap-smoke
+  cp "$SRC/apps/calculator/bigcalc.gif" reswrap-smoke/
+  exe="utils/reswrap.exe"
+  [ -f "$exe" ] || exe="utils/.libs/reswrap.exe"
+  if [ -f "$exe" ] &&
+     ( cd reswrap-smoke && wine "../$exe" -o icon.cpp bigcalc.gif ) >/dev/null 2>&1 &&
+     grep -q 'const unsigned char bigcalc\[\]=' reswrap-smoke/icon.cpp; then
+    echo "reswrap generated the bigcalc array"
+  else
+    echo "warning: reswrap did not generate the expected array" >&2
+    fi
 
   echo
   echo "==> calculator under Wine for ${run_seconds} seconds"
