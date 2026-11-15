@@ -44,6 +44,8 @@
 
 #if defined(FOX_WAYLAND)
 
+#include "fxwaylandpriv.h"
+
 /*
   Notes:
 
@@ -62,6 +64,16 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+// A modal loop is the only thing that makes a dialog modal; when the
+// compositor knows the dialog relationship it can refuse the parent's input
+void fxplatformSetModalWindow(FXWindow* window,FXbool modal){
+  FXWaylandApp* app;
+  if(!window) return;
+  if((app=fxwayland(window->getApp()->getDisplay()))==nullptr) return;
+  fxwaylandSetModal(app,window->id(),modal);
+  }
+
 
 // Wayland has no process DPI awareness
 FXint fxplatformSetDPIAwareness(const FXString&){

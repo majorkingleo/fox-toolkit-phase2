@@ -45,6 +45,12 @@
 namespace FX {
 
 
+// The core filters the events of a modal loop itself; the window manager
+// already sees the owner relationship
+void fxplatformSetModalWindow(FXWindow*,FXbool){
+  }
+
+
 // DPI awareness function types, available with a recent SDK
 #if defined(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE)
 

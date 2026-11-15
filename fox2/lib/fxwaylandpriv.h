@@ -45,6 +45,7 @@
 #include "fractional-scale-v1-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
 #include "xdg-toplevel-icon-v1-client-protocol.h"
+#include "xdg-dialog-v1-client-protocol.h"
 #include "cursor-shape-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
@@ -113,6 +114,7 @@ struct FXWaylandSurface {
   xdg_toplevel*               toplevel;   // Toplevel role, for shells
   xdg_popup*                 popup;      // Popup role, for popups
   zxdg_toplevel_decoration_v1* decoration;// Who draws the title bar
+  xdg_dialog_v1*             dialog;     // Dialog role of an owned toplevel
   wp_viewport*               viewport;   // Maps the buffer onto the logical size
   wp_fractional_scale_v1*    fscale;     // The scale the compositor prefers
   FXint                      fscale120;  // That scale in 1/120 steps, 0 if none
@@ -192,6 +194,7 @@ struct FXWaylandApp {
   wl_output*        output;             // First output
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
+  xdg_wm_dialog_v1*          dialogmanager; // Modal dialog relationships, when offered
   xdg_toplevel_icon_manager_v1* iconmanager; // Window icons, when offered
   wp_cursor_shape_manager_v1* cursormanager; // Stock pointer shapes, when offered
   wp_cursor_shape_device_v1*  cursordevice;  // Shape device of the pointer
@@ -287,6 +290,9 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
 
 /// Give a window the popup role under the given parent window; false on failure
 FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h,FXbool grab);
+
+/// Mark an owned toplevel modal (or not); a compositor may block its parent
+void fxwaylandSetModal(FXWaylandApp* app,FXID window,FXbool modal);
 
 /// Ask for the cursor of the widget under the pointer
 void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow);

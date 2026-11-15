@@ -38,6 +38,14 @@
 namespace FX {
 
 
+class FXWindow;
+
+
+/// Tell the platform that a window entered (or left) a modal loop; only a
+/// compositor with a dialog protocol can act on it, the others filter events
+extern void fxplatformSetModalWindow(FXWindow* window,FXbool modal);
+
+
 /// Establish the requested process DPI awareness; returns the effective level.
 /// Policies are "permonitorv2", "permonitor", "system", "unaware", or "auto".
 extern FXint fxplatformSetDPIAwareness(const FXString& policy);

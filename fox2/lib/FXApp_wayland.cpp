@@ -134,6 +134,13 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       }
     }
 
+  // The dialog relationship of an owned toplevel, and its modal hint
+  else if(strcmp(interface,xdg_wm_dialog_v1_interface.name)==0){
+    if(!app->dialogmanager){
+      app->dialogmanager=(xdg_wm_dialog_v1*)wl_registry_bind(registry,name,&xdg_wm_dialog_v1_interface,1);
+      }
+    }
+
   // Window icons, offered by some compositors only
   else if(strcmp(interface,xdg_toplevel_icon_manager_v1_interface.name)==0){
     if(!app->iconmanager){
@@ -412,6 +419,7 @@ FXbool FXApp::closeDisplay(){
   fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
   if(app->iconmanager){ xdg_toplevel_icon_manager_v1_destroy(app->iconmanager); app->iconmanager=nullptr; }
+  if(app->dialogmanager){ xdg_wm_dialog_v1_destroy(app->dialogmanager); app->dialogmanager=nullptr; }
   fxwaylandCloseActivation(app);
   fxwaylandCloseTextInput(app);
   if(app->fsmanager){ wp_fractional_scale_manager_v1_destroy(app->fsmanager); app->fsmanager=nullptr; }
@@ -716,6 +724,16 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
     // The compositor asked the user's window to go away
     case FXXWL_CLOSE:
       if((window=findWindowWithId(ev.id))!=nullptr){
+
+        // A window behind a modal dialog can not be closed: the dialog owns
+        // the user's attention, and destroying the window would also destroy
+        // the widget whose command is running the modal loop, while that call
+        // is still on the stack.  The compositor's title bar close button
+        // sends this, so the filter has to be here as well
+        if(!modalAllows(this,window)){
+          beep();
+          return true;
+          }
         event.type=SEL_CLOSE;
         if(window->handle(this,FXSEL(SEL_CLOSE,0),&event)) refresh();
         return true;

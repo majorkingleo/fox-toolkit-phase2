@@ -35,7 +35,8 @@ else()
       fractional-scale-v1:staging/fractional-scale/fractional-scale-v1.xml
       cursor-shape-v1:staging/cursor-shape/cursor-shape-v1.xml
       xdg-activation-v1:staging/xdg-activation/xdg-activation-v1.xml
-      xdg-toplevel-icon-v1:staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml)
+      xdg-toplevel-icon-v1:staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml
+      xdg-dialog-v1:staging/xdg-dialog/xdg-dialog-v1.xml)
     foreach(_fox_proto ${_fox_protocols})
       string(REPLACE ":" ";" _fox_pair "${_fox_proto}")
       list(GET _fox_pair 0 _fox_name)

@@ -290,6 +290,14 @@ $(WP_GEN)/xdg-toplevel-icon-v1-protocol.c: $(top_srcdir)/protocols/staging/xdg-t
 	@$(MKDIR_P) $(WP_GEN)
 	$(WAYLAND_SCANNER) private-code $< $@
 
+$(WP_GEN)/xdg-dialog-v1-client-protocol.h: $(top_srcdir)/protocols/staging/xdg-dialog/xdg-dialog-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) client-header $< $@
+
+$(WP_GEN)/xdg-dialog-v1-protocol.c: $(top_srcdir)/protocols/staging/xdg-dialog/xdg-dialog-v1.xml
+	@$(MKDIR_P) $(WP_GEN)
+	$(WAYLAND_SCANNER) private-code $< $@
+
 BUILT_SOURCES += $(WP_GEN)/xdg-shell-client-protocol.h \
 	$(WP_GEN)/viewporter-client-protocol.h \
 	$(WP_GEN)/tablet-v2-client-protocol.h \
@@ -300,7 +308,8 @@ BUILT_SOURCES += $(WP_GEN)/xdg-shell-client-protocol.h \
 	$(WP_GEN)/fractional-scale-v1-client-protocol.h \
 	$(WP_GEN)/cursor-shape-v1-client-protocol.h \
 	$(WP_GEN)/xdg-activation-v1-client-protocol.h \
-	$(WP_GEN)/xdg-toplevel-icon-v1-client-protocol.h
+	$(WP_GEN)/xdg-toplevel-icon-v1-client-protocol.h \
+	$(WP_GEN)/xdg-dialog-v1-client-protocol.h
 
 nodist_libFOX_1_7_la_SOURCES += $(WP_GEN)/xdg-shell-protocol.c \
 	$(WP_GEN)/viewporter-protocol.c \
@@ -312,7 +321,8 @@ nodist_libFOX_1_7_la_SOURCES += $(WP_GEN)/xdg-shell-protocol.c \
 	$(WP_GEN)/fractional-scale-v1-protocol.c \
 	$(WP_GEN)/cursor-shape-v1-protocol.c \
 	$(WP_GEN)/xdg-activation-v1-protocol.c \
-	$(WP_GEN)/xdg-toplevel-icon-v1-protocol.c
+	$(WP_GEN)/xdg-toplevel-icon-v1-protocol.c \
+	$(WP_GEN)/xdg-dialog-v1-protocol.c
 
 CLEANFILES += $(WP_GEN)/xdg-shell-client-protocol.h \
 	$(WP_GEN)/viewporter-client-protocol.h \
@@ -325,6 +335,7 @@ CLEANFILES += $(WP_GEN)/xdg-shell-client-protocol.h \
 	$(WP_GEN)/cursor-shape-v1-client-protocol.h \
 	$(WP_GEN)/xdg-activation-v1-client-protocol.h \
 	$(WP_GEN)/xdg-toplevel-icon-v1-client-protocol.h \
+	$(WP_GEN)/xdg-dialog-v1-client-protocol.h \
 	$(WP_GEN)/xdg-shell-protocol.c \
 	$(WP_GEN)/viewporter-protocol.c \
 	$(WP_GEN)/tablet-v2-protocol.c \

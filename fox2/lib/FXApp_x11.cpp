@@ -43,6 +43,12 @@
 namespace FX {
 
 
+// The core filters the events of a modal loop itself; the window manager
+// already sees the owner relationship through WM_TRANSIENT_FOR
+void fxplatformSetModalWindow(FXWindow*,FXbool){
+  }
+
+
 // X11 has no process DPI awareness
 FXint fxplatformSetDPIAwareness(const FXString&){
   return DPIAWARENESS_UNKNOWN;

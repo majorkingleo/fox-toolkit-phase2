@@ -12,7 +12,10 @@
 # The gate first proves that the click and the key work with no dialog open,
 # then opens the dialog and repeats them: the display must stay the same and
 # the dialog must stay up.  A click inside the dialog is made as well, to show
-# that the filter does not block the dialog itself.
+# that the filter does not block the dialog itself.  Finally the compositor is
+# asked to close the blocked window, the way a title bar close button does; the
+# application used to crash there, because destroying the window also destroyed
+# the button whose command was running the modal loop.
 #
 #   ./scripts/gate-wayland-modal.sh
 #   ./scripts/gate-wayland-modal.sh --bin=FILE --build=DIR
@@ -31,7 +34,7 @@ SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 
 usage(){
-  sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -218,5 +221,14 @@ got=$(display_value "$RUN/main-key.ppm")
 [ "$got" = "7" ] || { echo "FAIL: the blocked key reached the calculator, the display shows '$got'" >&2; exit 1; }
 echo "the key on the blocked window was ignored"
 
-echo "PASS: a modal dialog blocks the clicks and keys of the window behind it"
+# The close button of a compositor drawn title bar reaches us as a close
+# request; it must not tear down the window either
+echo "==> asking the compositor to close the blocked window"
+swaymsg '[title="FOX Calculator"] kill' >/dev/null 2>&1
+sleep 0.8
+kill -0 "$app_pid" 2>/dev/null || { echo "FAIL: the application ended when the blocked window was closed" >&2; exit 1; }
+[ -n "$(tree_info "FOX Calculator")" ] || { echo "FAIL: the blocked window was closed" >&2; exit 1; }
+echo "the close request for the blocked window was ignored"
+
+echo "PASS: a modal dialog blocks the clicks, keys and close of the window behind it"
 exit 0

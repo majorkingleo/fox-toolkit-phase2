@@ -220,7 +220,14 @@ The port and the first real desktop use found and fixed these library bugs:
   tells the client where: every shell sat at the origin, so a click on one
   window could resolve to a widget of the top-most one.  A pointer event is
   now hit-tested inside its own surface (`FXWinMap::hitTest(shell,x,y)`), and
-  the screen-wide query is left to the backends that know the places.
+  the screen-wide query is left to the backends that know the places;
+- closing the main window while the preferences dialog ran its modal loop
+  crashed the application: the close destroyed the window, and with it the
+  title button whose command was still on the stack running the modal loop, so
+  the button handler resumed on freed memory.  A close request for a window
+  that the modal invocation blocks is now ignored, and the dialog names its
+  owner (`xdg_toplevel.set_parent`) and is marked modal through `xdg-dialog-v1`
+  where the compositor offers it.
 
 The calculator's `main()` also needed the Wayland signal seam
 (`FXApp::addSignal`), which the other backends had.

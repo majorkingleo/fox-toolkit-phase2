@@ -843,7 +843,9 @@ FXint FXApp::runWhileEvents(FXTime blocking){
 FXint FXApp::runModalWhileEvents(FXWindow* window,FXTime blocking){
   FXInvocation inv(&invocation,MODAL_FOR_WINDOW,window);
   FXTRACE(TOPIC_DETAIL,"Start runModalWhileEvents\n");
+  if(window) fxplatformSetModalWindow(window,true);
   while(!inv.done && runOneEvent(blocking)) blocking=1000;
+  if(window) fxplatformSetModalWindow(window,false);
   FXTRACE(TOPIC_DETAIL,"End runModalWhileEvents\n");
   return !inv.done;
   }
@@ -876,9 +878,11 @@ FXint FXApp::runModal(){
 FXint FXApp::runModalFor(FXWindow* window){
   FXInvocation inv(&invocation,MODAL_FOR_WINDOW,window);
   FXTRACE(TOPIC_DETAIL,"Start runModalFor\n");
+  if(window) fxplatformSetModalWindow(window,true);
   while(!inv.done){
     runOneEvent();
     }
+  if(window) fxplatformSetModalWindow(window,false);
   FXTRACE(TOPIC_DETAIL,"End runModalFor\n");
   return inv.code;
   }
@@ -888,9 +892,11 @@ FXint FXApp::runModalFor(FXWindow* window){
 FXint FXApp::runModalWhileShown(FXWindow* window){
   FXInvocation inv(&invocation,MODAL_FOR_WINDOW,window);
   FXTRACE(TOPIC_DETAIL,"Start runModalWhileShown\n");
+  if(window) fxplatformSetModalWindow(window,true);
   while(!inv.done && window->shown()){
     runOneEvent();
     }
+  if(window) fxplatformSetModalWindow(window,false);
   FXTRACE(TOPIC_DETAIL,"End runModalWhileShown\n");
   return inv.code;
   }

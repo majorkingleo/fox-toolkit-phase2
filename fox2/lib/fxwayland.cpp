@@ -233,6 +233,8 @@ static const zxdg_toplevel_decoration_v1_listener decorationListener={
 // Create the surface of a shell
 FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool popup){
   FXWaylandSurface* s;
+  FXWaylandSurface* parent;
+  FXID owner;
   if(!app || !app->compositor || !app->wmbase) return nullptr;
   s=new FXWaylandSurface();
   s->app=app;
@@ -240,6 +242,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->popup=nullptr;
   s->toplevel=nullptr;
   s->decoration=nullptr;
+  s->dialog=nullptr;
   s->parent=nullptr;
   s->btitle.clear();
   s->barh=0;
@@ -265,6 +268,23 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
     if(s->toplevel){
       xdg_toplevel_add_listener(s->toplevel,&toplevelListener,s);
 
+      // An owned toplevel is a dialog of its owner; the parent keeps it above
+      // the window it was opened from
+      if(owner=app->childmap.getOwner(window)){
+        if(parent=fxwaylandFindSurface(app,owner)){
+          if(parent->toplevel){
+            xdg_toplevel_set_parent(s->toplevel,parent->toplevel);
+
+            // An owned toplevel is a dialog; a compositor that knows the
+            // relationship can keep it in front of its parent and, when the
+            // modal loop marks it, refuse the parent's input
+            if(app->dialogmanager){
+              s->dialog=xdg_wm_dialog_v1_get_xdg_dialog(app->dialogmanager,s->toplevel);
+              }
+            }
+          }
+        }
+
       // Ask for the decorations the desktop draws; a compositor without the
       // protocol gets a title bar from us instead
       if(app->decomanager){
@@ -288,6 +308,20 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   wl_surface_commit(s->surface);
   wl_display_flush(app->display);
   return s;
+  }
+
+
+// Mark a dialog modal for as long as a modal invocation runs; a compositor
+// that knows the relationship may refuse the input of the parent toplevel
+void fxwaylandSetModal(FXWaylandApp* app,FXID window,FXbool modal){
+  FXWaylandSurface* s;
+  if(!app) return;
+  if((s=fxwaylandFindSurface(app,window))!=nullptr && s->dialog){
+    if(modal) xdg_dialog_v1_set_modal(s->dialog);
+    else xdg_dialog_v1_unset_modal(s->dialog);
+    fxwaylandTrace("dialog of window %u is %s\n",(unsigned int)window,modal?"modal":"not modal");
+    wl_display_flush(app->display);
+    }
   }
 
 
@@ -443,6 +477,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
       s->store=nullptr;
       fxwaylandFreeWindowIcon(s);
       fxwaylandFreeScale(s);
+      if(s->dialog) xdg_dialog_v1_destroy(s->dialog);
       if(s->decoration) zxdg_toplevel_decoration_v1_destroy(s->decoration);
       if(s->toplevel) xdg_toplevel_destroy(s->toplevel);
       if(s->popup) xdg_popup_destroy(s->popup);

@@ -85,10 +85,13 @@ FXID fxplatformCreateWindow(const FXWindowCreateInfo& info){
   if(!id) return 0;
   if(flags&WINMAP_SHELL){
 
+    // A shell remembers the shell it belongs to; a dialog names it as its
+    // parent, so a compositor can keep it above the window it belongs to
+    app->childmap.setOwner(id,info.ownershell?info.ownershell:info.owner);
+
     // A popup is made when it is shown, because its surface is sized by the
-    // positioner once and can not grow afterwards; the table keeps its owner
+    // positioner once and can not grow afterwards
     if(popup){
-      app->childmap.setOwner(id,info.ownershell?info.ownershell:info.owner);
       return id;
       }
     if(!fxwaylandCreateSurface(app,id,false)){

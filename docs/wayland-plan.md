@@ -95,7 +95,8 @@ These are recommendations; each is called out for review at the end.
    Required: `wl_compositor`, `wl_shm`, `wl_seat`, `wl_output`, `xdg-shell`,
    `wl_data_device_manager`. Optional, probed at run time: `xdg-decoration`,
    `fractional-scale-v1`, `viewporter`, `cursor-shape-v1`,
-   `primary-selection-unstable-v1`, `text-input-unstable-v3`, `xdg-output`.
+   `primary-selection-unstable-v1`, `text-input-unstable-v3`, `xdg-output`,
+   `xdg-activation-v1`, `xdg-toplevel-icon-v1`, `xdg-dialog-v1`.
 
 ## Semantics Wayland does not provide
 
@@ -108,6 +109,7 @@ These are recommendations; each is called out for review at the end.
 | Warp pointer | Not supported; return false |
 | Raise, lower, set focus, always on top | `xdg_activation_v1` where available, otherwise ignored |
 | Window shape (`FXWindow` mask) | `wl_surface.set_input_region` and opaque region; shaped drawing is clipped by the rasterizer |
+| Modal loop blocks its owner | The core filters events (motion, wheel, button, key, IME, close); an owned toplevel names its owner with `xdg_toplevel.set_parent` and marks the relationship with `xdg-dialog-v1`, so a compositor can also refuse the parent |
 | Cursors, custom cursor images | `cursor-shape-v1` for stock cursors, `wl_cursor` theme or a `wl_shm` cursor surface for images |
 | Clipboard, primary selection, XDND | `wl_data_device`, `primary-selection`; the DDE members of `FXApp` map to data offers and sources |
 | Input method (XIM) | `text-input-v3`; `FXComposeContext_wayland.cpp` |
@@ -1093,7 +1095,15 @@ it.
   blocked window; motion, wheel, button, key and IME events now apply the same
   condition as X11 and Win32 (`invocation`, its window, `isOwnerOf`,
   `doesSaveUnder`), and a press in the title bar of a blocked window is
-  swallowed when the client draws the bar itself.
+  swallowed when the client draws the bar itself.  The gate ends by asking the
+  compositor to close the blocked window, which is what the title bar X of a
+  server side decoration sends; the application used to crash there, because
+  destroying the window also destroyed the button whose command was running the
+  modal loop on the stack.  A close request for a window the modal loop blocks
+  is now ignored.  The dialog itself names its owner (`xdg_toplevel.set_parent`)
+  and is marked with `xdg-dialog-v1.set_modal` while the loop runs; KWin, which
+  offers that protocol, can then keep it above its parent and refuse the
+  parent's input, while compositors without it (sway) rely on the filter.
 - **Toplevel icon gate:** `scripts/gate-wayland-icon.sh` runs `tests/icon`
   against KWin's virtual backend and passes when the log shows `add_buffer` and
   `set_icon`; the same application against headless sway has to report that the
