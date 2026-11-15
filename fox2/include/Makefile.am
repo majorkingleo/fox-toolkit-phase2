@@ -54,7 +54,14 @@ FXButton.h \
 FXCallback.h \
 fxchar.h \
 FXCheckButton.h \
+FXColorBar.h \
+FXColorDialog.h \
+FXColorList.h \
+FXColorRing.h \
 FXColors.h \
+FXColorSelector.h \
+FXColorWell.h \
+FXColorWheel.h \
 FXComboBox.h \
 FXComposeContext.h \
 FXComposite.h \
@@ -104,6 +111,7 @@ FXObject.h \
 FXPacker.h \
 FXPath.h \
 FXPerformance.h \
+FXPicker.h \
 FXPipe.h \
 FXPoint.h \
 FXPopup.h \
@@ -132,6 +140,9 @@ FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
 FXSystem.h \
+FXTabBar.h \
+FXTabBook.h \
+FXTabItem.h \
 FXText.h \
 FXTextCodec.h \
 FXTextField.h \

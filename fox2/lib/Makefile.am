@@ -24,7 +24,14 @@ FXBMPImage.cpp \
 FXButton.cpp \
 fxchar.cpp \
 FXCheckButton.cpp \
+FXColorBar.cpp \
+FXColorDialog.cpp \
+FXColorList.cpp \
+FXColorRing.cpp \
 FXColors.cpp \
+FXColorSelector.cpp \
+FXColorWell.cpp \
+FXColorWheel.cpp \
 FXComposeContext.cpp \
 FXComposite.cpp \
 FXCursor.cpp \
@@ -73,6 +80,7 @@ FXMutex.cpp \
 FXObject.cpp \
 FXPacker.cpp \
 FXPath.cpp \
+FXPicker.cpp \
 FXPipe.cpp \
 FXPopup.cpp \
 fxprintf.cpp \
@@ -100,6 +108,9 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXTabBar.cpp \
+FXTabBook.cpp \
+FXTabItem.cpp \
 fxtabbify.cpp \
 fxstrtod.cpp \
 fxstrtoll.cpp \

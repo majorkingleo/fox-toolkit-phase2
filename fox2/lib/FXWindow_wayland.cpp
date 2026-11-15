@@ -367,6 +367,13 @@ FXbool FXWindow::beginDrag(const FXDragType* types,FXuint numtypes){
   }
 
 
+// Set the drag rectangle; there is no root window to draw it in and the
+// compositor tracks the drag itself, so there is nothing to record
+void FXWindow::setDragRectangle(FXint,FXint,FXint,FXint,FXbool) const {
+  if(xid==0){ fxerror("%s::setDragRectangle: window has not yet been created.\n",getClassName()); }
+  }
+
+
 // Drag to a new position; the compositor moves the pointer and sends the
 // motion to the drop target itself, so the source has nothing to transmit
 FXbool FXWindow::handleDrag(FXint,FXint,FXDragAction action){
