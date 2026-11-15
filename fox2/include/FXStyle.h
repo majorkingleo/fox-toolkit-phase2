@@ -48,6 +48,10 @@ struct FXButtonState {
   FXint  border;      /// Border width of the widget
   FXuint options;     /// Frame options of the widget
   FXColor back;       /// Background color of the widget
+  FXColor hilite;     /// Highlight color of the widget
+  FXColor shadow;     /// Shadow color of the widget
+  FXColor edge;       /// Border color of the widget
+  FXColor surface;    /// Base color of the widget
   FXColor text;       /// Text color of the widget
   FXColor parentBack; /// Background color of the parent
   };
@@ -96,6 +100,9 @@ public:
 
   /// Draw frame chrome for the given frame options
   virtual void drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options);
+
+  /// Draw frame chrome with the colors of the widget
+  void drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options,FXColor hilite,FXColor shadow,FXColor border,FXColor surface);
 
   /// Draw keyboard focus ring
   virtual void drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);

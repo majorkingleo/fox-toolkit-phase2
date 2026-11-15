@@ -238,7 +238,7 @@ void FXFrame::applyTheme(FXTheme* theme){
 
 // Draw border
 void FXFrame::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
-  getApp()->getStyle()->drawFrame(dc,x,y,w,h,options);
+  getApp()->getStyle()->drawFrame(dc,x,y,w,h,options,hiliteColor,shadowColor,borderColor,baseColor);
   }
 
 

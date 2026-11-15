@@ -56,6 +56,118 @@
 // Frame style mask, matching FXFrame
 #define FRAME_MASK (FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK)
 
+// Rectangle helpers that take the colors of the widget instead of the theme;
+// a widget may carry its own highlight, shadow and border colors
+static void fillBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor border){
+  dc.setForeground(border);
+  dc.drawRectangle(x,y,w-1,h-1);
+  }
+
+
+static void fillRaisedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor hilite,FXColor shadow){
+  if(0<w && 0<h){
+    dc.setForeground(shadow);
+    dc.fillRectangle(x,y+h-1,w,1);
+    dc.fillRectangle(x+w-1,y,1,h);
+    dc.setForeground(hilite);
+    dc.fillRectangle(x,y,w,1);
+    dc.fillRectangle(x,y,1,h);
+    }
+  }
+
+
+static void fillSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor hilite,FXColor shadow){
+  if(0<w && 0<h){
+    dc.setForeground(shadow);
+    dc.fillRectangle(x,y,w,1);
+    dc.fillRectangle(x,y,1,h);
+    dc.setForeground(hilite);
+    dc.fillRectangle(x,y+h-1,w,1);
+    dc.fillRectangle(x+w-1,y,1,h);
+    }
+  }
+
+
+static void fillDoubleRaisedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor hilite,FXColor shadow,FXColor border,FXColor surface){
+  if(0<w && 0<h){
+    dc.setForeground(border);
+    dc.fillRectangle(x,y+h-1,w,1);
+    dc.fillRectangle(x+w-1,y,1,h);
+    dc.setForeground(hilite);
+    dc.fillRectangle(x,y,w-1,1);
+    dc.fillRectangle(x,y,1,h-1);
+    if(1<w && 1<h){
+      dc.setForeground(surface);
+      dc.fillRectangle(x+1,y+1,w-2,1);
+      dc.fillRectangle(x+1,y+1,1,h-2);
+      dc.setForeground(shadow);
+      dc.fillRectangle(x+1,y+h-2,w-2,1);
+      dc.fillRectangle(x+w-2,y+1,1,h-2);
+      }
+    }
+  }
+
+
+
+static void fillRidgeRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor hilite,FXColor shadow){
+  if(0<w && 0<h){
+    dc.setForeground(hilite);
+    dc.fillRectangle(x,y,w,1);
+    dc.fillRectangle(x,y,1,h);
+    dc.setForeground(shadow);
+    dc.fillRectangle(x,y+h-1,w,1);
+    dc.fillRectangle(x+w-1,y,1,h);
+    if(1<w && 1<h){
+      dc.setForeground(hilite);
+      dc.fillRectangle(x+1,y+h-2,w-2,1);
+      dc.fillRectangle(x+w-2,y+1,1,h-2);
+      dc.setForeground(shadow);
+      dc.fillRectangle(x+1,y+1,w-3,1);
+      dc.fillRectangle(x+1,y+1,1,h-3);
+      }
+    }
+  }
+
+
+static void fillGrooveRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor hilite,FXColor shadow){
+  if(0<w && 0<h){
+    dc.setForeground(shadow);
+    dc.fillRectangle(x,y,w,1);
+    dc.fillRectangle(x,y,1,h);
+    dc.setForeground(hilite);
+    dc.fillRectangle(x,y+h-1,w,1);
+    dc.fillRectangle(x+w-1,y,1,h);
+    if(1<w && 1<h){
+      dc.setForeground(shadow);
+      dc.fillRectangle(x+1,y+h-2,w-2,1);
+      dc.fillRectangle(x+w-2,y+1,1,h-2);
+      dc.setForeground(hilite);
+      dc.fillRectangle(x+1,y+1,w-3,1);
+      dc.fillRectangle(x+1,y+1,1,h-3);
+      }
+    }
+  }
+
+static void fillDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor hilite,FXColor shadow,FXColor border,FXColor surface){
+  if(0<w && 0<h){
+    dc.setForeground(hilite);
+    dc.fillRectangle(x,y+h-1,w,1);
+    dc.fillRectangle(x+w-1,y,1,h);
+    dc.setForeground(shadow);
+    dc.fillRectangle(x,y,w-1,1);
+    dc.fillRectangle(x,y,1,h-1);
+    if(1<w && 1<h){
+      dc.setForeground(border);
+      dc.fillRectangle(x+1,y+1,w-3,1);
+      dc.fillRectangle(x+1,y+1,1,h-3);
+      dc.setForeground(surface);
+      dc.fillRectangle(x+1,y+h-2,w-2,1);
+      dc.fillRectangle(x+w-2,y+1,1,h-2);
+      }
+    }
+  }
+
+
 
 using namespace FX;
 
@@ -216,22 +328,30 @@ void FXStyle::drawGrooveRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h
 
 // Draw frame chrome for the given frame options
 void FXStyle::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options){
+  drawFrame(dc,x,y,w,h,options,theme->color(ROLE_SURFACE_HILITE),theme->color(ROLE_SURFACE_SHADOW),theme->color(ROLE_BORDER),theme->color(ROLE_SURFACE));
+  }
+
+
+// Draw frame chrome with the colors of the widget
+void FXStyle::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options,FXColor hilite,FXColor shadow,FXColor border,FXColor surface){
   switch(options&FRAME_MASK){
-    case FRAME_LINE: drawBorderRectangle(dc,x,y,w,h); break;
-    case FRAME_SUNKEN: drawSunkenRectangle(dc,x,y,w,h); break;
-    case FRAME_RAISED: drawRaisedRectangle(dc,x,y,w,h); break;
-    case FRAME_GROOVE: drawGrooveRectangle(dc,x,y,w,h); break;
-    case FRAME_RIDGE: drawRidgeRectangle(dc,x,y,w,h); break;
-    case FRAME_SUNKEN|FRAME_THICK: drawDoubleSunkenRectangle(dc,x,y,w,h); break;
-    case FRAME_RAISED|FRAME_THICK: drawDoubleRaisedRectangle(dc,x,y,w,h); break;
+    case FRAME_LINE: fillBorderRectangle(dc,x,y,w,h,border); break;
+    case FRAME_SUNKEN: fillSunkenRectangle(dc,x,y,w,h,hilite,shadow); break;
+    case FRAME_RAISED: fillRaisedRectangle(dc,x,y,w,h,hilite,shadow); break;
+    case FRAME_GROOVE: fillGrooveRectangle(dc,x,y,w,h,hilite,shadow); break;
+    case FRAME_RIDGE: fillRidgeRectangle(dc,x,y,w,h,hilite,shadow); break;
+    case FRAME_SUNKEN|FRAME_THICK: fillDoubleSunkenRectangle(dc,x,y,w,h,hilite,shadow,border,surface); break;
+    case FRAME_RAISED|FRAME_THICK: fillDoubleRaisedRectangle(dc,x,y,w,h,hilite,shadow,border,surface); break;
     }
   }
 
 
 // Draw button chrome; returns rectangle available to icon and label
 FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXButtonState& state){
-  FXColor hilite=theme->color(ROLE_SURFACE_HILITE);
-  FXColor edgeCol=theme->color(ROLE_BORDER);
+  FXColor hilite=state.hilite;
+  FXColor shadow=state.shadow;
+  FXColor edge=state.edge;
+  FXColor surface=state.surface;
   FXColor face=state.engaged?hilite:state.back;
   FXint borderWidth=theme->metric(METRIC_BORDER_WIDTH);
   FXint radius=theme->metric(METRIC_CORNER_RADIUS);
@@ -246,7 +366,7 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
     dc.setForeground(state.parentBack);
     dc.fillRectangle(x,y,w,h);
 
-    if(hasXRender(dc) && drawRoundRect(dc,x,y,w,h,radius,face,edgeCol,borderWidth)){
+    if(hasXRender(dc) && drawRoundRect(dc,x,y,w,h,radius,face,edge,borderWidth)){
       return FXRectangle(x,y,w,h);
       }
     // Fallback: hard-edged rounded shape, corners stay transparent
@@ -254,7 +374,7 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
     dc.setForeground(face);
     dc.fillRoundRectangle(x,y,w,h,rr*2,rr*2);
     if(0<borderWidth){
-      dc.setForeground(edgeCol);
+      dc.setForeground(edge);
       dc.drawRoundRectangle(x,y,w,h,rr*2,rr*2);
       }
     return FXRectangle(x,y,w,h);
@@ -270,24 +390,24 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
       if(state.enabled && state.hover && !state.down && !state.engaged){
         dc.setForeground(state.back);
         dc.fillRectangle(x+border,y+border,w-border*2,h-border*2);
-        if(options&FRAME_THICK) drawDoubleRaisedRectangle(dc,x,y,w,h);
-        else drawRaisedRectangle(dc,x,y,w,h);
+        if(options&FRAME_THICK) fillDoubleRaisedRectangle(dc,x,y,w,h,hilite,shadow,edge,surface);
+        else fillRaisedRectangle(dc,x,y,w,h,hilite,shadow);
         }
 
       // Enabled, cursor inside, and down
       else if(state.enabled && state.hover && state.down){
         dc.setForeground(state.back);
         dc.fillRectangle(x+border,y+border,w-border*2,h-border*2);
-        if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,x,y,w,h);
-        else drawSunkenRectangle(dc,x,y,w,h);
+        if(options&FRAME_THICK) fillDoubleSunkenRectangle(dc,x,y,w,h,hilite,shadow,edge,surface);
+        else fillSunkenRectangle(dc,x,y,w,h,hilite,shadow);
         }
 
       // Enabled and checked
       else if(state.enabled && state.engaged){
         dc.setForeground(hilite);
         dc.fillRectangle(x+border,y+border,w-border*2,h-border*2);
-        if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,x,y,w,h);
-        else drawSunkenRectangle(dc,x,y,w,h);
+        if(options&FRAME_THICK) fillDoubleSunkenRectangle(dc,x,y,w,h,hilite,shadow,edge,surface);
+        else fillSunkenRectangle(dc,x,y,w,h,hilite,shadow);
         }
 
       // Disabled or unchecked or not under cursor
@@ -307,20 +427,20 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
         if(!state.enabled || (!state.down && !state.engaged)){
           dc.setForeground(state.back);
           dc.fillRectangle(x+border+1,y+border+1,w-border*2-1,h-border*2-1);
-          if(options&FRAME_THICK) drawDoubleRaisedRectangle(dc,x+1,y+1,w-1,h-1);
-          else drawRaisedRectangle(dc,x+1,y+1,w-1,h-1);
+          if(options&FRAME_THICK) fillDoubleRaisedRectangle(dc,x+1,y+1,w-1,h-1,hilite,shadow,edge,surface);
+          else fillRaisedRectangle(dc,x+1,y+1,w-1,h-1,hilite,shadow);
           }
 
         // Draw sunken if enabled and either checked or pressed
         else{
           if(state.engaged) dc.setForeground(hilite); else dc.setForeground(state.back);
           dc.fillRectangle(x+border,y+border,w-border*2-1,h-border*2-1);
-          if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,x,y,w-1,h-1);
-          else drawSunkenRectangle(dc,x,y,w-1,h-1);
+          if(options&FRAME_THICK) fillDoubleSunkenRectangle(dc,x,y,w-1,h-1,hilite,shadow,edge,surface);
+          else fillSunkenRectangle(dc,x,y,w-1,h-1,hilite,shadow);
           }
 
         // Black default border
-        drawBorderRectangle(dc,x,y,w,h);
+        fillBorderRectangle(dc,x,y,w,h,edge);
         }
 
       // Non-default
@@ -330,16 +450,16 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
         if(!state.enabled || (!state.down && !state.engaged)){
           dc.setForeground(state.back);
           dc.fillRectangle(x+border,y+border,w-border*2,h-border*2);
-          if(options&FRAME_THICK) drawDoubleRaisedRectangle(dc,x,y,w,h);
-          else drawRaisedRectangle(dc,x,y,w,h);
+          if(options&FRAME_THICK) fillDoubleRaisedRectangle(dc,x,y,w,h,hilite,shadow,edge,surface);
+          else fillRaisedRectangle(dc,x,y,w,h,hilite,shadow);
           }
 
         // Draw sunken if enabled and either checked or pressed
         else{
           if(state.engaged) dc.setForeground(hilite); else dc.setForeground(state.back);
           dc.fillRectangle(x+border,y+border,w-border*2,h-border*2);
-          if(options&FRAME_THICK) drawDoubleSunkenRectangle(dc,x,y,w,h);
-          else drawSunkenRectangle(dc,x,y,w,h);
+          if(options&FRAME_THICK) fillDoubleSunkenRectangle(dc,x,y,w,h,hilite,shadow,edge,surface);
+          else fillSunkenRectangle(dc,x,y,w,h,hilite,shadow);
           }
         }
       }
@@ -358,5 +478,6 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
     }
   return FXRectangle(x,y,w,h);
   }
+
 
 }

@@ -380,6 +380,10 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   st.border=border;
   st.options=options;
   st.back=animating?animColor:backColor;
+  st.hilite=hiliteColor;
+  st.shadow=shadowColor;
+  st.edge=borderColor;
+  st.surface=baseColor;
   st.text=textColor;
   st.parentBack=getParent()?getParent()->getBackColor():backColor;
 
