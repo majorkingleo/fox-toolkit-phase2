@@ -161,7 +161,6 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
     if(!app->psmanager){
       app->psmanager=(zwp_primary_selection_device_manager_v1*)wl_registry_bind(registry,name,&zwp_primary_selection_device_manager_v1_interface,1);
       fxwaylandOpenDataDevice(app);
-      fxwaylandAttachSelectionDevice(app);
       }
     }
   }

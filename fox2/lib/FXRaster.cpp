@@ -1410,12 +1410,17 @@ void FXRaster::clearClipRegion(){
   }
 
 
-// Set clip rectangle
+// Set clip rectangle; the server clips on the other platforms, but here the
+// rectangle has to be kept inside the buffer or a stale expose writes past it
 void FXRaster::setClipRectangle(FXint x,FXint y,FXint w,FXint h){
-  clip.x=x;
-  clip.y=y;
-  clip.w=FXMAX(w,0);
-  clip.h=FXMAX(h,0);
+  FXint x1=FXMAX(x,0);
+  FXint y1=FXMAX(y,0);
+  FXint x2=FXMIN(x+w,twidth);
+  FXint y2=FXMIN(y+h,theight);
+  clip.x=x1;
+  clip.y=y1;
+  clip.w=FXMAX(x2-x1,0);
+  clip.h=FXMAX(y2-y1,0);
   }
 
 
