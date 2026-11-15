@@ -45,6 +45,7 @@
 #include "fractional-scale-v1-client-protocol.h"
 #include "xdg-activation-v1-client-protocol.h"
 #include "xdg-toplevel-icon-v1-client-protocol.h"
+#include "cursor-shape-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
 // here so that the module that needs it includes its header
@@ -58,6 +59,9 @@ namespace FX {
 
 // An icon is an image; only the pointer is ever used here
 class FXImage;
+
+// The cursor of a widget; only the pointer is ever used here
+class FXWindow;
 
 
 /// Codes of the neutral raw event
@@ -176,6 +180,8 @@ struct FXWaylandApp {
   struct xkb_state*   xkbstate;         // State of the modifiers
   FXID              pointerwindow;      // Window the pointer is over
   FXuint            pointerserial;      // Serial of the last pointer event
+  FXuint            pointerenterserial; // Serial of the pointer enter
+  void*             cursorwindow;       // Widget whose cursor is shown
   FXuint            keyboardserial;     // Serial of the last keyboard event
   FXint             pointerx;           // Position of the pointer in the shell
   FXint             pointery;
@@ -187,6 +193,8 @@ struct FXWaylandApp {
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
   xdg_toplevel_icon_manager_v1* iconmanager; // Window icons, when offered
+  wp_cursor_shape_manager_v1* cursormanager; // Stock pointer shapes, when offered
+  wp_cursor_shape_device_v1*  cursordevice;  // Shape device of the pointer
   xdg_activation_v1*         activation;    // Tokens that justify taking the focus
   void*                      activations;   // Tokens we are waiting for
   wp_viewporter*             viewporter;    // Scales a buffer to a logical size
@@ -279,6 +287,9 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
 
 /// Give a window the popup role under the given parent window; false on failure
 FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXint x,FXint y,FXint w,FXint h,FXbool grab);
+
+/// Ask for the cursor of the widget under the pointer
+void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow);
 
 /// Ask the compositor to resize a toplevel with the corner under the pointer
 FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window);

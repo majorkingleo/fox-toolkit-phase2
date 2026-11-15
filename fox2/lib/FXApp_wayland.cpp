@@ -141,6 +141,16 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       }
     }
 
+  // Stock pointer shapes, which save the client from shipping cursor images
+  else if(strcmp(interface,wp_cursor_shape_manager_v1_interface.name)==0){
+    if(!app->cursormanager){
+      app->cursormanager=(wp_cursor_shape_manager_v1*)wl_registry_bind(registry,name,&wp_cursor_shape_manager_v1_interface,1);
+      if(app->pointer){
+        app->cursordevice=wp_cursor_shape_manager_v1_get_pointer(app->cursormanager,app->pointer);
+        }
+      }
+    }
+
   // Activation, so that a window we show can ask for the focus on its own
   else if(strcmp(interface,xdg_activation_v1_interface.name)==0){
     if(!app->activation){
@@ -217,6 +227,10 @@ void FXApp::initPlatformMembers(){
   app->wmbase=nullptr;
   app->decomanager=nullptr;
   app->iconmanager=nullptr;
+  app->cursormanager=nullptr;
+  app->cursordevice=nullptr;
+  app->pointerenterserial=0;
+  app->cursorwindow=nullptr;
   app->activation=nullptr;
   app->activations=nullptr;
   app->viewporter=nullptr;
@@ -807,6 +821,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
       this->event.root_y=ry;
       if(ev.code==FXXWL_LEAVE){
         if(cursorWindow) leaveWindow(cursorWindow,root);
+        fxwaylandSetCursor(app,nullptr,mouseGrabWindow);
         return true;
         }
       if(cursorWindow!=window){
@@ -814,6 +829,10 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         leaveWindow(cursorWindow,ancestor);
         enterWindow(window,ancestor);
         }
+
+      // The compositor shows one cursor for the surface; the widget under the
+      // pointer decides which one, and a grab takes it over
+      fxwaylandSetCursor(app,window,mouseGrabWindow);
       if(ev.code==FXXWL_ENTER) return true;
 
       // Where the point is inside the window that gets the event
@@ -885,6 +904,10 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
         }
       else if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+
+      // A press grabs the pointer and a release gives it back, which changes
+      // which cursor the window wants
+      fxwaylandSetCursor(app,window,mouseGrabWindow);
       fxwaylandTrace("button %u %s to %s at %+d%+d\n",ev.button,ev.data[1]?"down":"up",(mouseGrabWindow?mouseGrabWindow:window)->getClassName(),event.win_x,event.win_y);
       event.last_x=event.win_x;
       event.last_y=event.win_y;

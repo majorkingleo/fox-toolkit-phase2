@@ -120,6 +120,7 @@ static void pointerEnter(void* data,wl_pointer*,uint32_t serial,wl_surface* surf
   FXWaylandSurface* s=fxwaylandSurfaceOf(app,surface);
   if(!s) return;
   app->pointerserial=serial;
+  app->pointerenterserial=serial;
   app->pointersurface=s;
   app->pointerx=fxwaylandScaleIn(s,wl_fixed_to_int(sx));
   app->pointery=fxwaylandScaleIn(s,wl_fixed_to_int(sy));
@@ -382,14 +383,24 @@ static void seatCapabilities(void* data,wl_seat* seat,uint32_t capabilities){
   if(capabilities&WL_SEAT_CAPABILITY_POINTER){
     if(!app->pointer){
       app->pointer=wl_seat_get_pointer(seat);
-      if(app->pointer) wl_pointer_add_listener(app->pointer,&pointerListener,app);
+      if(app->pointer){
+        wl_pointer_add_listener(app->pointer,&pointerListener,app);
+        if(app->cursormanager){
+          app->cursordevice=wp_cursor_shape_manager_v1_get_pointer(app->cursormanager,app->pointer);
+          }
+        }
       }
     }
   else{
+    if(app->cursordevice){
+      wp_cursor_shape_device_v1_destroy(app->cursordevice);
+      app->cursordevice=nullptr;
+      }
     if(app->pointer){
       wl_pointer_destroy(app->pointer);
       app->pointer=nullptr;
       app->pointersurface=nullptr;
+      app->cursorwindow=nullptr;
       }
     }
   if(capabilities&WL_SEAT_CAPABILITY_KEYBOARD){

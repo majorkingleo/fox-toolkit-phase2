@@ -1065,6 +1065,10 @@ it.
   `tests/desktop` (no display) in six environments and passes when it reports
   `unknown`, `dark`, `light`, `dark`, `light` and `dark`, with the portal winning
   over gsettings.
+- **Cursor gate:** `scripts/gate-wayland-cursor.sh` runs the calculator against
+  headless sway, moves one virtual pointer from the text display to a button and
+  to a label, and passes when the debug log shows `set_shape(...,9)` (text) for
+  the display and `set_shape(...,1)` (default) for the button and the label.
 - **Toplevel icon gate:** `scripts/gate-wayland-icon.sh` runs `tests/icon`
   against KWin's virtual backend and passes when the log shows `add_buffer` and
   `set_icon`; the same application against headless sway has to report that the
