@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 RUN=${RUN:-tmp/sway-dnd}
 OUT=${OUT:-tmp/wlxinject}
-SRC=scripts/wlxinject.c
+SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 
 SOURCE=500,60

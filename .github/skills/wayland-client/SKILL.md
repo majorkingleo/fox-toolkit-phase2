@@ -238,7 +238,7 @@ which is what happens for the first window of an application.
   the focused button and expects the application to quit by itself. Space the
   press and the release apart (`wtype -s 200 -k space`): sway drops the press
   when both arrive in the same compositor frame.
-- `scripts/gate-wayland-click.sh` — headless sway + `scripts/wlxinject.c`, which
+- `scripts/gate-wayland-click.sh` — headless sway + `tools/wlxinject.c`, which
   keeps one `zwlr_virtual_pointer_v1` alive for the gesture and then moves,
   presses and releases it. `swaymsg seat - cursor ...` and `wlrctl` both fail on
   a headless sway: the seat has no pointer device, and `wlrctl` destroys its

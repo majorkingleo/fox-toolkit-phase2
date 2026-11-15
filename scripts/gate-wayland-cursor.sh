@@ -9,7 +9,7 @@
 # with WAYLAND_DEBUG: the display field must ask for "text" (9) and the button
 # and label for "default" (1).
 #
-# A headless sway has no input devices; scripts/wlxinject.c creates one
+# A headless sway has no input devices; tools/wlxinject.c creates one
 # virtual pointer and keeps it alive for the whole gesture, so the seat does
 # not change capabilities in the middle of the run.
 #
@@ -26,7 +26,7 @@ BUILD=tmp/build-fox2-wayland
 BIN=
 RUN=tmp/sway-cursor-gate
 OUT=tmp/wlxinject
-SRC=scripts/wlxinject.c
+SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 
 usage(){

@@ -7,7 +7,7 @@
 # A headless sway has no input devices at all:  the seat reports no
 # capabilities, and neither swaymsg nor wlrctl can click, because wlrctl
 # destroys its virtual pointer again before the compositor delivers anything.
-# scripts/wlxinject.c therefore creates one virtual pointer, keeps it alive for
+# tools/wlxinject.c therefore creates one virtual pointer, keeps it alive for
 # the whole gesture and then moves, presses and releases it.
 #
 # The presses sweep a few points inside the window because the compositor
@@ -18,7 +18,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 RUN=${RUN:-tmp/sway-click}
 OUT=${OUT:-tmp/wlxinject}
-SRC=scripts/wlxinject.c
+SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 
 # Build the injector -------------------------------------------------------

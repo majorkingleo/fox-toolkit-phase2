@@ -143,7 +143,7 @@ Exit: `apps/calculator/calculator` builds on X11 and as a Windows cross build.
 - Win32: run the same checklist under Wine from
   `scripts/build-fox2-mingw-cross.sh --run` output, including the dialogs.
 - Wayland: add `scripts/gate-wayland-calculator.sh` that starts the application
-  on the headless compositor, injects a few clicks with `scripts/wlxinject.c`
+  on the headless compositor, injects a few clicks with `tools/wlxinject.c`
   and compares a screenshot with the X11 one.
 Exit: all three backends pass the checklist; differences are documented.
 

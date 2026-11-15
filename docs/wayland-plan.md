@@ -985,7 +985,7 @@ it.
 - **Pointer gate:** `scripts/gate-wayland-click.sh` runs `tests/click` — one
   button filling the window, which quits when it is clicked — against a private
   headless sway and passes when the program ends with 0. The click comes from
-  `scripts/wlxinject.c`, a small client that keeps one
+  `tools/wlxinject.c`, a small client that keeps one
   `zwlr_virtual_pointer_v1` alive for the whole gesture: a headless sway has no
   input devices at all (its seat reports no capabilities), `swaymsg seat - cursor`
   therefore does nothing, and `wlrctl` creates a virtual pointer and destroys it

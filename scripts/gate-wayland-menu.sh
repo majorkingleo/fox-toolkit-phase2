@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.." || exit 1
 RUN=${RUN:-tmp/sway-menu}
 OUT=${OUT:-tmp/wlxinject}
 DUMP=${DUMP:-tmp/dump-menu-gate}
-SRC=scripts/wlxinject.c
+SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 
 # Positions in layout coordinates for the tiled window of the menu test:

@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.." || exit 1
 RUN=${RUN:-tmp/sway-tooltip}
 OUT=${OUT:-tmp/wlxinject}
 DUMP=${DUMP:-tmp/dump-tooltip}
-SRC=scripts/wlxinject.c
+SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 
 # Somewhere inside the button of the tool tip test
