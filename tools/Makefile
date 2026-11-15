@@ -34,7 +34,7 @@ all: $(TARGETS)
 
 x11: $(BUILD)/xinject $(BUILD)/xgrab $(BUILD)/xlist
 
-wayland: $(BUILD)/wlxinject $(BUILD)/screencopy
+wayland: $(BUILD)/wlxinject $(BUILD)/screencopy $(BUILD)/kwininject
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -54,6 +54,12 @@ $(BUILD)/wlr-virtual-pointer-protocol.c: $(PROTOS)/wlr-virtual-pointer-unstable-
 $(BUILD)/wlr-virtual-pointer-unstable-v1-client-protocol.h: $(PROTOS)/wlr-virtual-pointer-unstable-v1.xml | $(BUILD)
 	$(SCANNER) client-header $< $@
 
+$(BUILD)/org-kde-kwin-fake-input-client-protocol.h: $(PROTOS)/org-kde-kwin-fake-input.xml | $(BUILD)
+	$(SCANNER) client-header $< $@
+
+$(BUILD)/org-kde-kwin-fake-input-protocol.c: $(PROTOS)/org-kde-kwin-fake-input.xml | $(BUILD)
+	$(SCANNER) private-code $< $@
+
 $(BUILD)/wlr-screencopy-protocol.c: $(PROTOS)/wlr-screencopy-unstable-v1.xml | $(BUILD)
 	$(SCANNER) private-code $< $@
 
@@ -67,6 +73,10 @@ $(BUILD)/wlxinject: wlxinject.c $(BUILD)/wlr-virtual-pointer-protocol.c $(BUILD)
 $(BUILD)/screencopy: screencopy.c $(BUILD)/wlr-screencopy-protocol.c $(BUILD)/wlr-screencopy-client.h | $(BUILD)
 	$(CC) $(CFLAGS) -I$(BUILD) $(WAYLAND_CLIENT_CFLAGS) -o $@ \
 		screencopy.c $(BUILD)/wlr-screencopy-protocol.c $(WAYLAND_CLIENT_LIBS)
+
+$(BUILD)/kwininject: kwininject.c $(BUILD)/org-kde-kwin-fake-input-protocol.c $(BUILD)/org-kde-kwin-fake-input-client-protocol.h | $(BUILD)
+	$(CC) $(CFLAGS) -I$(BUILD) $(WAYLAND_CLIENT_CFLAGS) -o $@ \
+		kwininject.c $(BUILD)/org-kde-kwin-fake-input-protocol.c $(WAYLAND_CLIENT_LIBS)
 
 clean:
 	rm -rf $(BUILD)

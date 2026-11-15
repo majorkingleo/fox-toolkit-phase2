@@ -1,6 +1,6 @@
 ---
 name: test-tools
-description: Drive and capture FOX test applications with the small tools in tools/ (xinject, xgrab, xlist, wlxinject, screencopy). Use when a test has to type, click, screenshot or find a window on X11/Xwayland or on a headless Wayland compositor, when a gate misbehaves because input does not arrive, or when a screenshot is black, stale or cannot be read.
+description: Drive and capture FOX test applications with the small tools in tools/ (xinject, xgrab, xlist, wlxinject, kwininject, screencopy). Use when a test has to type, click, screenshot or find a window on X11/Xwayland or on a headless Wayland compositor, when a gate misbehaves because input does not arrive, or when a screenshot is black, stale or cannot be read.
 ---
 
 # Test tools: how to drive and capture the applications
@@ -163,6 +163,44 @@ Coordinates are layout coordinates of the output.
   keyboard.  That is why a frame captured before typing has no focus ring and
   one captured after it may have one; keep the two sides of a pixel gate in the
   same state.
+
+### KWin: kwininject
+
+KWin does not offer `zwlr_virtual_pointer_manager_v1`; it has its own
+`org_kde_kwin_fake_input` instead, and `tools/kwininject` binds it:
+
+```
+kwininject 512 384 move sleep:300                 # move to the output centre
+kwininject 714 530 move sleep:200 down \
+           move:750,560 move:800,600 up           # drag a border
+```
+
+Actions are `move`, `move:X,Y`, `down`, `up`, `rightdown`, `rightup`,
+`sleep:MS`, `wheel:<notches>`.  The coordinates are **layout pixels of the
+output**, not normalised positions.  The tool sends `authenticate` once at
+startup; KWin may ignore input from an unauthenticated client.
+
+A private KWin for tests (the decoration and icon gates use the same recipe):
+
+```sh
+export XDG_RUNTIME_DIR=$PWD/tmp/kwin HOME=$PWD/tmp/kwin/home
+export QT_QPA_PLATFORM=offscreen
+unset DISPLAY WAYLAND_DISPLAY
+kwin_wayland --virtual --socket wayland-kwin --no-lockscreen &
+export WAYLAND_DISPLAY=wayland-kwin
+```
+
+The virtual backend is a 1024x768 output.  KWin positions a new window itself,
+so its origin is not known to the client; to find it, move the pointer to the
+output centre and read the client's enter event, which carries the position
+inside the surface: origin = centre − local.  For the calculator (400x260) the
+centre lands at (200,116) in the window, which is how
+`scripts/gate-wayland-resize-drag.sh` gets the border coordinates.  Press two
+pixels outside the client corner to grab KWin's resize border.
+
+`kwininject` is KWin-only; on sway use `wlxinject`.  Neither is part of the
+library, and `org_kde_kwin_fake_input` is a privileged interface a compositor
+may refuse.
 
 ### Capture the screen
 

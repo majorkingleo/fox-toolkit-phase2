@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="fake_input">
+  <copyright>
+    Copyright (C) 2015 Martin Gräßlin
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <interface name="org_kde_kwin_fake_input" version="3">
+    <description summary="fake input events">
+      This interface allows a client to inject pointer and touch events into
+      the compositor.  It is meant for testing and accessibility tools.
+    </description>
+
+    <request name="authenticate">
+      <description summary="ask for permission">
+        Ask the compositor to authenticate this client.  A compositor may
+        ignore every other request until it did.
+      </description>
+      <arg name="application" type="string"/>
+      <arg name="reason" type="string"/>
+    </request>
+
+    <request name="pointer_motion">
+      <description summary="relative pointer motion"/>
+      <arg name="delta_x" type="fixed"/>
+      <arg name="delta_y" type="fixed"/>
+    </request>
+
+    <request name="button">
+      <description summary="pointer button event"/>
+      <arg name="button" type="uint"/>
+      <arg name="state" type="uint"/>
+    </request>
+
+    <request name="axis">
+      <description summary="pointer axis event"/>
+      <arg name="axis" type="uint"/>
+      <arg name="value" type="fixed"/>
+    </request>
+
+    <request name="touch_down" since="2">
+      <arg name="id" type="uint"/>
+      <arg name="x" type="fixed"/>
+      <arg name="y" type="fixed"/>
+    </request>
+
+    <request name="touch_motion" since="2">
+      <arg name="id" type="uint"/>
+      <arg name="x" type="fixed"/>
+      <arg name="y" type="fixed"/>
+    </request>
+
+    <request name="touch_up" since="2">
+      <arg name="id" type="uint"/>
+    </request>
+
+    <request name="touch_cancel" since="2"/>
+
+    <request name="touch_frame" since="2"/>
+
+    <request name="pointer_motion_absolute" since="3">
+      <description summary="absolute pointer motion"/>
+      <arg name="x" type="fixed"/>
+      <arg name="y" type="fixed"/>
+    </request>
+  </interface>
+</protocol>

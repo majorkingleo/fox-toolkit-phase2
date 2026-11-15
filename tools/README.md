@@ -11,7 +11,7 @@ make -C tools
 ```
 
 The binaries land in `tools/build/`: `xinject`, `xgrab`, `xlist` (X11) and
-`wlxinject`, `screencopy` (Wayland).  `make -C tools clean` removes them.
+`wlxinject`, `screencopy`, `kwininject` (Wayland).  `make -C tools clean` removes them.
 
 | Tool | What it does |
 | --- | --- |
@@ -20,6 +20,7 @@ The binaries land in `tools/build/`: `xinject`, `xgrab`, `xlist` (X11) and
 | `xlist` | Lists the X11 window tree with absolute geometry and map state; `-geom` prints `ID X Y W H` for a title. |
 | `wlxinject` | Creates one wlr virtual pointer and moves, presses, releases and scrolls it on a wlroots compositor (sway). |
 | `screencopy` | Saves the first output of a wlroots compositor as a PPM image (a minimal grim). |
+| `kwininject` | Injects absolute pointer motion and buttons into KWin through `org_kde_kwin_fake_input`; the way to drag a window border or press a widget on KWin. |
 
 The sources are documented at the top of each file; `.github/skills/test-tools`
 describes how to use them together with headless compositors, OCR and image
@@ -31,6 +32,9 @@ Quick examples:
 # X11 window geometry, then a click 60 pixels right and 25 down from its origin
 xlist -geom -title "FOX Calculator"
 xinject -title "FOX Calculator" xclick 60 25
+
+# KWin: drag the bottom-right border of a window at 400x260 whose origin is 312,268
+kwininject 714 530 move sleep:200 down move:750,560 move:800,600 up
 
 # Wayland: float the window, click its title button, capture the screen
 swaymsg '[title="FOX Calculator"] floating enable'

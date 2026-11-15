@@ -1117,6 +1117,16 @@ it.
   so a backlog of intermediate sizes does not each get a full layout and
   repaint.  The gate runs with the module trace on, whose output slows the
   loop enough that the old ordering fails every time.
+- **Resize drag gate:** `scripts/gate-wayland-resize-drag.sh` runs the
+  calculator under a private KWin virtual backend and drags the bottom-right
+  border with `tools/kwininject`, which binds KWin's `org_kde_kwin_fake_input`.
+  It requires the window to grow, every applied configure to be committed (a
+  couple of frames of slack), and no more than 150 ms between two commits.  The
+  calculator is centred by KWin, so the gate finds the client origin from the
+  enter event at the output centre and then presses two pixels outside the
+  client corner to grab KWin's resize border.  This is the only scripted test
+  of the drag path on the compositor the users run; sway coalesces its own
+  configure stream and cannot reproduce a drag.
 - **Scroll gate:** `scripts/gate-wayland-scroll.sh` opens the calculator help
   window, which starts at the top of the document, rolls the wheel down three
   notches and then up three again; the frame must change on the way down and be
