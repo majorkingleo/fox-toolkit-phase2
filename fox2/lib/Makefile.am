@@ -29,6 +29,7 @@ FXDC.cpp \
 FXDCWindow.cpp \
 FXDebugTarget.cpp \
 FXDir.cpp \
+FXDialogBox.cpp \
 FXDragCorner.cpp \
 FXDrawable.cpp \
 fxezquantize.cpp \
@@ -86,6 +87,7 @@ FXStatusLine.cpp \
 FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
+FXSwitcher.cpp \
 fxstrtod.cpp \
 fxstrtoll.cpp \
 fxstrtoull.cpp \
@@ -126,6 +128,7 @@ FXJSONString.cpp \
 FXKOI8RCodec.cpp \
 FXLFQueue.cpp \
 FXMappedFile.cpp \
+FXMatrix.cpp \
 FXParseBuffer.cpp \
 FXPtrList.cpp \
 FXRandom.cpp \

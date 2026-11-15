@@ -19,6 +19,7 @@ FXJSONString.h \
 FXKOI8RCodec.h \
 FXLFQueue.h \
 FXMappedFile.h \
+FXMatrix.h \
 FXParallel.h \
 FXParseBuffer.h \
 FXPtrList.h \
@@ -116,6 +117,7 @@ FXStatusLine.h \
 FXStream.h \
 FXStringDictionary.h \
 FXString.h \
+FXSwitcher.h \
 FXSystem.h \
 FXTextCodec.h \
 FXTextField.h \
