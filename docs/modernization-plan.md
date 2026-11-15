@@ -501,8 +501,11 @@ the FOX event loop, and document the compositor versions tested.
 Status as of 2026-11-15: steps 0 to 3 done; the platform seam is complete for
 the core classes (seams 1 to 62 in `docs/platform-seam-plan.md`); the
 Wayland-native adapter is implemented and documented in `docs/wayland-plan.md`;
-the browser prototype is deferred. Next milestone: the first real application,
-the `calculator` port tracked in `docs/calculator-port-plan.md`.
+the first real application, the FOX `calculator`, is ported
+(`fox2/apps/calculator`, X11/Win32/Wayland verified, see
+`docs/calculator-port-plan.md`); the browser prototype is deferred. The
+calculator pulled in the widget closure it needed, which also settled the
+classic style's per-widget colours and two Wayland seam bugs.
 
 0. **Base phases** — done. The unmodified `fox-1.7.95/` was rebuilt as a
    baseline on Linux/X11 and natively on Windows/MinGW, the minimal subset was

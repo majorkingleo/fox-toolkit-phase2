@@ -176,3 +176,41 @@ Exit: all three backends pass the checklist; differences are documented.
 About 28k lines copied, almost all mechanically; the actual work is the five
 integration points per class, the link-order surprises, and Stage 3/5/6
 debugging. Stages 1, 2 and 4 are short; 3, 5 and 6 dominate.
+
+## Result
+
+All stages are done. `fox2/apps/calculator` builds with Autotools and CMake,
+its X11 window reproduces the Stage 0 screenshot with 0 differing pixels, the
+arithmetic checklist (`2+3=`, `sqrt`, `1/x`, memory, hexadecimal, `RAD`/`DEG`)
+produces the same display strings, the three preferences pages, the font
+dialog and the help window match, and the Win32 build passes the same checklist
+under Wine. `scripts/gate-wayland-calculator.sh` runs the application on a
+headless compositor, clicks with the virtual pointer and compares the frame
+with the X11 reference (0 of 104000 pixels differ); `scripts/run-fox2-calculator.sh`
+runs it against the current display with a private HOME.
+
+The port found and fixed three library bugs:
+
+- the classic style drew button and frame chrome with theme colours instead of
+  the widget's own highlight/shadow/border colours, which changed every button
+  the calculator colours by group;
+- the Wayland event queue grew only when the queued count reached the
+  allocation but wrote at the tail index, so a window with ~100 children wrote
+  past the queue;
+- the software rasterizer accepted an expose rectangle larger than its buffer,
+  so a compositor resize crashed it while repainting.
+
+The calculator's `main()` also needed the Wayland signal seam
+(`FXApp::addSignal`), which the other backends had.
+
+## Remaining widget-set gaps
+
+`fox2` now carries 272 C++ sources in `lib/` (239 before the port). Widgets a next application
+would likely miss (source file absent): `FXBitmap` and its views, the PNG,
+JPEG, TIFF and other image codecs, `FXFileDialog`/`FXDirDialog`/
+`FXInputDialog`/`FXChoiceBox`, `FXMessageBox`, `FXProgressBar`, `FXListBox`,
+`FXTreeList`, `FXTable`, `FXSplitter`/`FX4Splitter`, `FXToolBar`/`FXDockBar`/
+`FXMenuBar` (their headers exist, the implementations do not), `FXSwatch`,
+`FX7Segment`, `FXScrollPane`, `FXSpring`, `FXRealSpinner` and `FXCalendarView`.
+`utils/reswrap` is still unported, so the calculator keeps its checked-in
+`icons.cpp` and `icons.h`.

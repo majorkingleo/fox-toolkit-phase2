@@ -110,10 +110,13 @@ in `docs/modernization-plan.md`:
    compile-time build target, taken up after the native backends settle; a
    dual-mode X11 + browser binary is not planned.
 
-The next concrete milestone after these workstreams is the first real
-application: `docs/calculator-port-plan.md` ports the FOX `calculator` to
-`fox2`, lists the widgets that must exist before it builds, and defines the
-staged verification for X11, Win32 and Wayland.
+The first real application is ported: `apps/calculator/` carries the FOX
+`calculator`, built by both build systems. On X11 it reproduces the Stage 0
+reference of the original application pixel for pixel, the arithmetic
+checklist and the preferences and help windows match, and the same frames
+appear on Wayland; the Win32 build passes the checklist under Wine. The
+staged work and the remaining widget-set gaps are recorded in
+`docs/calculator-port-plan.md`.
 
 ## Ground rules
 
