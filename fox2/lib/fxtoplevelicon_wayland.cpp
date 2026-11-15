@@ -61,32 +61,37 @@
 
 namespace FX {
 
-// Copy the image into a shared memory buffer the compositor can read
+// Copy the image into a shared memory buffer the compositor can read; the
+// protocol requires a square buffer, so a non-square icon is centered on a
+// transparent square of its longer edge
 static FXWaylandBuffer* makeIconBuffer(FXWaylandApp* app,FXImage* image){
   FXWaylandBuffer* buf;
   const FXColor* src=image->getData();
   FXColor* dst;
   FXColor color;
   FXuint a,r,g,b;
-  FXint x,y;
+  FXint size,ox,oy,x,y;
   if(!src) return nullptr;
-  if((buf=fxwaylandCreateImageBuffer(app,image->getWidth(),image->getHeight()))==nullptr) return nullptr;
+  size=FXMAX(image->getWidth(),image->getHeight());
+  ox=(size-image->getWidth())/2;
+  oy=(size-image->getHeight())/2;
+  if((buf=fxwaylandCreateImageBuffer(app,size,size))==nullptr) return nullptr;
   dst=buf->pixels;
-  for(y=0; y<buf->height; y++){
-    for(x=0; x<buf->width; x++){
-      color=src[y*buf->width+x];
+  for(y=0; y<image->getHeight(); y++){
+    for(x=0; x<image->getWidth(); x++){
+      color=src[y*image->getWidth()+x];
       a=FXALPHAVAL(color);
       if(a==255){
-        dst[y*buf->width+x]=color;
+        dst[(oy+y)*size+ox+x]=color;
         }
       else if(a==0){
-        dst[y*buf->width+x]=0;
+        dst[(oy+y)*size+ox+x]=0;
         }
       else{
         r=(FXREDVAL(color)*a+127)/255;
         g=(FXGREENVAL(color)*a+127)/255;
         b=(FXBLUEVAL(color)*a+127)/255;
-        dst[y*buf->width+x]=FXRGB(r,g,b)|(a<<24);
+        dst[(oy+y)*size+ox+x]=FXRGB(r,g,b)|(a<<24);
         }
       }
     }
