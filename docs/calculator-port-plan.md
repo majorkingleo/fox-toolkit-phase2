@@ -231,6 +231,9 @@ The port and the first real desktop use found and fixed these library bugs:
   chore had run.  The dispatch now lays the tree out before exposing it, and a
   moving child no longer exposes its parent subtree during that pass (that
   queued thousands of intermediate exposures and kept a CPU busy for a second);
+  a live resize sends a configure per pointer motion, and every one used to do
+  the whole layout and repaint, so the client fell behind; each configure now
+  carries a generation and the dispatch discards one that is no longer newest;
 - closing the main window while the preferences dialog ran its modal loop
   crashed the application: the close destroyed the window, and with it the
   title button whose command was still on the stack running the modal loop, so

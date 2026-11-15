@@ -1100,9 +1100,12 @@ it.
   event.  While that pass runs, a child that moves no longer exposes its parent
   subtree (`fxplatformPlaceWindow()` remembers the place and repaints the parent
   after every single move): one resize used to queue thousands of intermediate
-  exposures and take a second of CPU on a slower compositor.  The gate runs
-  with the module trace on, whose output slows the loop enough that the old
-  ordering fails every time.
+  exposures and take a second of CPU on a slower compositor.  A live resize
+  produces a configure per pointer motion; the listener stamps each with a
+  generation and the dispatch drops a configure that is no longer the newest,
+  so a backlog of intermediate sizes does not each get a full layout and
+  repaint.  The gate runs with the module trace on, whose output slows the
+  loop enough that the old ordering fails every time.
 - **Scroll gate:** `scripts/gate-wayland-scroll.sh` opens the calculator help
   window, which starts at the top of the document, rolls the wheel down three
   notches and then up three again; the frame must change on the way down and be

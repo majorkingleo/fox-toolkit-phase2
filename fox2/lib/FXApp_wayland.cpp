@@ -695,6 +695,17 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
     // where the window is, so the position stays what the core decided
     case FXXWL_CONFIGURE:
       if((window=findWindowWithId(ev.id))!=nullptr){
+        FXWaylandSurface* surf=fxwaylandFindSurface(app,ev.id);
+
+        // A live resize produces a configure per pointer motion, faster than
+        // the tree can be laid out and painted.  The listener already stored
+        // the newest size on the surface, so an event that no longer matches
+        // it is an intermediate step: drop it instead of doing the whole
+        // layout and repaint for a size that is already history
+        if(surf && (FXuint)ev.data[0]!=surf->configuregen){
+          fxwaylandTrace("drop configure window %u %dx%d, generation %d of %u\n",(unsigned int)ev.id,ev.w,ev.h,ev.data[0],surf->configuregen);
+          return true;
+          }
         fxwaylandTrace("dispatch configure window %u %dx%d (was %dx%d)\n",(unsigned int)ev.id,ev.w,ev.h,window->getWidth(),window->getHeight());
         event.type=SEL_CONFIGURE;
         event.rect.x=window->getX();

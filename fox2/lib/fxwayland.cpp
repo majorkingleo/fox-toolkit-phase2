@@ -161,6 +161,7 @@ static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   s->logicalh=s->wanth;
   ev.w=fxwaylandScaleIn(s,s->wantw);
   ev.h=fxwaylandScaleIn(s,s->wanth);
+  ev.data[0]=(FXint)(++s->configuregen);
   s->wantw=0;
   s->wanth=0;
   fxwaylandPost(s->app,ev);
@@ -240,6 +241,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->toplevel=nullptr;
   s->decoration=nullptr;
   s->dialog=nullptr;
+  s->configuregen=0;
   s->parent=nullptr;
   s->btitle.clear();
   s->barh=0;
