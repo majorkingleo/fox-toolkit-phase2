@@ -188,7 +188,7 @@ struct FXWaylandApp {
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
   xdg_toplevel_icon_manager_v1* iconmanager; // Window icons, when offered
   xdg_activation_v1*         activation;    // Tokens that justify taking the focus
-  xdg_activation_token_v1*   activtoken;    // The one token we are waiting for
+  void*                      activations;   // Tokens we are waiting for
   wp_viewporter*             viewporter;    // Scales a buffer to a logical size
   wp_fractional_scale_manager_v1* fsmanager;// Exact scales, when offered
   FXWaylandOutput*           outputs;       // All outputs of the compositor

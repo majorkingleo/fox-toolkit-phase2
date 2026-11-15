@@ -56,8 +56,10 @@ namespace FX {
 
 // What a token needs to know before its answer arrives
 struct FXActivation {
-  FXWaylandApp* app;
-  wl_surface*   surface;
+  FXWaylandApp*          app;
+  wl_surface*            surface;
+  xdg_activation_token_v1* token;
+  FXActivation*          next;
   };
 
 
@@ -66,18 +68,17 @@ struct FXActivation {
 // The compositor answered with a token: this is the moment it may be used
 static void tokenDone(void* data,xdg_activation_token_v1* token,const char* name){
   FXActivation* act=(FXActivation*)data;
+  FXActivation** link;
   FXWaylandApp* app=act?act->app:nullptr;
-  if(app && name && act->surface){
-    if(app->activation){
+  if(app){
+    for(link=(FXActivation**)&app->activations; *link; link=&(*link)->next){
+      if(*link==act){ *link=act->next; break; }
+      }
+    if(name && act->surface && app->activation){
       xdg_activation_v1_activate(app->activation,name,act->surface);
       wl_display_flush(app->display);
       fxwaylandTrace("activated surface %p with token \"%s\"\n",(void*)act->surface,name);
       }
-    if(app->activtoken==token) app->activtoken=nullptr;
-    xdg_activation_token_v1_destroy(token);
-    }
-  else if(app && app->activtoken==token){
-    app->activtoken=nullptr;
     xdg_activation_token_v1_destroy(token);
     }
   delete act;
@@ -100,18 +101,21 @@ void fxwaylandActivateWindow(FXWaylandApp* app,FXID window){
   if(!app || !app->activation) return;
   if((surf=fxwaylandFindSurface(app,window))==nullptr || !surf->surface) return;
 
-  // Only the latest request is worth keeping; an older token that never came
-  // back is of no use to anybody
-  if(app->activtoken){
-    xdg_activation_token_v1_destroy(app->activtoken);
-    app->activtoken=nullptr;
-    }
+  // A token must not be destroyed before its done arrives, so several requests
+  // may be outstanding at once; the compositor answers them in its own time
   if(!(act=new FXActivation())) return;
   act->app=app;
   act->surface=surf->surface;
+  act->token=nullptr;
+  act->next=(FXActivation*)app->activations;
+  app->activations=act;
   token=xdg_activation_v1_get_activation_token(app->activation);
-  if(!token){ delete act; return; }
-  app->activtoken=token;
+  if(!token){
+    app->activations=act->next;
+    delete act;
+    return;
+    }
+  act->token=token;
   xdg_activation_token_v1_add_listener(token,&tokenListener,act);
 
   // The press or key that caused the request is the evidence; without one the
@@ -128,10 +132,12 @@ void fxwaylandActivateWindow(FXWaylandApp* app,FXID window){
 
 
 void fxwaylandCloseActivation(FXWaylandApp* app){
+  FXActivation* act;
   if(!app) return;
-  if(app->activtoken){
-    xdg_activation_token_v1_destroy(app->activtoken);
-    app->activtoken=nullptr;
+  while((act=(FXActivation*)app->activations)!=nullptr){
+    app->activations=act->next;
+    if(act->token) xdg_activation_token_v1_destroy(act->token);
+    delete act;
     }
   if(app->activation){
     xdg_activation_v1_destroy(app->activation);

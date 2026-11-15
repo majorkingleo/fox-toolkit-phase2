@@ -218,7 +218,7 @@ void FXApp::initPlatformMembers(){
   app->decomanager=nullptr;
   app->iconmanager=nullptr;
   app->activation=nullptr;
-  app->activtoken=nullptr;
+  app->activations=nullptr;
   app->viewporter=nullptr;
   app->fsmanager=nullptr;
   app->outputs=nullptr;
