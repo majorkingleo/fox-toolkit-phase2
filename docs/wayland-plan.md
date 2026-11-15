@@ -1088,6 +1088,17 @@ it.
   headless sway, moves one virtual pointer from the text display to a button and
   to a label, and passes when the debug log shows `set_shape(...,9)` (text) for
   the display and `set_shape(...,1)` (default) for the button and the label.
+- **Resize gate:** `scripts/gate-wayland-resize.sh` grows the calculator to
+  800x520, keeps every frame that is committed at the new size and compares the
+  first one with the settled layout (committed as
+  `screenshots/tests/fox2/wayland/calculator-800x520.png`) and with the later
+  one.  Two exposures made that first frame wrong: `shellConfigure()` exposed
+  the tree before the core had seen the new size, and the configure dispatch
+  exposed it before the delayed layout chore had run, so the widgets were
+  painted at their old places.  The configure handler now lays the tree out
+  synchronously before it exposes, and the configure listener only posts the
+  event.  The gate runs with the module trace on, whose output slows the loop
+  enough that the old ordering fails every time.
 - **Scroll gate:** `scripts/gate-wayland-scroll.sh` opens the calculator help
   window, which starts at the top of the document, rolls the wheel down three
   notches and then up three again; the frame must change on the way down and be

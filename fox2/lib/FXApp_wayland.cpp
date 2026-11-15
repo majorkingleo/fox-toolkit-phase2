@@ -703,6 +703,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         event.synthetic=true;
         if(window->handle(this,FXSEL(SEL_CONFIGURE,0),&event)) refresh();
 
+        // Lay the tree out now instead of in the idle chore: the expose below
+        // paints at once, and a delayed layout would commit the widgets at
+        // their old places first and leave that frame on screen until the
+        // chore ran
+        window->layout();
+
         // The core keeps the size the compositor asked for, so the table has to
         // follow it; the frame buffer and the hit test both come from the table
         fxplatformPlaceWindow(display,ev.id,window->getX(),window->getY(),window->getWidth(),window->getHeight(),0,0,window->shown(),PLACEMENT_X|PLACEMENT_Y|PLACEMENT_W|PLACEMENT_H);

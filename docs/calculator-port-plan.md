@@ -224,6 +224,11 @@ The port and the first real desktop use found and fixed these library bugs:
 - the Wayland wheel did not flip the sign of `wl_pointer.axis`, so the help
   window scrolled the wrong way: the protocol counts a positive vertical axis
   towards the end of the document, FOX counts a positive wheel towards the top;
+- after the calculator was expanded, the first frame committed at the new size
+  still showed the buttons at their old places, and stayed on screen until a
+  later expose; the configure listener exposed the tree before the core knew
+  the new size, and the configure dispatch exposed it before the delayed layout
+  chore had run.  The dispatch now lays the tree out before exposing it;
 - closing the main window while the preferences dialog ran its modal loop
   crashed the application: the close destroyed the window, and with it the
   title button whose command was still on the stack running the modal loop, so

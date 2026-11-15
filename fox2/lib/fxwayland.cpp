@@ -164,9 +164,6 @@ static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   s->wantw=0;
   s->wanth=0;
   fxwaylandPost(s->app,ev);
-
-  // The windows could not be painted before this, so paint them now
-  fxwaylandExpose(s->app,s->window);
   }
 
 
