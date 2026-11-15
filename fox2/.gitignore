@@ -19,6 +19,9 @@
 /include/stamp-h1
 /lib/Makefile.in
 /tools/Makefile.in
+/apps/Makefile.in
+/apps/calculator/Makefile.in
+/apps/calculator/calculator
 /tests/Makefile.in
 *.lo
 *.la

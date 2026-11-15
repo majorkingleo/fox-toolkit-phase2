@@ -30,6 +30,7 @@ add_subdirectory(lib)
 
 if(FOX_BUILD_TESTS)
   add_subdirectory(tools)
+  add_subdirectory(apps)
   add_subdirectory(tests)
 endif()
 

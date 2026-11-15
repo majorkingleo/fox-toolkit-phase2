@@ -432,6 +432,8 @@ include/Makefile
 include/fxver.h
 lib/Makefile
 tools/Makefile
+apps/Makefile
+apps/calculator/Makefile
 tests/Makefile
 fox-1.7.pc
 fox-config])

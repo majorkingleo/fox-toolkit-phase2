@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = include lib tools tests
+SUBDIRS = include lib tools apps tests
 
 EXTRA_DIST = LICENSE LICENSE_ADDENDUM fox-1.7.pc.in fox-config.in
 
