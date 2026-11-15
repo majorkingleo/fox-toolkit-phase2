@@ -706,6 +706,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
       if((window=findWindowWithId(ev.id))!=nullptr){
         FXWaylandSurface* surf=fxwaylandFindSurface(app,ev.id);
 
+        // A drag keeps configures coming, so the queue never runs dry and the
+        // idle flush is never reached; hand the compositor the frame painted
+        // for the previous size before laying out the next one.  The exposes
+        // of that frame were all dispatched before this configure was read
+        fxwaylandFlushFrames(app);
+
         // A live resize produces a configure per pointer motion, faster than
         // the tree can be laid out and painted.  The listener already stored
         // the newest size on the surface, so an event that no longer matches

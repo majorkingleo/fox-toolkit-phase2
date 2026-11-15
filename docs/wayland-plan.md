@@ -500,10 +500,12 @@ Done in this phase so far (the protocol files and the platform seam):
   does not show it.  Each line carries a monotonic timestamp, so a delay such
   as a resize that lags behind the pointer can be read off the log.
 - Frames are flushed as soon as the paint queue drains, before more input is
-  read.  Flushing only when the poll found nothing was enough for a static
+  read, and before the layout of a configure starts: the frame painted for the
+  previous size goes to the compositor even when the next configure is already
+  queued.  Flushing only when the poll found nothing was enough for a static
   window, but a continuous stream of events (a live resize, a pointer moving
   over the window) kept the queue busy and the compositor stayed on an old
-  frame until the stream paused.
+  frame until the stream paused, which is the lag at the start of a drag.
 - The library now has **no** undefined platform symbols, and `hello` runs
   against the headless compositor: it creates its toplevel, gets configured,
   paints the button and commits an 83x26 frame, which `FOX_WAYLAND_DUMP` writes
