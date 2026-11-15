@@ -22,6 +22,7 @@ fxascii.cpp \
 FXBMPIcon.cpp \
 FXBMPImage.cpp \
 FXButton.cpp \
+FXCanvas.cpp \
 fxchar.cpp \
 FXCheckButton.cpp \
 FXColorBar.cpp \
@@ -46,6 +47,8 @@ fxezquantize.cpp \
 fxmath.cpp \
 FXFile.cpp \
 FXFont.cpp \
+FXFontDialog.cpp \
+FXFontSelector.cpp \
 FXFrame.cpp \
 fxfsquantize.cpp \
 FXGIFIcon.cpp \

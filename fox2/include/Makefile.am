@@ -51,6 +51,7 @@ FXBitmap.h \
 FXBMPIcon.h \
 FXBMPImage.h \
 FXButton.h \
+FXCanvas.h \
 FXCallback.h \
 fxchar.h \
 FXCheckButton.h \
@@ -84,6 +85,8 @@ FXEvent.h \
 FXException.h \
 FXFile.h \
 FXFont.h \
+FXFontDialog.h \
+FXFontSelector.h \
 FXFrame.h \
 FXGIFIcon.h \
 FXGroupBox.h \
