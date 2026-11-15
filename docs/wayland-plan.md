@@ -999,13 +999,18 @@ it.
   The press must not be consumed by the test widget: a handler that returns 1
   for `SEL_LEFTBUTTONPRESS` or `SEL_LEFTBUTTONRELEASE` stops `FXButton` from
   arming and from sending its command.
-- **Two click bugs came before that gate:** `FXWinMap::hitTest()` wants
+- **Three click bugs came before that gate:** `FXWinMap::hitTest()` wants
   coordinates of the screen — a shell carries the place it was given — while the
   pointer arrives in the coordinates of its surface, so every click hit the shell
-  and no widget ever saw a press (the surface place is added before the query
-  now, and `tests/winmap` has a case that moves a shell and checks both
-  conventions); and the button codes of `wl_pointer` are event codes, not X11
-  numbers, so no press matched a FOX selector.
+  and no widget ever saw a press (the surface place was added before the query);
+  the button codes of `wl_pointer` are event codes, not X11 numbers, so no press
+  matched a FOX selector; and once that worked, two windows overlapped: the
+  compositor places a toplevel and never tells the client where, so every shell
+  in the table sat at the origin and a click on the lower window resolved to a
+  widget of the top-most one.  A pointer event is now hit-tested inside its own
+  surface (`FXWinMap::hitTest(shell,x,y)`), and the screen-wide query is only
+  for the backends that know the places.  `tests/winmap` keeps a case that moves
+  a shell and checks both conventions.
 - **Repaint gate:** `scripts/gate-wayland-repaint.sh` needs no reference image.
   It drives `tests/button` to the same state twice, once with one click on
   *After Text* and once with *After Text*, *Centered* and *After Text* again, and
@@ -1079,6 +1084,16 @@ it.
   headless sway, moves one virtual pointer from the text display to a button and
   to a label, and passes when the debug log shows `set_shape(...,9)` (text) for
   the display and `set_shape(...,1)` (default) for the button and the label.
+- **Modal gate:** `scripts/gate-wayland-modal.sh` opens the calculator's
+  preferences — a modal invocation — types `7`, clicks AC on the main window
+  behind the dialog and types `8`; the display must stay `7` and the dialog must
+  stay up, while a click inside the dialog still toggles its checkbox.  The
+  click and the key are first repeated with no dialog, so a broken coordinate or
+  input path is told apart from a broken filter.  Wayland dispatched both to the
+  blocked window; motion, wheel, button, key and IME events now apply the same
+  condition as X11 and Win32 (`invocation`, its window, `isOwnerOf`,
+  `doesSaveUnder`), and a press in the title bar of a blocked window is
+  swallowed when the client draws the bar itself.
 - **Toplevel icon gate:** `scripts/gate-wayland-icon.sh` runs `tests/icon`
   against KWin's virtual backend and passes when the log shows `add_buffer` and
   `set_icon`; the same application against headless sway has to report that the

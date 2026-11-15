@@ -632,6 +632,18 @@ static FXWindow* widgetAt(FXApp* foxapp,FXWaylandApp* app,FXID shell,FXint x,FXi
   }
 
 
+// A modal invocation only gets events for its own windows; the compositor
+// hands the pointer to whichever surface is under it, so the filter has to be
+// here, just as the X11 and Win32 backends filter their dispatch
+static FXbool modalAllows(FXApp* foxapp,FXWindow* window){
+  FXWindow *modal;
+  if(foxapp->getModality()==MODAL_FOR_NONE) return true;
+  modal=foxapp->getModalWindow();
+  if(modal && modal->isOwnerOf(window)) return true;
+  return window->getShell()->doesSaveUnder();
+  }
+
+
 FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   const FXTime milliseconds=1000000;
   FXWaylandApp* app=fxwayland(display);
@@ -788,8 +800,16 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
       shellsurface=fxwaylandShellSurface(app,ev.data[0]);
 
       // A press inside the client side title bar moves the window or uses one
-      // of its buttons; nothing below the bar ever sees it
-      if(ev.code==FXXWL_BUTTON && ev.data[1] && shellsurface && fxwaylandBarPress(app,shellsurface,ev.x,ev.y)){
+      // of its buttons; nothing below the bar ever sees it.  A window behind a
+      // modal dialog has no title bar actions either, including its close
+      // button, so the press is swallowed and beeped away like any other
+      if(ev.code==FXXWL_BUTTON && ev.data[1] && shellsurface && shellsurface->barh>0 && ev.y<shellsurface->barh){
+        if(modalAllows(this,window)){
+          fxwaylandBarPress(app,shellsurface,ev.x,ev.y);
+          }
+        else{
+          beep();
+          }
         return true;
         }
 
@@ -846,6 +866,10 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           if(mouseGrabWindow->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)) refresh();
           return true;
           }
+        if(!modalAllows(this,window)){
+          beep();
+          return true;
+          }
         while(window){
           if(window->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)){ refresh(); break; }
           window=window->getParent();
@@ -862,7 +886,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
           if(mouseGrabWindow->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
           }
-        else if(window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+        else if(modalAllows(this,window) && window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
         event.last_x=event.win_x;
         event.last_y=event.win_y;
         return true;
@@ -898,7 +922,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
         if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
         }
-      else if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+      else if(modalAllows(this,window)){
+        if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+        }
+      else if(ev.data[1]){
+        beep();
+        }
 
       // A press grabs the pointer and a release gives it back, which changes
       // which cursor the window wants
@@ -949,8 +978,13 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         event.code=fxwaylandKeySym(app,(FXuint)ev.data[0]);
         event.state=ev.state;
         if(ev.button) event.text=fxwaylandKeyText(app,(FXuint)ev.data[0]);
-        if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
-        fxwaylandTrace("key %s to %s code %x text \"%s\"\n",ev.button?"press":"release",window->getClassName(),event.code,event.text.text());
+        if(window==keyboardGrabWindow || modalAllows(this,window)){
+          if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
+          fxwaylandTrace("key %s to %s code %x text \"%s\"\n",ev.button?"press":"release",window->getClassName(),event.code,event.text.text());
+          return true;
+          }
+        if(ev.button) beep();
+        fxwaylandTrace("key %s to %s dropped by the modal loop\n",ev.button?"press":"release",window->getClassName());
         return true;
         }
       fxwaylandTrace("key %s dropped, no focus window\n",ev.button?"press":"release");
@@ -965,15 +999,17 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         window=window->getShell();
         }
       if(window){
-        event.code=0;
-        event.state=0;
-        event.text=ev.text;
-        event.type=SEL_KEYPRESS;
-        if(window->handle(this,FXSEL(SEL_KEYPRESS,0),&event)) refresh();
-        event.type=SEL_KEYRELEASE;
-        if(window->handle(this,FXSEL(SEL_KEYRELEASE,0),&event)) refresh();
-        fxwaylandTrace("ime \"%s\" to %s\n",ev.text,window->getClassName());
-        return true;
+        if(window==keyboardGrabWindow || modalAllows(this,window)){
+          event.code=0;
+          event.state=0;
+          event.text=ev.text;
+          event.type=SEL_KEYPRESS;
+          if(window->handle(this,FXSEL(SEL_KEYPRESS,0),&event)) refresh();
+          event.type=SEL_KEYRELEASE;
+          if(window->handle(this,FXSEL(SEL_KEYRELEASE,0),&event)) refresh();
+          fxwaylandTrace("ime \"%s\" to %s\n",ev.text,window->getClassName());
+          return true;
+          }
         }
       return false;
     }

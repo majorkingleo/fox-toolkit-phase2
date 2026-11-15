@@ -210,7 +210,17 @@ The port and the first real desktop use found and fixed these library bugs:
   digit and operator hot keys did nothing;
 - a repaint queued while a widget was visible was still dispatched after the
   widget had been hidden, so the first frame of the preferences dialog showed
-  the hidden colour page painted over the settings page.
+  the hidden colour page painted over the settings page;
+- the Wayland backend filtered neither pointer nor key events by the modal
+  invocation, so the calculator stayed live behind its own preferences dialog;
+  the X11 and Win32 backends have always dispatched only to the modal window
+  and its popups (and beep outside them), and Wayland now does the same;
+- the Wayland pointer hit test searched every shell at once with the place the
+  window table remembered, but a compositor positions a toplevel and never
+  tells the client where: every shell sat at the origin, so a click on one
+  window could resolve to a widget of the top-most one.  A pointer event is
+  now hit-tested inside its own surface (`FXWinMap::hitTest(shell,x,y)`), and
+  the screen-wide query is left to the backends that know the places.
 
 The calculator's `main()` also needed the Wayland signal seam
 (`FXApp::addSignal`), which the other backends had.
