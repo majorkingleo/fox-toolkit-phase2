@@ -152,6 +152,11 @@ public:
   /// carry the place they were given, so screen coordinates are what it needs
   FXID hitTest(FXint gx,FXint gy) const;
 
+  /// Return the deepest visible window at a point inside one shell; a
+  /// compositor positions a toplevel and never tells the client where it put
+  /// it, so an event from a surface must be hit-tested in that surface alone
+  FXID hitTest(FXID shell,FXint x,FXint y) const;
+
   /// Return the window itself or its nearest ancestor that is a shell
   FXID getShell(FXID id) const;
   };

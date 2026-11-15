@@ -626,17 +626,8 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
 // The widget under a point of a shell surface: the drag events of the protocol
 // give the position in surface coordinates, the table speaks screen coordinates
 static FXWindow* widgetAt(FXApp* foxapp,FXWaylandApp* app,FXID shell,FXint x,FXint y){
-  FXWaylandSurface* s;
-  const FXWinEntry* entry;
-  FXint rx=x;
-  FXint ry=y;
-  FXID id;
-  if((entry=app->childmap.getEntry(shell))!=nullptr){
-    s=fxwaylandFindSurface(app,shell);
-    rx=entry->x+x;
-    ry=entry->y+y-(s?s->barh:0);
-    }
-  id=app->childmap.hitTest(rx,ry);
+  FXWaylandSurface* s=fxwaylandFindSurface(app,shell);
+  FXID id=app->childmap.hitTest(shell,x,y-(s?s->barh:0));
   return id?foxapp->findWindowWithId(id):nullptr;
   }
 

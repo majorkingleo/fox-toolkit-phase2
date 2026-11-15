@@ -404,11 +404,35 @@ void FXWinMap::reparent(FXID id,FXID parent){
   }
 
 
+// Deepest visible child at the given coordinates of one shell
+FXID FXWinMap::hitTest(FXID shell,FXint x,FXint y) const {
+  const FXWinEntry* e=find(shell);
+  FXID child;
+  FXID hit;
+  if(!e) return 0;
+  for(;;){
+    hit=e->id;
+    child=e->last;
+    while(child){
+      const FXWinEntry* c=find(child);
+      if(!c) break;
+      if((c->flags&WINMAP_SHOWN) && x>=c->x && y>=c->y && x<c->x+c->w && y<c->y+c->h){
+        x-=c->x;
+        y-=c->y;
+        e=c;
+        break;
+        }
+      child=c->prev;
+      }
+    if(child==0) break;
+    }
+  return hit;
+  }
+
+
 // Deepest visible child at the given shell coordinates
 FXID FXWinMap::hitTest(FXint gx,FXint gy) const {
   const FXWinEntry* e;
-  FXID child;
-  FXID hit;
   FXID s;
   // Start at the shells, top-most first; they are the only entries without a parent
   for(s=lastshell; s; s=e->prev){
@@ -416,26 +440,7 @@ FXID FXWinMap::hitTest(FXint gx,FXint gy) const {
     if(!e) break;
     if(!(e->flags&WINMAP_SHOWN)) continue;
     if(gx<e->x || gy<e->y || gx>=e->x+e->w || gy>=e->y+e->h) continue;
-    // From here on the coordinates are local to the current window
-    gx-=e->x;
-    gy-=e->y;
-    for(;;){
-      hit=e->id;
-      child=e->last;
-      while(child){
-        const FXWinEntry* c=find(child);
-        if(!c) break;
-        if((c->flags&WINMAP_SHOWN) && gx>=c->x && gy>=c->y && gx<c->x+c->w && gy<c->y+c->h){
-          gx-=c->x;
-          gy-=c->y;
-          e=c;
-          break;
-          }
-        child=c->prev;
-        }
-      if(child==0) break;
-      }
-    return hit;
+    return hitTest(s,gx-e->x,gy-e->y);
     }
   return 0;
   }

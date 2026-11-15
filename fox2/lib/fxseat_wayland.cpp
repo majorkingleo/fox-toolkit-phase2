@@ -84,11 +84,9 @@ FXWaylandSurface* fxwaylandSurfaceOf(FXWaylandApp* app,wl_surface* surface){
 // bar, and the window table is queried in the coordinates of the screen
 static FXID hitWindow(FXWaylandApp* app,FXWaylandSurface* s,FXint x,FXint y){
   FXID id;
-  FXRectangle place;
   if(!app || !s) return 0;
   if(y<s->barh) return s->window;
-  place=app->childmap.getGlobalGeometry(s->window);
-  id=app->childmap.hitTest(place.x+x,place.y+y-s->barh);
+  id=app->childmap.hitTest(s->window,x,y-s->barh);
   return id?id:s->window;
   }
 
