@@ -4,7 +4,7 @@ AM_CXXFLAGS = @X_CFLAGS@
 INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
 LDADD = $(top_builddir)/lib/libFOX-1.7.la -lm
 
-noinst_PROGRAMS = hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin
+noinst_PROGRAMS = hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin combo
 
 # Console tests need no display
 noinst_PROGRAMS += desktop
@@ -14,6 +14,7 @@ desktop_SOURCES = desktop.cpp
 icon_SOURCES = icon.cpp
 bmpicon_SOURCES = bmpicon.cpp
 textspin_SOURCES = textspin.cpp
+combo_SOURCES = combo.cpp
 button_SOURCES = button.cpp
 dpi_SOURCES = dpi.cpp
 popup_SOURCES = popup.cpp

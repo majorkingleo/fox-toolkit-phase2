@@ -45,6 +45,7 @@ FXGIFIcon.cpp \
 FXGlyphs.cpp \
 fxbmpio.cpp \
 fxgifio.cpp \
+FXComboBox.cpp \
 FXGroupBox.cpp \
 FXHash.cpp \
 FXHorizontalFrame.cpp \
@@ -57,6 +58,8 @@ fxkeysym.cpp \
 FXLabel.cpp \
 FXMainWindow.cpp \
 FXMemoryStream.cpp \
+FXList.cpp \
+FXMenuButton.cpp \
 FXMenuCaption.cpp \
 FXMenuCascade.cpp \
 FXMenuCheck.cpp \
@@ -88,6 +91,8 @@ FXSlider.cpp \
 FXStat.cpp \
 FXScrollArea.cpp \
 FXScrollBar.cpp \
+FXScrollWindow.cpp \
+FXObjectList.cpp \
 FXSpinner.cpp \
 FXStatusBar.cpp \
 FXStatusLine.cpp \

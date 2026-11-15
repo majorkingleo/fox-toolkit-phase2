@@ -55,6 +55,7 @@ FXCallback.h \
 fxchar.h \
 FXCheckButton.h \
 FXColors.h \
+FXComboBox.h \
 FXComposeContext.h \
 FXComposite.h \
 FXCursor.h \
@@ -92,6 +93,9 @@ FXLabel.h \
 FXMainWindow.h \
 fxmath.h \
 FXMemoryStream.h \
+FXList.h \
+FXMenuBar.h \
+FXMenuButton.h \
 FXMenuPane.h \
 FXMessageBox.h \
 FXMetaClass.h \
@@ -111,6 +115,8 @@ FXRegistry.h \
 FXRootWindow.h \
 FXScrollArea.h \
 FXScrollBar.h \
+FXScrollWindow.h \
+FXObjectList.h \
 FXRunnable.h \
 FXSeparator.h \
 FXSettings.h \
