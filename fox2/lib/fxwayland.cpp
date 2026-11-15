@@ -75,13 +75,21 @@ void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event){
   FXuint count;
   if(!app) return;
   count=app->eventcount-app->eventhead;
-  if(count==app->eventalloced){
-    FXuint cap=app->eventalloced?app->eventalloced*2:64;
-    if(app->eventhead){                                  // Compact first
+
+  // No room at the tail of the queue
+  if(app->eventcount==app->eventalloced){
+
+    // Compact the queued events to the front first, so the tail is free again
+    if(app->eventhead){
       memmove(app->events,app->events+app->eventhead,count*sizeof(FXWaylandEvent));
       app->eventcount=count;
       app->eventhead=0;
       }
+    }
+
+  // Still no room, so grow the queue
+  if(app->eventcount==app->eventalloced){
+    FXuint cap=app->eventalloced?app->eventalloced*2:64;
     if(!resizeElms(app->events,cap)) return;
     app->eventalloced=cap;
     }

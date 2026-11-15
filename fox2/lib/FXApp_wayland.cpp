@@ -953,6 +953,52 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   }
 
 
+
+// Add a signal message
+void FXApp::addSignal(FXint sig,FXObject* tgt,FXSelector sel,FXbool immediate,FXuint flags){
+  void (CDECL *handler)(int);
+  if(sig<0 || MAXSIGNALS<sig){ fxerror("%s::addSignal: bad signal number\n",getClassName()); }
+
+  // May have just changed the message and/or target
+  signals[sig].target=tgt;
+  signals[sig].message=sel;
+
+  // Has handler been set?
+  if(!signals[sig].handlerset){
+    if(immediate)
+      handler=immediatesignalhandler;
+    else
+      handler=signalhandler;
+    struct sigaction sigact;
+    sigact.sa_handler=handler;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags=flags;
+    if(sigaction(sig,&sigact,nullptr)!=0){ fxwarning("%s::addSignal: error setting signal handler\n",getClassName()); }
+    signals[sig].notified=false;
+    signals[sig].handlerset=true;
+    }
+  }
+
+
+// Remove all signal messages for signal sig
+void FXApp::removeSignal(FXint sig){
+  if(sig<0 || MAXSIGNALS<sig){ fxerror("%s::removeSignal: bad signal number\n",getClassName()); }
+
+  // Has a handler been set?
+  if(signals[sig].handlerset){
+    struct sigaction sigact;
+    sigact.sa_handler=SIG_DFL;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags=0;
+    if(sigaction(sig,&sigact,nullptr)!=0){ fxwarning("%s::removeSignal: error removing signal handler\n",getClassName()); }
+    signals[sig].target=nullptr;
+    signals[sig].message=0;
+    signals[sig].handlerset=false;
+    signals[sig].notified=false;
+    }
+  }
+
+
 // Dispatch a window message; no such messages on this platform
 FXival FXApp::dispatchEvent(FXID,FXuint,FXuval,FXival){
   return 0;
