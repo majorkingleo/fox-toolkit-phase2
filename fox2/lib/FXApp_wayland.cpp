@@ -1308,6 +1308,21 @@ FXString FXApp::getDragTypeName(FXDragType type) const {
   return fxwaylandTypeName(fxwayland(display),type);
   }
 
+
+// Return true when the compositor offers the text input protocol
+FXbool FXApp::hasInputMethod() const {
+  FXWaylandApp* app=fxwayland(display);
+  return app && app->timanager;
+  }
+
+
+// Beep; the Wayland protocol has no bell, so this only traces
+void FXApp::beep(){
+  if(initialized){
+    FXTRACE(TOPIC_EVENT,"Beep\n");
+    }
+  }
+
 }
 
 #endif

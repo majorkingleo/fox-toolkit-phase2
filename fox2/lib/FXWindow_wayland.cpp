@@ -230,6 +230,28 @@ void FXWindow::repaint(FXint x,FXint y,FXint w,FXint h) const {
   }
 
 
+// Scroll rectangle x,y,w,h by a shift of dx,dy
+void FXWindow::scroll(FXint x,FXint y,FXint w,FXint h,FXint dx,FXint dy) const {
+  if(xid && 0<w && 0<h && (dx || dy)){
+
+    // There is no server side blit on this platform, and every window shares
+    // the pixels of its shell's buffer, so the shifted area is repainted by
+    // its own paint handler rather than copied from the old frame
+    if(x>=width || y>=height || x+w<=0 || y+h<=0) return;
+
+    // Intersect with the window
+    if(x<0){w+=x;x=0;}
+    if(y<0){h+=y;y=0;}
+    if(x+w>width){w=width-x;}
+    if(y+h>height){h=height-y;}
+
+    if(w>0 && h>0){
+      getApp()->addRepaint(xid,x,y,w,h,true);
+      }
+    }
+  }
+
+
 /*******************************************************************************/
 
 // Acquire grab; the pointer stays with the surface that got the press
@@ -342,6 +364,15 @@ FXbool FXWindow::beginDrag(const FXDragType* types,FXuint numtypes){
     return true;
     }
   return false;
+  }
+
+
+// Drag to a new position; the compositor moves the pointer and sends the
+// motion to the drop target itself, so the source has nothing to transmit
+FXbool FXWindow::handleDrag(FXint,FXint,FXDragAction action){
+  if(xid==0){ fxerror("%s::handleDrag: window has not yet been created.\n",getClassName()); }
+  if(action<DRAG_ASK || DRAG_PRIVATE<action){ fxerror("%s::handleDrag: illegal drag action.\n",getClassName()); }
+  return isDragging();
   }
 
 

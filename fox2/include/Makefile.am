@@ -44,6 +44,7 @@ FX88591Codec.h \
 FXAccelTable.h \
 FXApp.h \
 FXArray.h \
+FXArrowButton.h \
 fxascii.h \
 FXAutoThreadStorageKey.h \
 FXBitmap.h \
@@ -108,11 +109,15 @@ FXRectangle.h \
 FXRegion.h \
 FXRegistry.h \
 FXRootWindow.h \
+FXScrollArea.h \
+FXScrollBar.h \
 FXRunnable.h \
 FXSeparator.h \
 FXSettings.h \
 FXShell.h \
 FXSize.h \
+FXSlider.h \
+FXSpinner.h \
 FXStat.h \
 FXStatusBar.h \
 FXStatusLine.h \
@@ -121,6 +126,7 @@ FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
 FXSystem.h \
+FXText.h \
 FXTextCodec.h \
 FXTextField.h \
 FXTheme.h \

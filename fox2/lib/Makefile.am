@@ -17,6 +17,7 @@ libFOX_1_7_la_SOURCES = \
 FX88591Codec.cpp \
 FXAccelTable.cpp \
 FXApp.cpp \
+FXArrowButton.cpp \
 fxascii.cpp \
 FXBMPIcon.cpp \
 FXBMPImage.cpp \
@@ -85,12 +86,16 @@ FXSettings.cpp \
 FXShell.cpp \
 FXSlider.cpp \
 FXStat.cpp \
+FXScrollArea.cpp \
+FXScrollBar.cpp \
+FXSpinner.cpp \
 FXStatusBar.cpp \
 FXStatusLine.cpp \
 FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+fxtabbify.cpp \
 fxstrtod.cpp \
 fxstrtoll.cpp \
 fxstrtoull.cpp \
@@ -98,7 +103,9 @@ FXSystem.cpp \
 FXSystemTime.cpp \
 FXSystemTimeFormat.cpp \
 FXSystemTimeParse.cpp \
+FXText.cpp \
 FXTextCodec.cpp \
+FXTextField.cpp \
 FXThread.cpp \
 FXToolTip.cpp \
 FXTopWindow.cpp \
@@ -152,6 +159,8 @@ FXWinMap.cpp \
 FXXML.cpp \
 FXXMLFile.cpp \
 FXXMLString.cpp \
+icons.cpp \
+icons.h \
 fxpriv.h
 
 # Platform seam: exactly one implementation is compiled into the library

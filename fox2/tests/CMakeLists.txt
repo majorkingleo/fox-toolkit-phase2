@@ -1,4 +1,4 @@
-foreach(prog hello button dpi popup click menus tooltip clipboard dnd icon bmpicon)
+foreach(prog hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin)
   add_executable(${prog} ${prog}.cpp)
   target_link_libraries(${prog} PRIVATE FOX::FOX m)
 endforeach()
