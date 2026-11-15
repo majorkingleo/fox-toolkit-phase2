@@ -13,8 +13,14 @@ rm -rf /tmp/fox1home && mkdir -p /tmp/fox1home
 HOME=/tmp/fox1home tmp/build-fox1/calculator/calculator
 ```
 
-The screenshots were captured with `import -window <id>` and a private `HOME`,
-so they show the built-in defaults.
+The screenshots were captured from a private Xwayland display (the desktop
+session may be locked, and a locked session unmaps every X11 window) with a
+private `HOME`, so they show the built-in defaults.  The main window is
+captured after a click on the constant memory label: that click runs the GUI
+update pass, which presses `Dec` and `Rad`, but leaves no widget with the
+keyboard focus, so the frame carries no focus ring.  That is the frame the
+Wayland gate can reproduce, because a headless compositor has no keyboard
+seat.
 
 ## Screenshots
 
