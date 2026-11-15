@@ -186,10 +186,16 @@ run make -j"$jobs" -C lib
 echo "==> build tests"
 run make -j"$jobs" -C tests hello.exe button.exe dpi.exe desktop.exe icon.exe raster.exe region.exe glyphs.exe winmap.exe
 
+if [ -f apps/Makefile ]; then
+  echo "==> build applications"
+  run make -j"$jobs" -C apps
+  fi
+
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*.dll lib/.libs/*.dll.a 2>/dev/null || true
 ls -l tests/.libs/hello.exe tests/.libs/button.exe tests/.libs/dpi.exe tests/.libs/raster.exe tests/.libs/region.exe tests/.libs/glyphs.exe tests/.libs/winmap.exe 2>/dev/null || true
+ls -l apps/calculator/.libs/calculator.exe 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   # A dedicated prefix keeps the user's Wine setup untouched; the first run
@@ -259,6 +265,23 @@ if [ "$run_test" = yes ]; then
   rc=0
   timeout "$run_seconds" wine "$exe" || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: winmap exited with status $rc" >&2
+
+  echo
+  echo "==> calculator under Wine for ${run_seconds} seconds"
+  exe="apps/calculator/.libs/calculator.exe"
+  [ -f "$exe" ] || exe="apps/calculator/calculator.exe"
+  if [ -f "$exe" ]; then
+    rc=0
+    timeout "$run_seconds" wine "$exe" >"$BUILD/calculator.wine.log" 2>&1 || rc=$?
+    tail -n 5 "$BUILD/calculator.wine.log"
+    if [ "$rc" -eq 124 ]; then
+      echo "calculator stayed in its event loop (expected)"
+    else
+      echo "warning: calculator exited with status $rc" >&2
+      fi
+  else
+    echo "note: no calculator binary was built"
+    fi
   fi
 
 echo

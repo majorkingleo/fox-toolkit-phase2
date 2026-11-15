@@ -145,7 +145,7 @@ if [ "$use_cmake" = yes ]; then
     printf '%s\n' "${copts[*]}" >"$BUILD/.cmake-options"
     fi
 
-  echo "==> build library, tools and tests"
+  echo "==> build library, tools, tests and applications"
   run cmake --build "$BUILD" -j "$jobs"
 
   echo
@@ -276,10 +276,16 @@ run make -j"$jobs" -C lib
 echo "==> build tests"
 run make -j"$jobs" -C tests hello button dpi raster region glyphs winmap
 
+if [ -f apps/Makefile ]; then
+  echo "==> build applications"
+  run make -j"$jobs" -C apps
+  fi
+
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*FOX* 2>/dev/null || ls -l lib/*FOX* 2>/dev/null || true
 ls -l tests/hello tests/button tests/dpi tests/raster tests/region tests/glyphs tests/winmap 2>/dev/null || true
+ls -l apps/calculator/calculator 2>/dev/null || true
 
 if [ "$run_test" = yes ]; then
   for prog in hello button dpi; do
