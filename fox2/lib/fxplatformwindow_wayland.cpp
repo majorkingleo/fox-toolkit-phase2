@@ -133,7 +133,7 @@ void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXi
   // everything shares one buffer.  Repaint the parent and the whole tree below
   // it, parents before children, so the parent's background fills the hole and
   // the widgets that are still in place paint over it again
-  if((was.x!=x || was.y!=y || was.w!=w || was.h!=h) && shown && app->childmap.isVisible(window)){
+  if((was.x!=x || was.y!=y || was.w!=w || was.h!=h) && shown && !app->inlayout && app->childmap.isVisible(window)){
     if(parent && app->childmap.isVisible(parent)){
       fxwaylandExpose(app,parent);
       }

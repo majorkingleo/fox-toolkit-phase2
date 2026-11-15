@@ -250,6 +250,7 @@ struct FXWaylandApp {
   void*             foxapp;             // The FXApp, for fonts and colours
   FXbool            argb;               // ARGB8888 buffers are supported
   FXbool            lost;               // Connection failed
+  FXbool            inlayout;           // A layout pass is running in the core
   FXWaylandEvent*   events;             // Queued neutral events
   FXuint            eventcount;         // Number of queued events
   FXuint            eventalloced;       // Allocated events

@@ -301,6 +301,7 @@ void FXApp::initPlatformMembers(){
   app->keyboardsurface=nullptr;
   app->argb=false;
   app->lost=false;
+  app->inlayout=false;
   app->events=nullptr;
   app->eventcount=0;
   app->eventalloced=0;
@@ -706,8 +707,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         // Lay the tree out now instead of in the idle chore: the expose below
         // paints at once, and a delayed layout would commit the widgets at
         // their old places first and leave that frame on screen until the
-        // chore ran
+        // chore ran.  While the pass runs, moving a child must not expose its
+        // parent subtree: that would paint the tree at every intermediate
+        // state, thousands of exposes for one resize
+        app->inlayout=true;
         window->layout();
+        app->inlayout=false;
 
         // The core keeps the size the compositor asked for, so the table has to
         // follow it; the frame buffer and the hit test both come from the table

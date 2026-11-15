@@ -1097,8 +1097,12 @@ it.
   exposed it before the delayed layout chore had run, so the widgets were
   painted at their old places.  The configure handler now lays the tree out
   synchronously before it exposes, and the configure listener only posts the
-  event.  The gate runs with the module trace on, whose output slows the loop
-  enough that the old ordering fails every time.
+  event.  While that pass runs, a child that moves no longer exposes its parent
+  subtree (`fxplatformPlaceWindow()` remembers the place and repaints the parent
+  after every single move): one resize used to queue thousands of intermediate
+  exposures and take a second of CPU on a slower compositor.  The gate runs
+  with the module trace on, whose output slows the loop enough that the old
+  ordering fails every time.
 - **Scroll gate:** `scripts/gate-wayland-scroll.sh` opens the calculator help
   window, which starts at the top of the document, rolls the wheel down three
   notches and then up three again; the frame must change on the way down and be
