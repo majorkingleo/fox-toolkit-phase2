@@ -15,10 +15,10 @@ The binaries land in `tools/build/`: `xinject`, `xgrab`, `xlist` (X11) and
 
 | Tool | What it does |
 | --- | --- |
-| `xinject` | Synthesizes or XTest-injects pointer and keyboard events into an X11 application. |
+| `xinject` | Synthesizes or XTest-injects pointer, wheel and keyboard events into an X11 application. |
 | `xgrab` | Saves one X11 window as a PPM image, through the Composite pixmap when the window is redirected. |
 | `xlist` | Lists the X11 window tree with absolute geometry and map state; `-geom` prints `ID X Y W H` for a title. |
-| `wlxinject` | Creates one wlr virtual pointer and moves, presses and releases it on a wlroots compositor (sway). |
+| `wlxinject` | Creates one wlr virtual pointer and moves, presses, releases and scrolls it on a wlroots compositor (sway). |
 | `screencopy` | Saves the first output of a wlroots compositor as a PPM image (a minimal grim). |
 
 The sources are documented at the top of each file; `.github/skills/test-tools`

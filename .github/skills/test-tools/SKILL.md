@@ -61,6 +61,7 @@ xinject -title "FOX Calculator" tree             # widget windows
 xinject -title "FOX Calculator" click 60 25      # synthesized click
 xinject -title "FOX Calculator" move 300 20      # enter + motion
 xinject -title "FOX Calculator" type "2+3="      # synthesized keys
+xinject -title "Calculator Help" wheel 3         # wheel down, X11 Button5
 xinject -title "FOX Calculator" key Escape
 xinject -title "FOX Calculator" xclick 60 25     # XTest click
 xinject -title "FOX Calculator" xtype "2+3="     # XTest keys
@@ -140,10 +141,12 @@ wlxinject 612 210 move sleep:300 move:690,292 sleep:300 down sleep:300 up sleep:
 ```
 
 `wlxinject` creates **one** virtual pointer, keeps it alive for the whole
-gesture and then moves, presses and releases it.  Each invocation creates a new
-pointer, which makes the seat change capabilities in the middle of a test; put
-all steps of one gesture in one invocation.  Actions are `down`, `up`, `move`
-(to the command-line point), `move:X,Y`, `sleep:MS`, `rightdown`, `rightup`.
+gesture and then moves, presses, releases and scrolls it.  Each invocation
+creates a new pointer, which makes the seat change capabilities in the middle
+of a test; put all steps of one gesture in one invocation.  Actions are `down`,
+`up`, `move` (to the command-line point), `move:X,Y`, `sleep:MS`, `rightdown`,
+`rightup`, `wheel:<notches>`; positive notches are a wheel down (the protocol's
+positive axis, towards the end of the document), negative ones a wheel up.
 Coordinates are layout coordinates of the output.
 
 - A pointer needs a motion after it is created before the client sees

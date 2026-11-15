@@ -211,7 +211,9 @@ static void pointerAxis(void* data,wl_pointer*,uint32_t time,uint32_t axis,wl_fi
   FXint amount;
   if(!app || !s) return;
   if(axis!=WL_POINTER_AXIS_VERTICAL_SCROLL) return;
-  amount=(FXint)(wl_fixed_to_double(value)*12.0);     // One notch of 10.0 is 120
+  // wl_pointer axis is positive towards the end of the document, FOX counts a
+  // positive wheel as a scroll towards the top, so the sign flips here
+  amount=(FXint)(-wl_fixed_to_double(value)*12.0);    // One notch of 10.0 is 120
   if(amount==0) return;
   fxwaylandTrace("wheel %d\n",amount);
   postPointer(app,s,FXXWL_WHEEL,app->pointerx,app->pointery,0,app->pointerbuttons,time,0);

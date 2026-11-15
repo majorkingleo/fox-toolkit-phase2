@@ -221,6 +221,9 @@ The port and the first real desktop use found and fixed these library bugs:
   window could resolve to a widget of the top-most one.  A pointer event is
   now hit-tested inside its own surface (`FXWinMap::hitTest(shell,x,y)`), and
   the screen-wide query is left to the backends that know the places;
+- the Wayland wheel did not flip the sign of `wl_pointer.axis`, so the help
+  window scrolled the wrong way: the protocol counts a positive vertical axis
+  towards the end of the document, FOX counts a positive wheel towards the top;
 - closing the main window while the preferences dialog ran its modal loop
   crashed the application: the close destroyed the window, and with it the
   title button whose command was still on the stack running the modal loop, so

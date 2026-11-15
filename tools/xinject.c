@@ -26,6 +26,7 @@
  *   xinject -title TITLE xmove X Y              motion through XTest
  *   xinject -title TITLE xtype TEXT             type through XTest
  *   xinject -title TITLE xkey KEYSYMNAME        one key through XTest
+ *   xinject -title TITLE wheel NOTCHES          synthesized wheel, down > 0
  *
  * Build: make -C tools xinject   (needs libX11 and libXtst)
  */
@@ -147,19 +148,19 @@ static void do_motion(Window w,int x,int y){
   send_event(w,&ev,PointerMotionMask);
   }
 
-static void do_button(Window w,int x,int y,int type,unsigned state){
+static void do_button(Window w,int x,int y,int button,int type,unsigned state){
   XEvent ev;
   memset(&ev,0,sizeof(ev));
   ev.xbutton.type=type;
   ev.xbutton.window=w;
   ev.xbutton.root=DefaultRootWindow(dpy);
-  ev.xbutton.subwindow=None;
+  ev.xbutton.subwindow=1;               // The wheel compression puts a count here
   ev.xbutton.time=CurrentTime;
   ev.xbutton.x=x;
   ev.xbutton.y=y;
   root_pos(w,x,y,&ev.xbutton.x_root,&ev.xbutton.y_root);
   ev.xbutton.state=state;
-  ev.xbutton.button=Button1;
+  ev.xbutton.button=button;
   ev.xbutton.same_screen=True;
   send_event(w,&ev,ButtonPressMask|ButtonReleaseMask);
   }
@@ -174,10 +175,28 @@ static void do_click(Window shell,int x,int y){
   usleep(20000);
   do_motion(target,tx,ty);
   usleep(20000);
-  do_button(target,tx,ty,ButtonPress,0);
+  do_button(target,tx,ty,Button1,ButtonPress,0);
   usleep(40000);
-  do_button(target,tx,ty,ButtonRelease,Button1Mask);
+  do_button(target,tx,ty,Button1,ButtonRelease,Button1Mask);
   usleep(40000);
+  }
+
+static void do_wheel(Window shell,int x,int y,int notches){
+  Window target;
+  int tx,ty;
+  XEvent ev;
+  int button=notches>0?Button5:Button4;
+  int i;
+  do_focus(shell);
+  target=deepest(shell,x,y,&tx,&ty);
+  do_crossing(shell,target,tx,ty,&ev,EnterNotify);
+  do_motion(target,tx,ty);
+  for(i=0; i<(notches>0?notches:-notches); i++){
+    do_button(target,tx,ty,button,ButtonPress,0);
+    usleep(10000);
+    do_button(target,tx,ty,button,ButtonRelease,0);
+    usleep(10000);
+    }
   }
 
 static int key_for(KeySym ks,KeyCode *code,int *shift){
@@ -320,6 +339,11 @@ int main(int argc,char **argv){
   if(strcmp(cmd,"click")==0){
     int x=atoi(argv[i++]),y=atoi(argv[i++]);
     do_click(win,x,y);
+    return 0;
+    }
+  if(strcmp(cmd,"wheel")==0){
+    int x=atoi(argv[i++]),y=atoi(argv[i++]),notches=atoi(argv[i++]);
+    do_wheel(win,x,y,notches);
     return 0;
     }
   if(strcmp(cmd,"move")==0){

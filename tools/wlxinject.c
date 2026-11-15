@@ -10,8 +10,10 @@
  *
  * Usage:  wlxinject <x> <y> [<action> ...]
  *         wlxinject 40 46 down up
+ *         wlxinject 400 300 wheel:3
  *
- * Actions:  down, up, move, move:<x>,<y>, sleep:<ms>, rightdown, rightup
+ * Actions:  down, up, move, move:<x>,<y>, sleep:<ms>, rightdown, rightup,
+ *           wheel:<notches>
  *
  * The coordinates are layout coordinates, the same ones grim reports.  A plain
  * move goes to the point given on the command line, move:<x>,<y> goes to a new
@@ -125,6 +127,14 @@ int main(int argc,char* argv[]){
       }
     else if(strncmp(argv[i],"sleep:",6)==0){
       pause_ms((unsigned)atoi(argv[i]+6));
+      }
+    else if(strncmp(argv[i],"wheel:",6)==0){
+      int notches=atoi(argv[i]+6);
+      if(notches){
+        zwlr_virtual_pointer_v1_axis(pointer,timestamp(),
+                                     WL_POINTER_AXIS_VERTICAL_SCROLL,
+                                     wl_fixed_from_int(notches*10));
+        }
       }
     else{
       fprintf(stderr,"wlxinject: unknown action %s\n",argv[i]);

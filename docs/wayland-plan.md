@@ -587,7 +587,9 @@ gates that drive them):
 - `wl_pointer`: enter, leave, motion, buttons, axis (vertical and horizontal
   wheel, discrete steps), frame; coordinates are the surface-local logical
   position scaled to buffer pixels; click count and double-click timing remain
-  in `FXApp`.
+  in `FXApp`.  The vertical axis is positive towards the end of the document
+  while a FOX wheel code is positive towards the top, so the seat flips the
+  sign before posting `FXXWL_WHEEL`.
 - `wl_keyboard` with `xkbcommon`: keymap from the compositor fd, modifiers,
   keysym to FOX key code (identity), compose through `xkb_compose` for dead
   keys until `text-input-v3`, repeat via FOX timer.
@@ -1086,6 +1088,14 @@ it.
   headless sway, moves one virtual pointer from the text display to a button and
   to a label, and passes when the debug log shows `set_shape(...,9)` (text) for
   the display and `set_shape(...,1)` (default) for the button and the label.
+- **Scroll gate:** `scripts/gate-wayland-scroll.sh` opens the calculator help
+  window, which starts at the top of the document, rolls the wheel down three
+  notches and then up three again; the frame must change on the way down and be
+  identical again on the way up.  `wl_pointer` counts a positive vertical axis
+  towards the end of the document while FOX counts a positive wheel towards the
+  top (X11 Button4, a positive `WM_MOUSEWHEEL` delta), so the seat flips the
+  sign; without it the down scroll is clamped at the top and does nothing, and
+  the gate fails with "the sign is inverted".
 - **Modal gate:** `scripts/gate-wayland-modal.sh` opens the calculator's
   preferences — a modal invocation — types `7`, clicks AC on the main window
   behind the dialog and types `8`; the display must stay `7` and the dialog must
