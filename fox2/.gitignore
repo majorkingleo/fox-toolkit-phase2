@@ -23,6 +23,8 @@
 /apps/Makefile.in
 /apps/calculator/Makefile.in
 /apps/calculator/calculator
+/apps/controlpanel/Makefile.in
+/apps/controlpanel/ControlPanel
 /tests/Makefile.in
 *.lo
 *.la
