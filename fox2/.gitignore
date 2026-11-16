@@ -29,6 +29,8 @@
 /apps/chart/charttest
 /apps/pathfinder/Makefile.in
 /apps/pathfinder/PathFinder
+/apps/adie/Makefile.in
+/apps/adie/adie
 /tests/Makefile.in
 *.lo
 *.la

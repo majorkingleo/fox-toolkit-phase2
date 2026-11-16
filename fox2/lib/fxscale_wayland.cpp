@@ -171,12 +171,10 @@ static void setScreenSize(FXWaylandOutput* out){
   }
 
 
-static void outputGeometry(void* data,wl_output*,int32_t,int32_t,int32_t width,int32_t height,int32_t,const char*,const char*,int32_t){
-  FXWaylandOutput* out=(FXWaylandOutput*)data;
-  if(!out || width<=0 || height<=0) return;
-  out->width=width;
-  out->height=height;
-  setScreenSize(out);
+static void outputGeometry(void*,wl_output*,int32_t,int32_t,int32_t,int32_t,int32_t,const char*,const char*,int32_t){
+  // The geometry event carries the physical size in millimeters, not the size
+  // in pixels; taking it for the screen made the root window 698x393 on a
+  // 2560x1440 output, and every popup was clamped to that tiny screen
   }
 
 

@@ -5,6 +5,7 @@ foxincludedir=$(includedir)/fox-1.7
 foxinclude_HEADERS = \
 fx.h \
 FX88592Codec.h \
+FXCP1252Codec.h \
 FXAtomic.h \
 FXCompletion.h \
 FXDictionary.h \
@@ -19,6 +20,7 @@ FXJSONString.h \
 FXKOI8RCodec.h \
 FXLFQueue.h \
 FXMappedFile.h \
+FXMarkedPtr.h \
 FXMatrix.h \
 FXParallel.h \
 FXParseBuffer.h \
@@ -33,6 +35,7 @@ FXTaskGroup.h \
 FXUTF32Codec.h \
 FXUTF8Codec.h \
 FXUnits.h \
+FXUndoList.h \
 FXVariant.h \
 FXVariantArray.h \
 FXVariantMap.h \
@@ -73,6 +76,7 @@ FXDebugTarget.h \
 fxdefs.h \
 fxtarget.h \
 FXDialogBox.h \
+FXDirVisitor.h \
 FXDir.h \
 FXDLL.h \
 FXDockBar.h \
@@ -128,6 +132,7 @@ FXRootWindow.h \
 FXScrollArea.h \
 FXScrollBar.h \
 FXScrollWindow.h \
+FXSearchDialog.h \
 FXObjectList.h \
 FXRunnable.h \
 FXSeparator.h \
@@ -157,6 +162,7 @@ FXToolBarTab.h \
 FXRulerView.h \
 FXRuler.h \
 FXGradientBar.h \
+FXGlobVisitor.h \
 FXImageView.h \
 FXBitmapView.h \
 FXBitmapFrame.h \
@@ -205,6 +211,7 @@ FXCalendar.h \
 FXCalendarView.h \
 FXWizard.h \
 FXProgressDialog.h \
+FXReplaceDialog.h \
 FXKnob.h \
 FXDate.h \
 FXDirDialog.h \

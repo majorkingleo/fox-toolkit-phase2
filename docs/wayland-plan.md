@@ -430,6 +430,12 @@ Done in this phase so far (the protocol files and the platform seam):
   this phase (`FXWindow`, `FXRootWindow`, `FXShell`, `FXTopWindow`,
   `FXMainWindow`, `FXPopup`, `FXToolTip`), the `fxplatformCreateWindow` family,
   `FXDragCorner` and `FXComposeContext`.
+- File descriptor inputs: `getNextEvent()` polls `inputs[]` and the `handles`
+  descriptor sets, but `FXApp::addInput()` / `removeInput()` had no Wayland
+  implementation, so nothing could register a descriptor.  The ported Adie's
+  `ShellCommand` needs them to watch the pipes of the child program; both are
+  now implemented like the X11 module (grow `inputs`, set or clear the
+  read/write/except set, maintain `maxhandle`).
 - Virtual window table: the private header `fxwinmap.h` and `FXWinMap.cpp` keep
   the child windows Wayland does not have — synthetic id, parent, geometry
   relative to the parent, stacking order (children bottom to top, shells in a
@@ -653,6 +659,14 @@ Done in this phase so far (the popup role, menus with a submenu and tool tips):
   makes a tool tip an override redirect shell without an owner, so the module
   decides from the class (an `FXPopup` grabs, an `FXToolTip` does not) and hangs
   an ownerless popup off the shell the pointer is over.
+- A popup hangs off the surface of the window it **belongs to**, not off the
+  surface under the pointer: the parent in the virtual window table is the shell
+  of a menu, or the parent popup of a submenu, and that is the surface the
+  compositor anchors it to.  The pointer surface is only the fallback for a tool
+  tip, which has no parent surface.  Taking the pointer for every popup posted a
+  menu from a second window (or from the keyboard) under whatever surface the
+  pointer happened to be over, so the menu appeared at that surface's top-left
+  instead of under its own menu title.
 - FOX itself dismisses a menu on a press outside it through the grab: with the
   popup as grab owner, our dispatch sends the press to the popup, which unposts.
   The compositor's own dismissal arrives as `popup_done` and becomes the FOX
@@ -862,6 +876,13 @@ settings and the window icon):
   600 pixels instead of 400 that the compositor would have to stretch.
 - A compositor without `wp_viewporter` gets `wl_surface.set_buffer_scale()` with
   the rounded scale instead, which is the only tool it understands.
+- The pixel size of an output comes from its **mode**, divided by the scale; the
+  `wl_output.geometry` event carries the physical size in **millimeters** and is
+  not a screen size.  Taking that event for the mode made the virtual root
+  window 698x393 on a 2560x1440 output: `FXPopup::popup()` clamps a menu to the
+  root, so every tall menu was pushed to the top-left of the real screen, while
+  X11, which knows the true size, kept it under its menu title.  Only the mode
+  handler sets the screen now.
 - Everything that crosses the protocol is in logical pixels and is converted at
   the seam: the configure size, the pointer and drag positions (they become
   device pixels), the popup positioner and size (they go back to logical).
