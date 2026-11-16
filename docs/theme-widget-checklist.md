@@ -27,7 +27,7 @@ Priority:
 | `FXFrame` | DONE | Base/hilite/shadow/border and theme padding. |
 | `FXLabel` | DONE | Text role and UI font. |
 | `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
-| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height and focus handling; hover rows, alternates and scrollbars remain. |
+| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height, focus handling and themed arrowless scrollbars; hover rows and alternating rows remain. |
 | `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline and disabled colors; the widget has no placeholder API. |
 | `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; popup shadow remains. |
 | `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. |
@@ -39,8 +39,8 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb on the full track, hover/drag shading and no stepper arrows in rounded themes; thickness still comes from the app setting. |
-| `FXScrollArea` | OPEN | Viewport background and border; clipping/rounding of the viewport; scrollbar spacing. |
+| `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb at two-thirds track width, full-track travel, hover/drag shading and no stepper arrows or arrow hit zones in rounded themes; thickness still comes from the app setting rather than a theme metric. |
+| `FXScrollArea` | PARTIAL | Viewport background follows `ROLE_WINDOW_BG` for rounded themes; border, viewport clipping/rounding and scrollbar spacing remain. |
 | `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
 | `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, accent edge, square page-side join and hairline themed frames; left/right/bottom orientations still need a visual pass. |
@@ -55,7 +55,7 @@ Priority:
 | --- | --- | --- |
 | `FXText` | OPEN | Normal, selected, highlighted and active text/background roles; margins; focus frame; scrollbars. |
 | `FXTable` | OPEN | Text/base/hilite/shadow/border/selection/grid/stipple/cell-border and alternating cell background colors; row/column metrics. |
-| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height is wired; still need alternating rows, hover decoration, tree expander/focus styling and themed scrollbars. Header text color is now themed. |
+| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height and themed scrollbars are wired; still need alternating rows, hover decoration, tree expander/focus styling. Header text color is now themed. |
 | `FXHeader` | PARTIAL | Header button background/hover/pressed, arrow colors, text color and header height. |
 | `FXRuler`, `FXRulerView` | PARTIAL | Tick/number text role and tick colors; font is already retargeted. |
 | `FXCalendarView`, `FXCalendar` | PARTIAL | Today/title/day/other-day/weekend colors and header/selection states; only the font is currently retargeted. |
@@ -154,8 +154,8 @@ use the seam.
 
 ## Suggested order
 
-1. Finish the P0 chrome: `FXScrollBar`, `FXToolTip`, `FXPopup`/`FXMenuPane`,
-   tabs, status bar, menu buttons, menu items.
+1. Finish the P0 chrome: `FXScrollArea` borders/rounding, `FXToolTip`,
+   `FXPopup`/`FXMenuPane`, tabs, status bar, menu buttons, menu items.
 2. Add the missing theme roles and metrics those widgets need (entry, menu,
    popup, scrollbar, tab, button text states).
 3. Do the P1 input/data widgets: `FXText`, `FXTable`, lists/trees, sliders,
