@@ -399,9 +399,12 @@ void FXDCWindow::drawIconShaded(const FXIcon* icon,FXint dx,FXint dy){
   }
 
 
-// Draw sunken icon; there is no etch mask to draw the bevel from on Wayland
+// Draw sunken icon; the alpha shape is the etch mask the X11 module keeps in
+// a bitmap, so the rasterizer paints it with the highlight and shadow colours
 void FXDCWindow::drawIconSunken(const FXIcon* icon,FXint dx,FXint dy){
-  if(ctx) raster(ctx)->drawIcon(icon,dx,dy);
+  FXColor base=getApp()->getBaseColor();
+  FXColor clr=FXRGB((85*FXREDVAL(base))/100,(85*FXGREENVAL(base))/100,(85*FXBLUEVAL(base))/100);
+  if(ctx) raster(ctx)->drawIconSunken(icon,dx,dy,getApp()->getHiliteColor(),clr);
   }
 
 

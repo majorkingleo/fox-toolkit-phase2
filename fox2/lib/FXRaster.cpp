@@ -1261,6 +1261,56 @@ void FXRaster::drawBitmap(const FXBitmap* bitmap,FXint dx,FXint dy){
   }
 
 
+// A pixel is part of the etch mask when it is visible and dark; the X11 module
+// builds the same mask in a bitmap when the icon is rendered
+static FXbool etchedPixel(FXColor pixel,FXuint options,FXColor transp,FXbool alphacolor,FXint thresh){
+  if(!(options&IMAGE_OPAQUE)){
+    if(alphacolor ? (pixel==transp) : (FXALPHAVAL(pixel)==0)) return false;
+    }
+  return ((FXint)FXREDVAL(pixel)+(FXint)FXGREENVAL(pixel)+(FXint)FXBLUEVAL(pixel))<thresh;
+  }
+
+
+// Draw a sunken icon; the etch mask is painted in the highlight and shadow
+// colours, the way the X11 module draws the disabled state of a button
+void FXRaster::drawIconSunken(const FXIcon* icon,FXint dx,FXint dy,FXColor hilite,FXColor shadow){
+  const FXColor* src;
+  FXuint options;
+  FXColor transp;
+  FXbool alphacolor;
+  FXint x1,x2,y1,y2,xx,yy,iw,ih,thresh;
+  if(!icon || !(src=icon->getData())) return;
+  options=icon->getOptions();
+  alphacolor=(options&(IMAGE_ALPHACOLOR|IMAGE_ALPHAGUESS))!=0;
+  transp=icon->getTransparentColor();
+  iw=icon->getWidth();
+  ih=icon->getHeight();
+  thresh=icon->getThresholdValue();
+
+  // Highlight, one pixel down and right
+  x1=FXMAX(dx+1,clip.x);
+  x2=FXMIN(dx+1+iw,clip.x+clip.w);
+  y1=FXMAX(dy+1,clip.y);
+  y2=FXMIN(dy+1+ih,clip.y+clip.h);
+  for(yy=y1; yy<y2; yy++){
+    for(xx=x1; xx<x2; xx++){
+      if(etchedPixel(src[(yy-dy-1)*iw+(xx-dx-1)],options,transp,alphacolor,thresh)) plot(xx,yy,hilite);
+      }
+    }
+
+  // Shadow, covering the highlights that overlap it
+  x1=FXMAX(dx,clip.x);
+  x2=FXMIN(dx+iw,clip.x+clip.w);
+  y1=FXMAX(dy,clip.y);
+  y2=FXMIN(dy+ih,clip.y+clip.h);
+  for(yy=y1; yy<y2; yy++){
+    for(xx=x1; xx<x2; xx++){
+      if(etchedPixel(src[(yy-dy)*iw+(xx-dx)],options,transp,alphacolor,thresh)) plot(xx,yy,shadow);
+      }
+    }
+  }
+
+
 // Draw icon; the alpha channel or alpha color acts as a shape mask
 void FXRaster::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
   const FXColor* src;

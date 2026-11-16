@@ -213,6 +213,7 @@ public:
   void drawImage(const FXImage* image,FXint dx,FXint dy);
   void drawBitmap(const FXBitmap* bitmap,FXint dx,FXint dy);
   void drawIcon(const FXIcon* icon,FXint dx,FXint dy);
+  void drawIconSunken(const FXIcon* icon,FXint dx,FXint dy,FXColor hilite,FXColor shadow);
 
   /// Set the glyph cache used by the text calls
   void setGlyphs(FXGlyphs* glyphs);
