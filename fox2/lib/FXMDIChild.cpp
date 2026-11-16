@@ -1179,6 +1179,13 @@ void FXMDIChild::setMenu(FXPopup* menu){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXMDIChild::applyTheme(FXTheme* theme){
+  FXComposite::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXMDIChild::setFont(FXFont *fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

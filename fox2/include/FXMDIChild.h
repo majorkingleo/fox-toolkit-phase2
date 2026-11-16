@@ -185,6 +185,9 @@ public:
   /// Return the default height of this window
   virtual FXint getDefaultHeight() override;
 
+  /// Re-resolve the normal font for the window's monitor
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Move the focus to this window
   virtual void setFocus() override;
 
