@@ -10,7 +10,7 @@
 #   ./scripts/build-fox2-mingw.sh
 #
 # Options:
-#   --opengl   enable OpenGL (needs mingw-w64-x86_64-mesa)
+#   --opengl   enable OpenGL (MinGW-w64 headers and libraries are enough)
 #   --debug    compile with -g -DDEBUG
 #   --release  compile with -O2 -DNDEBUG
 #   --jobs=N   parallel jobs (default: 12)

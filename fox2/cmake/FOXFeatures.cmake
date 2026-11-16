@@ -322,7 +322,9 @@ fox_find_optional(CUPS   HEADER cups/cups.h     LIBS cups DEFINE HAVE_CUPS_H)
 # OpenGL
 # ---------------------------------------------------------------------------
 
-if(FOX_WITH_OPENGL)
+if(FOX_WITH_OPENGL AND FOX_PLATFORM STREQUAL "wayland")
+  message(STATUS "FOX: OpenGL support disabled (not available on the Wayland platform yet)")
+elseif(FOX_WITH_OPENGL)
   find_path(FOX_GL_INCLUDE_DIR NAMES GL/gl.h)
   find_path(FOX_GLU_INCLUDE_DIR NAMES GL/glu.h)
   find_library(FOX_GL_LIBRARY NAMES ${_fox_gl_libs})

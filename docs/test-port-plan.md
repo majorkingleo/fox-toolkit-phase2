@@ -314,6 +314,10 @@ and the commit that fixed it.
 | group 5 | MDI widgets (`FXMDIClient`, `FXMDIChild`, `FXMDIButton`) and `FXShutter` missing in fox2 | copied from fox-1.7.95 |
 | mditest | `GradientFill` was compiled out on MinGW (condition listed only Borland, Watcom, Cygwin, MSVC): MDI title bars were flat | `__MINGW32__` added in `FXDCWindow_win32.cpp` |
 | mditest | title text of an MDI child without focus is white on a light gradient | upstream behaviour, unchanged; the focused child has the dark selection colour |
+| gltest | `FXGLVisual`, `FXGLContext`, `FXGLCanvas` missing in fox2 (the viewer and 3D objects of `fx3d.h` are not needed by the test) | copied from fox-1.7.95; `gltest` includes GLU itself and links `FOX_GLU_LIBRARIES` |
+| `FXGLVisual` | Win32 and GLX code in one file | split into `FXGLVisual.cpp`, `_win32`, `_x11`, `_wayland` (stub: no GL on Wayland yet), shared `fxglpriv.h`; X11 part is untested |
+| `FXGLContext`, `FXGLCanvas` | Win32 and X11 branches are small and interleaved, so they stay in one file | unchanged copies |
+| OpenGL | CMake finds GL on the Wayland platform and would compile the GLX code | `FOXFeatures.cmake` disables OpenGL for `FOX_PLATFORM=wayland` |
 
 ## Status
 
@@ -324,4 +328,4 @@ and the commit that fixed it.
 | 2 Dialogs and data | done |
 | 3 Lists and files | done |
 | 4 Drawing | done |
-| 5 Special cases | in progress: `mditest`, `shutter` done |
+| 5 Special cases | in progress: `mditest`, `shutter`, `gltest` done |

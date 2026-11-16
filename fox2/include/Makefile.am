@@ -143,6 +143,9 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXGLCanvas.h \
+FXGLContext.h \
+FXGLVisual.h \
 FXShutter.h \
 FXMDIClient.h \
 FXMDIChild.h \

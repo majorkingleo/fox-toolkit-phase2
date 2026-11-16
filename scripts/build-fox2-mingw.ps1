@@ -2,7 +2,7 @@
 #
 #   .\scripts\build-fox2-mingw.ps1                  # build only
 #   .\scripts\build-fox2-mingw.ps1 -InstallDeps     # install packages first
-#   .\scripts\build-fox2-mingw.ps1 -OpenGL          # enable GL (needs Mesa)
+#   .\scripts\build-fox2-mingw.ps1 -OpenGL          # enable GL (headers and import libraries of MinGW-w64 are enough)
 #   .\scripts\build-fox2-mingw.ps1 -Clean -Run      # clean, build, run examples
 #   .\scripts\build-fox2-mingw.ps1 -Fast            # skip autotools when unchanged
 #   .\scripts\build-fox2-mingw.ps1 -Trace -Clean    # FXTRACE build for logging

@@ -7,6 +7,10 @@ endforeach()
 add_executable(bitmapviewer bitmapviewer.cpp)
 target_link_libraries(bitmapviewer PRIVATE FOX::FOX ${FOX_PRIVATE_LIBRARIES} m)
 
+# gltest needs GLU for gluPerspective and gluLookAt
+add_executable(gltest gltest.cpp)
+target_link_libraries(gltest PRIVATE FOX::FOX ${FOX_GLU_LIBRARIES} m)
+
 # Console tests: no display required
 set(FOX_CONSOLE_TESTS codecs desktop dictest expression format glyphs half match math memmap minheritance parallel process region rex scan thread timefmt unicode units variant winmap xml)
 foreach(prog ${FOX_CONSOLE_TESTS})
