@@ -12,7 +12,7 @@
 #   ./scripts/build-fox1-mingw.sh
 #
 # Options:
-#   --opengl       enable OpenGL (needs mingw-w64-x86_64-mesa)
+#   --opengl       enable OpenGL (MinGW-w64 headers and libraries are enough)
 #   --static       build a static library instead of the DLL
 #   --debug        compile with -g -DDEBUG
 #   --release      compile with -O2 -DNDEBUG
@@ -132,6 +132,23 @@ if [ "$use_cmake" = yes ]; then
 
   echo "==> build reswrap, library and test programs"
   run cmake --build "$BUILD" -j "$jobs"
+
+  # The programs in bin/ must start without MSYS2 on the PATH: copy the MinGW
+  # DLLs the library needs (codec libraries and what they need in turn)
+  echo "==> copy runtime DLLs to bin"
+  todo=("$BUILD/bin/libFOX-1.7.dll")
+  seen=" "
+  while [ "${#todo[@]}" -gt 0 ]; do
+    cur="${todo[0]}"; todo=("${todo[@]:1}")
+    for dll in $(objdump -p "$cur" 2>/dev/null | sed -n 's/^[[:space:]]*DLL Name: //p'); do
+      case "$seen" in *" $dll "*) continue ;; esac
+      seen="$seen$dll "
+      if [ -f "$MINGW_PREFIX/bin/$dll" ]; then
+        cp -u -- "$MINGW_PREFIX/bin/$dll" "$BUILD/bin/"
+        todo+=("$MINGW_PREFIX/bin/$dll")
+        fi
+      done
+    done
 
   echo
   echo "==> artifacts"
