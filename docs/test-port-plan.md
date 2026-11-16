@@ -314,6 +314,7 @@ and the commit that fixed it.
 | mditest | `GradientFill` was compiled out on MinGW (condition listed only Borland, Watcom, Cygwin, MSVC): MDI title bars were flat | `__MINGW32__` added in `FXDCWindow_win32.cpp` |
 | mditest | title text of an MDI child without focus is white on a light gradient | upstream behaviour, unchanged; the focused child has the dark selection colour |
 | mditest | `FXMDIChild` took the normal font of the system DPI for its title, so the title bar was too large on a lower-DPI monitor | `applyTheme` added, it retargets the normal font to the window DPI; the text font of the test is an application font and stays fixed |
+| mditest | the sample text font is made by the test and keeps the system DPI, so it was too large on a lower-DPI monitor | the test overrides `applyTheme`, rebuilds the font for the window DPI and display scale and swaps it into its widgets; this is the pattern for any application font |
 | gltest | `FXGLVisual`, `FXGLContext`, `FXGLCanvas` missing in fox2 (the viewer and 3D objects of `fx3d.h` are not needed by the test) | copied from fox-1.7.95; `gltest` includes GLU itself and links `FOX_GLU_LIBRARIES` |
 | `FXGLVisual` | Win32 and GLX code in one file | split into `FXGLVisual.cpp`, `_win32`, `_x11`, `_wayland` (stub: no GL on Wayland yet), shared `fxglpriv.h`; X11 part is untested |
 | `FXGLContext`, `FXGLCanvas` | Win32 and X11 branches are small and interleaved, so they stay in one file | unchanged copies |

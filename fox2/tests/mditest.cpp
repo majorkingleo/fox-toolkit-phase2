@@ -26,10 +26,14 @@ protected:
   FXMenuPane        *filemenu;
   FXMenuPane        *windowmenu;
   FXMenuPane        *helpmenu;
-  FXFont            *font;
+  FXFont            *font;                    // Application font of the sample text
+  FXFontDesc         fontdesc;                // Its description at 96 DPI and 100%
+  FXint              fontdpi;                 // Window DPI the font was built for
+  FXdouble           fontscale;               // Display scale the font was built for
   FXIcon            *mdiicon;
 protected:
-  MDITestWindow(){}
+  MDITestWindow():font(nullptr),fontdpi(0),fontscale(0.0),mdiicon(nullptr){}
+  void replaceFont(FXWindow* win,FXFont* oldfont,FXFont* newfont);
 
 public:
 
@@ -47,6 +51,7 @@ public:
 public:
   MDITestWindow(FXApp* a);
   virtual void create() override;
+  virtual void applyTheme(FXTheme* theme) override;
   virtual ~MDITestWindow();
   };
 
@@ -798,18 +803,67 @@ FXDEFMAP(MDITestWindow) MDITestWindowMap[]={
 FXIMPLEMENT(MDITestWindow,FXMainWindow,MDITestWindowMap,ARRAYNUMBER(MDITestWindowMap))
 
 
+// Swap one font for another in every label and button below win
+void MDITestWindow::replaceFont(FXWindow* win,FXFont* oldfont,FXFont* newfont){
+  FXWindow* child;
+  FXLabel* label=dynamic_cast<FXLabel*>(win);
+  if(label && label->getFont()==oldfont) label->setFont(newfont);
+  for(child=win->getFirst(); child; child=child->getNext()) replaceFont(child,oldfont,newfont);
+  }
+
+
+// Reacting to a DPI change:
+//
+// Theme fonts and metrics follow the monitor by themselves, because the library
+// calls applyTheme() on a window and all its children whenever the window moves
+// to a monitor with another DPI or the display scale changes.  A font the
+// application made itself is not touched by that: it keeps its point size and
+// its resolution, so on a monitor with a lower DPI the text comes out too big.
+// To follow, the application overrides applyTheme(), rebuilds the font from its
+// description for the DPI and scale of this window, hands it to the widgets that
+// use it, and only then deletes the old one.  Layout is redone by setFont().
+void MDITestWindow::applyTheme(FXTheme* theme){
+  FXint wdpi;
+  FXdouble wscale;
+  FXFontDesc desc;
+  FXFont* newfont;
+  FXMainWindow::applyTheme(theme);
+  wdpi=getWindowDPI();
+  wscale=getDisplayScale();
+
+  // Nothing to do until the monitor is known, or when DPI and scale are unchanged
+  if(font && wdpi>0 && (wdpi!=fontdpi || wscale!=fontscale)){
+
+    // The size is in 1/10 points at 96 DPI; the font resolution supplies the DPI,
+    // so only the user's display scale on top of the DPI has to be compensated
+    desc=fontdesc;
+    desc.size=FXint(FXdouble(desc.size)*(wscale/(FXdouble(wdpi)/96.0))+0.5);
+    newfont=new FXFont(getApp(),desc);
+    newfont->setResolution(wdpi);
+    newfont->create();
+    replaceFont(this,font,newfont);
+    delete font;
+    font=newfont;
+    fontdpi=wdpi;
+    fontscale=wscale;
+    }
+  }
+
+
 // Make some windows
-MDITestWindow::MDITestWindow(FXApp* a):FXMainWindow(a,"MDI Widget Test",nullptr,nullptr,DECOR_ALL,0,0,800,600){
+MDITestWindow::MDITestWindow(FXApp* a):FXMainWindow(a,"MDI Widget Test",nullptr,nullptr,DECOR_ALL,0,0,800,600),fontdpi(0),fontscale(0.0){
   FXMDIChild *mdichild;
   FXScrollWindow *scrollwindow;
   FXButton *btn;
 
+  // Application font of the sample text; applyTheme() rebuilds it per monitor
 #if defined(WIN32)
   font=new FXFont(getApp(),"Arial Unicode MS,105,,,,iso10646-1");
 #else
   font=new FXFont(getApp(),"fixed,105,,,,iso10646-1");
 //  font=new FXFont(getApp(),"fixed [misc]",12,0,0,FONTENCODING_UNICODE,0,0);
 #endif
+  fontdesc=font->getFontDesc();
 
   // Menubar
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
