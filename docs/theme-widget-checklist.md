@@ -41,13 +41,13 @@ Priority:
 | --- | --- | --- |
 | `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb at two-thirds track width, full-track travel, hover/drag shading and no stepper arrows or arrow hit zones in rounded themes; thickness still comes from the app setting rather than a theme metric. |
 | `FXScrollArea` | PARTIAL | Viewport background follows `ROLE_WINDOW_BG` for rounded themes; border, viewport clipping/rounding and scrollbar spacing remain. |
-| `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
+| `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell; rounded alpha corners, padding and the cached 9-slice popup shadow remain. |
 | `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, accent edge, square page-side join and hairline themed frames; left/right/bottom orientations still need a visual pass. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
 | `FXMenuButton`, `FXOptionMenu` | OPEN | These derive from `FXLabel`, not `FXButton`; they need button chrome and an arrow color/state. |
-| `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | OPEN | Menu background/text, selected/hover background/text, check/radio marks, separator color and menu item height. |
+| `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | PARTIAL | Themed text, active/selected rounded fill, disabled text, antialiased check/radio marks and hairline separators; menu row height/padding and explicit per-state colors remain. |
 
 ## P1: common input and data widgets
 

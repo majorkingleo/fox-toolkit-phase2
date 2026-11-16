@@ -40,6 +40,7 @@ class FXAPI FXMenuCheck : public FXMenuCommand {
   FXDECLARE(FXMenuCheck)
 protected:
   FXColor boxColor;     // Box color
+  FXbool  boxColorOverride; // Box color set explicitly
   FXuchar check;        // State of menu
 protected:
   FXMenuCheck();
@@ -71,6 +72,9 @@ public:
 
   /// Return default height
   virtual FXint getDefaultHeight() override;
+
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Set check state (true, false or maybe)
   void setCheck(FXuchar s=true);

@@ -41,6 +41,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXMenuCommand.h"
 #include "FXMenuCheck.h"
@@ -62,6 +64,12 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+// Rounded themes use flat menu item rendering
+static FXbool themedMenu(FXWindow* win){
+  return 0<win->getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,win->getDisplayScale());
+  }
+
 
 // Map
 FXDEFMAP(FXMenuCheck) FXMenuCheckMap[]={
@@ -93,6 +101,7 @@ FXIMPLEMENT(FXMenuCheck,FXMenuCommand,FXMenuCheckMap,ARRAYNUMBER(FXMenuCheckMap)
 // Command menu item
 FXMenuCheck::FXMenuCheck(){
   boxColor=0;
+  boxColorOverride=false;
   check=false;
   }
 
@@ -100,6 +109,7 @@ FXMenuCheck::FXMenuCheck(){
 // Command menu item
 FXMenuCheck::FXMenuCheck(FXComposite* p,const FXString& text,FXObject* tgt,FXSelector sel,FXuint opts):FXMenuCommand(p,text,nullptr,tgt,sel,opts){
   boxColor=getApp()->getBackColor();
+  boxColorOverride=false;
   check=false;
   }
 
@@ -120,6 +130,13 @@ FXint FXMenuCheck::getDefaultHeight(){
   FXint th=0;
   if(!label.empty() || !accel.empty()) th=font->getFontHeight()+5;
   return FXMAX(th,20);
+  }
+
+
+// Re-apply theme colors
+void FXMenuCheck::applyTheme(FXTheme* theme){
+  FXMenuCommand::applyTheme(theme);
+  if(!boxColorOverride) boxColor=theme->color(ROLE_BUTTON);
   }
 
 
@@ -266,6 +283,37 @@ long FXMenuCheck::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,ev);
   FXint xx,yy;
 
+  if(themedMenu(this)){
+    FXMenuCommand::onPaint(nullptr,0,ptr);
+    FXTheme* theme=getApp()->getTheme();
+    FXint size=theme->metric(METRIC_CHECK_SIZE,getDisplayScale());
+    FXint ix=5,iy;
+    FXColor box=boxColor;
+    FXColor edge=theme->color(ROLE_BORDER);
+    FXColor mark=theme->color(ROLE_TEXT);
+    FXColor acc=theme->color(ROLE_ACCENT);
+    if(size>height-2) size=height-2;
+    if(size<9) size=9;
+    iy=(height-size)/2;
+    if(!isEnabled()){
+      mark=theme->color(ROLE_TEXT_DISABLED);
+      edge=mark;
+      }
+    else if(check!=false){
+      box=theme->color(ROLE_BUTTON);
+      edge=acc;
+      mark=acc;
+      }
+    getApp()->getStyle()->drawRoundedRectangle(dc,ix,iy,size,size,FXMIN(theme->metric(METRIC_CORNER_RADIUS,getDisplayScale()),size/2),box,edge,1);
+    if(check==maybe){
+      getApp()->getStyle()->drawRoundedRectangle(dc,ix+size/4,iy+size/2-1,size/2,2,1,mark,mark,0);
+      }
+    else if(check!=false){
+      getApp()->getStyle()->drawCheckMark(dc,ix,iy,size,mark);
+      }
+    return 1;
+    }
+
   xx=LEADSPACE;
 
   // Grayed out
@@ -354,6 +402,7 @@ long FXMenuCheck::onPaint(FXObject*,FXSelector,void* ptr){
 void FXMenuCheck::setBoxColor(FXColor clr){
   if(clr!=boxColor){
     boxColor=clr;
+    boxColorOverride=true;
     update();
     }
   }

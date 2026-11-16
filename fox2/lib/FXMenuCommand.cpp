@@ -42,6 +42,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXMenuCommand.h"
 
@@ -75,6 +77,12 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+// Rounded themes use flat menu item rendering
+static FXbool themedMenu(FXWindow* win){
+  return 0<win->getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,win->getDisplayScale());
+  }
+
 
 // Map
 FXDEFMAP(FXMenuCommand) FXMenuCommandMap[]={
@@ -271,6 +279,36 @@ long FXMenuCommand::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
   FXint xx,yy;
+
+  if(themedMenu(this)){
+    FXTheme* theme=getApp()->getTheme();
+    FXColor bg=theme->color(ROLE_SURFACE);
+    FXColor sel=theme->color(ROLE_MENU_SEL_BG);
+    FXColor text=isEnabled()?theme->color(ROLE_TEXT):theme->color(ROLE_TEXT_DISABLED);
+    FXColor stext=theme->color(ROLE_MENU_SEL_TEXT);
+    dc.setForeground(bg);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+    if(isActive() && isEnabled()){
+      FXint r=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+      r=FXMIN(r,(height-2)/2);
+      getApp()->getStyle()->drawRoundedRectangle(dc,2,1,width-4,height-2,r,sel,sel,0);
+      }
+    xx=LEADSPACE;
+    if(icon){
+      dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
+      }
+    if(!label.empty()){
+      yy=font->getFontAscent()+(height-font->getFontHeight())/2;
+      dc.setFont(font);
+      if(isActive() && isEnabled()) text=stext;
+      dc.setForeground(text);
+      dc.drawText(xx,yy,label);
+      if(!accel.empty()) dc.drawText(width-TRAILSPACE-font->getTextWidth(accel),yy,accel);
+      if(0<=hotoff) dc.fillRectangle(xx+font->getTextWidth(&label[0],hotoff),yy+1,font->getTextWidth(&label[hotoff],wclen(&label[hotoff])),1);
+      }
+    return 1;
+    }
 
   xx=LEADSPACE;
 

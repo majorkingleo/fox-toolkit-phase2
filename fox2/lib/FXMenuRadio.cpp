@@ -42,6 +42,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXMenuCommand.h"
 #include "FXMenuRadio.h"
@@ -62,6 +64,12 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+// Rounded themes use flat menu item rendering
+static FXbool themedMenu(FXWindow* win){
+  return 0<win->getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,win->getDisplayScale());
+  }
+
 
 // Map
 FXDEFMAP(FXMenuRadio) FXMenuRadioMap[]={
@@ -93,6 +101,7 @@ FXIMPLEMENT(FXMenuRadio,FXMenuCommand,FXMenuRadioMap,ARRAYNUMBER(FXMenuRadioMap)
 // Command menu item
 FXMenuRadio::FXMenuRadio(){
   radioColor=0;
+  radioColorOverride=false;
   check=false;
   }
 
@@ -100,6 +109,7 @@ FXMenuRadio::FXMenuRadio(){
 // Command menu item
 FXMenuRadio::FXMenuRadio(FXComposite* p,const FXString& text,FXObject* tgt,FXSelector sel,FXuint opts):FXMenuCommand(p,text,nullptr,tgt,sel,opts){
   radioColor=getApp()->getBackColor();
+  radioColorOverride=false;
   check=false;
   }
 
@@ -120,6 +130,13 @@ FXint FXMenuRadio::getDefaultHeight(){
   FXint th=0;
   if(!label.empty() || !accel.empty()) th=font->getFontHeight()+5;
   return FXMAX(th,20);
+  }
+
+
+// Re-apply theme colors
+void FXMenuRadio::applyTheme(FXTheme* theme){
+  FXMenuCommand::applyTheme(theme);
+  if(!radioColorOverride) radioColor=theme->color(ROLE_BUTTON);
   }
 
 
@@ -266,6 +283,31 @@ long FXMenuRadio::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,ev);
   FXint xx,yy;
 
+  if(themedMenu(this)){
+    FXMenuCommand::onPaint(nullptr,0,ptr);
+    FXTheme* theme=getApp()->getTheme();
+    FXint size=theme->metric(METRIC_CHECK_SIZE,getDisplayScale());
+    FXint ix=5,iy;
+    FXColor box=radioColor;
+    FXColor edge=theme->color(ROLE_BORDER);
+    FXColor mark=theme->color(ROLE_ACCENT);
+    if(size>height-2) size=height-2;
+    if(size<9) size=9;
+    iy=(height-size)/2;
+    if(!isEnabled()){
+      mark=theme->color(ROLE_TEXT_DISABLED);
+      edge=mark;
+      }
+    else if(check!=false){
+      edge=theme->color(ROLE_ACCENT);
+      }
+    getApp()->getStyle()->drawRoundedRectangle(dc,ix,iy,size,size,size/2,box,edge,1);
+    if(check!=false){
+      getApp()->getStyle()->drawRoundedRectangle(dc,ix+size/2-2,iy+size/2-2,4,4,2,mark,mark,0);
+      }
+    return 1;
+    }
+
   xx=LEADSPACE;
 
   // Grayed out
@@ -351,6 +393,7 @@ long FXMenuRadio::onPaint(FXObject*,FXSelector,void* ptr){
 void FXMenuRadio::setRadioColor(FXColor clr){
   if(radioColor!=clr){
     radioColor=clr;
+    radioColorOverride=true;
     update();
     }
   }

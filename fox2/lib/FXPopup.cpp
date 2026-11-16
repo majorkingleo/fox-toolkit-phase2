@@ -40,6 +40,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXPopup.h"
 #include "fxpriv.h"
 
@@ -469,6 +470,14 @@ void FXPopup::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
 long FXPopup::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
+  FXTheme* theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_SURFACE));
+    dc.fillRectangle(0,0,width,height);
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawRectangle(0,0,width,height);
+    return 1;
+    }
   dc.setForeground(backColor);
   dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));
   drawFrame(dc,0,0,width,height);

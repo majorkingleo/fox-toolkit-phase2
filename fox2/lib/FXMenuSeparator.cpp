@@ -40,6 +40,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXMenuSeparator.h"
 
 /*
@@ -94,6 +95,14 @@ FXMenuSeparator::FXMenuSeparator(FXComposite* p,FXObject* tgt,FXSelector sel,FXu
 long FXMenuSeparator::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
+  FXTheme* theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_SURFACE));
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.fillRectangle(4,1,width-8,1);
+    return 1;
+    }
   dc.setForeground(backColor);
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
   dc.setForeground(shadowColor);

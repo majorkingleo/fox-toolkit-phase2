@@ -42,6 +42,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXIcon.h"
 #include "FXMenuCaption.h"
 
@@ -350,6 +351,11 @@ void FXMenuCaption::setIcon(FXIcon* ic){
 void FXMenuCaption::applyTheme(FXTheme* theme){
   FXWindow::applyTheme(theme);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_MENU_SEL_BG);
+  seltextColor=theme->color(ROLE_MENU_SEL_TEXT);
+  hiliteColor=theme->color(ROLE_SURFACE_HILITE);
+  shadowColor=theme->color(ROLE_TEXT_DISABLED);
   }
 
 

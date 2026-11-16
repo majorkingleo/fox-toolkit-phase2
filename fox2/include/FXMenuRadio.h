@@ -43,6 +43,7 @@ class FXAPI FXMenuRadio : public FXMenuCommand {
   FXDECLARE(FXMenuRadio)
 protected:
   FXColor radioColor;   // Color of the radio
+  FXbool  radioColorOverride; // Radio color set explicitly
   FXuchar check;        // State of menu
 protected:
   FXMenuRadio();
@@ -74,6 +75,9 @@ public:
 
   /// Return default height
   virtual FXint getDefaultHeight() override;
+
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Set radio button state (true, false or maybe)
   void setCheck(FXuchar s=true);
