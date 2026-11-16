@@ -42,6 +42,7 @@
 #include "FXEvent.h"
 #include "FXWindow.h"
 #include "FXRootWindow.h"
+#include "FXCursor.h"
 #include "FXApp.h"
 #include "fxapppriv.h"
 #include "fxplatform.h"
@@ -644,6 +645,80 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
     }
 
   return false;
+  }
+
+
+// Flush pending repaints
+// Commit every painted frame and push the requests out; the compositor is
+// the server here, so there is no separate sync operation to run
+void FXApp::flush(FXbool){
+  FXWaylandApp* app=fxwayland(display);
+  if(initialized && app && app->display && !app->lost){
+    fxwaylandFlushFrames(app);
+    }
+  }
+
+
+// Paint all windows marked for repainting
+void FXApp::repaint(){
+  if(initialized){
+    removeRepaints(0,0,0,0,0);
+    }
+  }
+
+
+// Begin of wait-cursor block; wait-cursor blocks may be nested.
+void FXApp::beginWaitCursor(){
+  if(initialized){
+    if(waitCount==0){
+      FXWaylandApp* app=fxwayland(display);
+      if(!waitCursor->id()){ fxerror("%s::beginWaitCursor: wait cursor not created yet.\n",getClassName()); }
+      if(app){
+        app->waitcursor=waitCursor;
+        app->cursorwindow=nullptr;
+        fxwaylandSetCursor(app,app->pointerwindow?findWindowWithId(app->pointerwindow):nullptr,nullptr);
+        }
+      }
+    waitCount++;
+    }
+  }
+
+
+// End of wait-cursor block
+void FXApp::endWaitCursor(){
+  if(initialized){
+    FXWaylandApp* app=fxwayland(display);
+    if(waitCount==0) return;
+    waitCount--;
+    if(waitCount==0){
+      if(!waitCursor->id()){ fxerror("%s::endWaitCursor: wait cursor not created yet.\n",getClassName()); }
+      if(app){
+        app->waitcursor=nullptr;
+        app->cursorwindow=nullptr;
+        fxwaylandSetCursor(app,app->pointerwindow?findWindowWithId(app->pointerwindow):nullptr,nullptr);
+        }
+      }
+    }
+  }
+
+
+// Change to a new wait cursor
+void FXApp::setWaitCursor(FXCursor *cur){
+  if(initialized){
+    if(!cur){ fxerror("%s::setWaitCursor: NULL wait cursor.\n",getClassName()); }
+    if(waitCursor!=cur){
+      waitCursor=cur;
+      if(waitCount){
+        FXWaylandApp* app=fxwayland(display);
+        if(!waitCursor->id()){ fxerror("%s::setWaitCursor: wait cursor not created yet.\n",getClassName()); }
+        if(app){
+          app->waitcursor=waitCursor;
+          app->cursorwindow=nullptr;
+          fxwaylandSetCursor(app,app->pointerwindow?findWindowWithId(app->pointerwindow):nullptr,nullptr);
+          }
+        }
+      }
+    }
   }
 
 

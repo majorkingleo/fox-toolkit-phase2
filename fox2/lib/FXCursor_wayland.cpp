@@ -212,8 +212,9 @@ void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow)
     return;
     }
 
-  // The drag cursor while grabbing, the default cursor otherwise
-  cur=grabwindow?source->getDragCursor():source->getDefaultCursor();
+  // The drag cursor while grabbing, the wait cursor during a wait block, the
+  // default cursor otherwise
+  cur=app->waitcursor?(FXCursor*)app->waitcursor:(grabwindow?source->getDragCursor():source->getDefaultCursor());
   if(!cur) return;
 
   // Stock cursors are resolved by the compositor from its own theme

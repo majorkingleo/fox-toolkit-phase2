@@ -187,6 +187,7 @@ struct FXWaylandApp {
   FXuint            pointerserial;      // Serial of the last pointer event
   FXuint            pointerenterserial; // Serial of the pointer enter
   void*             cursorwindow;       // Widget whose cursor is shown
+  void*             waitcursor;         // Wait cursor while a wait block runs
   FXuint            keyboardserial;     // Serial of the last keyboard event
   FXint             pointerx;           // Position of the pointer in the shell
   FXint             pointery;
