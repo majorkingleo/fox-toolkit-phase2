@@ -159,12 +159,20 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
     fxwaylandDestroySurface(app,window);
     if(shown && w>0 && h>0){
 
-      // A tool tip has no owner in FOX, but a popup needs a parent surface to
-      // hang off: take the shell the pointer is over, which is the window the
-      // tip belongs to
-      owner=app->childmap.getOwner(window);
+      // A popup hangs off the surface of the window it belongs to, which is
+      // its parent in the virtual window table: the shell of a menu, or the
+      // parent popup of a submenu.  The pointer is only the fallback, for a
+      // tool tip, which FOX creates without an owner; taking the pointer for
+      // every popup posts a menu from another window (or from the keyboard)
+      // under whatever surface the pointer happens to be over
+      owner=app->childmap.getParent(window);
+      if(!owner || !fxwaylandShellSurface(app,owner)){
+        owner=app->childmap.getOwner(window);
+        }
       if(!owner && app->pointersurface){
         owner=app->pointersurface->window;
+        }
+      if(owner){
         app->childmap.setOwner(window,owner);
         }
       place=app->childmap.getGeometry(window);

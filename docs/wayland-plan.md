@@ -659,6 +659,14 @@ Done in this phase so far (the popup role, menus with a submenu and tool tips):
   makes a tool tip an override redirect shell without an owner, so the module
   decides from the class (an `FXPopup` grabs, an `FXToolTip` does not) and hangs
   an ownerless popup off the shell the pointer is over.
+- A popup hangs off the surface of the window it **belongs to**, not off the
+  surface under the pointer: the parent in the virtual window table is the shell
+  of a menu, or the parent popup of a submenu, and that is the surface the
+  compositor anchors it to.  The pointer surface is only the fallback for a tool
+  tip, which has no parent surface.  Taking the pointer for every popup posted a
+  menu from a second window (or from the keyboard) under whatever surface the
+  pointer happened to be over, so the menu appeared at that surface's top-left
+  instead of under its own menu title.
 - FOX itself dismisses a menu on a press outside it through the grab: with the
   popup as grab owner, our dispatch sends the press to the popup, which unposts.
   The compositor's own dismissal arrives as `popup_done` and becomes the FOX
