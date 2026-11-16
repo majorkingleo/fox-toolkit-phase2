@@ -142,9 +142,7 @@ long FXDockHandler::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
   handle(this,FXSEL(SEL_FOCUS_SELF,0),ptr);
   if(isEnabled()){
     flags=(flags&~(FLAG_UPDATE|FLAG_DODRAG))|FLAG_TRYDRAG;
-#ifdef WIN32
-    grab();
-#else
+#if defined(FOX_X11)
     Display *display=(Display*)getApp()->getDisplay();
     const unsigned long mask=CWBackPixmap|CWWinGravity|CWBitGravity|CWBorderPixel|CWOverrideRedirect|CWSaveUnder|CWEventMask|CWDontPropagate|CWColormap|CWCursor;
     XSetWindowAttributes wattr;
@@ -170,6 +168,8 @@ long FXDockHandler::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
     xid=xxx;
     grab();
     xid=tempxid;
+#else
+    grab();
 #endif
     update();
     }
@@ -183,9 +183,7 @@ long FXDockHandler::onLeftBtnRelease(FXObject*,FXSelector,void* ptr){
     FXuint flg=flags;
     flags=(flags&~(FLAG_TRYDRAG|FLAG_DODRAG))|FLAG_UPDATE;
     if(flg&(FLAG_DODRAG|FLAG_TRYDRAG)){
-#ifdef WIN32
-      ungrab();
-#else
+#if defined(FOX_X11)
       Display *display=(Display*)getApp()->getDisplay();
       FXID tempxid=xid;
       xid=xxx;
@@ -194,6 +192,8 @@ long FXDockHandler::onLeftBtnRelease(FXObject*,FXSelector,void* ptr){
       getApp()->hash.remove((void*)xxx);
       XDestroyWindow(display,xxx);
       xxx=0;
+#else
+      ungrab();
 #endif
       }
     if(flg&FLAG_DODRAG){handle(this,FXSEL(SEL_ENDDRAG,0),ptr);}
