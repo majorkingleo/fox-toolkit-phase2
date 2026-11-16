@@ -29,7 +29,7 @@ Priority:
 | `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height and focus handling; hover rows, alternates and scrollbars remain. |
 | `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline and disabled colors; the widget has no placeholder API. |
-| `FXListBox`, `FXComboBox` | PARTIAL | Field/list colors, themed field chrome, flat arrow area and themed popup/list; an integrated single rounded shell and popup shadow remain. |
+| `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; popup shadow remains. |
 | `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
 | `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
 | `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; Wayland check mark is antialiased. Classic path unchanged. |

@@ -967,8 +967,9 @@ colors.  For rounded themes, `FXListBox` and `FXComboBox` drop the outer sunken
 frame and the arrow button's classic raised frame, keep the theme background on
 the field and arrow area, and retain the original frame styles when the theme
 returns to radius 0.  The field, arrow and dropdown list all use the theme
-colors.  A single rounded shell around both the text and arrow, plus the popup
-shadow, are still open.
+colors.  The combo/list-box widget itself now paints the single rounded shell;
+the field and arrow are flat children inset into it, so the shell border and
+corners stay intact.  The popup shadow is still open.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

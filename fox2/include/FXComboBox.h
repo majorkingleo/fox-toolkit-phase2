@@ -71,12 +71,15 @@ protected:
   FXPopup       *pane;
   FXuint         boxframe;      // Frame style the application asked for
   FXuint         buttonframe;   // Arrow button frame style
+  FXint          fieldpad[4];   // Field padding as constructed
+  FXint          buttonpad[4];  // Arrow button padding as constructed
 protected:
   FXComboBox(){}
 private:
   FXComboBox(const FXComboBox&);
   FXComboBox &operator=(const FXComboBox&);
 public:
+  long onPaint(FXObject*,FXSelector,void*);
   long onFocusUp(FXObject*,FXSelector,void*);
   long onFocusDown(FXObject*,FXSelector,void*);
   long onFocusSelf(FXObject*,FXSelector,void*);

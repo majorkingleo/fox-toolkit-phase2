@@ -44,6 +44,7 @@
 #include "FXLabel.h"
 #include "FXTextField.h"
 #include "FXButton.h"
+#include "FXDCWindow.h"
 #include "FXMenuButton.h"
 #include "FXComposite.h"
 #include "FXPacker.h"
@@ -85,6 +86,7 @@ namespace FX {
 
 // Map
 FXDEFMAP(FXComboBox) FXComboBoxMap[]={
+  FXMAPFUNC(SEL_PAINT,0,FXComboBox::onPaint),
   FXMAPFUNC(SEL_FOCUS_UP,0,FXComboBox::onFocusUp),
   FXMAPFUNC(SEL_FOCUS_DOWN,0,FXComboBox::onFocusDown),
   FXMAPFUNC(SEL_FOCUS_SELF,0,FXComboBox::onFocusSelf),
@@ -124,6 +126,8 @@ FXComboBox::FXComboBox(FXComposite *p,FXint cols,FXObject* tgt,FXSelector sel,FX
   button->setYOffset(border);
   boxframe=getFrameStyle();
   buttonframe=button->getFrameStyle();
+  fieldpad[0]=field->getPadLeft(); fieldpad[1]=field->getPadRight(); fieldpad[2]=field->getPadTop(); fieldpad[3]=field->getPadBottom();
+  buttonpad[0]=button->getPadLeft(); buttonpad[1]=button->getPadRight(); buttonpad[2]=button->getPadTop(); buttonpad[3]=button->getPadBottom();
   flags&=~FLAG_UPDATE;  // Never GUI update
   }
 
@@ -153,12 +157,18 @@ void FXComboBox::destroy(){
 void FXComboBox::applyTheme(FXTheme* theme){
   FXPacker::applyTheme(theme);
   if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    FXint p=FXMAX(theme->metric(METRIC_PADDING)/2,1);
+    backColor=theme->color(ROLE_WINDOW_BG);
     setFrameStyle(FRAME_NONE);
     button->setFrameStyle(FRAME_NONE);
+    field->setPadTop(0); field->setPadBottom(0); field->setPadLeft(p); field->setPadRight(p);
+    button->setPadTop(0); button->setPadBottom(0); button->setPadLeft(0); button->setPadRight(0);
     }
   else{
     setFrameStyle(boxframe);
     button->setFrameStyle(buttonframe);
+    field->setPadLeft(fieldpad[0]); field->setPadRight(fieldpad[1]); field->setPadTop(fieldpad[2]); field->setPadBottom(fieldpad[3]);
+    button->setPadLeft(buttonpad[0]); button->setPadRight(buttonpad[1]); button->setPadTop(buttonpad[2]); button->setPadBottom(buttonpad[3]);
     }
   field->setBackColor(theme->color(ROLE_WINDOW_BG));
   field->setTextColor(theme->color(ROLE_TEXT));
@@ -210,14 +220,38 @@ FXint FXComboBox::getDefaultHeight(){
 
 // Recalculate layout
 void FXComboBox::layout(){
-  FXint buttonWidth,textWidth,itemHeight;
-  itemHeight=height-(border<<1);
+  FXint buttonWidth,textWidth,itemHeight,inset=border;
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    inset=(getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())+1)/2;
+    }
+  itemHeight=height-(inset<<1);
   buttonWidth=button->getDefaultWidth();
-  textWidth=width-buttonWidth-(border<<1);
-  field->position(border,border,textWidth,itemHeight);
-  button->position(border+textWidth,border,buttonWidth,itemHeight);
+  textWidth=width-buttonWidth-(inset<<1);
+  field->position(inset,inset,textWidth,itemHeight);
+  button->position(inset+textWidth,inset,buttonWidth,itemHeight);
   pane->resize(width,pane->getDefaultHeight());
   flags&=~FLAG_DIRTY;
+  }
+
+
+// Draw the single rounded shell used by a themed combo box
+long FXComboBox::onPaint(FXObject*,FXSelector,void* ptr){
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(0<radius){
+    FXEvent *ev=(FXEvent*)ptr;
+    FXDCWindow dc(this,ev);
+    FXint edge=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
+    FXColor face=theme->color(ROLE_WINDOW_BG);
+    FXColor outline=theme->color(ROLE_BORDER);
+    if(field->hasFocus() || button->hasFocus()) outline=theme->color(ROLE_FOCUS_RING);
+    else if(field->underCursor() || button->underCursor()) outline=theme->color(ROLE_HOVER_RING);
+    dc.setForeground(getParent()?getParent()->getBackColor():face);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,outline,edge);
+    return 1;
+    }
+  return FXPacker::onPaint(nullptr,FXSEL(SEL_PAINT,0),ptr);
   }
 
 

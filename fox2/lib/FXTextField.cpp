@@ -1130,7 +1130,7 @@ long FXTextField::onPaint(FXObject*,FXSelector,void* ptr){
   // Rounded entry chrome for a themed field
   FXTheme *theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
-  if(0<radius){
+  if(0<radius && (options&(FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK))){
     FXint edge=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
     FXColor face=isEnabled()?backColor:theme->color(ROLE_SURFACE);
     FXColor outline=hasFocus()?theme->color(ROLE_FOCUS_RING):theme->color(ROLE_BORDER);
@@ -1138,6 +1138,13 @@ long FXTextField::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(getParent()?getParent()->getBackColor():backColor);
     dc.fillRectangle(0,0,width,height);
     getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,outline,edge);
+    }
+  else if(0<radius){
+    // Flat field inside a themed combo shell: a rounded face without a border
+    FXColor face=isEnabled()?backColor:theme->color(ROLE_SURFACE);
+    dc.setForeground(getParent()?getParent()->getBackColor():face);
+    dc.fillRectangle(0,0,width,height);
+    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,face,0);
     }
   else{
     // Classic frame and background
@@ -1181,7 +1188,10 @@ long FXTextField::onBlink(FXObject*,FXSelector,void*){
 // Gained focus
 long FXTextField::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
   FXFrame::onFocusIn(sender,sel,ptr);
-  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    update();
+    if(getParent()) getParent()->update();
+    }
   if(isEditable()){
     getApp()->addTimeout(this,ID_BLINK,getApp()->getBlinkSpeed());
     drawCursor(FLAG_CARET);
@@ -1196,7 +1206,10 @@ long FXTextField::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
 // Lost focus
 long FXTextField::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
   FXFrame::onFocusOut(sender,sel,ptr);
-  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    update();
+    if(getParent()) getParent()->update();
+    }
   getApp()->removeTimeout(this,ID_BLINK);
   drawCursor(0);
   if(hasSelection()){
