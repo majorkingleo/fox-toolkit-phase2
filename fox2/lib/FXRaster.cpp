@@ -574,7 +574,7 @@ void FXRaster::drawArc(FXint x,FXint y,FXint w,FXint h,FXint ang1,FXint ang2){
   cy=y+ry;
   a1=ang1/64.0;
   a2=ang2/64.0;
-  if(a2<0.0) a2=-a2;
+  if(a2<0.0){ a1+=a2; a2=-a2; }
   if(a2>360.0) a2=360.0;
   steps=(FXint)ceil(FXMAX(rx,ry)*a2*DTOR*2.0);
   if(steps<1) steps=1;
