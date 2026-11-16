@@ -615,7 +615,7 @@ FXDesktopSetup::FXDesktopSetup(FXApp *ap):FXMainWindow(ap,FXString::null,nullptr
 
   // Footer status bar and close button
   new FXSeparator(main,SEPARATOR_GROOVE|LAYOUT_FILL_X);
-  FXStatusBar *footer=new FXStatusBar(main,LAYOUT_FILL_X,0,0,0,0,DEFAULT_SPACING,2,DEFAULT_SPACING,0);
+  FXStatusBar *footer=new FXStatusBar(main,LAYOUT_BOTTOM|LAYOUT_FILL_X,0,0,0,0,DEFAULT_SPACING,2,DEFAULT_SPACING,0);
   themestatus=footer->getStatusLine();
   themestatus->setText(FXString::null);
   themestatus->setNormalText(FXString::null);
