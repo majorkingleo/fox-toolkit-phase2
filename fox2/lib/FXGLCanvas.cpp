@@ -44,6 +44,7 @@
 #include "FXGLVisual.h"
 #include "FXGLCanvas.h"
 #include "FXGLContext.h"
+#include "fxglwayland.h"
 
 
 /*
@@ -129,6 +130,11 @@ void FXGLCanvas::create(){
       // Create context
       context->create();
 
+      // On Wayland the canvas is a subsurface with an EGL window of its own
+#if defined(FOX_WAYLAND) && defined(HAVE_EGL_H)
+      if(!fxglwaylandCreateCanvas(getApp(),xid)) throw FXWindowException("unable to create GL canvas surface.");
+#endif
+
       // Change frame buffer according to visual
 #ifdef HAVE_GL_H
 #if defined(WIN32)
@@ -156,6 +162,9 @@ void FXGLCanvas::detach(){
 void FXGLCanvas::destroy(){
   if(xid){
     if(getApp()->isInitialized()){
+#if defined(FOX_WAYLAND) && defined(HAVE_EGL_H)
+      fxglwaylandDestroyCanvas(getApp(),xid);
+#endif
       if(options&GLCANVAS_OWN_CONTEXT) context->destroy();
 #ifdef HAVE_GL_H
 //#if defined(GLX_VERSION_1_3)

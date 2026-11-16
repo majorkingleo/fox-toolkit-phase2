@@ -18,11 +18,12 @@ Goals:
   no plugins, no runtime loading, no dual X11 + Wayland binary.
 - Small dependency footprint: `libwayland-client`, `libxkbcommon`, FreeType and
   fontconfig (Xft already needs the last two). No GTK, Qt, cairo or pixman.
+- OpenGL through EGL on `wl_subsurface` canvases (no GLX).
 - Public headers stay free of platform types.
 
-Non-goals for the first release: OpenGL (`FXGLCanvas`, later via `wl_egl_window`),
-session management, system tray, XEMBED, screen savers, absolute window
-positioning (Wayland forbids it), pointer warping.
+Non-goals for the first release: session management, system tray, XEMBED,
+screen savers, absolute window positioning (Wayland forbids it), pointer
+warping.
 
 ## Starting point (measured, not assumed)
 
@@ -988,6 +989,39 @@ Done in this phase so far (the build wiring, the metadata and the screenshots):
 - `scripts/gate-wayland-autotools.sh` is the check that the second build system
   works: it runs `autoreconf`, configures with `--with-wayland` in a scratch
   directory and builds the library and one test program.
+
+## OpenGL on Wayland (EGL)
+
+OpenGL is available on the Wayland platform through EGL; it was the last
+platform module the ported applications were waiting for (`glviewer`).
+
+- `fxglwayland.cpp` owns the EGL display of the connection: `eglGetDisplay` on
+  the `wl_display`, `eglInitialize`, `eglBindAPI(EGL_OPENGL_API)`, and the
+  lifecycle of the canvas subsurfaces.  `FXGLVisual_wayland.cpp` picks an
+  `EGLConfig` from the requested color, depth, stencil and multisample sizes;
+  the config takes the place of the visual id of the X11 module.
+- A GL canvas is a `wl_subsurface` of the surface of its shell, with its own
+  `wl_surface` and a `wl_egl_window`; the shell keeps the shared memory buffer
+  for the widgets around it.  The subsurface is desynchronized, so the GL
+  commits do not hold up the frame of the shell.
+- Moving or resizing the canvas updates the subsurface position and the EGL
+  window; `FXGLContext` creates the `EGLSurface` on demand at the current size.
+  `FXGLContext` has an EGL branch for `create`, `begin`, `end`, `swapBuffers`,
+  `isCurrent` and `hasCurrent` next to WGL and GLX; `FXGLCanvas` creates and
+  destroys the subsurface with the canvas.
+- Without EGL the module compiles to no-ops and `FXGLVisual::hasOpenGL()` is
+  false, so the ordinary Wayland build is unchanged.  Build the GL flavour with
+  `scripts/build-fox2-wayland.sh --opengl`; CMake then finds `libEGL`,
+  `wayland-egl` and `libGL`.
+- `scripts/gate-wayland-gl.sh` runs `tests/glcanvas` against a headless sway
+  with the GL renderer (llvmpipe).  The test clears a red frame, reads the pixel
+  back with `glReadPixels` and exits 0 only when it is red; this also catches a
+  wrong channel order.  `tools/screencopy` now honours the buffer format,
+  because the GL renderer offers ABGR buffers where the other gates have
+  XRGB8888.
+- Limitation: the EGL window is sized in logical pixels, so a display scale
+  other than 1 still draws the canvas at 1x until the EGL size follows the
+  fractional scale.
 
 ## Verification
 

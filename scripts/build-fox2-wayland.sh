@@ -17,7 +17,8 @@
 #   --jobs=N   parallel jobs (default: all cores)
 #   --clean    delete the build directory first
 #   --run      run hello, button and the DPI test for 3 s after building
-#   --opengl   not available on Wayland yet; use the X11 build for OpenGL
+#   --opengl   enable OpenGL: EGL canvases on wl_subsurfaces (needs libEGL,
+#              wayland-egl and libGL)
 #   -h|--help  show this help
 #
 # Environment:
@@ -57,14 +58,6 @@ while [ $# -gt 0 ]; do
   shift
   done
 
-if [ "$with_opengl" = yes ]; then
-  echo "error: OpenGL is not available on the Wayland platform yet." >&2
-  echo "       The Wayland GL modules are stubs; OpenGL is an X11/Win32 feature" >&2
-  echo "       for now (see docs/wayland-plan.md). For an OpenGL build use:" >&2
-  echo "         ./scripts/build-fox2-linux.sh --opengl" >&2
-  exit 2
-  fi
-
 if [ -n "${MSYSTEM-}" ]; then
   echo "error: Wayland needs Linux; in MSYS2 use ./scripts/build-fox2-mingw.sh" >&2
   exit 1
@@ -87,6 +80,16 @@ else
 
 # Client libraries and tools used by the Wayland platform (phases 1 to 10)
 missing=0
+if [ "$with_opengl" = yes ]; then
+  for pc in egl wayland-egl gl; do
+    if pkg-config --exists "$pc" 2>/dev/null; then
+      echo "==> found $pc $(pkg-config --modversion "$pc")"
+    else
+      echo "warning: pkg-config module '$pc' not found (needed for --opengl)" >&2
+      missing=1
+      fi
+    done
+  fi
 for pc in wayland-client xkbcommon; do
   if pkg-config --exists "$pc" 2>/dev/null; then
     echo "==> found $pc $(pkg-config --modversion "$pc")"
@@ -160,7 +163,9 @@ run(){
   }
 
 echo "==> cmake configure"
-run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=OFF
+opengl=OFF
+[ "$with_opengl" = yes ] && opengl=ON
+run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=$opengl
 
 echo "==> build library, tools and tests"
 if [ -n "${FOX_WAYLAND_TARGET-}" ]; then

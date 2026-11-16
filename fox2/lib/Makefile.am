@@ -119,6 +119,7 @@ FXConsole.cpp \
 FXGLCanvas.cpp \
 FXGLContext.cpp \
 FXGLVisual.cpp \
+fxglwayland.cpp \
 FXGlobVisitor.cpp \
 FXShutter.cpp \
 FXMDIClient.cpp \
