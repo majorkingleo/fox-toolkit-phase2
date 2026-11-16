@@ -50,7 +50,9 @@ public:
   void setup(FXApp* a,FXMainWindow* m,FXMenuPane* p){ app=a; shell=m; pane=p; }
   long onOpen(FXObject*,FXSelector,void*){
     fxmessage("opening the pane\n");
-    pane->popup(shell,60,40);
+    FXint rx,ry;
+    shell->translateCoordinatesTo(rx,ry,shell->getRoot(),60,40);   // popup() takes root coordinates
+    pane->popup(shell,rx,ry);
     return 1;
     }
   long onStop(FXObject*,FXSelector,void*){
