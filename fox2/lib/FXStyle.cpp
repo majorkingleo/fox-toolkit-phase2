@@ -395,16 +395,28 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
     dc.setForeground(state.parentBack);
     dc.fillRectangle(x,y,w,h);
 
-    if(hasXRender(dc) && drawRoundRect(dc,x,y,w,h,radius,face,edge,borderWidth)){
+    // A hairline shadow under the button, the way Breeze draws its box-shadow
+    FXint faceh=h;
+    if(state.enabled && 4<h){
+      FXColor shade=blendColor(state.parentBack,FXRGB(0,0,0),12);
+      FXint sr=FXMIN(radius,FXMIN(w,h-1)/2);
+      faceh=h-1;
+      if(!drawRoundRect(dc,x,y+1,w,faceh,radius,shade,shade,0)){
+        dc.setForeground(shade);
+        dc.fillRoundRectangle(x,y+1,w,faceh,sr,sr);
+        }
+      }
+
+    if(drawRoundRect(dc,x,y,w,faceh,radius,face,edge,borderWidth)){
       return FXRectangle(x,y,w,h);
       }
     // Fallback: hard-edged rounded shape, corners stay transparent
-    FXint rr=FXMIN(radius,FXMIN(w,h)/2);
+    FXint rr=FXMIN(radius,FXMIN(w,faceh)/2);
     dc.setForeground(face);
-    dc.fillRoundRectangle(x,y,w,h,rr,rr);
+    dc.fillRoundRectangle(x,y,w,faceh,rr,rr);
     if(0<borderWidth){
       dc.setForeground(edge);
-      dc.drawRoundRectangle(x,y,w,h,rr,rr);
+      dc.drawRoundRectangle(x,y,w,faceh,rr,rr);
       }
     return FXRectangle(x,y,w,h);
     }

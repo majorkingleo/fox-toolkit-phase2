@@ -916,7 +916,10 @@ have radius 0, remain pixel-identical because their button role equals the
 surface color.  The Wayland fallback had passed the radius doubled to
 `fillRoundRectangle()`/`drawRoundRectangle()` (those take the radius, not the
 arc diameter), which made the corners twice as round as GTK's; the fallback and
-the focus ring now pass the radius once.
+the focus ring now pass the radius once.  Wayland also lacks XRender, so the
+style now rasterizes the rounded rectangle itself: the straight bands are
+filled, the four corners are blended with 4x4 supersampled coverage through
+`FXRaster::blend()`, and a 1 px Breeze-style shadow is drawn under the face.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

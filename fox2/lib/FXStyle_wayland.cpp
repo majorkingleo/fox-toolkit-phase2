@@ -43,6 +43,7 @@
 #include "FXTheme.h"
 #include "FXFrame.h"
 #include "FXStyle.h"
+#include "fxraster.h"
 
 #if defined(FOX_WAYLAND)
 
@@ -91,9 +92,72 @@ FXStyle::FXCornerMask* FXStyle::getMask(FXint radius){
   }
 
 
-// Draw an antialiased rounded rectangle
+// Coverage of one pixel by a quarter disc, sampled 4x4
+static FXuint discCoverage(FXint px,FXint py,FXint cx,FXint cy,FXint radius){
+  const FXint samples=4;
+  FXdouble rr=(FXdouble)radius*(FXdouble)radius;
+  FXint inside=0;
+  FXint sy,sx;
+  for(sy=0; sy<samples; sy++){
+    FXdouble fy=py+(sy+0.5)/samples-cy;
+    for(sx=0; sx<samples; sx++){
+      FXdouble fx=px+(sx+0.5)/samples-cx;
+      if(fx*fx+fy*fy<=rr) inside++;
+      }
+    }
+  return (FXuint)((inside*255+samples*samples/2)/(samples*samples));
+  }
+
+
+// Blend one antialiased quarter disc corner
+static void blendCorner(FXDCWindow& dc,FXRaster* raster,FXint x,FXint y,FXint cx,FXint cy,FXint radius,FXColor color){
+  FXint px,py;
+  dc.setForeground(color);
+  for(py=y; py<y+radius; py++){
+    for(px=x; px<x+radius; px++){
+      raster->blend(px,py,discCoverage(px,py,cx,cy,radius));
+      }
+    }
+  }
+
+
+// Draw an antialiased rounded rectangle with a solid face and border
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
-  return false;
+  FXRaster *raster=(FXRaster*)dc.context();
+  FXint r,br,ir;
+  if(!raster || w<=0 || h<=0 || radius<=0) return false;
+  r=FXMIN(radius,FXMIN(w,h)/2);
+  br=FXMIN(FXMAX(borderWidth,0),r);
+  ir=FXMAX(r-br,0);
+
+  // Straight bands of the outer shape; only the corners need antialiasing
+  dc.setForeground(br?border:face);
+  if(0<w-2*r) dc.fillRectangle(x+r,y,w-2*r,h);
+  if(0<h-2*r) dc.fillRectangle(x,y+r,w,h-2*r);
+
+  // Outer corners
+  blendCorner(dc,raster,x,y,x+r,y+r,r,br?border:face);
+  blendCorner(dc,raster,x+w-r,y,x+w-r,y+r,r,br?border:face);
+  blendCorner(dc,raster,x,y+h-r,x+r,y+h-r,r,br?border:face);
+  blendCorner(dc,raster,x+w-r,y+h-r,x+w-r,y+h-r,r,br?border:face);
+
+  // Inner face, inset by the border width
+  if(br){
+    dc.setForeground(face);
+    if(0<w-2*br-2*ir) dc.fillRectangle(x+br+ir,y+br,w-2*br-2*ir,h-2*br);
+    if(0<h-2*br-2*ir) dc.fillRectangle(x+br,y+br+ir,w-2*br,h-2*br-2*ir);
+    if(0<ir){
+      blendCorner(dc,raster,x+br,y+br,x+br+ir,y+br+ir,ir,face);
+      blendCorner(dc,raster,x+w-br-ir,y+br,x+w-br-ir,y+br+ir,ir,face);
+      blendCorner(dc,raster,x+br,y+h-br-ir,x+br+ir,y+h-br-ir,ir,face);
+      blendCorner(dc,raster,x+w-br-ir,y+h-br-ir,x+w-br-ir,y+h-br-ir,ir,face);
+      }
+    else{
+      dc.setForeground(face);
+      dc.fillRectangle(x+br,y+br,w-2*br,h-2*br);
+      }
+    }
+  return true;
   }
 
 }
