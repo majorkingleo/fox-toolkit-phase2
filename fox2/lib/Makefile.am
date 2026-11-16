@@ -111,6 +111,9 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXRealSlider.cpp \
+FXGauge.cpp \
+FXDataTarget.cpp \
 FXDockHandler.cpp \
 FXToolBarGrip.cpp \
 FXToolBarShell.cpp \

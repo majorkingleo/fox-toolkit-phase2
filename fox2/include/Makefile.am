@@ -142,6 +142,9 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXRealSlider.h \
+FXGauge.h \
+FXDataTarget.h \
 FXToolBarShell.h \
 FXDockSite.h \
 FXTreeList.h \
