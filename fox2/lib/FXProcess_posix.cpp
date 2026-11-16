@@ -164,11 +164,15 @@ FXbool FXProcess::wait(){
   }
 
 
-// Wait for child process, returning exit code
+// Wait for child process, returning exit code; a child ended by a signal gives minus the signal number
 FXbool FXProcess::wait(FXint& code){
   FXbool result=false;
   if(pid){
-    if(0<waitpid(pid,&code,0)){
+    FXint status;
+    if(0<waitpid(pid,&status,0)){
+      if(WIFEXITED(status)) code=WEXITSTATUS(status);
+      else if(WIFSIGNALED(status)) code=-WTERMSIG(status);
+      else code=status;
       result=true;
       pid=0;
       }

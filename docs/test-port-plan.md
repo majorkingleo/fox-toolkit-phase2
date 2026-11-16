@@ -125,7 +125,16 @@ change nothing else); the library under them is never touched.
    temporary file through a map, reads it back whole and at an offset, changes
    it through a read-write map, grows it through a larger map, checks sizes
    and contents, removes the file; the interactive `read`/`write` modes stay,
-   and the program now returns 0 at the end).
+   and the program now returns 0 at the end). Done: `process --test` (the
+   program starts itself as a child: exit codes 0, 3 and 42, captured stdout
+   and stderr through pipes, a given environment, kill of a sleeping child,
+   a program which does not exist, wait without a start). It found two
+   library defects, both fixed in fox2 only: on POSIX `FXProcess::wait(code)`
+   returned the raw `waitpid` status (42 came back as 10752; now the exit
+   code, or minus the signal number), and on Windows `FXPipe`, `FXFile` and
+   `FXMappedFile` made a handle inheritable exactly when `FXIO::Inheritable`
+   was not given (inverted; FOX 1 has the same), plus the non-Unicode
+   `FXProcess::start` took the stderr handle from the output stream.
 3. C and E: `rex`, `expression`, `units` with tables of expected results.
 4. D: `math` with a bounded default.
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.

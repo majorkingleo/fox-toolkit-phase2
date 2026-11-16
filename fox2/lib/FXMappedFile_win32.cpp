@@ -73,7 +73,7 @@ FXptr FXMappedFile::open(const FXString& filename,FXuint m,FXuint perm,FXlong le
     // Inheritable
     SECURITY_ATTRIBUTES security;
     security.nLength=sizeof(SECURITY_ATTRIBUTES);
-    security.bInheritHandle=((m&FXIO::Inheritable)==0);
+    security.bInheritHandle=((m&FXIO::Inheritable)!=0);
     security.lpSecurityDescriptor=nullptr;
 
     // Open file

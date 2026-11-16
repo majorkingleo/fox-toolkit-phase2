@@ -56,7 +56,7 @@ FXbool FXPipe::open(FXPipe& other,FXuint m){
     // Inheritable
     SECURITY_ATTRIBUTES security;
     security.nLength=sizeof(SECURITY_ATTRIBUTES);
-    security.bInheritHandle=((m&FXIO::Inheritable)==0);
+    security.bInheritHandle=((m&FXIO::Inheritable)!=0);
     security.lpSecurityDescriptor=nullptr;
 
     // Create connected pipe
