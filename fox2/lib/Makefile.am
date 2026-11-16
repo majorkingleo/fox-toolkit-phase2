@@ -46,6 +46,7 @@ FXDragCorner.cpp \
 FXDrawable.cpp \
 fxezquantize.cpp \
 fxmath.cpp \
+fxparsegeometry.cpp \
 FXFile.cpp \
 FXFont.cpp \
 FXFontDialog.cpp \
