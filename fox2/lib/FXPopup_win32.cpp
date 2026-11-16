@@ -96,6 +96,13 @@ void FXPopup::popup(FXWindow* grabto,FXint x,FXint y,FXint w,FXint h){
     }
   FXTRACE(TOPIC_DETAIL,"%s::popup %p\n",getClassName(),this);
   grabowner=grabto;
+
+  // A popup is created wherever its window happens to be, typically on the
+  // primary monitor.  When the place it is asked for is on a monitor with another
+  // DPI, Windows rescales it while it is moved there.  Move it first, so that
+  // the new DPI is in effect when the default size is measured below, and the
+  // size is not rescaled once more after it has been measured.
+  position(x,y,width,height);
   if((options&POPUP_SHRINKWRAP) || w<=1) w=getDefaultWidth();
   if((options&POPUP_SHRINKWRAP) || h<=1) h=getDefaultHeight();
   if(x+w>rx+rw) x=rx+rw-w;
