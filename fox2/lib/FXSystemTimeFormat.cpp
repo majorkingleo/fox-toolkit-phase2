@@ -215,7 +215,7 @@ static FXint iso_week(const FXSystem::Time& st){
 // ISO 8601 year, i.e. year in which week number falls
 static FXint iso_year(const FXSystem::Time& st){
   FXint year=st.year;
-  if(st.yday<3 && iso_week(st)!=1) year--;
+  if(st.yday<4 && iso_week(st)!=1) year--;
   else if(st.yday>360 && iso_week(st)==1) year++;
   return year;
   }
@@ -314,7 +314,8 @@ nxt:  ch=*format++;
         src="GMT";
         goto app;
       case 'z':                 // Offset +hhmm or -hhmm from UTC
-        __snprintf(buf,sizeof(buf),"%+03d%02d",st.offset/3600,(Math::iabs(st.offset)/60)%60);
+        val=Math::iabs(st.offset)/60;
+        __snprintf(buf,sizeof(buf),"%c%02d%02d",st.offset<0?'-':'+',val/60,val%60);
         src=buf;
         goto app;
       case 'e':                 // Day of the month (leading blank)
@@ -351,11 +352,11 @@ nxt:  ch=*format++;
       case 'f':                 // Fraction
         ch=*format++;
         if(ch=='m'){            // Milliseconds (000-999)
-          src=intoa(buf,(st.nano+500000)/1000000,3,'0');
+          src=intoa(buf,st.nano/1000000,3,'0');
           goto app;
           }
         if(ch=='u'){            // Microseconds (000000-999999)
-          src=intoa(buf,(st.nano+500)/1000,6,'0');
+          src=intoa(buf,st.nano/1000,6,'0');
           goto app;
           }
         if(ch=='n'){            // Nanoseconds (000000000-999999999)

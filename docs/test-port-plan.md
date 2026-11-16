@@ -186,6 +186,20 @@ change nothing else); the library under them is never touched.
      (limits, overflow, underflow, signed zero), halves around each rounding
      midpoint, monotonic conversion and the arithmetic operators. Fixed: a NaN
      float with only low mantissa bits set became infinity in `FXhalf`.
+   - `timefmt --test` done: `daysFromCivil`/`civilFromDays` over 1.6 million
+     days, broken-down time, carrying of out-of-range parts, a table of formats
+     with known output, a comparison with the C library `strftime`, the ISO
+     week tables in both directions, a table of parse cases (zones, 12-hour
+     clock, week numbers, fractions, failures) and local time in any zone (run
+     in six zones including half-hour ones). Fixed: days beyond the end of a
+     month carried wrongly (`Jan 100`); zone offsets of parsed times were
+     applied with the wrong sign; `localTime` always printed `%z` as
+     `+0000`; `%z` of -00:30 printed `+0030`; `%fm`/`%fu` rounded and
+     could overflow their digits (now truncated); `%G` of 3 January that
+     belongs to the previous ISO year; `%y` and `%g` guessed the century the
+     wrong way round; `%U`, `%W` and `%V` were ignored when followed by
+     `%T`, `%D`, `%F` and the like (derived fields were calculated inside the
+     nested parse); `%s` could not parse negative times and overflowed.
 
 One commit per step, each with the result of both platforms in its message.
 

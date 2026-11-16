@@ -129,7 +129,6 @@ FXTime FXSystem::timeFromSystemTime(const Time& st){
   FXint min=st.min;
   FXint sec=st.sec;
   FXint nano=st.nano;
-  FXint leap;
 
   // Validate nanoseconds
   if(nano>seconds){
@@ -161,21 +160,7 @@ FXTime FXSystem::timeFromSystemTime(const Time& st){
     month=(month-1)%12+1;
     }
 
-  // Is leap year
-  leap=is_leap(year);
-
-  // Validate day of month
-  while(day>days_of_year[leap][month]){
-    day-=days_of_year[leap][month];
-    month+=1;
-    if(13<=month){
-      month=1;
-      year+=1;
-      leap=is_leap(year);
-      }
-    }
-
-  // Return nanoseconds since Epoch
+  // Return nanoseconds since Epoch; days beyond the end of the month carry into following months
   return (((daysFromCivil(year,month,day)*24+hour)*60+min)*60+sec)*seconds+nano;
   }
 
@@ -234,7 +219,7 @@ FXString FXSystem::universalTime(FXTime utc,const FXchar *format){
 FXTime FXSystem::universalTime(const FXchar* string,const FXchar* format){
   FXSystem::Time st={0,0,0,0,0,0,0,0,0,0};
   if(FXSystem::systemTimeParse(st,string,format)){
-    return FXSystem::timeFromSystemTime(st)+st.offset*seconds;
+    return FXSystem::timeFromSystemTime(st)-st.offset*seconds;
     }
   return forever;
   }
@@ -250,8 +235,9 @@ FXTime FXSystem::universalTime(const FXString& string,const FXchar* format){
 // Format utc in nanoseconds since Unix Epoch to local date-time string using given format
 FXString FXSystem::localTime(FXTime utc,const FXchar *format){
   FXTime zoneoffset=FXSystem::localTimeZoneOffset()+FXSystem::daylightSavingsOffset()*FXSystem::daylightSavingsActive(utc);
-  FXSystem::Time st={0,0,0,0,0,0,0,0,0,(FXint)(zoneoffset/seconds)};
+  FXSystem::Time st={0,0,0,0,0,0,0,0,0,0};
   FXSystem::systemTimeFromTime(st,utc-zoneoffset);
+  st.offset=-(FXint)(zoneoffset/seconds);                // Seconds east of utc
   return FXSystem::systemTimeFormat(st,format);
   }
 
@@ -263,7 +249,7 @@ FXTime FXSystem::localTime(const FXchar* string,const FXchar* format){
   FXSystem::Time st={0,0,0,0,0,0,0,0,0,0};
   if(FXSystem::systemTimeParse(st,string,format)){
     //FXTime zoneoffset=FXSystem::localTimeZoneOffset()+FXSystem::daylightSavingsOffset()*FXSystem::daylightSavingsActive(FXThread::time());
-    return FXSystem::timeFromSystemTime(st)+st.offset*seconds;
+    return FXSystem::timeFromSystemTime(st)-st.offset*seconds;
     }
   return forever;
   }

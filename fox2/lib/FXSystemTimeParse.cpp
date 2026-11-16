@@ -333,7 +333,7 @@ static FXint day_of_week(FXint year,FXint month,FXint day){
 
 
 // Convert string to time according to format.
-static const FXchar* systemTimeParseRecursive(FXSystem::Time& st,FXuint& set,const FXchar* string,const FXchar* format){
+static const FXchar* systemTimeParseRecursive(FXSystem::Time& st,FXuint& set,const FXchar* string,const FXchar* format,FXbool outer){
   const FXTime seconds=1000000000;
   const FXchar *s;
   FXint startofweek=0;
@@ -417,7 +417,7 @@ nxt:  ch=*format++;
           st.year=(st.year/100)*100+num;
           }
         else{                   // Set year, guess the century
-          st.year=(num<69)?num+1900:num+2000;
+          st.year=(num<69)?num+2000:num+1900;
           }
         set|=SET_YEAR|SET_ISO;
         continue;
@@ -433,7 +433,7 @@ nxt:  ch=*format++;
           st.year=(st.year/100)*100+num;
           }
         else{                   // Set year, guess the century
-          st.year=(num<69)?num+1900:num+2000;
+          st.year=(num<69)?num+2000:num+1900;
           }
         set|=SET_YEAR;
         continue;
@@ -595,18 +595,20 @@ nxt:  ch=*format++;
         set|=SET_SEC;
         continue;
       case 's':                 // Seconds since Unix Epoch
+        neg=(*string=='-');                             // Seconds before the Epoch are negative
+        if(neg) string++;
         if(*string<'0' || '9'<*string) return nullptr;
         sse=0;
         do{
           num=*string++-'0';
-          if(sse>=(LLONG_MAX/10)){
-            if(sse>(LLONG_MAX/10)) return nullptr;
-            if(num>(LLONG_MAX%10)) return nullptr;
+          if(sse>=((LLONG_MAX/seconds)/10)){            // Must fit in nanoseconds
+            if(sse>((LLONG_MAX/seconds)/10)) return nullptr;
+            if(num>((LLONG_MAX/seconds)%10)) return nullptr;
             }
           sse=sse*10+num;
           }
         while('0'<=*string && *string<='9');
-        systemTimeFromTime(st,sse*seconds);
+        systemTimeFromTime(st,(neg?-sse:sse)*seconds);
         set|=SET_CENT|SET_YEAR|SET_MON|SET_YDAY|SET_MDAY|SET_WDAY|SET_24HR|SET_MIN|SET_SEC|SET_OFF;
         continue;
       case 'f':                 // Fraction
@@ -628,35 +630,35 @@ nxt:  ch=*format++;
           }
         return nullptr;
       case 'D':                 // The date as "%m/%d/%y"
-        string=systemTimeParseRecursive(st,set,string,"%m/%d/%y");
+        string=systemTimeParseRecursive(st,set,string,"%m/%d/%y",false);
         if(!string) return nullptr;
         continue;
       case 'F':                 // The date as "%Y-%m-%d"
-        string=systemTimeParseRecursive(st,set,string,"%Y-%m-%d");
+        string=systemTimeParseRecursive(st,set,string,"%Y-%m-%d",false);
         if(!string) return nullptr;
         continue;
       case 'c':                 // Date and time, using the locale's format
-        string=systemTimeParseRecursive(st,set,string,"%b %a %d %k:%M:%S %Z %Y");
+        string=systemTimeParseRecursive(st,set,string,"%b %a %d %k:%M:%S %Z %Y",false);
         if(!string) return nullptr;
         continue;
       case 'r':                 // The time in 12-hour clock representation
-        string=systemTimeParseRecursive(st,set,string,"%I:%M:%S %p");
+        string=systemTimeParseRecursive(st,set,string,"%I:%M:%S %p",false);
         if(!string) return nullptr;
         continue;
       case 'R':                 // The time as "%H:%M"
-        string=systemTimeParseRecursive(st,set,string,"%H:%M");
+        string=systemTimeParseRecursive(st,set,string,"%H:%M",false);
         if(!string) return nullptr;
         continue;
       case 'x':                 // The date, using the locale's format
-        string=systemTimeParseRecursive(st,set,string,"%b %a %d");
+        string=systemTimeParseRecursive(st,set,string,"%b %a %d",false);
         if(!string) return nullptr;
         continue;
       case 'X':                 // The time, using the locale's format
-        string=systemTimeParseRecursive(st,set,string,"%k:%M:%S");
+        string=systemTimeParseRecursive(st,set,string,"%k:%M:%S",false);
         if(!string) return nullptr;
         continue;
       case 'T':                 // The time as "%H:%M:%S"
-        string=systemTimeParseRecursive(st,set,string,"%H:%M:%S");
+        string=systemTimeParseRecursive(st,set,string,"%H:%M:%S",false);
         if(!string) return nullptr;
         continue;
       default:                  // Error: not supported
@@ -681,8 +683,8 @@ nxt:  ch=*format++;
     st.hour+=12*pm;
     }
 
-  // Some things may be calculated
-  if(set&SET_YEAR){
+  // Some things may be calculated, but only once everything is parsed
+  if(outer && (set&SET_YEAR)){
 
     // If we have month and day-of-month, we can calculate day-of-year
     if((set&SET_MON) && (set&SET_MDAY)){
@@ -745,7 +747,7 @@ nxt:  ch=*format++;
 // Parse system time from string, returning number of characters parsed
 FXint FXSystem::systemTimeParse(Time& st,const FXchar* string,const FXchar* format){
   const FXchar* ptr; FXuint set=0;
-  if((ptr=systemTimeParseRecursive(st,set,string,format))!=nullptr){
+  if((ptr=systemTimeParseRecursive(st,set,string,format,true))!=nullptr){
     return ptr-string;
     }
   return 0;
