@@ -93,6 +93,9 @@ public:
   /// Perform layout
   virtual void layout() override;
 
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Change frame style
   void setFrameStyle(FXuint style);
 

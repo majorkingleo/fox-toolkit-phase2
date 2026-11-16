@@ -83,6 +83,16 @@ FXDEFMAP(FXPacker) FXPackerMap[]={
 FXIMPLEMENT(FXPacker,FXComposite,FXPackerMap,ARRAYNUMBER(FXPackerMap))
 
 
+// Re-apply theme colors
+void FXPacker::applyTheme(FXTheme* theme){
+  FXWindow::applyTheme(theme);
+  baseColor=theme->color(ROLE_SURFACE);
+  hiliteColor=theme->color(ROLE_SURFACE_HILITE);
+  shadowColor=theme->color(ROLE_SURFACE_SHADOW);
+  borderColor=theme->color(ROLE_BORDER);
+  }
+
+
 // Deserialization
 FXPacker::FXPacker(){
   flags|=FLAG_SHOWN;

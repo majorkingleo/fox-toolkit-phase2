@@ -69,6 +69,8 @@ protected:
   FXMenuButton  *button;
   FXList        *list;
   FXPopup       *pane;
+  FXuint         boxframe;      // Frame style the application asked for
+  FXuint         buttonframe;   // Arrow button frame style
 protected:
   FXComboBox(){}
 private:

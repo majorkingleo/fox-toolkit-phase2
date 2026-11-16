@@ -122,6 +122,8 @@ FXComboBox::FXComboBox(FXComposite *p,FXint cols,FXObject* tgt,FXSelector sel,FX
   button=new FXMenuButton(this,FXString::null,nullptr,pane,FRAME_RAISED|FRAME_THICK|MENUBUTTON_DOWN|MENUBUTTON_ATTACH_RIGHT,0,0,0,0,0,0,0,0);
   button->setXOffset(border);
   button->setYOffset(border);
+  boxframe=getFrameStyle();
+  buttonframe=button->getFrameStyle();
   flags&=~FLAG_UPDATE;  // Never GUI update
   }
 
@@ -150,10 +152,20 @@ void FXComboBox::destroy(){
 // Re-apply theme colors to the field, arrow button and list
 void FXComboBox::applyTheme(FXTheme* theme){
   FXPacker::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    setFrameStyle(FRAME_NONE);
+    button->setFrameStyle(FRAME_NONE);
+    }
+  else{
+    setFrameStyle(boxframe);
+    button->setFrameStyle(buttonframe);
+    }
   field->setBackColor(theme->color(ROLE_WINDOW_BG));
   field->setTextColor(theme->color(ROLE_TEXT));
   field->setSelBackColor(theme->color(ROLE_SELECTION_BG));
   field->setSelTextColor(theme->color(ROLE_SELECTION_TEXT));
+  button->setBackColor(theme->color(ROLE_WINDOW_BG));
+  button->setTextColor(theme->color(ROLE_TEXT));
   list->setTextColor(theme->color(ROLE_TEXT));
   list->setSelBackColor(theme->color(ROLE_SELECTION_BG));
   list->setSelTextColor(theme->color(ROLE_SELECTION_TEXT));

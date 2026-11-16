@@ -961,6 +961,15 @@ border width.  Focus changes repaint the whole field so the outline updates.
 The classic radius-0 frame and background are untouched.  The widget has no
 placeholder API, so no placeholder role is needed yet.
 
+**Progress — list boxes and combo boxes (2026-11-16).** `FXPacker` now reapplies
+surface, edge and border colors from the theme, and `FXPopup` themes its shell
+colors.  For rounded themes, `FXListBox` and `FXComboBox` drop the outer sunken
+frame and the arrow button's classic raised frame, keep the theme background on
+the field and arrow area, and retain the original frame styles when the theme
+returns to radius 0.  The field, arrow and dropdown list all use the theme
+colors.  A single rounded shell around both the text and arrow, plus the popup
+shadow, are still open.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane
