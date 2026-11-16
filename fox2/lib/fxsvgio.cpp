@@ -151,7 +151,7 @@ FXbool fxloadSVG(FXStream& store,FXColor*& data,FXint& width,FXint& height,FXint
   for(y=0; y<th; y++){
     for(x=0; x<tw; x++){
       FXuchar* p=rgba+((FXuval)y*tw+x)*4;
-      pixels[(FXuval)y*tw+x]=FXRGB(p[0],p[1],p[2])|((FXColor)p[3]<<24);
+      pixels[(FXuval)y*tw+x]=FXRGBA(p[0],p[1],p[2],p[3]);
       }
     }
   freeElms(rgba);
