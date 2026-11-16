@@ -26,7 +26,7 @@ The later modernization workstreams live in `docs/modernization-plan.md`.
 - Reproducible by `scripts/build-fox1-linux.sh`: it runs the shipped
   `configure` out-of-tree with the options a plain `./configure` uses (OpenGL
   and CUPS on), then `make -C utils`, `make -C lib` and
-  `make -C tests hello button`. `--cmake` builds the same tree through
+  `make -C tests` (all test programs). `--cmake` builds the same tree through
   CMake + Ninja in `tmp/build-fox1-cmake`, `--no-opengl`, `--no-cups` and
   `--static` turn options off, and `--run` starts `hello` and `button` for 3 s.
 - Toolchain: GCC 16.2.1, GNU Make 4.4.1, Autoconf 2.73, Automake 1.19.

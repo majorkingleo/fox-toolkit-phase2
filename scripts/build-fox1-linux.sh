@@ -124,7 +124,21 @@ if [ "$use_cmake" = yes ]; then
 
   # CMake needs no generated files, so the original tree is used directly.
   # The options are always passed so that they are reset when none is given.
-  copts=(-G Ninja -DFOX_BUILD_ALL_TESTS=OFF)
+  #
+  # The codec tests call libtiff, libjpeg etc. directly.  CMake links the codec
+  # libraries PRIVATE to the shared FOX library, so the test executables do not
+  # inherit them and would fail with "DSO missing from command line".  Add the
+  # same libraries to the executable link for the all-tests build.
+  codec_libs=
+  for pkg in libtiff-4 libjpeg libjxl zlib bzip2 liblzma; do
+    if pkg-config --exists "$pkg"; then
+      codec_libs+="$(pkg-config --libs "$pkg") "
+      fi
+    done
+  if [ "$with_cups" = yes ] && pkg-config --exists cups; then
+    codec_libs+="$(pkg-config --libs cups) "
+    fi
+  copts=(-G Ninja -DFOX_BUILD_ALL_TESTS=ON -DCMAKE_EXE_LINKER_FLAGS="$codec_libs")
   if [ "$with_opengl" = yes ]; then
     copts+=(-DFOX_WITH_OPENGL=ON)
   else
@@ -156,7 +170,7 @@ if [ "$use_cmake" = yes ]; then
     printf '%s\n' "${copts[*]}" >"$BUILD/.cmake-options"
     fi
 
-  echo "==> build reswrap, library and test programs"
+  echo "==> build reswrap, library and all test programs"
   run cmake --build "$BUILD" -j "$jobs"
 
   echo
@@ -249,13 +263,14 @@ run make -j"$jobs" -C utils
 echo "==> build library"
 run make -j"$jobs" -C lib
 
-echo "==> build test programs"
-run make -j"$jobs" -C tests hello button
+echo "==> build all test programs"
+run make -j"$jobs" -C tests
 
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*FOX* 2>/dev/null || ls -l lib/*FOX* 2>/dev/null || true
-ls -l tests/hello tests/button 2>/dev/null || true
+# Count the test programs rather than listing the whole directory
+echo "test programs built: $(find tests -maxdepth 1 -type f -perm -u+x | wc -l)"
 
 if [ "$run_test" = yes ]; then
   for prog in hello button; do
