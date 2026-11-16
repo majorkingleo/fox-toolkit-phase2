@@ -16,7 +16,9 @@ param(
   [string]$BuildDir,
   [string]$OutDir,
   [double]$Delay = 1.5,
-  [double]$Timeout = 10
+  [double]$Timeout = 10,
+  [string[]]$Click = @(),
+  [string]$Suffix = ''
   )
 
 $ErrorActionPreference = 'Stop'
@@ -38,6 +40,29 @@ public static class ShotWin {
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+  [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr h, ref POINT p);
+  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
+  [DllImport("user32.dll")] public static extern IntPtr ChildWindowFromPointEx(IntPtr h, POINT p, uint flags);
+  [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  // Press and release the left button at screen point (x,y) by sending the
+  // messages to the deepest child window there; works without an input desktop
+  public static void Click(IntPtr top, int x, int y) {
+    IntPtr h = top;
+    POINT p; p.X = x; p.Y = y;
+    for (;;) {
+      POINT c = p; ScreenToClient(h, ref c);
+      IntPtr child = ChildWindowFromPointEx(h, c, 0);
+      if (child == IntPtr.Zero || child == h) break;
+      h = child;
+      }
+    POINT q = p; ScreenToClient(h, ref q);
+    IntPtr l = (IntPtr)((q.Y << 16) | (q.X & 0xFFFF));
+    SendMessage(h, 0x200, IntPtr.Zero, l);              // WM_MOUSEMOVE
+    SendMessage(h, 0x201, (IntPtr)1, l);                // WM_LBUTTONDOWN
+    SendMessage(h, 0x202, IntPtr.Zero, l);              // WM_LBUTTONUP
+    }
   [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
   }
 '@
@@ -99,9 +124,18 @@ foreach ($prog in $Programs) {
   Start-Sleep -Seconds $Delay
   $p.Refresh()
   $h = $p.MainWindowHandle
-  $file = Join-Path $OutDir "$prog.png"
+  # -Click 'x,y' presses the left button at x,y of the captured picture (one point per entry, in order)
+  foreach ($c in $Click) {
+    $xy = $c.Split(',')
+    $v = New-Object ShotWin+RECT
+    [void][ShotWin]::DwmGetWindowAttribute($h,9,[ref]$v,16)
+    [void][ShotWin]::SetForegroundWindow($h)
+    [ShotWin]::Click($h,$v.Left + [int]$xy[0],$v.Top + [int]$xy[1])
+    Start-Sleep -Milliseconds 800
+    }
+  $file = Join-Path $OutDir "$prog$Suffix.png"
   if (Save-Window $h $file) {
-    Write-Host "saved $prog.png"
+    Write-Host "saved $prog$Suffix.png"
     }
   else {
     Write-Host "FAIL  $prog (capture)"

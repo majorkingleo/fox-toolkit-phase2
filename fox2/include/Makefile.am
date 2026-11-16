@@ -142,6 +142,17 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXFileList.h \
+FXDirList.h \
+FXFileProgressDialog.h \
+FXProgressBar.h \
+FXIconList.h \
+FXGIFImage.h \
+FXFileAssociations.h \
+FXIconCache.h \
+FXIconSource.h \
+FXFileStream.h \
+FXURL.h \
 FXRealSlider.h \
 FXGauge.h \
 FXDataTarget.h \

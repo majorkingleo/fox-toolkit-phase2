@@ -111,6 +111,17 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXFileList.cpp \
+FXDirList.cpp \
+FXFileProgressDialog.cpp \
+FXProgressBar.cpp \
+FXIconList.cpp \
+FXGIFImage.cpp \
+FXFileAssociations.cpp \
+FXIconCache.cpp \
+FXIconSource.cpp \
+FXFileStream.cpp \
+FXURL.cpp \
 FXRealSlider.cpp \
 FXGauge.cpp \
 FXDataTarget.cpp \
