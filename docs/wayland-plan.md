@@ -876,6 +876,13 @@ settings and the window icon):
   600 pixels instead of 400 that the compositor would have to stretch.
 - A compositor without `wp_viewporter` gets `wl_surface.set_buffer_scale()` with
   the rounded scale instead, which is the only tool it understands.
+- The pixel size of an output comes from its **mode**, divided by the scale; the
+  `wl_output.geometry` event carries the physical size in **millimeters** and is
+  not a screen size.  Taking that event for the mode made the virtual root
+  window 698x393 on a 2560x1440 output: `FXPopup::popup()` clamps a menu to the
+  root, so every tall menu was pushed to the top-left of the real screen, while
+  X11, which knows the true size, kept it under its menu title.  Only the mode
+  handler sets the screen now.
 - Everything that crosses the protocol is in logical pixels and is converted at
   the seam: the configure size, the pointer and drag positions (they become
   device pixels), the popup positioner and size (they go back to logical).
