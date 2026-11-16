@@ -1019,6 +1019,11 @@ platform module the ported applications were waiting for (`glviewer`).
   wrong channel order.  `tools/screencopy` now honours the buffer format,
   because the GL renderer offers ABGR buffers where the other gates have
   XRGB8888.
+- A window config offered by EGL may be single buffered (Mesa llvmpipe on
+  Wayland offers such configs).  The visual still reports double buffering,
+  because a Wayland surface always presents the new buffer on commit;
+  `gltest`, which only swaps for a double buffered visual, therefore shows its
+  scene.  `tests/glcanvas` swaps by the same rule.
 - Limitation: the EGL window is sized in logical pixels, so a display scale
   other than 1 still draws the canvas at 1x until the EGL size follows the
   fractional scale.

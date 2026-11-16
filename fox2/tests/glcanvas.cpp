@@ -71,7 +71,8 @@ long GLCheck::onTimeout(FXObject*,FXSelector,void*){
     glClear(GL_COLOR_BUFFER_BIT);
     glFinish();
     glReadPixels(4,4,1,1,GL_RGBA,GL_UNSIGNED_BYTE,pixel);
-    canvas->swapBuffers();
+    // Swap the way an application does: only when the visual says it is double
+    if(visual->isDoubleBuffer()) canvas->swapBuffers();
     canvas->makeNonCurrent();
     if(pixel[0]>250 && pixel[1]<5 && pixel[2]<5 && pixel[3]>250){
       fxmessage("glcanvas: GL canvas draws, pixel %u %u %u %u\n",pixel[0],pixel[1],pixel[2],pixel[3]);

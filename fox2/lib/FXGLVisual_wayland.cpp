@@ -87,9 +87,10 @@ void FXGLVisual::create(){
 #if defined(HAVE_EGL_H)
       {
       EGLDisplay dpy;
-      EGLConfig config;
+      EGLConfig config=nullptr;
+      EGLConfig configs[64];
       EGLint attrs[40];
-      EGLint n=0,nconfigs=0;
+      EGLint nconfigs=0;
       EGLint value;
       FXint i=0;
       if(!fxglwaylandOpen(getApp())) throw FXWindowException("OpenGL is not supported on Wayland.");
@@ -107,9 +108,22 @@ void FXGLVisual::create(){
         attrs[i++]=EGL_SAMPLES;        attrs[i++]=multiSamples;
         }
       attrs[i++]=EGL_NONE;
-      if(!eglChooseConfig(dpy,attrs,&config,1,&nconfigs) || nconfigs<1){
+      if(!eglChooseConfig(dpy,attrs,configs,ARRAYNUMBER(configs),&nconfigs) || nconfigs<1){
         throw FXWindowException("no matching GL configuration.");
         }
+
+      // Prefer a double buffered config; a single buffered one never shows a
+      // swap, and an application that only swaps when the visual says so (as
+      // gltest does) would draw into nothing
+      for(i=0; i<nconfigs; i++){
+        value=0;
+        if(eglGetConfigAttrib(dpy,configs[i],EGL_DOUBLE_BUFFER,&value) && value){
+          config=configs[i];
+          break;
+          }
+        }
+      if(!config) config=configs[0];
+
       xid=(FXID)config;
       visual=nullptr;
       if(eglGetConfigAttrib(dpy,config,EGL_RED_SIZE,&value))     actualRedSize=value;
@@ -119,7 +133,11 @@ void FXGLVisual::create(){
       if(eglGetConfigAttrib(dpy,config,EGL_DEPTH_SIZE,&value))   actualDepthSize=value;
       if(eglGetConfigAttrib(dpy,config,EGL_STENCIL_SIZE,&value)) actualStencilSize=value;
       if(eglGetConfigAttrib(dpy,config,EGL_SAMPLES,&value))      actualMultiSamples=value;
-      if(eglGetConfigAttrib(dpy,config,EGL_DOUBLE_BUFFER,&value)) doubleBuffer=(value!=0);
+      // A Wayland surface always hands a buffer to the compositor on commit,
+      // so the canvas presents a swap even when the EGL config itself is
+      // single buffered; report double, or gltest and glviewer, which only
+      // swap when the visual is double buffered, would draw into nothing
+      doubleBuffer=true;
       depth=actualRedSize+actualGreenSize+actualBlueSize;
       }
 #else
