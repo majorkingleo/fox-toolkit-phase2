@@ -24,7 +24,7 @@ static FXbool matchtest(const FXchar* pattern,const FXchar* string,FXuint flags,
   FXbool result=FXPath::match(string,pattern,flags);
   FXbool ok=result==expected;
   if(!ok) failures++;
-  fxwarning("%s pattern: %-25s match: %-25s  result: %s expected: %s\n",okorbad[ok],pattern,string,passorfail[result],passorfail[expected]);
+  printf("%s pattern: %-25s match: %-25s  result: %s expected: %s\n",okorbad[ok],pattern,string,passorfail[result],passorfail[expected]);
   return ok;
   }
 
