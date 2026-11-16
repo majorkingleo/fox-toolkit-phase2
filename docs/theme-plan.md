@@ -945,6 +945,14 @@ composites it through XRender, which is how GTK/cairo gets antialiased marks
 without a server-side primitive.  The classic radius-0 path still uses the
 original 13 px bevel, so the default FOX look is unchanged.
 
+**Progress — list views (2026-11-16).** `FXList`, `FXIconList` and `FXTreeList` now
+switch their view background to `ROLE_WINDOW_BG`, use `ROLE_TEXT_DISABLED` for
+disabled items and skip the classic dashed focus rectangle when the theme has
+rounded chrome.  Their row height is at least `METRIC_ROW_HEIGHT` for themed
+themes, and `FXHeader` takes its text color from the theme.  Classic radius-0
+lists keep their original background, row height and focus rectangles.  Hover
+rows, alternating row colors and themed scrollbars are still open.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane

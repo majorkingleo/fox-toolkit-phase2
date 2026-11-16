@@ -1365,6 +1365,7 @@ void FXHeader::setPosition(FXint p){
 // Re-resolve the normal font for the window's monitor
 void FXHeader::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

@@ -27,7 +27,7 @@ Priority:
 | `FXFrame` | DONE | Base/hilite/shadow/border and theme padding. |
 | `FXLabel` | DONE | Text role and UI font. |
 | `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
-| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors; see list-specific work below. |
+| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height and focus handling; hover rows, alternates and scrollbars remain. |
 | `FXTextField` | PARTIAL | Text, selection, cursor and background colors; see input-specific work below. |
 | `FXListBox`, `FXComboBox` | PARTIAL | Field/list colors; arrow and popup chrome remain classic. |
 | `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
@@ -56,7 +56,7 @@ Priority:
 | --- | --- | --- |
 | `FXText` | OPEN | Normal, selected, highlighted and active text/background roles; margins; focus frame; scrollbars. |
 | `FXTable` | OPEN | Text/base/hilite/shadow/border/selection/grid/stipple/cell-border and alternating cell background colors; row/column metrics. |
-| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height, alternating rows, hover/selected decoration, tree lines and expander colors, header colors, focus ring. |
+| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height is wired; still need alternating rows, hover decoration, tree expander/focus styling and themed scrollbars. Header text color is now themed. |
 | `FXHeader` | PARTIAL | Header button background/hover/pressed, arrow colors, text color and header height. |
 | `FXRuler`, `FXRulerView` | PARTIAL | Tick/number text role and tick colors; font is already retargeted. |
 | `FXCalendarView`, `FXCalendar` | PARTIAL | Today/title/day/other-day/weekend colors and header/selection states; only the font is currently retargeted. |
