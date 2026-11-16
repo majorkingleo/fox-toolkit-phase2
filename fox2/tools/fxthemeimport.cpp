@@ -88,6 +88,7 @@ int main(int argc,char* argv[]){
   std::printf("colors:\n");
   showColor("window_bg",theme,ROLE_WINDOW_BG);
   showColor("surface",theme,ROLE_SURFACE);
+  showColor("button",theme,ROLE_BUTTON);
   showColor("surface_hilite",theme,ROLE_SURFACE_HILITE);
   showColor("surface_shadow",theme,ROLE_SURFACE_SHADOW);
   showColor("text",theme,ROLE_TEXT);

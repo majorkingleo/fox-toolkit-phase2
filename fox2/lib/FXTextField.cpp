@@ -2201,6 +2201,13 @@ long FXTextField::onUpdToggleEditable(FXObject* sender,FXSelector,void*){
 // Re-resolve the normal font for the window's monitor
 void FXTextField::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  if(!backColorOverride){
+    backColor=theme->color(ROLE_WINDOW_BG);
+    }
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
+  cursorColor=theme->color(ROLE_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

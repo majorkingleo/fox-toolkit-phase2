@@ -98,6 +98,9 @@ public:
   /// Destroy server-side resources
   virtual void destroy() override;
 
+  /// Re-apply theme colors to the field, arrow button and list
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Perform layout
   virtual void layout() override;
 

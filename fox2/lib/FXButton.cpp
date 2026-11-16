@@ -418,7 +418,11 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
       }
     if(hasFocus()){
-      getApp()->getStyle()->drawFocusRing(dc,border+1,border+1,width-2*border-2,height-2*border-2,getDisplayScale());
+      // Rounded buttons signal focus with an accent border; a second ring
+      // inside it would double the outline the Breeze/GTK style draws
+      if(getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())==0){
+        getApp()->getStyle()->drawFocusRing(dc,border+1,border+1,width-2*border-2,height-2*border-2,getDisplayScale());
+        }
       }
     }
 

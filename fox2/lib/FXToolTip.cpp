@@ -284,6 +284,8 @@ void FXToolTip::setText(const FXString& text){
 // Re-resolve the normal font for the window's monitor
 void FXToolTip::applyTheme(FXTheme* theme){
   FXShell::applyTheme(theme);
+  textColor=theme->color(ROLE_TOOLTIP_TEXT);
+  backColor=theme->color(ROLE_TOOLTIP_BG);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

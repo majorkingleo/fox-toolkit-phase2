@@ -125,6 +125,7 @@ void FXGroupBox::disable(){
 // Re-resolve the normal font for the window's monitor
 void FXGroupBox::applyTheme(FXTheme* theme){
   FXPacker::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

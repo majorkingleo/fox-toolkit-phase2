@@ -1970,6 +1970,9 @@ void FXList::setNumVisible(FXint nvis){
 // Re-resolve the normal font for the window's monitor
 void FXList::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

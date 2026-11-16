@@ -98,7 +98,6 @@ private:
   FXbool stipBit(FXint x,FXint y) const;
   void plot(FXint x,FXint y,FXColor src);
   void plotStyled(FXint x,FXint y);
-  void blend(FXint x,FXint y,FXuint cov);
   void span(FXint y,FXint x1,FXint x2);
   void plotLine(FXint x1,FXint y1,FXint x2,FXint y2,FXuint& dashindex,FXuint& dashremain,FXbool& dashon,FXbool skipfirst);
   void wideLine(FXint x1,FXint y1,FXint x2,FXint y2);
@@ -135,6 +134,9 @@ public:
 
   /// Read back pixel
   FXColor readPixel(FXint x,FXint y) const;
+
+  /// Blend the foreground color with a coverage value over the target pixel
+  void blend(FXint x,FXint y,FXuint cov);
 
   /// Draw points
   void drawPoint(FXint x,FXint y);

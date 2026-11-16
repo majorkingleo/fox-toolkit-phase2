@@ -147,6 +147,19 @@ void FXComboBox::destroy(){
   }
 
 
+// Re-apply theme colors to the field, arrow button and list
+void FXComboBox::applyTheme(FXTheme* theme){
+  FXPacker::applyTheme(theme);
+  field->setBackColor(theme->color(ROLE_WINDOW_BG));
+  field->setTextColor(theme->color(ROLE_TEXT));
+  field->setSelBackColor(theme->color(ROLE_SELECTION_BG));
+  field->setSelTextColor(theme->color(ROLE_SELECTION_TEXT));
+  list->setTextColor(theme->color(ROLE_TEXT));
+  list->setSelBackColor(theme->color(ROLE_SELECTION_BG));
+  list->setSelTextColor(theme->color(ROLE_SELECTION_TEXT));
+  }
+
+
 // Enable the window
 void FXComboBox::enable(){
   if(!isEnabled()){

@@ -2899,6 +2899,9 @@ void FXIconList::clearItems(FXbool notify){
 // Re-resolve the normal font for the window's monitor
 void FXIconList::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

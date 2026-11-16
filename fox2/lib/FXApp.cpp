@@ -59,6 +59,7 @@
 #include "FXThemeCache.h"
 #include "FXDesktopSettings.h"
 #include "fxplatform.h"
+#include "fxplatformwindow.h"
 #include "FXLabel.h"
 #include "FXButton.h"
 #include "FXComposite.h"
@@ -1803,6 +1804,38 @@ void FXApp::setMonitorScale(FXdouble scale){
   }
 
 
+// Lay out a window and all of its descendants, top down.  Composite widgets
+// assign new sizes to their children, so the children must be visited after
+// their parent to lay out the new geometry in turn.
+static void layoutTree(FXWindow* win){
+  while(win){
+    win->layout();
+    if(win->getFirst()) layoutTree(win->getFirst());
+    win=win->getNext();
+    }
+  }
+
+
+// Repaint a window and all of its descendants
+static void updateTree(FXWindow* win){
+  while(win){
+    win->update();
+    if(win->getFirst()) updateTree(win->getFirst());
+    win=win->getNext();
+    }
+  }
+
+
+// Re-apply the theme to a window and all of its descendants without repainting
+static void applyThemeNoUpdate(FXWindow* win,FXTheme* theme){
+  while(win){
+    win->applyTheme(theme);
+    if(win->getFirst()) applyThemeNoUpdate(win->getFirst(),theme);
+    win=win->getNext();
+    }
+  }
+
+
 void FXApp::setTheme(const FXTheme& thm){
   FXbool relayout=false;
   FXint m;
@@ -1833,11 +1866,49 @@ void FXApp::setTheme(const FXTheme& thm){
   selMenuTextColor=theme.color(ROLE_MENU_SEL_TEXT);
   selMenuBackColor=theme.color(ROLE_MENU_SEL_BG);
 
-  themeChanged();
-  if(relayout){
+  // Apply the new colors and padding to every widget before laying out.  Do
+  // not queue repaints yet: on a platform that shares one buffer between all
+  // widgets, painting at intermediate geometries would leave a patchwork.
+  style.invalidate();
+  if(root){
     FXWindow *win;
-    for(win=(root?root->getFirst():nullptr); win; win=win->getNext()){
-      win->recalc();
+    FXint pass;
+    applyThemeNoUpdate(root->getFirst(),&theme);
+
+    // Lay out the whole tree before repainting, so no frame is painted at an
+    // intermediate size.  This also settles the default sizes for the growth
+    // check below; a platform that shares one buffer must suppress the exposes
+    // that every intermediate move would otherwise generate.
+    fxplatformBeginLayout(display);
+    for(win=root->getFirst(); win; win=win->getNext()){
+      layoutTree(win);
+      }
+    fxplatformEndLayout(display);
+
+    // A layout can change the default size of the window (a new row, a new
+    // font, resolved padding).  Grow until the window fits, but never shrink
+    // one the user sized.
+    for(pass=0; pass<3; ++pass){
+      FXbool grew=false;
+      for(win=root->getFirst(); win; win=win->getNext()){
+        FXint w=FXMAX(win->getWidth(),win->getDefaultWidth());
+        FXint h=FXMAX(win->getHeight(),win->getDefaultHeight());
+        if(w!=win->getWidth() || h!=win->getHeight()){
+          win->resize(w,h);
+          grew=true;
+          }
+        }
+      if(!grew) break;
+      fxplatformBeginLayout(display);
+      for(win=root->getFirst(); win; win=win->getNext()){
+        layoutTree(win);
+        }
+      fxplatformEndLayout(display);
+      }
+
+    // One repaint pass after the geometry has settled
+    for(win=root->getFirst(); win; win=win->getNext()){
+      updateTree(win);
       }
     }
   }

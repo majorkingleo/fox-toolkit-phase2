@@ -106,6 +106,9 @@ public:
   /// Destroy server-side resources
   virtual void destroy() override;
 
+  /// Re-apply theme colors to the field, arrow button and list
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Enable combo box
   virtual void enable() override;
 

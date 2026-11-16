@@ -38,6 +38,42 @@ struct ColorTheme {
   };
 
 
+// Kinds of entries in the theme chooser
+enum {
+  THEME_ENTRY_PRESET,   // One of the built-in FOX color themes
+  THEME_ENTRY_SOURCE,   // A theme imported from a file or directory
+  THEME_ENTRY_CURRENT,  // Colors found in the settings file, no known source
+  THEME_ENTRY_USER      // Colors edited by hand
+  };
+
+
+// Theme families and their scope
+enum {
+  THEME_FAMILY_PRESET, // Built-in FOX color theme
+  THEME_FAMILY_GTK,    // GTK / GNOME theme
+  THEME_FAMILY_KDE,    // KDE color scheme
+  THEME_FAMILY_FOX     // FOX .foxtheme file
+  };
+
+enum {
+  THEME_SCOPE_BUILTIN,
+  THEME_SCOPE_SYSTEM,
+  THEME_SCOPE_USER
+  };
+
+
+// Entry in the theme chooser.  Built-in presets point into ColorThemes;
+// imported entries carry the source path which also keys the theme cache.
+struct ThemeEntry {
+  FXString name;
+  FXString source;
+  FXint    preset;
+  FXint    kind;
+  FXint    family;
+  FXint    scope;
+  };
+
+
 // Up to 4 icons associated with file
 enum {
   BIG_ICON,
@@ -70,11 +106,13 @@ private:
   FXIcon            *icon_filebinding;
 private:
   FXListBox         *list;
+  FXComboBox        *themefilter;
   FXList            *filebindinglist;
   FXComboBox        *mimetypelist;
   FXButton          *iconbutton[4];
   FXIcon            *iconimage[4];
   FXLabel           *vendorandapplication;
+  FXLabel           *themestatus;
 private:
   FXToolTip         *tooltip;
   FXTabBook         *tabbook;
@@ -104,6 +142,10 @@ private:
 private:
   ColorTheme         theme_current;     // Current Settings
   ColorTheme         theme_user;        // Theme User may have set, which is different from the other themes
+  FXArray<ThemeEntry*> themeentries;    // Theme chooser contents
+  FXString           themesource;       // Source of the selected imported theme
+  FXbool             thememodified;     // Theme was changed in this session
+  FXTheme            previewtheme;      // Theme rendered in the sampler
 private:
   FXFont            *font;
   FXFontDesc         titledesc;         // Caption font at 96 DPI and 100%
@@ -176,6 +218,16 @@ private:
   void replaceFont(FXWindow* win,FXFont* oldfont,FXFont* newfont);
   void initColors();
   void setupColors();
+  void clearThemeEntries();
+  void addThemeEntry(const FXString& name,const FXString& source,FXint preset,FXint kind,FXint family,FXint scope);
+  FXbool matchesThemeFilter(const ThemeEntry* entry) const;
+  void discoverThemes();
+  FXint findThemeEntry(const FXString& source) const;
+  FXbool loadTheme(const FXString& source,FXTheme& theme,FXString& summary);
+  void applyThemeColors(const FXTheme& theme);
+  void setPreviewThemeFromColors();
+  void applyPreviewTheme();
+  void updateThemeStatus(const FXString& text);
   void saveFileBinding();
   void setupFileBindings();
   void setupVendorAndAppLabel();
@@ -189,6 +241,9 @@ public:
   enum {
     ID_COLORS=FXMainWindow::ID_LAST,
     ID_COLOR_THEME,
+    ID_IMPORT_THEME,
+    ID_REFRESH_THEMES,
+    ID_THEME_FILTER,
     ID_CHOOSE_FONT,
     ID_SELECT_COMMAND,
     ID_CREATE_FILEBINDING,
@@ -206,6 +261,9 @@ public:
 public:
   long onColorChanged(FXObject*,FXSelector,void*);
   long onColorTheme(FXObject*,FXSelector,void*);
+  long onCmdImportTheme(FXObject*,FXSelector,void*);
+  long onCmdRefreshThemes(FXObject*,FXSelector,void*);
+  long onCmdThemeFilter(FXObject*,FXSelector,void*);
   long onChooseFont(FXObject*,FXSelector,void*);
   long onCmdFileBinding(FXObject*,FXSelector,void*);
   long onCmdMimeType(FXObject*,FXSelector,void*);

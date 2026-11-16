@@ -56,6 +56,15 @@
 // Frame style mask, matching FXFrame
 #define FRAME_MASK (FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK)
 
+
+// Blend color a toward color b by the given percentage of b
+static FXColor blendColor(FXColor a,FXColor b,FXint percent){
+  FXint tnecrep=100-percent;
+  return FXRGB((FXREDVAL(a)*tnecrep+FXREDVAL(b)*percent+50)/100,
+               (FXGREENVAL(a)*tnecrep+FXGREENVAL(b)*percent+50)/100,
+               (FXBLUEVAL(a)*tnecrep+FXBLUEVAL(b)*percent+50)/100);
+  }
+
 // Rectangle helpers that take the colors of the widget instead of the theme;
 // a widget may carry its own highlight, shadow and border colors
 static void fillBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor border){
@@ -273,7 +282,7 @@ void FXStyle::drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXdou
     r=FXMIN(radius,FXMIN(w,h)/2);
     dc.setForeground(theme->color(ROLE_FOCUS_RING));
     dc.setLineWidth(width);
-    dc.drawRoundRectangle(x+width/2,y+width/2,w-width,h-width,r*2,r*2);
+    dc.drawRoundRectangle(x+width/2,y+width/2,w-width,h-width,r,r);
     dc.setLineWidth(1);
     return;
     }
@@ -360,22 +369,54 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
 
   // Rounded chrome, when the theme asks for it
   if(0<radius){
+    FXColor accent=theme->color(ROLE_ACCENT);
+
+    // Breeze-like face: a light button on a light surface, a slightly lifted
+    // one on a dark surface, with the same state shading as the GTK style
+    face=theme->color(ROLE_BUTTON);
+    if(!state.enabled){
+      face=blendColor(face,surface,45);
+      edge=blendColor(edge,surface,45);
+      }
+    else if(state.down){
+      face=blendColor(face,accent,33);
+      }
+    else if(state.engaged){
+      face=blendColor(face,state.text,12);
+      }
+
+    // Hover, keyboard focus and the default button get an accent border
+    if(state.enabled && (state.hover || state.focused || state.defaulted)){
+      edge=accent;
+      }
 
     // Windows are created with a black background pixel, so the area outside
     // the rounded shape must be filled with the parent's color first
     dc.setForeground(state.parentBack);
     dc.fillRectangle(x,y,w,h);
 
-    if(hasXRender(dc) && drawRoundRect(dc,x,y,w,h,radius,face,edge,borderWidth)){
+    // A hairline shadow under the button, the way Breeze draws its box-shadow
+    FXint faceh=h;
+    if(state.enabled && 4<h){
+      FXColor shade=blendColor(state.parentBack,FXRGB(0,0,0),12);
+      FXint sr=FXMIN(radius,FXMIN(w,h-1)/2);
+      faceh=h-1;
+      if(!drawRoundRect(dc,x,y+1,w,faceh,radius,shade,shade,0)){
+        dc.setForeground(shade);
+        dc.fillRoundRectangle(x,y+1,w,faceh,sr,sr);
+        }
+      }
+
+    if(drawRoundRect(dc,x,y,w,faceh,radius,face,edge,borderWidth)){
       return FXRectangle(x,y,w,h);
       }
     // Fallback: hard-edged rounded shape, corners stay transparent
-    FXint rr=FXMIN(radius,FXMIN(w,h)/2);
+    FXint rr=FXMIN(radius,FXMIN(w,faceh)/2);
     dc.setForeground(face);
-    dc.fillRoundRectangle(x,y,w,h,rr*2,rr*2);
+    dc.fillRoundRectangle(x,y,w,faceh,rr,rr);
     if(0<borderWidth){
       dc.setForeground(edge);
-      dc.drawRoundRectangle(x,y,w,h,rr*2,rr*2);
+      dc.drawRoundRectangle(x,y,w,faceh,rr,rr);
       }
     return FXRectangle(x,y,w,h);
     }
