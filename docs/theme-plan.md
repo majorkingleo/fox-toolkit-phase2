@@ -1002,7 +1002,7 @@ single hairline, so the tab-book page follows the same look.  Left/right/bottom
 tab geometry still needs a visual pass.
 
 **Progress — scroll bars and scroll areas (2026-11-16).** `FXScrollBar` now
-paints a themed trough, a thin rounded pill thumb on the full track and hover/drag
+paints a themed trough, a rounded pill thumb on the full track and hover/drag
 shading, and suppresses the stepper arrows and arrow hit zones in rounded
 themes.  `FXScrollArea` takes the view window background for rounded themes;
 classic bars keep the old stipple/bevel drawing.  Scrollbar thickness still

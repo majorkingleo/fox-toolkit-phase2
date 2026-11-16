@@ -883,14 +883,14 @@ long FXScrollBar::onPaint(FXObject*,FXSelector,void* ptr){
     if(options&SCROLLBAR_HORIZONTAL){
       total=width;
       if(thumbsize<total && 0<thumbsize){
-        FXint h=FXMAX(height/3,6);
+        FXint h=FXMAX((height*2)/3,6);
         getApp()->getStyle()->drawRoundedRectangle(dc,thumbpos,(height-h)/2,thumbsize,h,h/2,thumb,thumbedge,1);
         }
       }
     else{
       total=height;
       if(thumbsize<total && 0<thumbsize){
-        FXint w=FXMAX(width/3,6);
+        FXint w=FXMAX((width*2)/3,6);
         getApp()->getStyle()->drawRoundedRectangle(dc,(width-w)/2,thumbpos,w,thumbsize,w/2,thumb,thumbedge,1);
         }
       }
