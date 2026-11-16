@@ -128,6 +128,9 @@ public:
   /// Return content height
   virtual FXint getContentHeight() override;
 
+  /// Re-resolve the normal font for the window's monitor
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Change text font
   void setFont(FXFont* fnt);
 

@@ -320,6 +320,7 @@ and the commit that fixed it.
 | gltest | the bold label font of the info dialog was created once for the system DPI, so on a lower-DPI monitor the labels stayed large next to the scaled values | the dialog rebuilds the font for its monitor in `applyTheme`; labels with an application font are not rescaled by the library |
 | console | `FXConsole` missing in fox2; the plan took `console` for a windowless program | copied from fox-1.7.95, `console` added as a GUI test |
 | console | `FXConsole` fills its area red and shows 30 numbered test lines | upstream work-in-progress code (debug fill and sample text in `FXConsole.cpp`), unchanged |
+| console | `FXConsole` took the normal font of the system DPI, so the text was too large on a lower-DPI monitor | `applyTheme` added, it retargets the normal font to the window DPI like `FXText` |
 
 ## Status
 

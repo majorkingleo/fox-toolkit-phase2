@@ -449,6 +449,13 @@ void FXConsole::setVisibleColumns(FXint cols){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXConsole::applyTheme(FXTheme* theme){
+  FXScrollArea::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXConsole::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }
