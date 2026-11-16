@@ -430,6 +430,12 @@ Done in this phase so far (the protocol files and the platform seam):
   this phase (`FXWindow`, `FXRootWindow`, `FXShell`, `FXTopWindow`,
   `FXMainWindow`, `FXPopup`, `FXToolTip`), the `fxplatformCreateWindow` family,
   `FXDragCorner` and `FXComposeContext`.
+- File descriptor inputs: `getNextEvent()` polls `inputs[]` and the `handles`
+  descriptor sets, but `FXApp::addInput()` / `removeInput()` had no Wayland
+  implementation, so nothing could register a descriptor.  The ported Adie's
+  `ShellCommand` needs them to watch the pipes of the child program; both are
+  now implemented like the X11 module (grow `inputs`, set or clear the
+  read/write/except set, maintain `maxhandle`).
 - Virtual window table: the private header `fxwinmap.h` and `FXWinMap.cpp` keep
   the child windows Wayland does not have — synthetic id, parent, geometry
   relative to the parent, stacking order (children bottom to top, shells in a

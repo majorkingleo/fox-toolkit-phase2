@@ -1201,6 +1201,71 @@ void FXApp::removeSignal(FXint sig){
   }
 
 
+// Add input
+FXbool FXApp::addInput(FXObject *tgt,FXSelector sel,FXInputHandle fd,FXuint mode,FXptr ptr){
+  if(mode==INPUT_NONE) return false;
+  if(fd<0 || fd>=FD_SETSIZE) return false;
+  if(fd>=ninputs){                      // Grow table of callbacks
+    resizeElms(inputs,fd+1);
+    clearElms(&inputs[ninputs],fd+1-ninputs);
+    ninputs=fd+1;
+    }
+  FXASSERT(inputs);
+  FXASSERT(fd<ninputs);
+  if(mode&INPUT_READ){
+    inputs[fd].read.target=tgt;
+    inputs[fd].read.message=sel;
+    inputs[fd].read.data=ptr;
+    FD_SET(fd,&handles->hnd[0]);
+    }
+  if(mode&INPUT_WRITE){
+    inputs[fd].write.target=tgt;
+    inputs[fd].write.message=sel;
+    inputs[fd].write.data=ptr;
+    FD_SET(fd,&handles->hnd[1]);
+    }
+  if(mode&INPUT_EXCEPT){
+    inputs[fd].excpt.target=tgt;
+    inputs[fd].excpt.message=sel;
+    inputs[fd].excpt.data=ptr;
+    FD_SET(fd,&handles->hnd[2]);
+    }
+  if(fd>maxhandle) maxhandle=fd;
+  return true;
+  }
+
+
+// Remove input
+FXbool FXApp::removeInput(FXInputHandle fd,FXuint mode){
+  if(mode==INPUT_NONE) return false;
+  if(fd<0 || fd>maxhandle) return false;
+  if(mode&INPUT_READ){
+    inputs[fd].read.target=nullptr;
+    inputs[fd].read.message=0;
+    inputs[fd].read.data=nullptr;
+    FD_CLR(fd,&handles->hnd[0]);
+    }
+  if(mode&INPUT_WRITE){
+    inputs[fd].write.target=nullptr;
+    inputs[fd].write.message=0;
+    inputs[fd].write.data=nullptr;
+    FD_CLR(fd,&handles->hnd[1]);
+    }
+  if(mode&INPUT_EXCEPT){
+    inputs[fd].excpt.target=nullptr;
+    inputs[fd].excpt.message=0;
+    inputs[fd].excpt.data=nullptr;
+    FD_CLR(fd,&handles->hnd[2]);
+    }
+  if(maxhandle==fd){
+    while(maxhandle>=0 && !FD_ISSET(maxhandle,&handles->hnd[0]) && !FD_ISSET(maxhandle,&handles->hnd[1]) && !FD_ISSET(maxhandle,&handles->hnd[2])){
+      --maxhandle;
+      }
+    }
+  return true;
+  }
+
+
 // Dispatch a window message; no such messages on this platform
 FXival FXApp::dispatchEvent(FXID,FXuint,FXuval,FXival){
   return 0;
