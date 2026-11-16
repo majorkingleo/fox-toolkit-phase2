@@ -940,8 +940,10 @@ hover/focus borders, checked fill blended from `ROLE_HOVER_RING`, mark
 radio.  Enter/leave repaints the indicator even without animation.  The check mark and
 the indeterminate dash are drawn with 4x4 supersampled coverage on Wayland
 (`FXStyle::drawCheckMark()`), so the glyph is antialiased like the indicator
-outline.  The classic radius-0 path still uses the original 13 px bevel, so the
-default FOX look is unchanged.
+outline.  X11 builds the same 4x4 coverage into a cached A8 pixmap and
+composites it through XRender, which is how GTK/cairo gets antialiased marks
+without a server-side primitive.  The classic radius-0 path still uses the
+original 13 px bevel, so the default FOX look is unchanged.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

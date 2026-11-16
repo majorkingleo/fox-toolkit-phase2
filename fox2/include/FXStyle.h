@@ -68,11 +68,13 @@ struct FXButtonState {
 class FXAPI FXStyle {
 protected:
   struct FXCornerMask;
+  struct FXCheckMask;
   FXTheme *theme;                 // Colors and metrics to draw with
   FXbool   xrender;               // XRender compositing available
   FXbool   xrenderChecked;        // Capability already probed
   void    *dpy;                   // Display used for the mask cache
   FXCornerMask *masks;            // Cached corner masks by radius
+  FXCheckMask  *checkmasks;       // Cached check-mark masks by size
 protected:
 
   /// Probe whether the drawable supports antialiased compositing
@@ -80,6 +82,9 @@ protected:
 
   /// Return cached corner mask for the given radius
   FXCornerMask* getMask(FXint radius);
+
+  /// Return cached check-mark mask for the given size
+  FXCheckMask* getCheckMask(FXint size);
 
   /// Draw an antialiased rounded rectangle; returns false if unsupported
   FXbool drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth);

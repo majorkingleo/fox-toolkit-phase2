@@ -144,7 +144,8 @@ use the seam.
 | --- | --- | --- |
 | Wayland rounded corners | DONE | Software 4x4 coverage blending. |
 | Wayland check marks | DONE | 4x4 supersampled segment coverage through `FXStyle::drawCheckMark()`. |
-| X11/Win32 check marks | PARTIAL | Still use the platform line primitives; no XRender/GDI+ antialiasing yet. |
+| X11 check marks | DONE | Cached A8 coverage pixmap composited through XRender. |
+| Win32 check marks | PARTIAL | Still uses the GDI line primitives; no GDI+ antialiasing yet. |
 | Wayland shadows | OPEN | No 9-slice cached shadow; buttons use only a 1 px bottom shade. |
 | X11 rounded corners | DONE with XRender | Bitmap/mask fallback is still hard-edged. |
 | Win32 rounded corners | OPEN | `FXStyle_win32.cpp` returns false from `drawRoundRect`; no antialiasing. |

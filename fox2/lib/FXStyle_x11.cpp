@@ -59,6 +59,15 @@ struct FXStyle::FXCornerMask {
   Picture  picture[4];          // Render pictures per corner
   FXCornerMask *next;           // Next mask in cache
   };
+
+
+// Alpha mask for a check mark of a given size
+struct FXStyle::FXCheckMask {
+  FXint      size;              // Indicator size
+  Pixmap     pixmap;            // Coverage bitmap
+  Picture    picture;           // Render picture
+  FXCheckMask *next;            // Next mask in cache
+  };
 #else
 // Placeholder when antialiased compositing is unavailable
 struct FXStyle::FXCornerMask {
@@ -91,6 +100,17 @@ void FXStyle::invalidate(){
     }
 #endif
   masks=nullptr;
+#if defined(HAVE_XRENDER_H)
+  FXCheckMask *check=checkmasks;
+  while(check){
+    FXCheckMask *next=check->next;
+    if(display && check->picture) XRenderFreePicture(display,check->picture);
+    if(display && check->pixmap) XFreePixmap(display,check->pixmap);
+    delete check;
+    check=next;
+    }
+#endif
+  checkmasks=nullptr;
   }
 
 
@@ -198,8 +218,113 @@ FXStyle::FXCornerMask* FXStyle::getMask(FXint radius){
   }
 
 
-// Draw a check mark; X11 has no small AA primitive here, use the line primitives
+#if defined(HAVE_XRENDER_H)
+// Distance from a point to a line segment
+static FXdouble segmentDistance(FXdouble px,FXdouble py,FXdouble ax,FXdouble ay,FXdouble bx,FXdouble by){
+  FXdouble dx=bx-ax;
+  FXdouble dy=by-ay;
+  FXdouble t=((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy);
+  FXdouble qx,qy;
+  if(t<0.0) t=0.0;
+  else if(1.0<t) t=1.0;
+  qx=ax+t*dx;
+  qy=ay+t*dy;
+  return sqrt((px-qx)*(px-qx)+(py-qy)*(py-qy));
+  }
+
+
+// Build antialiased coverage for a check mark of the given size
+static void buildCheckCoverage(FXuchar* cov,FXint size){
+  FXint i,j,x,y,inside;
+  FXdouble ax,ay,bx,by,cx,cy,width;
+  const FXint samples=4;
+  ax=size*0.22;
+  ay=size*0.50;
+  bx=size*0.43;
+  by=size*0.72;
+  cx=size*0.78;
+  cy=size*0.28;
+  width=FXMAX(1.0,size/14.0);
+  for(j=0; j<size; j++){
+    for(i=0; i<size; i++){
+      inside=0;
+      for(y=0; y<samples; y++){
+        for(x=0; x<samples; x++){
+          FXdouble px=i+(x+0.5)/samples;
+          FXdouble py=j+(y+0.5)/samples;
+          if(segmentDistance(px,py,ax,ay,bx,by)<=width ||
+             segmentDistance(px,py,bx,by,cx,cy)<=width) inside++;
+          }
+        }
+      cov[j*size+i]=(FXuchar)((inside*255+samples*samples/2)/(samples*samples));
+      }
+    }
+  }
+#endif
+
+
+// Return cached check-mark mask for the given size
+FXStyle::FXCheckMask* FXStyle::getCheckMask(FXint size){
+#if defined(HAVE_XRENDER_H)
+  Display *display=(Display*)dpy;
+  XRenderPictFormat *a8;
+  FXCheckMask *mask;
+  if(!display) return nullptr;
+  for(mask=checkmasks; mask; mask=mask->next){
+    if(mask->size==size) return mask;
+    }
+  mask=new FXCheckMask;
+  mask->size=size;
+  mask->pixmap=0;
+  mask->picture=0;
+  mask->next=checkmasks;
+  checkmasks=mask;
+  a8=XRenderFindStandardFormat(display,PictStandardA8);
+  if(a8){
+    FXuchar *cov=new FXuchar[size*size];
+    buildCheckCoverage(cov,size);
+    mask->pixmap=XCreatePixmap(display,DefaultRootWindow(display),size,size,8);
+    XImage *img=XCreateImage(display,DefaultVisual(display,DefaultScreen(display)),8,ZPixmap,0,(char*)cov,size,size,8,0);
+    if(img){
+      GC gc=XCreateGC(display,mask->pixmap,0,nullptr);
+      XPutImage(display,mask->pixmap,gc,img,0,0,0,0,size,size);
+      XFreeGC(display,gc);
+      img->data=nullptr;
+      XDestroyImage(img);
+      }
+    delete[] cov;
+    mask->picture=XRenderCreatePicture(display,mask->pixmap,a8,0,nullptr);
+    }
+  return mask;
+#else
+  return nullptr;
+#endif
+  }
+
+
+// Draw an antialiased check mark through the XRender mask cache, or use lines
 void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor color){
+#if defined(HAVE_XRENDER_H)
+  FXDrawable *drawable=dc.drawable();
+  FXVisual *visual=drawable?drawable->getVisual():nullptr;
+  Display *display;
+  XRenderPictFormat *vf;
+  FXCheckMask *mask;
+  Picture dst;
+  if(0<size && hasXRender(dc) && visual){
+    display=(Display*)dpy;
+    vf=XRenderFindVisualFormat(display,(Visual*)visual->getVisual());
+    mask=getCheckMask(size);
+    if(vf && mask && mask->picture){
+      dst=XRenderCreatePicture(display,(Drawable)drawable->id(),vf,0,nullptr);
+      if(dst){
+        compositeSolid(display,dst,mask->picture,color,x,y,size);
+        XRenderFreePicture(display,dst);
+        return;
+        }
+      }
+    }
+#endif
   dc.setForeground(color);
   dc.setLineWidth(FXMAX(1,size/7));
   dc.drawLine(x+(size*22)/100,y+(size*50)/100,x+(size*43)/100,y+(size*72)/100);

@@ -185,7 +185,7 @@ using namespace FX;
 namespace FX {
 
 // Construct style for given theme
-FXStyle::FXStyle(FXTheme* thm):theme(thm),xrender(false),xrenderChecked(false),dpy(nullptr),masks(nullptr){
+FXStyle::FXStyle(FXTheme* thm):theme(thm),xrender(false),xrenderChecked(false),dpy(nullptr),masks(nullptr),checkmasks(nullptr){
   }
 
 
