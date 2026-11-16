@@ -22,6 +22,7 @@ them into the build directory; see docs/wayland-plan.md, decision 7.
   staging/cursor-shape/cursor-shape-v1.xml
   staging/xdg-activation/xdg-activation-v1.xml
   staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml
+  unstable/idle-inhibit/idle-inhibit-unstable-v1.xml (from wayland-protocols 1.47)
 
 Do not edit these files; update them from a newer wayland-protocols release
 instead.

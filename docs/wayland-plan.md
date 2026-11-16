@@ -891,9 +891,16 @@ settings and the window icon):
   the buffer lives as long as the surface, because the compositor may read it
   after the request.  A compositor without the protocol is told nothing and the
   window keeps whatever the desktop puts there.
-- Idle inhibition is not done: `zwp_idle_inhibit_manager_v1` is the protocol for
-  it, but `FXApp` has no way for an application to say "do not blank the screen",
-  so there is nothing to hook it to yet.  It needs an API first, not a module.
+- `fxidle_wayland.cpp` binds `zwp_idle_inhibit_manager_v1` and gives
+  `FXTopWindow::setIdleInhibit()` its Wayland side: an inhibitor tied to the
+  surface of the toplevel, created when the request is made (or when the window
+  is created, if it was asked for earlier) and destroyed when the request is
+  withdrawn, with the window, or with the surface.  A compositor without the
+  protocol is not asked anything.  The same call does `SetThreadExecutionState`
+  on Windows and runs `xdg-screensaver suspend` and `resume` on X11, so an
+  application has one API on all three.
+- `scripts/gate-wayland-idle.sh` runs `tests/idle` against headless sway and
+  checks the wire for `create_inhibitor` and the destroy of the inhibitor.
 - `scripts/gate-wayland-icon.sh` uses KWin's virtual backend, the one compositor
   here that offers the protocol, and checks the wire for `add_buffer` and
   `set_icon`; it then runs the same application against headless sway and expects
@@ -934,10 +941,6 @@ Done in this phase so far (the build wiring, the metadata and the screenshots):
   `csd.png`, `popup.png`, `menu.png` and `tooltip.png`, all under
   `screenshots/tests/fox2/wayland/`, all from dumped frames rather than from a
   compositor screenshot.
-
-**Not done:** `zwp_idle_inhibit_manager_v1` waits for an `FXApp` API that says
-"do not blank the screen"; there is none, so a module would have nobody to call
-it.
 
 - `scripts/gate-wayland-autotools.sh` is the check that the second build system
   works: it runs `autoreconf`, configures with `--with-wayland` in a scratch

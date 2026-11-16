@@ -70,6 +70,21 @@ namespace FX {
 const void* FXTopWindow::GetClass() const { return TEXT("FXTopWindow"); }
 
 
+// Windows that currently ask the system to stay awake; the execution state
+// belongs to the thread, so this is only ever touched from the GUI thread
+static FXint idlewindows=0;
+
+
+// Ask the system to keep the display on while any of our windows wants it
+void FXTopWindow::setidle(FXbool active){
+  if(active!=((idle&2)!=0)){
+    idle=active?(idle|2):(idle&~2);
+    idlewindows+=active?1:-1;
+    SetThreadExecutionState(idlewindows>0 ? (ES_CONTINUOUS|ES_DISPLAY_REQUIRED) : ES_CONTINUOUS);
+    }
+  }
+
+
 // Create window
 void FXTopWindow::create(){
   FXShell::create();
@@ -89,6 +104,9 @@ void FXTopWindow::create(){
 
       // Set icon for X-Windows
       seticons();
+
+      // Stay awake, if that was asked before the window existed
+      if(idle&1) setidle(true);
 
       // Only shrinkable; size may not be above default size
       if((options&DECOR_SHRINKABLE) && !(options&DECOR_STRETCHABLE)){
@@ -115,6 +133,7 @@ void FXTopWindow::create(){
 
 // Destroy window
 void FXTopWindow::destroy(){
+  if(idle&2) setidle(false);
   if(xid){
     if(getApp()->isInitialized()){
       HICON icold;

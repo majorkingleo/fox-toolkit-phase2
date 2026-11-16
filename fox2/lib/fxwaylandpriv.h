@@ -46,6 +46,7 @@
 #include "xdg-activation-v1-client-protocol.h"
 #include "xdg-toplevel-icon-v1-client-protocol.h"
 #include "xdg-dialog-v1-client-protocol.h"
+#include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "cursor-shape-v1-client-protocol.h"
 
 // The keyboard translator of libxkbcommon, only ever used through pointers
@@ -122,6 +123,7 @@ struct FXWaylandSurface {
   FXuint                     numoutputs; // Number of them
   xdg_toplevel_icon_v1*      ticon;      // Icon of a toplevel, while setting it
   FXWaylandBuffer*           iconbuffer; // Buffer the compositor copies it from
+  zwp_idle_inhibitor_v1*     idleinhibitor; // Keeps the screen on, while it exists
   FXdouble                   scale;      // Scale this surface is drawn at
   FXint                      bufscale;   // Scale told to the compositor
   FXint                      logicalw;   // Size the compositor asked for, in
@@ -197,6 +199,7 @@ struct FXWaylandApp {
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
   xdg_wm_dialog_v1*          dialogmanager; // Modal dialog relationships, when offered
   xdg_toplevel_icon_manager_v1* iconmanager; // Window icons, when offered
+  zwp_idle_inhibit_manager_v1* idlemanager; // Screen saver inhibition, when offered
   wp_cursor_shape_manager_v1* cursormanager; // Stock pointer shapes, when offered
   wp_cursor_shape_device_v1*  cursordevice;  // Shape device of the pointer
   xdg_activation_v1*         activation;    // Tokens that justify taking the focus
@@ -436,6 +439,10 @@ void fxwaylandFreeScale(FXWaylandSurface* surf);
 /// Give a toplevel the icon of the application, and drop the buffer again
 void fxwaylandSetWindowIcon(FXWaylandApp* app,FXID window,FXImage* image);
 void fxwaylandFreeWindowIcon(FXWaylandSurface* surf);
+
+// Idle inhibition (fxidle_wayland.cpp)
+void fxwaylandSetIdleInhibit(FXWaylandApp* app,FXID window,FXbool inhibit);
+void fxwaylandFreeIdleInhibit(FXWaylandSurface* surf);
 
 /// Ask the compositor to activate a window of ours, and drop the plumbing
 void fxwaylandActivateWindow(FXWaylandApp* app,FXID window);

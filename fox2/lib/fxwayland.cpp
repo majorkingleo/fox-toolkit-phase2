@@ -479,6 +479,7 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window){
       freeElms(s->store);
       s->store=nullptr;
       fxwaylandFreeWindowIcon(s);
+      fxwaylandFreeIdleInhibit(s);
       fxwaylandFreeScale(s);
       if(s->dialog) xdg_dialog_v1_destroy(s->dialog);
       if(s->decoration) zxdg_toplevel_decoration_v1_destroy(s->decoration);

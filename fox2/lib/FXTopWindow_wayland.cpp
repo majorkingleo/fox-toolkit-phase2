@@ -144,6 +144,9 @@ void FXTopWindow::create(){
 
       // Icons, and the window is ready to be shown
       seticons();
+
+      // Stay awake, if that was asked before the window existed
+      if(idle&1) setidle(true);
       }
     }
   }
@@ -151,6 +154,7 @@ void FXTopWindow::create(){
 
 // Destroy window
 void FXTopWindow::destroy(){
+  if(idle&2) setidle(false);
   FXShell::destroy();
   }
 
@@ -321,6 +325,15 @@ void FXTopWindow::seticons(){
     }
   if(best && xid){
     fxwaylandSetWindowIcon(fxwayland(getApp()->getDisplay()),xid,best);
+    }
+  }
+
+
+// Ask the compositor to keep the screen on while this window is visible
+void FXTopWindow::setidle(FXbool active){
+  if(active!=((idle&2)!=0)){
+    idle=active?(idle|2):(idle&~2);
+    fxwaylandSetIdleInhibit(fxwayland(getApp()->getDisplay()),xid,active);
     }
   }
 

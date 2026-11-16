@@ -106,10 +106,12 @@ protected:
   FXint     padright;                 // Right margin
   FXint     hspacing;                 // Horizontal child spacing
   FXint     vspacing;                 // Vertical child spacing
+  FXuchar   idle;                     // Idle inhibition: 1 requested, 2 in effect
 protected:
   FXTopWindow();
   void settitle();
   void seticons();
+  void setidle(FXbool active);
   void setdecorations();
   FXTopWindow(FXApp* ap,const FXString& name,FXIcon *ic,FXIcon *mi,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs);
   FXTopWindow(FXWindow* ow,const FXString& name,FXIcon *ic,FXIcon *mi,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs);
@@ -204,6 +206,16 @@ public:
 
   /// Flash the window to get user's attention
   virtual void flash(FXbool yes);
+
+  /**
+  * Ask the system not to blank the screen or go to sleep while this window
+  * exists; the request is withdrawn when the flag is cleared or the window is
+  * destroyed.  Where the system has no such facility the request is ignored.
+  */
+  void setIdleInhibit(FXbool flag);
+
+  /// Return true if this window asks the system to stay awake
+  FXbool getIdleInhibit() const { return (idle&1)!=0; }
 
   /// Restore window to normal, return true if restored
   virtual FXbool restore(FXbool notify=false);

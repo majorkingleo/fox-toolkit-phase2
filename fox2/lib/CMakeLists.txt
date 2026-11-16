@@ -20,7 +20,7 @@ else()
     list(APPEND FOX_LIB_SOURCES FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp FXDCWindow_x11.cpp FXDragCorner_x11.cpp FXFont_x11.cpp FXIcon_x11.cpp FXImage_x11.cpp FXMainWindow_x11.cpp FXPopup_x11.cpp FXRegion_x11.cpp FXRootWindow_x11.cpp FXStyle_x11.cpp FXToolTip_x11.cpp FXTopWindow_x11.cpp FXVisual_x11.cpp FXWindow_x11.cpp fxpriv_x11.cpp)
   elseif(FOX_PLATFORM STREQUAL "wayland")
     # Wayland modules; the set grows phase by phase, see docs/wayland-plan.md
-    list(APPEND FOX_LIB_SOURCES FXApp_wayland.cpp fxactivation_wayland.cpp FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp FXWindow_wayland.cpp FXRootWindow_wayland.cpp FXTopWindow_wayland.cpp FXMainWindow_wayland.cpp FXPopup_wayland.cpp FXToolTip_wayland.cpp FXDragCorner_wayland.cpp FXComposeContext_wayland.cpp fxclipboard_wayland.cpp fxcsd_wayland.cpp fxscale_wayland.cpp fxtextinput_wayland.cpp fxtoplevelicon_wayland.cpp fxwayland.cpp fxseat_wayland.cpp fxplatform_wayland.cpp fxplatformwindow_wayland.cpp)
+    list(APPEND FOX_LIB_SOURCES FXApp_wayland.cpp fxactivation_wayland.cpp FXRegion_wayland.cpp FXVisual_wayland.cpp FXImage_wayland.cpp FXIcon_wayland.cpp FXFont_wayland.cpp FXStyle_wayland.cpp FXCursor_wayland.cpp FXDCWindow_wayland.cpp FXWindow_wayland.cpp FXRootWindow_wayland.cpp FXTopWindow_wayland.cpp FXMainWindow_wayland.cpp FXPopup_wayland.cpp FXToolTip_wayland.cpp FXDragCorner_wayland.cpp FXComposeContext_wayland.cpp fxclipboard_wayland.cpp fxcsd_wayland.cpp fxidle_wayland.cpp fxscale_wayland.cpp fxtextinput_wayland.cpp fxtoplevelicon_wayland.cpp fxwayland.cpp fxseat_wayland.cpp fxplatform_wayland.cpp fxplatformwindow_wayland.cpp)
     # Client glue generated from the vendored protocol XML
     set(_fox_gen "${CMAKE_CURRENT_BINARY_DIR}/protocols")
     file(MAKE_DIRECTORY "${_fox_gen}")
@@ -36,7 +36,8 @@ else()
       cursor-shape-v1:staging/cursor-shape/cursor-shape-v1.xml
       xdg-activation-v1:staging/xdg-activation/xdg-activation-v1.xml
       xdg-toplevel-icon-v1:staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml
-      xdg-dialog-v1:staging/xdg-dialog/xdg-dialog-v1.xml)
+      xdg-dialog-v1:staging/xdg-dialog/xdg-dialog-v1.xml
+      idle-inhibit-unstable-v1:unstable/idle-inhibit/idle-inhibit-unstable-v1.xml)
     foreach(_fox_proto ${_fox_protocols})
       string(REPLACE ":" ";" _fox_pair "${_fox_proto}")
       list(GET _fox_pair 0 _fox_name)

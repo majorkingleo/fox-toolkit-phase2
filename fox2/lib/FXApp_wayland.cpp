@@ -148,6 +148,13 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
       }
     }
 
+  // Screen saver inhibition for a window, offered by some compositors only
+  else if(strcmp(interface,zwp_idle_inhibit_manager_v1_interface.name)==0){
+    if(!app->idlemanager){
+      app->idlemanager=(zwp_idle_inhibit_manager_v1*)wl_registry_bind(registry,name,&zwp_idle_inhibit_manager_v1_interface,1);
+      }
+    }
+
   // Stock pointer shapes, which save the client from shipping cursor images
   else if(strcmp(interface,wp_cursor_shape_manager_v1_interface.name)==0){
     if(!app->cursormanager){
@@ -234,6 +241,7 @@ void FXApp::initPlatformMembers(){
   app->wmbase=nullptr;
   app->decomanager=nullptr;
   app->iconmanager=nullptr;
+  app->idlemanager=nullptr;
   app->cursormanager=nullptr;
   app->cursordevice=nullptr;
   app->pointerenterserial=0;
@@ -420,6 +428,7 @@ FXbool FXApp::closeDisplay(){
   fxwaylandCloseDataDevice(app);
   fxwaylandCloseSeat(app);
   if(app->iconmanager){ xdg_toplevel_icon_manager_v1_destroy(app->iconmanager); app->iconmanager=nullptr; }
+  if(app->idlemanager){ zwp_idle_inhibit_manager_v1_destroy(app->idlemanager); app->idlemanager=nullptr; }
   if(app->dialogmanager){ xdg_wm_dialog_v1_destroy(app->dialogmanager); app->dialogmanager=nullptr; }
   fxwaylandCloseActivation(app);
   fxwaylandCloseTextInput(app);

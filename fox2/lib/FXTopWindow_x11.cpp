@@ -50,6 +50,9 @@
 #include "FXSystem.h"
 #include "FX88591Codec.h"
 #include "fxpriv.h"
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #if defined(FOX_X11)
 
@@ -57,6 +60,11 @@
   Notes:
 
   - Platform implementation of the FXTopWindow members which create, show, decorate, stack and size the native top level window; the layout and the common accessors stay in FXTopWindow.cpp.
+  - Idle inhibition goes through xdg-screensaver, the command of the desktop which
+    knows how to suspend the screen saver of whatever it is running: it needs no
+    library here, and it takes care of resuming when the window goes away.  The
+    command is started detached (two forks, so no zombie is left and the GUI does
+    not wait for a shell script); a desktop without it is simply not asked.
 */
 
 #define TOPIC_DETAIL    1002
@@ -94,6 +102,31 @@ using namespace FX;
 
 namespace FX {
 
+// Run a command in the background without waiting for it and without leaving
+// a zombie: the child forks the real command and exits at once
+static void runDetached(const FXchar* verb,FXID window){
+  FXchar id[32];
+  pid_t pid;
+  snprintf(id,sizeof(id),"%lu",(unsigned long)window);
+  if((pid=fork())==0){
+    if(fork()==0){
+      execlp("xdg-screensaver","xdg-screensaver",verb,id,(char*)nullptr);
+      }
+    _exit(0);
+    }
+  if(pid>0) waitpid(pid,nullptr,0);
+  }
+
+
+// Ask the screen saver to stay off while this window exists
+void FXTopWindow::setidle(FXbool active){
+  if(active!=((idle&2)!=0)){
+    idle=active?(idle|2):(idle&~2);
+    runDetached(active?"suspend":"resume",xid);
+    }
+  }
+
+
 // Create window
 void FXTopWindow::create(){
   FXShell::create();
@@ -113,6 +146,9 @@ void FXTopWindow::create(){
 
       // Set icon for X-Windows
       seticons();
+
+      // Stay awake, if that was asked before the window existed
+      if(idle&1) setidle(true);
 
       // Only shrinkable; size may not be above default size
       if((options&DECOR_SHRINKABLE) && !(options&DECOR_STRETCHABLE)){
@@ -162,6 +198,7 @@ void FXTopWindow::create(){
 
 // Destroy window
 void FXTopWindow::destroy(){
+  if(idle&2) setidle(false);
   if(xid){
     if(getApp()->isInitialized()){
       }

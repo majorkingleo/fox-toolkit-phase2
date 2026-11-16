@@ -123,6 +123,7 @@ FXTopWindow::FXTopWindow(){
   padright=0;
   hspacing=0;
   vspacing=0;
+  idle=0;
   }
 
 
@@ -138,6 +139,7 @@ FXTopWindow::FXTopWindow(FXApp* ap,const FXString& name,FXIcon *ic,FXIcon *mi,FX
   padright=pr;
   hspacing=hs;
   vspacing=vs;
+  idle=0;
   }
 
 
@@ -153,6 +155,7 @@ FXTopWindow::FXTopWindow(FXWindow* ow,const FXString& name,FXIcon *ic,FXIcon *mi
   padright=pr;
   hspacing=hs;
   vspacing=vs;
+  idle=0;
   }
 
 
@@ -668,6 +671,15 @@ void FXTopWindow::setTitle(const FXString& name){
   if(title!=name){
     title=name;
     if(xid) settitle();
+    }
+  }
+
+
+// Ask the system to stay awake while this window exists
+void FXTopWindow::setIdleInhibit(FXbool flag){
+  if(flag!=getIdleInhibit()){
+    idle=flag?(idle|1):(idle&~1);
+    if(xid) setidle(flag);
     }
   }
 
