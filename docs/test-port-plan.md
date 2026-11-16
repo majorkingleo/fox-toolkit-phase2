@@ -114,6 +114,14 @@ change nothing else); the library under them is never touched.
    `unicode` dumps its table only with `--dump`.
 2. C: `dictest`, `memmap`, `process`, `thread`, `parallel`. They get a
    self-contained default run.
+   Convention: a program that reads stdin or takes arguments keeps that mode
+   for benchmarking and manual use, and gets a `--test` switch that runs a
+   generated, fixed data set through the class and checks every result. CTest
+   runs it with `--test`. A class that already has its own unit test needs no
+   such switch. Done: `dictest --test` (no unit test for `FXDictionary`
+   existed; it checks insert, replace, lookup, remove, reuse of voided slots,
+   copy, assign, adopt, erase, shrink and clear), and without `--test` an
+   empty stdin no longer divides by zero.
 3. C and E: `rex`, `expression`, `units` with tables of expected results.
 4. D: `math` with a bounded default.
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
