@@ -985,8 +985,10 @@ Breeze names `tooltip_background_breeze`, `tooltip_text_breeze` and their
 generic variants, so Breeze imports `#F7F7F7` on `#232629` instead of the
 classic pale yellow.  `FXToolTip` paints a themed background, uses the theme's
 border and rounded rectangle, and takes its padding from `METRIC_PADDING`;
-classic tips keep the original fixed spacing and border.  Rounded outer
-corners and a drop shadow still need an alpha/shaped popup surface.
+classic tips keep the original fixed spacing and border.  When the tip text
+changes while the popup is visible, the tip hides, resizes to the new default
+size and is shown again, so the next tab's longer text is not clipped.  Rounded
+outer corners and a drop shadow still need an alpha/shaped popup surface.
 
 **Progress — tabs (2026-11-16).** `FXTabItem` now draws a themed rounded tab
 face, with selected, hover and disabled colors, a focus border and the accent

@@ -296,9 +296,17 @@ long FXToolTip::onCmdGetStringValue(FXObject*,FXSelector,void* ptr){
 // Change text
 void FXToolTip::setText(const FXString& text){
   if(label!=text){
+    FXbool wasshown=shown();
+    if(wasshown) hide();
     label=text;
     recalc();
+    resize(getDefaultWidth(),getDefaultHeight());
     popped=false;       // If text changes, pop it up again
+    if(wasshown){
+      autoplace();
+      show();
+      popped=true;
+      }
     update();
     }
   }
