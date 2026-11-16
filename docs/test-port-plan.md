@@ -292,14 +292,19 @@ and the commit that fixed it.
 
 | Program | Defect | Fix |
 | --- | --- | --- |
-| | | |
+| popup | pane opened at a fixed offset in the window instead of below the Open button | test only (2ab8d08) |
+| layout, foursplit | fixed window geometry overflows at 144 DPI (clipped bottom, overlapping rows) | by design, see dpi-plan.md |
+| layout | radios disabled until a button is chosen | original behaviour |
+| switcher | File List page is empty (no directory set in the test) | original behaviour |
+| group 1 | widgets missing in fox2 (spring, header, splitters, tool bars, lists, file/dir dialogs, ...) | copied from fox-1.7.95 (0d65dfc, e365bd4, 102b753, 389631c, 777e970) |
+| switcher, tabbook | FXIconSource only needs BMP and GIF | fox2 copy trimmed to those formats |
 
 ## Status
 
 | Step | State |
 | --- | --- |
-| 0 Groundwork | not started |
-| 1 Layout containers | not started |
+| 0 Groundwork | done |
+| 1 Layout containers | done |
 | 2 Dialogs and data | not started |
 | 3 Lists and files | not started |
 | 4 Drawing | not started |
