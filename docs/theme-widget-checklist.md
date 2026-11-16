@@ -28,7 +28,7 @@ Priority:
 | `FXLabel` | DONE | Text role and UI font. |
 | `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height and focus handling; hover rows, alternates and scrollbars remain. |
-| `FXTextField` | PARTIAL | Text, selection, cursor and background colors; see input-specific work below. |
+| `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline and disabled colors; the widget has no placeholder API. |
 | `FXListBox`, `FXComboBox` | PARTIAL | Field/list colors; arrow and popup chrome remain classic. |
 | `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
 | `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
@@ -39,7 +39,6 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXTextField` | PARTIAL | Rounded/inset entry border from `METRIC_CORNER_RADIUS`, `ROLE_BORDER`, `ROLE_WINDOW_BG`; focus ring; placeholder and disabled text roles; entry padding. |
 | `FXScrollBar` | OPEN | Trough, thumb, hover/pressed/focus states, arrow buttons, radius, thickness from `METRIC_ROW_HEIGHT`/a scrollbar metric. |
 | `FXScrollArea` | OPEN | Viewport background and border; clipping/rounding of the viewport; scrollbar spacing. |
 | `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
@@ -155,8 +154,8 @@ use the seam.
 
 ## Suggested order
 
-1. Finish the P0 chrome: `FXTextField`, `FXScrollBar`, `FXToolTip`,
-   `FXPopup`/`FXMenuPane`, tabs, status bar, menu buttons, menu items.
+1. Finish the P0 chrome: `FXScrollBar`, `FXToolTip`, `FXPopup`/`FXMenuPane`,
+   tabs, status bar, menu buttons, menu items.
 2. Add the missing theme roles and metrics those widgets need (entry, menu,
    popup, scrollbar, tab, button text states).
 3. Do the P1 input/data widgets: `FXText`, `FXTable`, lists/trees, sliders,

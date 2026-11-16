@@ -953,6 +953,14 @@ themes, and `FXHeader` takes its text color from the theme.  Classic radius-0
 lists keep their original background, row height and focus rectangles.  Hover
 rows, alternating row colors and themed scrollbars are still open.
 
+**Progress — text fields (2026-11-16).** `FXTextField::onPaint()` now draws a
+rounded entry face and border through `FXStyle::drawRoundedRectangle()` when
+the theme has a corner radius: `ROLE_WINDOW_BG`/`ROLE_SURFACE` for the face,
+`ROLE_BORDER` normally and `ROLE_FOCUS_RING` while focused, with the theme's
+border width.  Focus changes repaint the whole field so the outline updates.
+The classic radius-0 frame and background are untouched.  The widget has no
+placeholder API, so no placeholder role is needed yet.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane
