@@ -171,6 +171,16 @@ change nothing else); the library under them is never touched.
    every platform, started from a wrong estimate (`log(0.5*x*x)` instead of
    `2*log(0.5*x)`) and were off by up to 2e-6 (double) and 2e-2 (float).
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
+   - `format --test` done: bit counting, about 110 integer, float, hexadecimal,
+     positional and truncation cases with known output, a comparison with the C
+     library for every format and number of the program (and every precision of
+     `e f g` for awkward numbers), and print-and-scan round trips. Documented
+     behaviour of the fox2 printer is checked as such: `'` always groups with
+     commas, `%.0f` rounds half away from zero, nothing is terminated when
+     the output is truncated, and decimal conversion is good to about 16
+     digits (the C library is exact), so differing strings must still agree
+     within 5e-16. Fixed: `%010f` of Inf or NaN padded with zeros instead of
+     spaces.
 
 One commit per step, each with the result of both platforms in its message.
 

@@ -1710,6 +1710,7 @@ flg:  switch(ch){
         case 'f':                                       // Fractional notation
           if(0<pos) vadvance(ag,args,format,pos);       // Advance ag to position
           number=va_arg(ag,FXdouble);
+          if(!Math::fpFinite(number)) flags&=~FLG_ZERO;       // Zero padding is for numbers only
           if(precision<0) precision=6;
           if(precision>MAXPRECISION) precision=MAXPRECISION;
           str=fmtfrc(buffer,len,number,precision,flags);
@@ -1719,6 +1720,7 @@ flg:  switch(ch){
         case 'e':                                       // Exponential notation
           if(0<pos) vadvance(ag,args,format,pos);       // Advance ag to position
           number=va_arg(ag,FXdouble);
+          if(!Math::fpFinite(number)) flags&=~FLG_ZERO;       // Zero padding is for numbers only
           if(precision<0) precision=6;
           if(precision>MAXPRECISION) precision=MAXPRECISION;
           str=fmtexp(buffer,len,number,precision,flags);
@@ -1728,6 +1730,7 @@ flg:  switch(ch){
         case 'g':                                       // General notation
           if(0<pos) vadvance(ag,args,format,pos);       // Advance ag to position
           number=va_arg(ag,FXdouble);
+          if(!Math::fpFinite(number)) flags&=~FLG_ZERO;       // Zero padding is for numbers only
           if(precision<0) precision=6;
           if(precision<1) precision=1;
           if(precision>MAXPRECISION) precision=MAXPRECISION;
@@ -1738,6 +1741,7 @@ flg:  switch(ch){
         case 'a':                                       // Hexadecimal notation
           if(0<pos) vadvance(ag,args,format,pos);       // Advance ag to position
           number=va_arg(ag,FXdouble);
+          if(!Math::fpFinite(number)) flags&=~FLG_ZERO;       // Zero padding is for numbers only
           if(precision>MAXPRECISION) precision=MAXPRECISION;
           str=fmthex(buffer,len,number,precision,flags);
           break;
