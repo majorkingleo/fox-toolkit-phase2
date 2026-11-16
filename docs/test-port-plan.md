@@ -142,6 +142,17 @@ change nothing else); the library under them is never touched.
    parallel loop covering each of 100 indices once, flat and nested
    `FXParallelInvoke` with expected job counts 17 and 25). The interactive
    modes are unchanged.3. C and E: `rex`, `expression`, `units` with tables of expected results.
+   Done: `rex --test` (37 searches with flags, positions, matched text and
+   captures; 7 syntax error codes; syntax-only parse; `substitute`),
+   `expression --test` (58 expressions covering every operator group,
+   functions and constants; 6 error codes; one compile evaluated repeatedly)
+   and `units --test` (27 conversions checked in both directions and by
+   inverting, 4 refused conversions, symbol look-up, span, dimensions, table
+   order). The command line modes stay; `rex` and `expression` now return 1
+   on a syntax error instead of always 1 / 0. `units --test` found two data
+   errors in the fox2 table (not in FOX 1, which has them too): `hp` had the
+   dimensions of energy (`kg*m^2/s^2`, now `kg*m^2/s^3`) and `lbf` was rounded
+   to 4.448222 (now 4.4482216152605, so `psi` is 6894.757293 Pa).
 4. D: `math` with a bounded default.
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
 

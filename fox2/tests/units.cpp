@@ -32,15 +32,153 @@
     standards organization.  However, if you spot problems please communicate
     these to jeroen@fox-toolkit.com.
 
+  - With --test, a built-in table of conversions with expected values is checked,
+    both directions of each conversion, conversions which must be refused, the
+    dimension vectors and the table order; the exit code is 0 only if all hold.
+
 */
 
 /*******************************************************************************/
+
+// Conversion of value from unit fm to unit to gives expected
+struct UnitCase {
+  const FXchar* fm;
+  const FXchar* to;
+  FXdouble      value;
+  FXdouble      expected;
+  };
+
+
+static const UnitCase cases[]={
+  {"m","cm",1.0,100.0},
+  {"km","m",2.0,2000.0},
+  {"mm","m",1500.0,1.5},
+  {"in","cm",1.0,2.54},
+  {"ft","in",1.0,12.0},
+  {"yd","ft",1.0,3.0},
+  {"mi","km",1.0,1.609344},
+  {"min","s",1.0,60.0},
+  {"h","s",1.0,3600.0},
+  {"day","h",1.0,24.0},
+  {"kg","g",1.0,1000.0},
+  {"lb","kg",1.0,0.45359237},
+  {"oz","g",1.0,28.349523125},
+  {"L","mL",1.0,1000.0},
+  {"gal","L",1.0,3.785411784},
+  {"atm","Pa",1.0,101325.0},
+  {"bar","kPa",1.0,100.0},
+  {"psi","Pa",1.0,6894.757293168},
+  {"cal","J",1.0,4.1868},
+  {"kW","W",1.5,1500.0},
+  {"hp","W",1.0,745.69987158227},
+  {"kph","mph",1.0,0.62137119223733},
+  {"mph","m/s",1.0,0.44704},
+  {"eV","J",1.0,1.602176634E-19},
+  {"\xC2\xB0""C","K",0.0,273.15},
+  {"\xC2\xB0""C","\xC2\xB0""F",100.0,212.0},
+  {"\xC2\xB0""F","\xC2\xB0""C",32.0,0.0},
+  {nullptr,nullptr,0.0,0.0}
+  };
+
+
+// Units which must not convert to each other
+static const FXchar *const refused[][2]={
+  {"m","s"},
+  {"kg","m"},
+  {"W","J"},
+  {"mph","m"}
+  };
+
+
+// Relative closeness
+static FXbool closeto(FXdouble a,FXdouble b){
+  return Math::fabs(a-b)<=1E-9*Math::fabs(b) || Math::fabs(a-b)<=1E-12;
+  }
+
+
+// Table should be remain sorted
+FXbool checktable(){
+  for(FXuint u=1; u<FXUnits::NumUnits; ++u){
+    if(strcmp(FXUnits::symbol[u],FXUnits::symbol[u-1])<=0){
+      fxmessage("Units table: %s > %s is false\n",FXUnits::symbol[u],FXUnits::symbol[u-1]);
+      return false;
+      }
+    }
+  fxmessage("Units table is OK\n");
+  return true;
+  }
+
+
+// Run the tables, return the number of failed checks
+static FXint testunits(){
+  FXint failures=0;
+  FXUnits units,back;
+  FXdouble result;
+  FXint i;
+
+  // Table order is needed for the look-up
+  if(!checktable()){ printf("BAD: units table is not sorted\n"); failures++; }
+
+  // Every symbol is found again
+  for(FXint u=0; u<FXUnits::NumUnits; u++){
+    if(FXUnits::lookup(FXUnits::symbol[u])!=u){
+      printf("BAD: symbol %d (%s) is not found by lookup\n",u,FXUnits::symbol[u]);
+      failures++;
+      }
+    }
+  if(FXUnits::lookup("nosuchunit")!=-1){ printf("BAD: unknown unit is found\n"); failures++; }
+  if(FXUnits::span("km")!=2){ printf("BAD: span(km) is %d\n",FXUnits::span("km")); failures++; }
+  if(FXUnits::span("m/s")!=3){ printf("BAD: span(m/s) is %d\n",FXUnits::span("m/s")); failures++; }
+
+  // Conversions, in both ways of asking
+  for(i=0; cases[i].fm; i++){
+    const UnitCase& c=cases[i];
+    units=FXUnits::convertFromTo(c.fm,c.to);
+    if(!units){
+      printf("BAD: %s -> %s is refused\n",c.fm,c.to);
+      failures++;
+      continue;
+      }
+    result=units(c.value);
+    if(!closeto(result,c.expected)){
+      printf("BAD: %.14g %s -> %s gives %.14g, expected %.14g\n",c.value,c.fm,c.to,result,c.expected);
+      failures++;
+      }
+    back=FXUnits::convertToFrom(c.to,c.fm);
+    if(!back || !closeto(back(c.value),result)){
+      printf("BAD: convertToFrom(%s,%s) disagrees with convertFromTo\n",c.to,c.fm);
+      failures++;
+      }
+    if(!closeto(units.invert()(result),c.value)){
+      printf("BAD: %s -> %s does not invert\n",c.fm,c.to);
+      failures++;
+      }
+    }
+
+  // Conversions between different kinds of quantity
+  for(i=0; i<(FXint)(sizeof(refused)/sizeof(refused[0])); i++){
+    units=FXUnits::convertFromTo(refused[i][0],refused[i][1]);
+    if(units){
+      printf("BAD: %s -> %s is not refused\n",refused[i][0],refused[i][1]);
+      failures++;
+      }
+    }
+
+  // Dimensions
+  if(FXUnits::dimensions("m")!=FXUnits::dimensions("in")){ printf("BAD: m and in differ in dimensions\n"); failures++; }
+  if(FXUnits::dimensions("m")!=FXUnits::dimensions("km")){ printf("BAD: m and km differ in dimensions\n"); failures++; }
+  if(FXUnits::dimensions("m")==FXUnits::dimensions("s")){ printf("BAD: m and s have the same dimensions\n"); failures++; }
+  if(FXUnits::dimensions("W")!=FXUnits::dimensions("hp")){ printf("BAD: W and hp differ in dimensions\n"); failures++; }
+  if(FXUnits::canonical(FXUnits::dimensions("J"))!=FXUnits::canonical("J")){ printf("BAD: canonical units of J differ\n"); failures++; }
+  return failures;
+  }
 
 // Print options
 void printusage(const FXchar* prog){
   fxmessage("%s options:\n",prog);
   fxmessage("  --check-table            Check table.\n");
   fxmessage("  --dump-table             Dump table.\n");
+  fxmessage("  --test                   Check built-in conversions.\n");
   fxmessage("  --value <value>          Start value.\n");
   fxmessage("  --from <units>           Increment value .\n");
   fxmessage("  --to <units>             Add increment this many times.\n");
@@ -50,18 +188,6 @@ void printusage(const FXchar* prog){
   fxmessage("  --span <units>           Dump every so many times.\n");
   fxmessage("  --trace-topics <topics>  Set trace topics.\n");
   fxmessage("  -h, --help               Print help.\n");
-  }
-
-
-// Table should be remain sorted
-void checktable(){
-  for(FXuint u=1; u<FXUnits::NumUnits; ++u){
-    if(strcmp(FXUnits::symbol[u],FXUnits::symbol[u-1])<=0){
-      fxmessage("Units table: %s > %s is false\n",FXUnits::symbol[u],FXUnits::symbol[u-1]);
-      return;
-      }
-    }
-  fxmessage("Units table is OK\n");
   }
 
 
@@ -94,6 +220,15 @@ int main(int argc,char *argv[]){
     else if(FXString::compare(argv[arg],"--trace-topics")==0){
       if(++arg>=argc){ fxwarning("Missing argument for --trace-topics option.\n"); return 1; }
       setTraceTopics(argv[arg]);
+      }
+    else if(FXString::compare(argv[arg],"--test")==0){
+      FXint failures=testunits();
+      if(failures){
+        printf("FAILED: %d check(s)\n",failures);
+        return 1;
+        }
+      printf("all checks passed\n");
+      return 0;
       }
     else if(FXString::compare(argv[arg],"--check-table")==0){
       checktable();

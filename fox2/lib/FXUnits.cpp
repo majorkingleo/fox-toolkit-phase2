@@ -379,7 +379,7 @@ const FXdouble FXUnits::factor[NumUnits]={
   1.0,                          // Knot
   3183.09886183790671537768,    // Lambert
   0.45359237,                   // AvoirdupoisPound
-  4.448222,                     // PoundForce
+  4.4482216152605,              // PoundForce
   0.3732417216,                 // TroyPound
   1.0,                          // Lumen
   1.0,                          // Lux
@@ -510,7 +510,7 @@ const FXchar FXUnits::expression[NumUnits][16]={
   "s",                          // Hour
   "m^2",                        // Hectare
   "s",                          // Hour
-  "kg*m^2/s^2",                 // HorsePower
+  "kg*m^2/s^3",                 // HorsePower
   "m",                          // Inch
   "mol/s",                      // Katal
   "klbf",                       // KiloPoundForce
