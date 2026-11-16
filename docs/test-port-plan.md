@@ -220,7 +220,27 @@ change nothing else); the library under them is never touched.
      blanks around keys and values were kept. Noted, not changed: loading JSON
      into a populated variant replaces it (the header comment about overlaying
      keys is wrong); INI values always load as strings.
-One commit per step, each with the result of both platforms in its message.
+   - `xml --test` done: decoding and encoding of references (every byte
+     value round trips), events of well formed documents (attributes, entities,
+     CDATA, comments, processing instructions, DOCTYPE forms, UTF-8, BOM, CRLF),
+     the error code of malformed ones, line, column and offset, the exact
+     writer output, parse then write back, and large documents through a 512
+     byte file buffer (text, attribute, comment, CDATA and processing
+     instruction, each also made only of white space). The OASIS suite
+     (`--oasis`) is not part of `--test`: it needs files that are not in the
+     repository. Fixed: the writer escaped the UTF-8 continuation bytes
+     0x80-0x9F as references, so `€` and the typographic quotes were corrupted;
+     `;` was escaped needlessly; a CR was written raw and read back as LF; a
+     processing instruction kept the blank after its target (`<?pi data?>`
+     came back as `<?pi  data?>`); `<!DOCTYPE x PUBLIC "..." "...">` was
+     rejected because the word `SYSTEM` was tried first and consumed it; a run
+     of white space longer than the file buffer in text, attribute value,
+     comment, CDATA or processing instruction gave `ErrEof`. Noted, not
+     changed: the reader reports an empty `characters` before every child
+     element; the document ending is not checked for further content; the
+     writer writes `\r\n` for a line feed on Windows; a truncated end tag
+     (`<a>x</a`) gives `ErrNoMatch` and not `ErrEof`; `ErrReference` is never
+     returned (an unknown reference is `ErrToken`).One commit per step, each with the result of both platforms in its message.
 
 ## Procedure for each program
 

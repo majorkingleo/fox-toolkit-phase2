@@ -235,7 +235,7 @@ static const FXuchar property_data[256]={
   0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x03,0x23,0x04,0x04,0x23,0x04,0x04,
   0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x04,
   0x23,0x22,0x06,0x22,0x22,0x22,0x06,0x26,0x22,0x22,0x22,0x22,0x22,0x32,0x32,0x22,
-  0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x2a,0x26,0x06,0x22,0x06,0x22,
+  0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x32,0x2a,0x22,0x06,0x22,0x06,0x22,
   0x22,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,
   0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x02,0x02,0x02,0x02,0x2a,
   0x02,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,0x2a,
@@ -486,7 +486,7 @@ FXbool FXXML::encode(FXString& dst,const FXString& src,FXuint flags){
       p+=(FXint)(sizeof(ENDLINE)-1);
       continue;
       }
-    if(restrictedChar(ch) && (flags&REFS)){
+    if(ch<0x80 && (restrictedChar(ch) || ch=='\r') && (flags&REFS)){
       switch(ch){
       case '"':         // &quot;
         p+=6;
@@ -522,7 +522,7 @@ FXbool FXXML::encode(FXString& dst,const FXString& src,FXuint flags){
       for(const FXchar* eol=ENDLINE; *eol; eol++) dst[p++]=*eol;
       continue;
       }
-    if(restrictedChar(ch) && (flags&REFS)){
+    if(ch<0x80 && (restrictedChar(ch) || ch=='\r') && (flags&REFS)){
       switch(ch){
       case '"':         // &quot;
         dst[p+0]='&';
@@ -862,6 +862,10 @@ FXXML::Error FXXML::parsestring(FXString& str){
     sptr++;
     rptr=sptr;
     while(need(MAXTOKEN)){
+      if((sptr-rptr)>=(endptr-begptr-MAXTOKEN)){        // Hand over the part scanned so far, also if all spaces
+        str.append(rptr,sptr-rptr);
+        rptr=sptr;
+        }
       switch(sptr[0]){
       case '\t':
         column+=(8-column%8);
@@ -1047,21 +1051,24 @@ FXXML::Error FXXML::parseexternalid(){
   FXString syslit;
   FXString publit;
   spaces();
-  if(match("SYSTEM",6)){
-    spaces();
-    if((err=parsestring(syslit))!=ErrOK) return err;
-    ///
-    FXTRACE(TOPIC_DETAIL,"SYSTEM \"%s\"\n",syslit.text());
-    return ErrOK;
-    }
-  if(match("PUBLIC",6)){
-    spaces();
-    if((err=parsestring(publit))!=ErrOK) return err;
-    spaces();
-    if((err=parsestring(syslit))!=ErrOK) return err;
-    FXTRACE(TOPIC_DETAIL,"PUBLIC \"%s\" \"%s\"\n",publit.text(),syslit.text());
-    ///
-    return ErrOK;
+  if(name()){                           // Read the keyword just once; matching consumes it
+    if(rptr+6==sptr && FXString::compare(rptr,"SYSTEM",6)==0){
+      spaces();
+      if((err=parsestring(syslit))!=ErrOK) return err;
+      ///
+      FXTRACE(TOPIC_DETAIL,"SYSTEM \"%s\"\n",syslit.text());
+      return ErrOK;
+      }
+    if(rptr+6==sptr && FXString::compare(rptr,"PUBLIC",6)==0){
+      spaces();
+      if((err=parsestring(publit))!=ErrOK) return err;
+      spaces();
+      if((err=parsestring(syslit))!=ErrOK) return err;
+      FXTRACE(TOPIC_DETAIL,"PUBLIC \"%s\" \"%s\"\n",publit.text(),syslit.text());
+      ///
+      return ErrOK;
+      }
+    return ErrToken;
     }
   return ErrOK;
   }
@@ -1183,8 +1190,13 @@ FXXML::Error FXXML::parseprocessing(){
   FXString data;
   if(name()){
     target.assign(rptr,sptr-rptr);
+    spaces();                           // Skip the space between target and data
     rptr=sptr;                          // Start of processing instruction data
     while(need(MAXTOKEN)){
+      if((sptr-rptr)>=(endptr-begptr-MAXTOKEN)){        // Hand over the part scanned so far, also if all spaces
+        data.append(rptr,sptr-rptr);
+        rptr=sptr;
+        }
       switch(sptr[0]){
       case '\t':
         column+=(8-column%8);
@@ -1236,6 +1248,10 @@ FXXML::Error FXXML::parsecomment(){
   FXString text;
   rptr=sptr;
   while(need(MAXTOKEN)){
+    if((sptr-rptr)>=(endptr-begptr-MAXTOKEN)){          // Hand over the part scanned so far, also if all spaces
+      text.append(rptr,sptr-rptr);
+      rptr=sptr;
+      }
     switch(sptr[0]){
     case '\t':
       column+=(8-column%8);
@@ -1395,6 +1411,11 @@ FXXML::Error FXXML::parsecdata(Element& elm){
   FXString text;
   rptr=sptr;
   while(need(MAXTOKEN)){
+    if((sptr-rptr)>=(endptr-begptr-MAXTOKEN)){          // Hand over the part scanned so far, also if all spaces
+      if(!FXXML::decode(text,FXString(rptr,sptr-rptr),CRLF)) return ErrToken;
+      if((err=charactersCB(text))!=ErrOK) return err;
+      rptr=sptr;
+      }
     switch(sptr[0]){
     case '\t':
       column+=(8-column%8);
@@ -1449,6 +1470,11 @@ FXXML::Error FXXML::parsecontents(Element& elm){
   FXint brk=1;                          // Allow break
   rptr=sptr;
   while(need(MAXTOKEN)){
+    if(brk && (sptr-rptr)>=(endptr-begptr-MAXTOKEN)){   // Hand over the part scanned so far, also if all spaces
+      if(!FXXML::decode(text,FXString(rptr,sptr-rptr),CRLF|REFS)) return ErrToken;
+      if((err=charactersCB(text))!=ErrOK) return err;
+      rptr=sptr;
+      }
     switch(sptr[0]){
     case '\t':
       column+=(8-column%8);
