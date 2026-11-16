@@ -160,6 +160,14 @@ void FXDCWindow::begin(FXDrawable* draw){
     devfg=surface->visual->getPixel(fg);
     devbg=surface->visual->getPixel(bg);
 
+    // The clip rectangle of the DC follows the drawable, as on X11 and Win32;
+    // code that draws with getClipX()/getClipWidth() reads this one, not the
+    // rasterizer clip set below
+    rect.x=clip.x=0;
+    rect.y=clip.y=0;
+    rect.w=clip.w=draw->getWidth();
+    rect.h=clip.h=draw->getHeight();
+
     // Nothing to draw into: the window has no shell or no frame yet
     if(!getSurface(draw,pixels,w,h,stride)) return;
     ctx=new FXRaster(pixels,w,h,stride);
@@ -177,7 +185,7 @@ void FXDCWindow::begin(FXDrawable* draw){
     if(stipple){ raster(ctx)->setStipple(stipple,tx,ty); }
     else{ raster(ctx)->setStipple(pattern,tx,ty); }
     if(mask){ raster(ctx)->setClipMask(mask,cx,cy); }
-    if(font){ raster(ctx)->setGlyphs((FXGlyphs*)font->getGlyphCache()); }
+    if(font){ raster(ctx)->setGlyphs((FXGlyphs*)font->getGlyphCache()); raster(ctx)->setAngle(font->getAngle()); }
 
     // A window never draws outside of itself, even though its frame is shared
     raster(ctx)->setClipRectangle(0,0,w,h);
@@ -572,7 +580,10 @@ void FXDCWindow::clearClipMask(){
 // Set font to draw text with
 void FXDCWindow::setFont(FXFont *fnt){
   font=fnt;
-  if(ctx) raster(ctx)->setGlyphs(fnt?(FXGlyphs*)fnt->getGlyphCache():nullptr);
+  if(ctx){
+    raster(ctx)->setGlyphs(fnt?(FXGlyphs*)fnt->getGlyphCache():nullptr);
+    raster(ctx)->setAngle(fnt?fnt->getAngle():0);
+    }
   }
 
 

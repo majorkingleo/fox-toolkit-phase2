@@ -155,6 +155,7 @@ FXRaster::FXRaster(){
   stipheight=0;
   stipbytew=0;
   font=nullptr;
+  angle=0;
   fg=0xff000000u;
   bg=0xffffffffu;
   linewidth=0;
@@ -1101,11 +1102,39 @@ void FXRaster::blend(FXint x,FXint y,FXuint cov){
 #if defined(FOX_GLYPHS_AVAILABLE)
 
 // Draw UTF-8 text with the baseline at x,y
+// An angled font draws every glyph rotated around the baseline point; the
+// chart's vertical axis labels are the reason this is not left to the caller
 void FXRaster::drawText(FXint x,FXint y,const FXchar* text,FXint len){
   const FXGlyph* glyph;
   FXint p=0,xx,yy;
   if(!font || !text) return;
   if(len<0){ len=0; while(text[len]) len++; }
+  if(angle){
+    FXdouble a=angle*0.00027270769562411399179;
+    FXdouble ca=Math::cos(a);
+    FXdouble sa=Math::sin(a);
+    FXdouble penx=x;
+    FXdouble peny=y;
+    FXdouble u,v;
+    while(p<len){
+      glyph=font->getGlyph(fxutf8decode(text,len,p));
+      if(!glyph) break;
+      if(glyph->coverage){
+        for(yy=0; yy<glyph->height; yy++){
+          for(xx=0; xx<glyph->width; xx++){
+            if(glyph->coverage[yy*glyph->width+xx]){
+              u=glyph->bearing+xx;
+              v=yy-glyph->top;
+              blend((FXint)Math::floor(penx+u*ca+v*sa+0.5),(FXint)Math::floor(peny-u*sa+v*ca+0.5),glyph->coverage[yy*glyph->width+xx]);
+              }
+            }
+          }
+        }
+      penx+=glyph->advance*ca;
+      peny-=glyph->advance*sa;
+      }
+    return;
+    }
   while(p<len){
     glyph=font->getGlyph(fxutf8decode(text,len,p));
     if(!glyph) break;
@@ -1262,6 +1291,12 @@ void FXRaster::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
 
 
 /*******************************************************************************/
+
+// Set text angle, in degrees*64 relative to the positive x axis
+void FXRaster::setAngle(FXint ang){
+  angle=ang;
+  }
+
 
 // Set the glyph cache used by the text calls
 void FXRaster::setGlyphs(FXGlyphs* glyphs){

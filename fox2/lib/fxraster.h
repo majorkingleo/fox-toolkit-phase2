@@ -90,6 +90,7 @@ private:
   FXint           stx;          // Stipple origin x
   FXint           sty;          // Stipple origin y
   FXGlyphs*       font;         // Glyph cache or nullptr
+  FXint           angle;        // Text angle, in degrees*64
 private:
   FXRaster(const FXRaster&);
   FXRaster& operator=(const FXRaster&);
@@ -218,6 +219,12 @@ public:
 
   /// Get the glyph cache
   FXGlyphs* getGlyphs() const;
+
+  /// Set text angle, in degrees*64 relative to the positive x axis
+  void setAngle(FXint ang);
+
+  /// Get text angle, in degrees*64
+  FXint getAngle() const { return angle; }
 
   /// Set foreground drawing color
   void setForeground(FXColor clr);

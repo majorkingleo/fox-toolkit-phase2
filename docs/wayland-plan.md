@@ -250,6 +250,17 @@ Deviations, all on the one pixel outline unless noted:
   slightly different values while the glyph shapes, their positions and every
   advance agree exactly (406 and 564 of 4096 pixels, all on glyph edges, and no
   delta in the metrics - see `tests/glyphs`).
+- Text drawn with `FXFont::setAngle()` is rotated here by mapping every glyph's
+  coverage bitmap to its rotated position (nearest neighbour); Xft renders it
+  through a FreeType transform with component alpha, so angled glyph edges
+  differ by about a pixel.  The metrics of an angled font also differ: Xft
+  returns 0 from `getFontHeight()`/`getTextWidth()`, the Wayland font keeps the
+  unrotated metrics.  The chart's `Y` labels show both effects - the X11 frame
+  overprints a label it measured as empty, the Wayland frame lays it out.
+- The DC clip rectangle in `FXDCWindow::begin()` follows the drawable (0,0 to
+  its size); before that `getClipX()`/`getClipWidth()` returned the FXDC default
+  of 32767, which made the chart widget measure its plot far too large.  Caught
+  by the `chart` port (`fox2/apps/chart`).
 - `fillVerticalGradient` and `fillHorizontalGradient` restore the previous
   foreground colour; the X11 module leaves the last gradient colour set, which
   is not reproduced.
