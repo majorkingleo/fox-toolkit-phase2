@@ -112,6 +112,9 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXMDIClient.cpp \
+FXMDIChild.cpp \
+FXMDIButton.cpp \
 fxcrc.cpp \
 fxxpmio.cpp \
 fxtifio.cpp \

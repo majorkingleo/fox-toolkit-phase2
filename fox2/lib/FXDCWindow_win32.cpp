@@ -611,7 +611,7 @@ void FXDCWindow::fillComplexPolygonRel(const FXPoint* points,FXuint npoints){
 
 // Fill vertical gradient rectangle
 void FXDCWindow::fillVerticalGradient(FXint x,FXint y,FXint w,FXint h,FXColor top,FXColor bottom){
-#if defined(__BORLANDC__) || defined(__WATCOMC__) || defined(__CYGWIN__) || (_MSC_VER >= 1300)
+#if defined(__BORLANDC__) || defined(__WATCOMC__) || defined(__CYGWIN__) || defined(__MINGW32__) || (_MSC_VER >= 1300)
   TRIVERTEX v[2];
   GRADIENT_RECT r;
   r.UpperLeft=0;
@@ -635,7 +635,7 @@ void FXDCWindow::fillVerticalGradient(FXint x,FXint y,FXint w,FXint h,FXColor to
 
 // Fill horizontal gradient rectangle
 void FXDCWindow::fillHorizontalGradient(FXint x,FXint y,FXint w,FXint h,FXColor left,FXColor right){
-#if defined(__BORLANDC__) || defined(__WATCOMC__) || defined(__CYGWIN__) || (_MSC_VER >= 1300)
+#if defined(__BORLANDC__) || defined(__WATCOMC__) || defined(__CYGWIN__) || defined(__MINGW32__) || (_MSC_VER >= 1300)
   TRIVERTEX v[2];
   GRADIENT_RECT r;
   r.UpperLeft=0;

@@ -143,6 +143,9 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXMDIClient.h \
+FXMDIChild.h \
+FXMDIButton.h \
 FXPrintDialog.h \
 FXDCPrint.h \
 FXToolBarTab.h \

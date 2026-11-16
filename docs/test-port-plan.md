@@ -311,6 +311,9 @@ and the commit that fixed it.
 | bitmapviewer | calls libtiff directly, but the codec libraries are private to the library | linked against `FOX_PRIVATE_LIBRARIES` in `tests/CMakeLists.txt` |
 | image | ruler numbers kept the font of the system DPI | `FXRuler::applyTheme` retargets the font |
 | BMP icons | the corner pixel is taken as transparent colour, so a red 32 bit BMP loses its background | upstream behaviour, unchanged |
+| group 5 | MDI widgets (`FXMDIClient`, `FXMDIChild`, `FXMDIButton`) missing in fox2 | copied from fox-1.7.95 |
+| mditest | `GradientFill` was compiled out on MinGW (condition listed only Borland, Watcom, Cygwin, MSVC): MDI title bars were flat | `__MINGW32__` added in `FXDCWindow_win32.cpp` |
+| mditest | title text of an MDI child without focus is white on a light gradient | upstream behaviour, unchanged; the focused child has the dark selection colour |
 
 ## Status
 
@@ -321,4 +324,4 @@ and the commit that fixed it.
 | 2 Dialogs and data | done |
 | 3 Lists and files | done |
 | 4 Drawing | done |
-| 5 Special cases | not started |
+| 5 Special cases | in progress: `mditest` done |
