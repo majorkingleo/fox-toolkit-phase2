@@ -55,6 +55,12 @@ console tests, see step 0.
 4. Add a `scripts/capture-test-screenshots.*` pattern, or extend the existing
    capture scripts, so one command stores a screenshot per program per
    platform under `screenshots/tests/fox2/<platform>/<program>.png`.
+   Done for Windows: `scripts/capture-test-screenshots.ps1` starts each
+   windowed program (`hello button dpi popup click menus tooltip clipboard dnd icon`),
+   captures it with `PrintWindow`, crops the invisible frame and stops it. The
+   smoke tests (`bmpicon textspin combo colordlg fontdlg`) open no lasting
+   window and are not captured. Wayland has `scripts/capture-wayland-screenshots.sh`
+   (three programs so far); X11 has no script yet.
 
 Acceptance: `ctest` runs all existing tests on Windows and in WSL, and the
 result is a list of passes plus a short, explained list of known failures.
