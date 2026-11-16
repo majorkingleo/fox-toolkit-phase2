@@ -969,7 +969,10 @@ the field and arrow area, and retain the original frame styles when the theme
 returns to radius 0.  The field, arrow and dropdown list all use the theme
 colors.  The combo/list-box widget itself now paints the single rounded shell;
 the field and arrow are flat children inset into it, so the shell border and
-corners stay intact.  The popup shadow is still open.
+corners stay intact.  `getDefaultWidth()`/`getDefaultHeight()` include the
+inset, and the field's vertical padding is reduced by the same amount, so the
+combo keeps the normal 34 px control height it has as a text field or button
+instead of shrinking its content.  The popup shadow is still open.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

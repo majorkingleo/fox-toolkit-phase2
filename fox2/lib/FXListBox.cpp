@@ -142,12 +142,13 @@ void FXListBox::destroy(){
 void FXListBox::applyTheme(FXTheme* theme){
   FXPacker::applyTheme(theme);
   if(0<theme->metric(METRIC_CORNER_RADIUS)){
-    FXint p=FXMAX(theme->metric(METRIC_PADDING)/2,1);
+    FXint inset=(theme->metric(METRIC_CORNER_RADIUS)+1)/2;
+    FXint vp=FXMAX(theme->metric(METRIC_PADDING)/3,1);
     backColor=theme->color(ROLE_WINDOW_BG);
     setFrameStyle(FRAME_NONE);
     button->setFrameStyle(FRAME_NONE);
-    field->setPadTop(0); field->setPadBottom(0); field->setPadLeft(p); field->setPadRight(p);
-    button->setPadTop(0); button->setPadBottom(0); button->setPadLeft(0); button->setPadRight(0);
+    field->setPadTop(vp); field->setPadBottom(vp);
+    button->setPadTop(vp); button->setPadBottom(vp);
     }
   else{
     setFrameStyle(boxframe);
@@ -189,8 +190,12 @@ void FXListBox::disable(){
 
 // Get default width
 FXint FXListBox::getDefaultWidth(){
+  FXint inset=border;
   FXint ww,pw;
-  ww=field->getDefaultWidth()+button->getDefaultWidth()+(border<<1);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    inset=getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())/2;
+    }
+  ww=field->getDefaultWidth()+button->getDefaultWidth()+(inset<<1);
   pw=pane->getDefaultWidth();
   return FXMAX(ww,pw);
   }
@@ -198,10 +203,14 @@ FXint FXListBox::getDefaultWidth(){
 
 // Get default height
 FXint FXListBox::getDefaultHeight(){
+  FXint inset=border;
   FXint th,bh;
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    inset=getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())/2;
+    }
   th=field->getDefaultHeight();
   bh=button->getDefaultHeight();
-  return FXMAX(th,bh)+(border<<1);
+  return FXMAX(th,bh)+(inset<<1);
   }
 
 
@@ -209,7 +218,7 @@ FXint FXListBox::getDefaultHeight(){
 void FXListBox::layout(){
   FXint buttonWidth,fieldWidth,itemHeight,inset=border;
   if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
-    inset=(getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())+1)/2;
+    inset=getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())/2;
     }
   itemHeight=height-(inset<<1);
   buttonWidth=button->getDefaultWidth();
