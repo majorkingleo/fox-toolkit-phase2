@@ -163,7 +163,7 @@ FXint FXMenuButton::getDefaultWidth(){
   if(!(options&MENUBUTTON_NOARROWS)){
     if(options&MENUBUTTON_LEFT) iw=MENUBUTTONARROW_HEIGHT; else iw=MENUBUTTONARROW_WIDTH;
     }
-  if(icon) iw=icon->getWidth();
+  if(icon) iw=getScaledIcon(icon)->getWidth();
   if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,iw); else w=tw+iw+s;
   w=padleft+padright+(border<<1)+w;
   if(!(options&MENUBUTTON_LEFT) && (options&MENUBUTTON_ATTACH_RIGHT) && (options&MENUBUTTON_ATTACH_CENTER)){
@@ -180,7 +180,7 @@ FXint FXMenuButton::getDefaultHeight(){
   if(!(options&MENUBUTTON_NOARROWS)){
     if(options&MENUBUTTON_LEFT) ih=MENUBUTTONARROW_WIDTH; else ih=MENUBUTTONARROW_HEIGHT;
     }
-  if(icon) ih=icon->getHeight();
+  if(icon) ih=getScaledIcon(icon)->getHeight();
   if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,ih); else h=th+ih;
   h=padtop+padbottom+(border<<1)+h;
   if((options&MENUBUTTON_LEFT) && (options&MENUBUTTON_ATTACH_BOTTOM) && (options&MENUBUTTON_ATTACH_CENTER)){
@@ -517,8 +517,8 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Icon?
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
 
   // Arrows?
@@ -543,9 +543,9 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw icon
   if(icon){
     if(isEnabled())
-      dc.drawIcon(icon,ix,iy);
+      dc.drawIcon(getScaledIcon(icon),ix,iy);
     else
-      dc.drawIconSunken(icon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(icon),ix,iy);
     }
 
   // Draw arrows

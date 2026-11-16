@@ -92,12 +92,12 @@ void FXTreeItem::draw(const FXTreeList* list,FXDC& dc,FXint xx,FXint yy,FXint,FX
   FXint th=0,tw=0,ih=0,iw=0;
   xx+=SIDE_SPACING/2;
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=list->getScaledIcon(icon)->getWidth();
+    ih=list->getScaledIcon(icon)->getHeight();
     if(isEnabled())
-      dc.drawIcon(icon,xx,yy+(hh-ih)/2);
+      dc.drawIcon(list->getScaledIcon(icon),xx,yy+(hh-ih)/2);
     else
-      dc.drawIconSunken(icon,xx,yy+(hh-ih)/2);
+      dc.drawIconSunken(list->getScaledIcon(icon),xx,yy+(hh-ih)/2);
     xx+=ICON_SPACING+iw;
     }
   if(!label.empty()){
@@ -127,12 +127,12 @@ FXint FXTreeItem::hitItem(const FXTreeList* list,FXint xx,FXint yy) const {
   FXint oiw=0,ciw=0,oih=0,cih=0,tw=0,th=0,iw,ih,ix,iy,tx,ty,h;
   FXFont *font=list->getFont();
   if(openIcon){
-    oiw=openIcon->getWidth();
-    oih=openIcon->getHeight();
+    oiw=list->getScaledIcon(openIcon)->getWidth();
+    oih=list->getScaledIcon(openIcon)->getHeight();
     }
   if(closedIcon){
-    ciw=closedIcon->getWidth();
-    cih=closedIcon->getHeight();
+    ciw=list->getScaledIcon(closedIcon)->getWidth();
+    cih=list->getScaledIcon(closedIcon)->getHeight();
     }
   if(!label.empty()){
     tw=4+font->getTextWidth(label.text(),label.length());
@@ -302,8 +302,8 @@ FXString FXTreeItem::getTipText() const {
 FXint FXTreeItem::getWidth(const FXTreeList* list) const {
   FXFont *font=list->getFont();
   FXint w=0,oiw=0,ciw=0;
-  if(openIcon) oiw=openIcon->getWidth();
-  if(closedIcon) ciw=closedIcon->getWidth();
+  if(openIcon) oiw=list->getScaledIcon(openIcon)->getWidth();
+  if(closedIcon) ciw=list->getScaledIcon(closedIcon)->getWidth();
   w=FXMAX(oiw,ciw);
   if(!label.empty()){
     if(w) w+=ICON_SPACING;
@@ -317,8 +317,8 @@ FXint FXTreeItem::getWidth(const FXTreeList* list) const {
 FXint FXTreeItem::getHeight(const FXTreeList* list) const {
   FXFont *font=list->getFont();
   FXint th=0,oih=0,cih=0;
-  if(openIcon) oih=openIcon->getHeight();
-  if(closedIcon) cih=closedIcon->getHeight();
+  if(openIcon) oih=list->getScaledIcon(openIcon)->getHeight();
+  if(closedIcon) cih=list->getScaledIcon(closedIcon)->getHeight();
   if(!label.empty()) th=4+font->getFontHeight();
   return FXMAX3(th,oih,cih);
   }

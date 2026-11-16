@@ -126,6 +126,33 @@ int main(int argc,char** argv){
   FXBMPIcon icon(&application,bmp);
   errors+=check("icon",icon.getData(),icon.getWidth(),icon.getHeight());
 
+  // Scaled copies of the created icon: made once per scale, kept with the icon
+  application.create();
+  icon.create();
+  FXIcon* one=icon.getScaledIcon(1.0);
+  if(one!=&icon){
+    fprintf(stderr,"scale 1.0 did not return the icon itself\n");
+    errors++;
+    }
+  FXIcon* big=icon.getScaledIcon(2.0);
+  if(big==&icon || big->getWidth()!=2*W || big->getHeight()!=2*H){
+    fprintf(stderr,"scale 2.0 gave %dx%d, expected %dx%d\n",big->getWidth(),big->getHeight(),2*W,2*H);
+    errors++;
+    }
+  if(icon.getScaledIcon(2.0)!=big){
+    fprintf(stderr,"scale 2.0 was made twice\n");
+    errors++;
+    }
+  if(big->getScaledIcon(3.0)!=big){
+    fprintf(stderr,"a scaled copy was scaled again\n");
+    errors++;
+    }
+  FXIcon* odd=icon.getScaledIcon(1.5);
+  if(odd->getWidth()!=(W*3+1)/2 || odd->getHeight()!=H*3/2){
+    fprintf(stderr,"scale 1.5 gave %dx%d\n",odd->getWidth(),odd->getHeight());
+    errors++;
+    }
+
   if(errors){
     printf("%d errors\n",errors);
     return 1;

@@ -424,6 +424,9 @@ public:
   /// Return the display scale applied to theme metrics and fonts of this window
   FXdouble getDisplayScale() const;
 
+  /// Return the icon to measure and draw for this window: the icon scaled to the display scale of the window
+  FXIcon* getScaledIcon(FXIcon* icon) const;
+
   /// Return the value of a theme metric at this window's display scale
   FXint metric(FXint subject) const;
 

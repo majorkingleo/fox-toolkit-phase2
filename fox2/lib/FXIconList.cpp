@@ -153,15 +153,15 @@ void FXIconItem::drawBigIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
     ss=BIG_TEXT_SPACING;    // Space between text and icon only added if we have both icon and text
     }
   if(bigIcon){
-    iw=bigIcon->getWidth();
-    ih=bigIcon->getHeight();
+    iw=list->getScaledIcon(bigIcon)->getWidth();
+    ih=list->getScaledIcon(bigIcon)->getHeight();
     xi=x+(w-iw)/2;
     yi=y+BIG_LINE_SPACING/2+(h-th-BIG_LINE_SPACING-ss-ih)/2;
     if(isSelected()){
-      dc.drawIconShaded(bigIcon,xi,yi);
+      dc.drawIconShaded(list->getScaledIcon(bigIcon),xi,yi);
       }
     else{
-      dc.drawIcon(bigIcon,xi,yi);
+      dc.drawIcon(list->getScaledIcon(bigIcon),xi,yi);
       }
     }
   }
@@ -175,13 +175,13 @@ void FXIconItem::drawMiniIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FX
   x+=SIDE_SPACING/2;
   space=w-SIDE_SPACING;
   if(miniIcon){
-    iw=miniIcon->getWidth();
-    ih=miniIcon->getHeight();
+    iw=list->getScaledIcon(miniIcon)->getWidth();
+    ih=list->getScaledIcon(miniIcon)->getHeight();
     if(isSelected()){
-      dc.drawIconShaded(miniIcon,x,y+(h-ih)/2);
+      dc.drawIconShaded(list->getScaledIcon(miniIcon),x,y+(h-ih)/2);
       }
     else{
-      dc.drawIcon(miniIcon,x,y+(h-ih)/2);
+      dc.drawIcon(list->getScaledIcon(miniIcon),x,y+(h-ih)/2);
       }
     x+=iw+MINI_TEXT_SPACING;
     space-=iw+MINI_TEXT_SPACING;
@@ -237,10 +237,10 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
     }
   xx=x+SIDE_SPACING/2;
   if(miniIcon){
-    iw=miniIcon->getWidth();
-    ih=miniIcon->getHeight();
+    iw=list->getScaledIcon(miniIcon)->getWidth();
+    ih=list->getScaledIcon(miniIcon)->getHeight();
     dc.setClipRectangle(x,y,header->getItemSize(0),h);
-    dc.drawIcon(miniIcon,xx,y+(h-ih)/2);
+    dc.drawIcon(list->getScaledIcon(miniIcon),xx,y+(h-ih)/2);
     dc.clearClipRectangle();
     xx+=iw+DETAIL_TEXT_SPACING;
     }
@@ -296,8 +296,8 @@ FXint FXIconItem::hitItem(const FXIconList* list,FXint rx,FXint ry,FXint rw,FXin
       if(bigIcon) ss=BIG_TEXT_SPACING;
       }
     if(bigIcon){
-      iw=bigIcon->getWidth();
-      ih=bigIcon->getHeight();
+      iw=list->getScaledIcon(bigIcon)->getWidth();
+      ih=list->getScaledIcon(bigIcon)->getHeight();
       }
     ty=h-th-BIG_LINE_SPACING/2;
     iy=BIG_LINE_SPACING/2+(h-th-BIG_LINE_SPACING-ss-ih)/2;
@@ -309,8 +309,8 @@ FXint FXIconItem::hitItem(const FXIconList* list,FXint rx,FXint ry,FXint rw,FXin
     ix=SIDE_SPACING/2;
     tx=SIDE_SPACING/2;
     if(miniIcon){
-      iw=miniIcon->getWidth();
-      ih=miniIcon->getHeight();
+      iw=list->getScaledIcon(miniIcon)->getWidth();
+      ih=list->getScaledIcon(miniIcon)->getHeight();
       tx+=iw+MINI_TEXT_SPACING;
       sp=sp-iw-MINI_TEXT_SPACING;
       }
@@ -327,8 +327,8 @@ FXint FXIconItem::hitItem(const FXIconList* list,FXint rx,FXint ry,FXint rw,FXin
     ix=SIDE_SPACING/2;
     tx=SIDE_SPACING/2;
     if(miniIcon){
-      iw=miniIcon->getWidth();
-      ih=miniIcon->getHeight();
+      iw=list->getScaledIcon(miniIcon)->getWidth();
+      ih=list->getScaledIcon(miniIcon)->getHeight();
       tx+=iw+DETAIL_TEXT_SPACING;
       }
     if(!label.empty()){
@@ -438,12 +438,12 @@ FXint FXIconItem::getWidth(const FXIconList* list) const {
   FXint iw=0,tw=0,w=0,tlen;
   for(tlen=0; tlen<label.length() && label[tlen]!='\t'; tlen++){}
   if(options&ICONLIST_BIG_ICONS){
-    if(bigIcon) iw=bigIcon->getWidth();
+    if(bigIcon) iw=list->getScaledIcon(bigIcon)->getWidth();
     if(!label.empty()) tw=4+font->getTextWidth(label.text(),tlen);
     w=SIDE_SPACING+FXMAX(tw,iw);
     }
   else if(options&ICONLIST_MINI_ICONS){
-    if(miniIcon) iw=miniIcon->getWidth();
+    if(miniIcon) iw=list->getScaledIcon(miniIcon)->getWidth();
     if(!label.empty()) tw=4+font->getTextWidth(label.text(),tlen);
     if(iw && tw) iw+=MINI_TEXT_SPACING;
     w=SIDE_SPACING+iw+tw;
@@ -461,18 +461,18 @@ FXint FXIconItem::getHeight(const FXIconList* list) const {
   FXuint options=list->getListStyle();
   FXint ih=0,th=0,h=0;
   if(options&ICONLIST_BIG_ICONS){
-    if(bigIcon) ih=bigIcon->getHeight();
+    if(bigIcon) ih=list->getScaledIcon(bigIcon)->getHeight();
     if(!label.empty()) th=4+font->getFontHeight();
     if(ih && th) ih+=BIG_TEXT_SPACING;
     h=BIG_LINE_SPACING+ih+th;
     }
   else if(options&ICONLIST_MINI_ICONS){
-    if(miniIcon) ih=miniIcon->getHeight();
+    if(miniIcon) ih=list->getScaledIcon(miniIcon)->getHeight();
     if(!label.empty()) th=4+font->getFontHeight();
     h=FXMAX(ih,th);
     }
   else{
-    if(miniIcon) ih=miniIcon->getHeight();
+    if(miniIcon) ih=list->getScaledIcon(miniIcon)->getHeight();
     if(!label.empty()) th=4+font->getFontHeight();
     h=FXMAX(ih,th);
     }
@@ -840,7 +840,7 @@ long FXIconList::onClkHeader(FXObject*,FXSelector,void* ptr){
       // The first header item may have an icon
       if(hi==0){
         if(items[i]->miniIcon){
-          iw=items[i]->miniIcon->getWidth();
+          iw=getScaledIcon(items[i]->miniIcon)->getWidth();
           w+=iw+DETAIL_TEXT_SPACING+SIDE_SPACING/2;
           }
         }

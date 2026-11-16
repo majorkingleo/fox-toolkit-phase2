@@ -113,8 +113,8 @@ void FXHeaderItem::draw(const FXHeader* header,FXDC& dc,FXint x,FXint y,FXint w,
 
   // Icon size
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=header->getScaledIcon(icon)->getWidth();
+    ih=header->getScaledIcon(icon)->getHeight();
     }
 
   // Icon-text spacing
@@ -208,7 +208,7 @@ void FXHeaderItem::draw(const FXHeader* header,FXDC& dc,FXint x,FXint y,FXint w,
 
   // Paint icon
   if(icon){
-    dc.drawIcon(icon,ix,iy);
+    dc.drawIcon(header->getScaledIcon(icon),ix,iy);
     }
 
   // Text color
@@ -307,7 +307,7 @@ FXint FXHeaderItem::getWidth(const FXHeader* header) const {
   FXFont *font=header->getFont();
   FXint beg,end,tw,iw,s,t,w;
   tw=iw=beg=s=0;
-  if(icon) iw=icon->getWidth();
+  if(icon) iw=header->getScaledIcon(icon)->getWidth();
   do{
     end=beg;
     while(end<label.length() && label[end]!='\n') end++;
@@ -331,7 +331,7 @@ FXint FXHeaderItem::getHeight(const FXHeader* header) const {
   FXFont *font=header->getFont();
   FXint beg,end,th,ih,h;
   th=ih=beg=0;
-  if(icon) ih=icon->getHeight();
+  if(icon) ih=header->getScaledIcon(icon)->getHeight();
   do{
     end=beg;
     while(end<label.length() && label[end]!='\n') end++;

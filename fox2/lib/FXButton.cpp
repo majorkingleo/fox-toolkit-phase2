@@ -397,8 +397,8 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
     th=labelHeight(label);
     }
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
 
   just_x(tx,ix,tw,iw);
@@ -410,7 +410,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw enabled state
   if(isEnabled()){
     if(icon){
-      dc.drawIcon(icon,ix,iy);
+      dc.drawIcon(getScaledIcon(icon),ix,iy);
       }
     if(!label.empty()){
       dc.setFont(font);
@@ -425,7 +425,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw grayed-out state
   else{
     if(icon){
-      dc.drawIconSunken(icon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(icon),ix,iy);
       }
     if(!label.empty()){
       dc.setFont(font);

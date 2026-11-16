@@ -133,7 +133,7 @@ FXint FXMenuCommand::getDefaultWidth(){
   if(!label.empty()) tw=font->getTextWidth(label.text(),label.length());
   if(!accel.empty()) aw=font->getTextWidth(accel.text(),accel.length());
   if(aw && tw) aw+=5;
-  if(icon) iw=icon->getWidth()+5;
+  if(icon) iw=getScaledIcon(icon)->getWidth()+5;
   return FXMAX(iw,LEADSPACE)+tw+aw+TRAILSPACE;
   }
 
@@ -143,7 +143,7 @@ FXint FXMenuCommand::getDefaultHeight(){
   FXint th,ih;
   th=ih=0;
   if(!label.empty() || !accel.empty()) th=font->getFontHeight()+5;
-  if(icon) ih=icon->getHeight()+5;
+  if(icon) ih=getScaledIcon(icon)->getHeight()+5;
   return FXMAX(th,ih);
   }
 
@@ -279,8 +279,8 @@ long FXMenuCommand::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(backColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIconSunken(icon,3,(height-icon->getHeight())/2);
-      if(icon->getWidth()+5>xx) xx=icon->getWidth()+5;
+      dc.drawIconSunken(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
       }
     if(!label.empty()){
       yy=font->getFontAscent()+(height-font->getFontHeight())/2;
@@ -301,8 +301,8 @@ long FXMenuCommand::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(selbackColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIcon(icon,3,(height-icon->getHeight())/2);
-      if(icon->getWidth()+5>xx) xx=icon->getWidth()+5;
+      dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
       }
     if(!label.empty()){
       yy=font->getFontAscent()+(height-font->getFontHeight())/2;
@@ -319,8 +319,8 @@ long FXMenuCommand::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(backColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIcon(icon,3,(height-icon->getHeight())/2);
-      if(icon->getWidth()+5>xx) xx=icon->getWidth()+5;
+      dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
       }
     if(!label.empty()){
       yy=font->getFontAscent()+(height-font->getFontHeight())/2;

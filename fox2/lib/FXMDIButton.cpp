@@ -332,13 +332,13 @@ FXMDIWindowButton::FXMDIWindowButton(FXComposite* p,FXPopup* pup,FXObject* tgt,F
 
 
 FXint FXMDIWindowButton::getDefaultWidth(){
-  FXint w=icon?icon->getWidth():MENUBUTTONWINDOW_WIDTH;
+  FXint w=icon?getScaledIcon(icon)->getWidth():MENUBUTTONWINDOW_WIDTH;
   return padleft+padright+(border<<1)+w;
   }
 
 
 FXint FXMDIWindowButton::getDefaultHeight(){
-  FXint h=icon?icon->getHeight():MENUBUTTONWINDOW_HEIGHT;
+  FXint h=icon?getScaledIcon(icon)->getHeight():MENUBUTTONWINDOW_HEIGHT;
   return padtop+padbottom+(border<<1)+h;
   }
 
@@ -351,8 +351,8 @@ long FXMDIWindowButton::onPaint(FXObject*,FXSelector,void* ptr){
   dc.fillRectangle(0,0,width,height);
   drawFrame(dc,0,0,width,height);
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
   else{
     iw=MENUBUTTONWINDOW_WIDTH;
@@ -361,7 +361,7 @@ long FXMDIWindowButton::onPaint(FXObject*,FXSelector,void* ptr){
   ix=(width-iw)/2;
   iy=(height-ih)/2;
   if(icon){
-    dc.drawIcon(icon,ix,iy);
+    dc.drawIcon(getScaledIcon(icon),ix,iy);
     }
   else{
     dc.setForeground(shadowColor);

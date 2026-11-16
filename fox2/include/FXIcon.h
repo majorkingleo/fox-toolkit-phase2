@@ -51,10 +51,16 @@ protected:
   FXID     etch;              // Etch pixmap
   FXColor  transp;            // Transparency color
   FXshort  thresh;            // Treshold for etch mask
+  FXColor* master;            // Pixels at the authored size, source for the scaled variants
+  FXIcon*  scaled;            // Variants of this icon at other scales
+  FXIcon*  sibling;           // Next variant in the list of the master icon
+  FXint    percent;           // Scale of this variant in percent, 0 for a master icon
 protected:
   FXIcon();
   FXColor guesstransp() const;
   FXshort guessthresh() const;
+  void snapshot();
+  void forget();
 private:
   FXIcon(const FXIcon&);
   FXIcon &operator=(const FXIcon&);
@@ -109,6 +115,17 @@ public:
   * after this operation and need to be re-filled.
   */
   virtual void resize(FXint w,FXint h) override;
+
+  /**
+  * Return the icon to draw at the given display scale, where 1.0 is the size the
+  * icon was made for.  The first request for a scale makes a copy of the icon
+  * scaled with a box filter from the original pixels and keeps it with this icon;
+  * later requests return that copy, and it is deleted together with this icon or
+  * when the pixels are rendered again.  The icon itself is returned when the scale
+  * is 1.0, when no original pixels are known (the icon was not created yet), or
+  * when it is already a scaled copy.
+  */
+  FXIcon* getScaledIcon(FXdouble scale);
 
   /// Get transparency color
   FXColor getTransparentColor() const { return transp; }

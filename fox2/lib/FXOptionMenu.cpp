@@ -129,7 +129,7 @@ FXint FXOption::getDefaultWidth(){
     iw=0;
     }
   if(icon){
-    iw=icon->getWidth();
+    iw=getScaledIcon(icon)->getWidth();
     }
   if(iw && tw) s=spacing;
   if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,iw); else w=tw+iw+s;
@@ -147,7 +147,7 @@ FXint FXOption::getDefaultHeight(){
     ih=0;
     }
   if(icon){
-    ih=icon->getHeight();
+    ih=getScaledIcon(icon)->getHeight();
     }
   if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,ih); else h=th+ih;
   return padtop+padbottom+(border<<1)+h;
@@ -168,15 +168,15 @@ long FXOption::onPaint(FXObject*,FXSelector,void* ptr){
     ih=0;
     }
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
   just_x(tx,ix,tw,iw);
   just_y(ty,iy,th,ih);
   dc.setForeground(isActive() ? selbackColor : backColor);
   dc.fillRectangle(border,border,width-border*2,height-border*2);
   if(icon){
-    dc.drawIcon(icon,ix,iy);
+    dc.drawIcon(getScaledIcon(icon),ix,iy);
     }
   else if(isActive() && !(options&OPTIONMENU_NOGLYPH)){
     drawDoubleRaisedRectangle(dc,ix,iy,MENUGLYPH_WIDTH,MENUGLYPH_HEIGHT);
@@ -489,8 +489,8 @@ long FXOptionMenu::onPaint(FXObject*,FXSelector,void* ptr){
     ih=0;
     }
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
 
   just_x(tx,ix,tw,iw);
@@ -499,7 +499,7 @@ long FXOptionMenu::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw enabled state
   if(isEnabled()){
     if(icon){
-      dc.drawIcon(icon,ix,iy);
+      dc.drawIcon(getScaledIcon(icon),ix,iy);
       }
     else if (!(options&OPTIONMENU_NOGLYPH)){
       drawDoubleRaisedRectangle(dc,ix,iy,MENUGLYPH_WIDTH,MENUGLYPH_HEIGHT);
@@ -517,7 +517,7 @@ long FXOptionMenu::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw grayed-out state
   else{
     if(icon){
-      dc.drawIconSunken(icon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(icon),ix,iy);
       }
     else if (!(options&OPTIONMENU_NOGLYPH)){
       drawDoubleRaisedRectangle(dc,ix,iy,MENUGLYPH_WIDTH,MENUGLYPH_HEIGHT);

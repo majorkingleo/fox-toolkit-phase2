@@ -345,6 +345,12 @@ FXdouble FXWindow::getDisplayScale() const {
   }
 
 
+// Return the icon to measure and draw for this window
+FXIcon* FXWindow::getScaledIcon(FXIcon* icon) const {
+  return icon ? icon->getScaledIcon(getDisplayScale()) : nullptr;
+  }
+
+
 // Return the value of a theme metric at this window's display scale
 FXint FXWindow::metric(FXint subject) const {
   return getApp()->getTheme()->metric(subject,getDisplayScale());

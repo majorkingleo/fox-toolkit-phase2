@@ -131,7 +131,7 @@ FXint FXMenuTitle::getDefaultWidth(){
   FXint tw,iw;
   tw=iw=0;
   if(!label.empty()) tw=font->getTextWidth(label.text(),label.length());
-  if(icon) iw=icon->getWidth();
+  if(icon) iw=getScaledIcon(icon)->getWidth();
   if(iw && tw) iw+=5;
   return tw+iw+12;
   }
@@ -142,7 +142,7 @@ FXint FXMenuTitle::getDefaultHeight(){
   FXint th,ih;
   th=ih=0;
   if(!label.empty()) th=font->getFontHeight();
-  if(icon) ih=icon->getHeight();
+  if(icon) ih=getScaledIcon(icon)->getHeight();
   return FXMAX(th,ih)+4;
   }
 
@@ -388,8 +388,8 @@ long FXMenuTitle::onPaint(FXObject*,FXSelector,void* ptr){
       dc.fillRectangle(0,0,width,height);
       }
     if(icon){
-      dc.drawIcon(icon,xx,yy+(height-icon->getHeight())/2);
-      xx+=5+icon->getWidth();
+      dc.drawIcon(getScaledIcon(icon),xx,yy+(height-getScaledIcon(icon)->getHeight())/2);
+      xx+=5+getScaledIcon(icon)->getWidth();
       }
     if(!label.empty()){
       yy+=font->getFontAscent()+(height-font->getFontHeight())/2;
@@ -404,8 +404,8 @@ long FXMenuTitle::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(backColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIconSunken(icon,xx,yy+(height-icon->getHeight())/2);
-      xx+=5+icon->getWidth();
+      dc.drawIconSunken(getScaledIcon(icon),xx,yy+(height-getScaledIcon(icon)->getHeight())/2);
+      xx+=5+getScaledIcon(icon)->getWidth();
       }
     if(!label.empty()){
       yy+=font->getFontAscent()+(height-font->getFontHeight())/2;

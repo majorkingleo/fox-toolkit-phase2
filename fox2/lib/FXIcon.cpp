@@ -72,12 +72,12 @@ FXIMPLEMENT(FXIcon,FXImage,nullptr,0)
 
 
 // For deserialization
-FXIcon::FXIcon():shape(0),etch(0),transp(0),thresh(382){
+FXIcon::FXIcon():shape(0),etch(0),transp(0),thresh(382),master(nullptr),scaled(nullptr),sibling(nullptr),percent(0){
   }
 
 
 // Initialize nicely
-FXIcon::FXIcon(FXApp* a,const FXColor *pix,FXColor clr,FXuint opts,FXint w,FXint h):FXImage(a,pix,opts,w,h),shape(0),etch(0),transp(clr),thresh(382){
+FXIcon::FXIcon(FXApp* a,const FXColor *pix,FXColor clr,FXuint opts,FXint w,FXint h):FXImage(a,pix,opts,w,h),shape(0),etch(0),transp(clr),thresh(382),master(nullptr),scaled(nullptr),sibling(nullptr),percent(0){
   FXTRACE(TOPIC_CONSTRUCT,"FXIcon::FXIcon %p\n",this);
   }
 
@@ -125,6 +125,90 @@ FXshort FXIcon::guessthresh() const {
   }
 
 
+// Remember the pixels at the authored size; the copies at other scales are made from them
+void FXIcon::snapshot(){
+  if(percent==0 && data && 0<width && 0<height){
+    forget();
+    freeElms(master);
+    if(!dupElms(master,data,width*height)) master=nullptr;
+    }
+  }
+
+
+// Delete the copies at other scales
+void FXIcon::forget(){
+  while(scaled){
+    FXIcon* icn=scaled;
+    scaled=icn->sibling;
+    icn->sibling=nullptr;
+    delete icn;
+    }
+  }
+
+
+// Return the icon to draw at the given display scale
+FXIcon* FXIcon::getScaledIcon(FXdouble scale){
+  FXint pct=(FXint)(scale*100.0+0.5);
+  if(percent!=0 || !master || pct<=0 || pct==100) return this;
+
+  // Already made for this scale
+  for(FXIcon* icn=scaled; icn; icn=icn->sibling){
+    if(icn->percent==pct) return icn;
+    }
+
+  // Size of the copy
+  FXint w=FXMAX((width*pct+50)/100,1);
+  FXint h=FXMAX((height*pct+50)/100,1);
+  if(w==width && h==height) return this;
+
+  // Scale premultiplied pixels, otherwise the color of transparent pixels bleeds into the edge
+  FXColor* pix=nullptr;
+  if(!dupElms(pix,master,width*height)) return this;
+  FXbool opaque=(options&IMAGE_OPAQUE)!=0;
+  FXbool keyed=!opaque && (options&(IMAGE_ALPHACOLOR|IMAGE_ALPHAGUESS))!=0;
+  FXbool binary=opaque || keyed;
+  FXint i;
+  for(i=0; i<width*height; i++){
+    FXuchar* p=(FXuchar*)(pix+i);
+    FXuint a=opaque ? 255 : keyed ? ((master[i]==transp) ? 0 : 255) : p[3];
+    if(a!=0 && a!=255) binary=false;
+    p[0]=(FXuchar)((p[0]*a+127)/255);
+    p[1]=(FXuchar)((p[1]*a+127)/255);
+    p[2]=(FXuchar)((p[2]*a+127)/255);
+    p[3]=(FXuchar)a;
+    }
+
+  // The copy has an alpha channel instead of a transparent color
+  FXIcon* icn=new FXIcon(getApp(),pix,transp,(options&(IMAGE_OPAQUE|IMAGE_NEAREST|IMAGE_THRESGUESS))|IMAGE_OWNED,width,height);
+  icn->percent=pct;
+  icn->thresh=thresh;
+  icn->scale(w,h,1);
+
+  // Back to straight alpha; pixels of an icon with a hard edge are either there or not
+  FXColor* out=icn->getData();
+  for(i=0; i<w*h; i++){
+    FXuchar* p=(FXuchar*)(out+i);
+    FXuint a=p[3];
+    if(binary && a<128){
+      out[i]=0;
+      }
+    else if(a!=0){
+      FXuint r=(p[0]*255+a/2)/a;
+      FXuint g=(p[1]*255+a/2)/a;
+      FXuint b=(p[2]*255+a/2)/a;
+      p[0]=(FXuchar)FXMIN(r,255);
+      p[1]=(FXuchar)FXMIN(g,255);
+      p[2]=(FXuchar)FXMIN(b,255);
+      if(binary) p[3]=255;
+      }
+    }
+  icn->create();
+  icn->sibling=scaled;
+  scaled=icn;
+  return icn;
+  }
+
+
 // Detach icon
 void FXIcon::detach(){
   visual->detach();
@@ -140,6 +224,8 @@ void FXIcon::detach(){
 // Clean up
 FXIcon::~FXIcon(){
   FXTRACE(TOPIC_CONSTRUCT,"FXIcon::~FXIcon %p\n",this);
+  forget();
+  freeElms(master);
   destroy();
   }
 

@@ -287,8 +287,8 @@ void FXTableItem::drawContent(const FXTable* table,FXDC& dc,FXint x,FXint y,FXin
   // Icon size
   iw=ih=0;
   if(icn){
-    iw=icn->getWidth();
-    ih=icn->getHeight();
+    iw=table->getScaledIcon(icn)->getWidth();
+    ih=table->getScaledIcon(icn)->getHeight();
     }
 
   // Icon-text spacing
@@ -331,7 +331,7 @@ void FXTableItem::drawContent(const FXTable* table,FXDC& dc,FXint x,FXint y,FXin
 
   // Paint icon
   if(icn){
-    dc.drawIcon(icn,ix,iy);
+    dc.drawIcon(table->getScaledIcon(icn),ix,iy);
     }
 
   // Text color
@@ -501,7 +501,7 @@ FXint FXTableItem::getWidth(const FXTable* table) const {
   FXString lbl=getText();
   FXIcon  *icn=getIcon();
   tw=iw=beg=s=0;
-  if(icn) iw=icn->getWidth();
+  if(icn) iw=table->getScaledIcon(icn)->getWidth();
   do{
     end=beg;
     while(end<lbl.length() && lbl[end]!='\n') end++;
@@ -527,7 +527,7 @@ FXint FXTableItem::getHeight(const FXTable* table) const {
   FXString lbl=getText();
   FXIcon  *icn=getIcon();
   th=ih=beg=0;
-  if(icn) ih=icn->getHeight();
+  if(icn) ih=table->getScaledIcon(icn)->getHeight();
   do{
     end=beg;
     while(end<lbl.length() && lbl[end]!='\n') end++;

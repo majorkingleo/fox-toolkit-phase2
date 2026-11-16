@@ -302,8 +302,8 @@ long FXMenuCascade::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(backColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIconSunken(icon,3,(height-icon->getHeight())/2);
-      if(icon->getWidth()+5>xx) xx=icon->getWidth()+5;
+      dc.drawIconSunken(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
       }
     if(!label.empty()){
       yy=font->getFontAscent()+(height-font->getFontHeight())/2;
@@ -326,8 +326,8 @@ long FXMenuCascade::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(selbackColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIcon(icon,3,(height-icon->getHeight())/2);
-      if(icon->getWidth()+5>xx) xx=icon->getWidth()+5;
+      dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
       }
     if(!label.empty()){
       yy=font->getFontAscent()+(height-font->getFontHeight())/2;
@@ -348,8 +348,8 @@ long FXMenuCascade::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(backColor);
     dc.fillRectangle(0,0,width,height);
     if(icon){
-      dc.drawIcon(icon,3,(height-icon->getHeight())/2);
-      if(icon->getWidth()+5>xx) xx=icon->getWidth()+5;
+      dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
+      if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
       }
     if(!label.empty()){
       yy=font->getFontAscent()+(height-font->getFontHeight())/2;

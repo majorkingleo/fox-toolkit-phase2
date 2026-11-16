@@ -259,16 +259,16 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
     th=labelHeight(label);
     }
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
   just_x(tx,ix,tw,iw);
   just_y(ty,iy,th,ih);
   if(icon){
     if(isEnabled())
-      dc.drawIcon(icon,ix,iy);
+      dc.drawIcon(getScaledIcon(icon),ix,iy);
     else
-      dc.drawIconSunken(icon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(icon),ix,iy);
     }
   if(!label.empty()){
     dc.setFont(font);

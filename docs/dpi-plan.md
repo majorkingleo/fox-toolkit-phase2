@@ -357,8 +357,8 @@ build is required:
    96-DPI size, each bar scales it at its window; `setBarSize()` pins a bar).
    Remaining: hard-coded pixel sizes in sliders, icons and `FXPacker` spacing,
    and Wayland window DPI.
-2. **DPI-keyed icon/bitmap caches.** Cache as `(image,dpi)` and rebuild on DPI
-   change once icons are wired into the subset.
+2. **DPI-keyed icon/bitmap caches.** Icons: done, `FXIcon::getScaledIcon()` keeps one
+   scaled copy per display scale with the icon (a single-size source is scaled, no multi-size icon yet); bitmaps are still open.
 3. **Real monitor validation.** Repeat the `tests/dpi` checks on a 150% and a
    200% monitor, then move a live window between monitors of different scale
    and confirm size, fonts, metrics, hit targets, and pointer alignment.

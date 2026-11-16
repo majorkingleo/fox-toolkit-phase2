@@ -249,13 +249,13 @@ void FXPathBox::disable(){
 
 // Get default width
 FXint FXPathBox::getDefaultWidth(){
-  return padleft+padright+(border<<1)+columns*font->getTextWidth("8",1)+icon->getWidth()+ICON_SPACING;
+  return padleft+padright+(border<<1)+columns*font->getTextWidth("8",1)+getScaledIcon(icon)->getWidth()+ICON_SPACING;
   }
 
 
 // Get default height
 FXint FXPathBox::getDefaultHeight(){
-  return padtop+padbottom+(border<<1)+Math::imax(font->getFontHeight(),icon->getHeight());
+  return padtop+padbottom+(border<<1)+Math::imax(font->getFontHeight(),getScaledIcon(icon)->getHeight());
   }
 
 
@@ -277,7 +277,7 @@ FXint FXPathBox::getPathComponent(FXint mx,FXint my,FXint& f,FXint& t) const {
   if(ll<=mx && mx<rr && tt<=my && my<bb){
     FXint dw=font->getTextWidth("...",3);
     FXint th=font->getFontHeight();
-    FXint iw=icon->getWidth();
+    FXint iw=getScaledIcon(icon)->getWidth();
     FXint aw=(th-6)>>1;
     FXint tw,b,e;
 
@@ -437,8 +437,8 @@ long FXPathBox::onPaint(FXObject*,FXSelector,void* ptr){
   FXint tt=border+padtop;
   FXint th=font->getFontHeight();
   FXint dw=font->getTextWidth("...",3);
-  FXint ih=icon->getHeight();
-  FXint iw=icon->getWidth();
+  FXint ih=getScaledIcon(icon)->getHeight();
+  FXint iw=getScaledIcon(icon)->getWidth();
   FXint aw=(th-6)/2;
   FXint f,t,b,e,iy,ty,ww;
 
@@ -494,7 +494,7 @@ long FXPathBox::onPaint(FXObject*,FXSelector,void* ptr){
     ty+=font->getFontAscent();
 
     // Draw icon
-    dc.drawIcon(icon,ll,iy);
+    dc.drawIcon(getScaledIcon(icon),ll,iy);
     ll+=iw+ICON_SPACING;
 
     // Root '/'

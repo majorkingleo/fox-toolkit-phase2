@@ -129,6 +129,9 @@ void FXIcon::render(){
     // Render the image (color) pixels as usual
     FXImage::render();
 
+    // Remember the pixels for the scaled copies
+    snapshot();
+
     // Fill with pixels if there is data
     if(data && 0<width && 0<height){
 

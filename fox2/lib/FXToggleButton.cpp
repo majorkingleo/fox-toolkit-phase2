@@ -135,12 +135,12 @@ FXint FXToggleButton::getDefaultWidth(){
 
   tw=iw=s=0;
   if(!label.empty()) tw=labelWidth(label);
-  if(icon) iw=icon->getWidth();
+  if(icon) iw=getScaledIcon(icon)->getWidth();
   if(iw && tw) s=spacing;
   if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w1=FXMAX(tw,iw); else w1=tw+iw+s;
 
   if(!altlabel.empty()) tw=labelWidth(altlabel);
-  if(alticon) iw=alticon->getWidth();
+  if(alticon) iw=getScaledIcon(alticon)->getWidth();
   if(iw && tw) s=spacing;
   if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w2=FXMAX(tw,iw); else w2=tw+iw+s;
 
@@ -154,11 +154,11 @@ FXint FXToggleButton::getDefaultHeight(){
 
   th=ih=0;
   if(!label.empty()) th=labelHeight(label);
-  if(icon) ih=icon->getHeight();
+  if(icon) ih=getScaledIcon(icon)->getHeight();
   if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h1=FXMAX(th,ih); else h1=th+ih;
 
   if(!altlabel.empty()) th=labelHeight(altlabel);
-  if(alticon) ih=alticon->getHeight();
+  if(alticon) ih=getScaledIcon(alticon)->getHeight();
   if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h2=FXMAX(th,ih); else h2=th+ih;
 
   return FXMAX(h1,h2)+padtop+padbottom+(border<<1);
@@ -488,12 +488,12 @@ long FXToggleButton::onPaint(FXObject*,FXSelector,void* ptr){
     th=labelHeight(label);
     }
   if(state && alticon){
-    iw=alticon->getWidth();
-    ih=alticon->getHeight();
+    iw=getScaledIcon(alticon)->getWidth();
+    ih=getScaledIcon(alticon)->getHeight();
     }
   else if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
 
   just_x(tx,ix,tw,iw);
@@ -505,10 +505,10 @@ long FXToggleButton::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw enabled state
   if(isEnabled()){
     if(state && alticon){
-      dc.drawIcon(alticon,ix,iy);
+      dc.drawIcon(getScaledIcon(alticon),ix,iy);
       }
     else if(icon){
-      dc.drawIcon(icon,ix,iy);
+      dc.drawIcon(getScaledIcon(icon),ix,iy);
       }
     if(state && !altlabel.empty()){
       dc.setFont(font);
@@ -528,10 +528,10 @@ long FXToggleButton::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw grayed-out state
   else{
     if(state && alticon){
-      dc.drawIconSunken(alticon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(alticon),ix,iy);
       }
     else if(icon){
-      dc.drawIconSunken(icon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(icon),ix,iy);
       }
     if(state && !altlabel.empty()){
       dc.setFont(font);

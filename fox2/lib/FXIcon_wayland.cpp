@@ -87,6 +87,7 @@ void FXIcon::destroy(){
 
 // Render icon; the pixels are already where they belong
 void FXIcon::render(){
+  snapshot();
   }
 
 

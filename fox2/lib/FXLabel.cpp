@@ -270,7 +270,7 @@ FXint FXLabel::getDefaultWidth(){
     tw=labelWidth(label);
     }
   if(icon){
-    iw=icon->getWidth();
+    iw=getScaledIcon(icon)->getWidth();
     }
   if(iw && tw) s=spacing;
   if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,iw); else w=tw+iw+s;
@@ -285,7 +285,7 @@ FXint FXLabel::getDefaultHeight(){
     th=labelHeight(label);
     }
   if(icon){
-    ih=icon->getHeight();
+    ih=getScaledIcon(icon)->getHeight();
     }
   if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,ih); else h=th+ih;
   return h+padtop+padbottom+(border<<1);
@@ -339,16 +339,16 @@ long FXLabel::onPaint(FXObject*,FXSelector,void* ptr){
     th=labelHeight(label);
     }
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=getScaledIcon(icon)->getWidth();
+    ih=getScaledIcon(icon)->getHeight();
     }
   just_x(tx,ix,tw,iw);
   just_y(ty,iy,th,ih);
   if(icon){
     if(isEnabled())
-      dc.drawIcon(icon,ix,iy);
+      dc.drawIcon(getScaledIcon(icon),ix,iy);
     else
-      dc.drawIconSunken(icon,ix,iy);
+      dc.drawIconSunken(getScaledIcon(icon),ix,iy);
     }
   if(!label.empty()){
     dc.setFont(font);

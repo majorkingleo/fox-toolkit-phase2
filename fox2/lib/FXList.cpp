@@ -118,7 +118,7 @@ FXIMPLEMENT(FXListItem,FXObject,nullptr,0)
 void FXListItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FXint hh) const {
   FXFont *font=list->getFont();
   FXint ih=0,th=0;
-  if(icon) ih=icon->getHeight();
+  if(icon) ih=list->getScaledIcon(icon)->getHeight();
   if(!label.empty()) th=font->getFontHeight();
   if(isSelected())
     dc.setForeground(list->getSelBackColor());
@@ -131,10 +131,10 @@ void FXListItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FXi
   xx+=SIDE_SPACING/2;
   if(icon){
     if(isEnabled())
-      dc.drawIcon(icon,xx,yy+(hh-ih)/2);
+      dc.drawIcon(list->getScaledIcon(icon),xx,yy+(hh-ih)/2);
     else
-      dc.drawIconSunken(icon,xx,yy+(hh-ih)/2);
-    xx+=ICON_SPACING+icon->getWidth();
+      dc.drawIconSunken(list->getScaledIcon(icon),xx,yy+(hh-ih)/2);
+    xx+=ICON_SPACING+list->getScaledIcon(icon)->getWidth();
     }
   if(!label.empty()){
     if(!isEnabled())
@@ -153,8 +153,8 @@ FXint FXListItem::hitItem(const FXList* list,FXint xx,FXint yy) const {
   FXFont *font=list->getFont();
   FXint iw=0,ih=0,tw=0,th=0,ix,iy,tx,ty,h;
   if(icon){
-    iw=icon->getWidth();
-    ih=icon->getHeight();
+    iw=list->getScaledIcon(icon)->getWidth();
+    ih=list->getScaledIcon(icon)->getHeight();
     }
   if(!label.empty()){
     tw=4+font->getTextWidth(label.text(),label.length());
@@ -250,7 +250,7 @@ FXint FXListItem::getWidth(const FXList* list) const {
   FXFont *font=list->getFont();
   FXint w=0;
   if(icon){
-    w=icon->getWidth();
+    w=list->getScaledIcon(icon)->getWidth();
     }
   if(!label.empty()){
     if(w) w+=ICON_SPACING;
@@ -265,7 +265,7 @@ FXint FXListItem::getHeight(const FXList* list) const {
   FXFont *font=list->getFont();
   FXint th=0,ih=0;
   if(icon){
-    ih=icon->getHeight();
+    ih=list->getScaledIcon(icon)->getHeight();
     }
   if(!label.empty()){
     th=font->getFontHeight();
