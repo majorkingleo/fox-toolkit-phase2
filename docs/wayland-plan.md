@@ -1019,6 +1019,11 @@ platform module the ported applications were waiting for (`glviewer`).
   wrong channel order.  `tools/screencopy` now honours the buffer format,
   because the GL renderer offers ABGR buffers where the other gates have
   XRGB8888.
+- The first applications on this path are `gltest` (the spinning boxes) and the
+  ported `glviewer`: both run on KWin/EGL and on a headless sway with the GL
+  renderer, and the glviewer frame is kept as
+  `screenshots/tests/fox2/wayland/glviewer.png`.  The single buffered config
+  fix above is what makes `gltest` present its scene.
 - A window config offered by EGL may be single buffered (Mesa llvmpipe on
   Wayland offers such configs).  The visual still reports double buffering,
   because a Wayland surface always presents the new buffer on commit;

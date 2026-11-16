@@ -439,6 +439,7 @@ apps/controlpanel/Makefile
 apps/chart/Makefile
 apps/pathfinder/Makefile
 apps/adie/Makefile
+apps/glviewer/Makefile
 tests/Makefile
 fox-1.7.pc
 fox-config])
