@@ -56,6 +56,15 @@
 // Frame style mask, matching FXFrame
 #define FRAME_MASK (FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK)
 
+
+// Blend color a toward color b by the given percentage of b
+static FXColor blendColor(FXColor a,FXColor b,FXint percent){
+  FXint tnecrep=100-percent;
+  return FXRGB((FXREDVAL(a)*tnecrep+FXREDVAL(b)*percent+50)/100,
+               (FXGREENVAL(a)*tnecrep+FXGREENVAL(b)*percent+50)/100,
+               (FXBLUEVAL(a)*tnecrep+FXBLUEVAL(b)*percent+50)/100);
+  }
+
 // Rectangle helpers that take the colors of the widget instead of the theme;
 // a widget may carry its own highlight, shadow and border colors
 static void fillBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXColor border){
@@ -360,6 +369,26 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
 
   // Rounded chrome, when the theme asks for it
   if(0<radius){
+    FXColor accent=theme->color(ROLE_ACCENT);
+
+    // Breeze-like face: a light button on a light surface, a slightly lifted
+    // one on a dark surface, with the same state shading as the GTK style
+    face=theme->color(ROLE_BUTTON);
+    if(!state.enabled){
+      face=blendColor(face,surface,45);
+      edge=blendColor(edge,surface,45);
+      }
+    else if(state.down){
+      face=blendColor(face,accent,33);
+      }
+    else if(state.engaged){
+      face=blendColor(face,state.text,12);
+      }
+
+    // Hover, keyboard focus and the default button get an accent border
+    if(state.enabled && (state.hover || state.focused || state.defaulted)){
+      edge=accent;
+      }
 
     // Windows are created with a black background pixel, so the area outside
     // the rounded shape must be filled with the parent's color first

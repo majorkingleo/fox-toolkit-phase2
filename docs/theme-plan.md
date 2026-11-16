@@ -97,6 +97,7 @@ so mapping is mechanical and reversible:
 | `TooltipBg` / `TooltipText` | `tipbackColor` / `tipforeColor` |
 | `Accent` | `selbackColor` (new role, same default) |
 | `FocusRing` | `Accent` (new role) |
+| `Button` | `Surface` (new role; Breeze/KDE import their real button face) |
 
 State variants are resolved by `FXTheme` from the base roles rather than stored
 individually: `Normal`, `Hover`, `Active`, `Disabled`, `Selected`, `Focused`.
@@ -362,6 +363,7 @@ This machine already has useful corpora for the GTK path:
 | `theme_selected_fg_color` | `SelectionText` |
 | `insensitive_bg_color` / `insensitive_fg_color` | `Surface`, `TextDisabled` |
 | `borders` | `Border` |
+| `theme_button_background_normal*` / `button_bg_color` | `Button` |
 | `unfocused_bg_color` / `unfocused_fg_color` | `WindowBg`, `TextDisabled` |
 | `theme_unfocused_selected_bg_color` | `SelectionBg` (inactive variant) |
 
@@ -899,6 +901,19 @@ selecting one renders surface `#EFF0F1` / `#202326` with corner radius 5, the
 GTK filter shows 4 installed themes and the system filter 16, and the written
 settings contain the source path plus the mapped palette; selecting `FOX`
 restores radius 0 and writes `theme=classic` again.
+
+**Progress — Breeze button chrome (2026-11-16).** KCalc shows the target:
+the push button face is `#FCFCFC` on the `#EFF0F1` Breeze surface, with a
+`#C6C8C9` one-pixel border, radius 5 and an accent border on hover, focus or
+for the default button.  The theme model gained `ROLE_BUTTON`, filled from
+`theme_button_background_normal_breeze` in GTK CSS and from
+`[Colors:Button] BackgroundNormal` in KDE schemes, with a surface-derived
+fallback (`#FCFCFC` light, `#292C30` dark).  `FXStyle::drawButton()` uses that
+role for rounded buttons, shades checked/pressed/disabled states, and gives
+hovered/focused/default buttons the accent border.  Rounded buttons no longer
+draw a second focus ring on top of the accent border.  Classic buttons, which
+have radius 0, remain pixel-identical because their button role equals the
+surface color.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

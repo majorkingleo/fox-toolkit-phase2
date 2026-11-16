@@ -54,6 +54,15 @@ namespace FX {
 // Longest chain of color indirections we follow
 #define CSS_DEPTH  8
 
+
+// Face of a push button derived from the surface, for themes that name no
+// explicit button color.  Light surfaces need a much stronger lift toward
+// white than dark surfaces, or the button either vanishes or glows.
+static FXColor buttonFace(FXColor surface){
+  FXint lum=(2*FXREDVAL(surface)+3*FXGREENVAL(surface)+FXBLUEVAL(surface))/6;
+  return makeHiliteColor(surface,lum>128?80:6);
+  }
+
 // A few names GTK themes use without defining them
 struct FXCSSName { const FXchar* name; FXuint rgb; };
 
@@ -582,6 +591,8 @@ void FXCSS::applyKde(FXTheme& theme) const {
       theme.setColor(ROLE_MENU_SEL_TEXT,clr);
       }
     }
+  value=property("[Colors:Button]","BackgroundNormal");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_BUTTON,clr); }
   value=property("[Colors:Button]","DecorationFocus");
   if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_FOCUS_RING,clr); }
 
@@ -624,6 +635,7 @@ void FXCSS::apply(FXTheme& theme) const {
   static const FXchar* tips[]={ "theme_tooltip_bg_color","tooltip_bg_color" };
   static const FXchar* tipfg[]={ "theme_tooltip_fg_color","tooltip_fg_color" };
   static const FXchar* accents[]={ "theme_selected_bg_color","accent_bg_color","accent_color" };
+  static const FXchar* buttons[]={ "theme_button_background_normal_breeze","theme_button_background_normal","theme_button_bg_color","button_bg_color" };
   FXColor clr;
 
   // Base colors, in order of preference
@@ -653,6 +665,11 @@ void FXCSS::apply(FXTheme& theme) const {
   if(clr) theme.setColor(ROLE_TOOLTIP_TEXT,clr);
   if((clr=color(accents[0]))==0 && (clr=color(accents[1]))==0) clr=color(accents[2]);
   if(clr) theme.setColor(ROLE_ACCENT,clr);
+
+  // Button face: prefer a named button background, else derive it from the surface
+  if((clr=color(buttons[0]))==0 && (clr=color(buttons[1]))==0 && (clr=color(buttons[2]))==0) clr=color(buttons[3]);
+  if(!clr) clr=buttonFace(theme.color(ROLE_SURFACE));
+  theme.setColor(ROLE_BUTTON,clr);
 
   // Metrics taken from the button rule, falling back on the theme defaults
   theme.setMetric(METRIC_CORNER_RADIUS,length("button","border-radius",theme.metric(METRIC_CORNER_RADIUS)));

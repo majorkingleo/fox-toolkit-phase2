@@ -55,6 +55,7 @@ enum {
   ROLE_TOOLTIP_TEXT,      /// Tooltip text
   ROLE_ACCENT,            /// Accent color
   ROLE_FOCUS_RING,        /// Keyboard focus ring
+  ROLE_BUTTON,            /// Button face
   ROLE_LAST
   };
 
