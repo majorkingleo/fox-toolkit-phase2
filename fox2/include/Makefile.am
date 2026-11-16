@@ -142,6 +142,7 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXTable.h \
 FX7Segment.h \
 FXImageFrame.h \
 FXCalendar.h \

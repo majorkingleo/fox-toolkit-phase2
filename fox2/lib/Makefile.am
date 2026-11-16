@@ -111,6 +111,7 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXTable.cpp \
 FX7Segment.cpp \
 FXImageFrame.cpp \
 FXCalendar.cpp \

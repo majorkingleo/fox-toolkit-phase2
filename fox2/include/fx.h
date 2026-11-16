@@ -234,6 +234,7 @@
 #include "FXCalendar.h"
 #include "FXImageFrame.h"
 #include "FX7Segment.h"
+#include "FXTable.h"
 #include "FXTabBar.h"
 #include "FXTabBook.h"
 #include "FXTabItem.h"
