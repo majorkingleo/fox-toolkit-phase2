@@ -755,13 +755,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   FXWindow* ancestor;
   FXint rx,ry;
   FXbool fresh;
-  FXEvent event;
   if(!app) return false;
 
-  // A fresh event for every dispatch: the click counting and the moved flag
-  // read fields that only a previous event would have set.  It is assigned
-  // rather than cleared, because the text is an FXString
-  event=FXEvent();
+  // The event must survive the call: the click count and the moved flag are
+  // carried from one button or motion event to the next, exactly as the X11
+  // and Win32 backends do with FXApp::event
+  FXEvent& event=this->event;
   switch(ev.code){
     case FXXWL_EXPOSE:
       if(ev.id){
