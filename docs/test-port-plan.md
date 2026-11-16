@@ -135,7 +135,13 @@ change nothing else); the library under them is never touched.
    `FXMappedFile` made a handle inheritable exactly when `FXIO::Inheritable`
    was not given (inverted; FOX 1 has the same), plus the non-Unicode
    `FXProcess::start` took the stderr handle from the output stream.
-3. C and E: `rex`, `expression`, `units` with tables of expected results.
+   Done: `thread --test` (producer queues 100 jobs in 5 groups with
+   waits in between; checks pool start, that all jobs were queued and ran,
+   stop, no threads left, second stop fails; no `getchar()`, returns 0) and
+   `parallel --test` (counting jobs: 20 pool jobs with `executeAndWait`, a
+   parallel loop covering each of 100 indices once, flat and nested
+   `FXParallelInvoke` with expected job counts 17 and 25). The interactive
+   modes are unchanged.3. C and E: `rex`, `expression`, `units` with tables of expected results.
 4. D: `math` with a bounded default.
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
 

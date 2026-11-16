@@ -14,11 +14,26 @@
   Notes:
 
   - Thread pool test.
+  - With --test no keys are waited for; the producer runs a fixed number of jobs, the
+    pool is stopped, and the number of jobs that ran is compared with the number
+    queued.  Exit code is 0 only if all checks held.
 
 */
 
 /*******************************************************************************/
 
+static FXint failures=0;
+static FXbool quiet=false;
+static volatile FXint executed=0;
+
+
+// Record a failed check
+static void check(FXbool ok,const FXchar* what){
+  if(!ok){
+    failures++;
+    printf("BAD: %s\n",what);
+    }
+  }
 
 
 // Job runner
@@ -39,20 +54,23 @@ protected:
   FXThreadPool *pool;
   FXint         count;
   FXint         groups;
+  FXint         queued;
 public:
-  Producer(FXThreadPool *p,FXint c,FXint g):pool(p),count(c),groups(g){}
+  Producer(FXThreadPool *p,FXint c,FXint g):pool(p),count(c),groups(g),queued(0){}
+  FXint getQueued() const { return queued; }
   virtual FXint run();
   };
 
 
 // Run jobs
 FXint Runner::run(){
-  fxmessage("runner %d start\n",number);
+  if(!quiet) fxmessage("runner %d start\n",number);
   value=1.0;
   for(FXint i=0; i<count; i++){
     value=Math::cos(value);
     }
-  fxmessage("runner %d done\n",number);
+  if(!quiet) fxmessage("runner %d done\n",number);
+  atomicAdd(&executed,1);
   delete this;
   return 1;
   }
@@ -62,22 +80,43 @@ FXint Runner::run(){
 // Generate jobs
 FXint Producer::run(){
   FXint job=0;
-  fxmessage("producer start on cpus: %llb\n",affinity());
+  if(!quiet) fxmessage("producer start on cpus: %llb\n",affinity());
   FXRandom rng;
   for(FXint g=0; g<groups; ++g){
     for(FXint c=0; c<count; c++){
-      if(!pool->execute(new Runner(job,(rng.randLong()/4000000)/1000000))) goto x;
-      fxmessage("producer job %d\n",job);
+      if(!pool->execute(new Runner(job,quiet?1000:(rng.randLong()/4000000)/1000000))) goto x;
+      if(!quiet) fxmessage("producer job %d\n",job);
       job++;
+      queued++;
       }
-    fxmessage("producer waiting\n");
+    if(!quiet) fxmessage("producer waiting\n");
     pool->wait();
-    fxmessage("producer resumed\n");
+    if(!quiet) fxmessage("producer resumed\n");
     }
-x:fxmessage("producer done\n");
+x:if(!quiet) fxmessage("producer done\n");
   return 1;
   }
 
+
+
+// Run a fixed number of jobs on the pool and check that all of them ran
+static void testpool(){
+  FXuint cpus=FXThread::processors();
+  FXThreadPool pool(256);
+  Producer producer(&pool,20,5);
+  FXuint started;
+  quiet=true;
+  started=pool.start(cpus);
+  check(started==cpus,"pool starts one thread per processor");
+  check(pool.getRunningThreads()>0,"pool has running threads");
+  check(producer.start(),"producer thread starts");
+  check(producer.join(),"producer thread ends");
+  check(producer.getQueued()==100,"all 100 jobs were queued");
+  check(pool.stop(),"pool stops");
+  check(executed==producer.getQueued(),"every queued job ran");
+  check(pool.getRunningThreads()==0,"no threads run after stop");
+  check(!pool.stop(),"stopping a stopped pool fails");
+  }
 
 
 // Start
@@ -85,6 +124,17 @@ int main(int argc,char* argv[]){
   fxtestargs(argc,argv);
   FXuint cpus=FXThread::processors();
   int started;
+
+  // Self-check without keyboard
+  if(1<argc && strcmp(argv[1],"--test")==0){
+    testpool();
+    if(failures){
+      printf("FAILED: %d check(s)\n",failures);
+      return 1;
+      }
+    printf("all checks passed\n");
+    return 0;
+    }
 
   // Trace
   setTraceLevel(150);
@@ -119,5 +169,5 @@ int main(int argc,char* argv[]){
   getchar();
   producer.join();
   fxmessage("bye\n");
-  return 1;
+  return 0;
   }

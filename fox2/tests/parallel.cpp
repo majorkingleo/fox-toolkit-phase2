@@ -15,12 +15,32 @@
 // Stop QTest threads
 volatile FXbool stopit=false;
 
+// Self-check mode: no output from the jobs, no busy work, only counting
+static FXbool quiet=false;
+static FXint failures=0;
+static volatile FXint churns=0;
+static volatile FXint loops=0;
+static volatile FXint loopsum=0;
+
+
+// Record a failed check
+static void check(FXbool ok,const FXchar* what){
+  if(!ok){
+    failures++;
+    printf("BAD: %s\n",what);
+    }
+  }
+
 
 /*******************************************************************************/
 
 // Make-work procedure just uses lots of CPU by drawing random numbers till
 // a number close to 1 is drawn.
 void churn(){
+  if(quiet){
+    atomicAdd(&churns,1);
+    return;
+    }
   FXRandom random(FXThread::time()+FXLONG(128628761545));
   fxmessage("Churn start th %p core %d/%d\n",(void*)FXThread::current(),FXThread::processor(),FXThread::processors());
   while(random.randDouble()<0.99999999){ }
@@ -31,6 +51,10 @@ void churn(){
 // Make-work procedure does a nested parallel call to churn, then returns.
 // This is to illustrate arbitrary nesting of parallelism.
 void churn2(){
+  if(quiet){
+    FXParallelInvoke(churn,churn,churn,churn);
+    return;
+    }
   fxmessage("Churn2 start th %p core %d/%d\n",(void*)FXThread::current(),FXThread::processor(),FXThread::processors());
   FXParallelInvoke(churn,churn,churn,churn);
   fxmessage("Churn2 done  th %p core %d/%d\n",(void*)FXThread::current(),FXThread::processor(),FXThread::processors());
@@ -40,6 +64,10 @@ void churn2(){
 // Make-work procedure does a nested parallel call to churn, then returns.
 // This is to illustrate arbitrary nesting of parallelism.
 void churn3(){
+  if(quiet){
+    FXParallelInvoke(churn2,churn2,churn2);
+    return;
+    }
   fxmessage("Churn3 start th %p core %d/%d\n",(void*)FXThread::current(),FXThread::processor(),FXThread::processors());
   FXParallelInvoke(churn2,churn2,churn2);
   fxmessage("Churn3 done  th %p core %d/%d\n",(void*)FXThread::current(),FXThread::processor(),FXThread::processors());
@@ -48,6 +76,11 @@ void churn3(){
 
 // Make-work procedure like the ones above, this one depending on loop index i.
 void looping(FXint i){
+  if(quiet){
+    atomicAdd(&loops,1);
+    atomicAdd(&loopsum,i);
+    return;
+    }
   FXRandom random(FXThread::time()+FXLONG(128628761545));
   fxmessage("Looping %05d begin th %p core %d/%d\n",i,(void*)FXThread::current(),FXThread::processor(),FXThread::processors());
   while(random.randDouble()<0.9999999){ }
@@ -104,6 +137,42 @@ FXuint powoftwo(FXuint n){
   }
 
 
+// Test the pool, the parallel loop and the parallel invoke with counting jobs
+static void testparallel(FXuint pieces,FXuint maximum){
+  FXThreadPool pool(512);
+  FXuint j;
+  quiet=true;
+  pool.setMinimumThreads(1);
+  pool.setMaximumThreads(maximum<2?2:maximum);
+  pool.setExpiration(1000000);
+  check(pool.start(2)>0,"pool starts");
+
+  // Plain jobs, the last one run with the help of the calling thread
+  for(j=1; j<20; ++j) check(pool.execute(new Job),"job is queued");
+  check(pool.executeAndWait(new Job),"job is queued and waited for");
+  check(pool.wait(),"pool waits for the jobs");
+  check(churns==20,"20 jobs ran");
+
+  // Parallel loop covers every index once
+  FXParallelFor(0U,100U,1U,pieces,looping);
+  check(loops==100,"loop body ran 100 times");
+  check(loopsum==4950,"loop body ran once for each index");
+
+  // Parallel invoke, with nesting: 5 churn and 3 churn2 (4 churn each)
+  churns=0;
+  FXParallelInvoke(churn,churn2,churn,churn,churn,churn,churn2,churn2);
+  check(churns==17,"invoke of 8 functions ran 17 churns");
+
+  // 2 churn2 (4 each), 5 churn and a churn3 (3 churn2)
+  churns=0;
+  FXParallelInvoke(churn2,churn,churn,churn3,churn,churn,churn,churn2);
+  check(churns==25,"nested invoke ran 25 churns");
+
+  check(pool.stop(),"pool stops");
+  quiet=false;
+  }
+
+
 // Test program
 int main(int argc,char* argv[]){
   fxtestargs(argc,argv);
@@ -115,6 +184,17 @@ int main(int argc,char* argv[]){
   FXuint njobs=10;
   FXuint test=2;
   FXuint wait=0;
+
+  // Self-check without keyboard
+  if(1<argc && strcmp(argv[1],"--test")==0){
+    testparallel(pieces,maximum);
+    if(failures){
+      printf("FAILED: %d check(s)\n",failures);
+      return 1;
+      }
+    printf("all checks passed\n");
+    return 0;
+    }
 
   // Grab a few arguments
   for(FXint arg=1; arg<argc; ++arg){
