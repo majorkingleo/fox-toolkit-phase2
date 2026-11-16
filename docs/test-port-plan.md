@@ -121,7 +121,11 @@ change nothing else); the library under them is never touched.
    such switch. Done: `dictest --test` (no unit test for `FXDictionary`
    existed; it checks insert, replace, lookup, remove, reuse of voided slots,
    copy, assign, adopt, erase, shrink and clear), and without `--test` an
-   empty stdin no longer divides by zero.
+   empty stdin no longer divides by zero. Done: `memmap --test` (writes a
+   temporary file through a map, reads it back whole and at an offset, changes
+   it through a read-write map, grows it through a larger map, checks sizes
+   and contents, removes the file; the interactive `read`/`write` modes stay,
+   and the program now returns 0 at the end).
 3. C and E: `rex`, `expression`, `units` with tables of expected results.
 4. D: `math` with a bounded default.
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
