@@ -50,6 +50,7 @@
 #include "FXDDSImage.h"
 #include "FXEXEImage.h"
 #include "FXQOIFImage.h"
+#include "FXSVGImage.h"
 
 // Built-in icon formats
 #include "FXBMPIcon.h"
@@ -66,6 +67,7 @@
 #include "FXDDSIcon.h"
 #include "FXEXEIcon.h"
 #include "FXQOIFIcon.h"
+#include "FXSVGIcon.h"
 
 // Formats requiring external libraries
 #ifndef CORE_IMAGE_FORMATS
@@ -179,6 +181,9 @@ FXIcon *FXIconSource::iconFromType(FXApp* app,const FXString& type) const {
   if(FXString::comparecase(FXQOIFIcon::fileExt,type)==0){
     return new FXQOIFIcon(app);
     }
+  if(FXString::comparecase(FXSVGIcon::fileExt,type)==0){
+    return new FXSVGIcon(app);
+    }
 #ifndef CORE_IMAGE_FORMATS
 #ifdef HAVE_JPEG_H
   if(FXString::comparecase(FXJPGIcon::fileExt,type)==0 || FXString::comparecase("jpeg",type)==0){
@@ -259,6 +264,9 @@ FXImage *FXIconSource::imageFromType(FXApp* app,const FXString& type) const {
   if(FXString::comparecase(FXQOIFImage::fileExt,type)==0){
     return new FXQOIFImage(app);
     }
+  if(FXString::comparecase(FXSVGImage::fileExt,type)==0){
+    return new FXSVGImage(app);
+    }
 #ifndef CORE_IMAGE_FORMATS
 #ifdef HAVE_JPEG_H
   if(FXString::comparecase(FXJPGImage::fileExt,type)==0 || FXString::comparecase("jpeg",type)==0){
@@ -326,6 +334,9 @@ FXIcon *FXIconSource::iconFromStream(FXApp* app,FXStream& store) const {
     }
   if(fxcheckQOIF(store)){
     return new FXQOIFIcon(app);
+    }
+  if(fxcheckSVG(store)){
+    return new FXSVGIcon(app);
     }
 #ifndef CORE_IMAGE_FORMATS
 #ifdef HAVE_JPEG_H
@@ -407,6 +418,9 @@ FXImage *FXIconSource::imageFromStream(FXApp* app,FXStream& store) const {
   if(fxcheckQOIF(store)){
     return new FXQOIFImage(app);
     }
+  if(fxcheckSVG(store)){
+    return new FXSVGImage(app);
+    }
 #ifndef CORE_IMAGE_FORMATS
 #ifdef HAVE_JPEG_H
   if(fxcheckJPG(store)){
@@ -480,7 +494,10 @@ FXIcon *FXIconSource::loadIconData(FXApp* app,const FXuchar *pixels,const FXStri
   FXIcon *icon=nullptr;
   if(pixels){
     FXMemoryStream store;
-    store.open(FXStreamLoad,const_cast<FXuchar*>(pixels));
+    // SVG is text, so the buffer is NUL terminated and has a length; the
+    // binary formats find their own end and need no size
+    FXuval size=(pixels[0]=='<') ? (FXuval)strlen((const FXchar*)pixels)+1 : ~0UL;
+    store.open(FXStreamLoad,const_cast<FXuchar*>(pixels),size);
     icon=loadIconStream(app,store,type);
     store.close();
     }
@@ -530,7 +547,10 @@ FXImage *FXIconSource::loadImageData(FXApp* app,const FXuchar *pixels,const FXSt
   FXImage *image=nullptr;
   if(pixels){
     FXMemoryStream store;
-    store.open(FXStreamLoad,const_cast<FXuchar*>(pixels));
+    // SVG is text, so the buffer is NUL terminated and has a length; the
+    // binary formats find their own end and need no size
+    FXuval size=(pixels[0]=='<') ? (FXuval)strlen((const FXchar*)pixels)+1 : ~0UL;
+    store.open(FXStreamLoad,const_cast<FXuchar*>(pixels),size);
     image=loadImageStream(app,store,type);
     store.close();
     }

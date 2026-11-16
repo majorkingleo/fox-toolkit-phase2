@@ -183,6 +183,9 @@ FXRASIcon.cpp \
 FXRASImage.cpp \
 FXQOIFIcon.cpp \
 FXQOIFImage.cpp \
+FXSVGImage.cpp \
+FXSVGIcon.cpp \
+fxsvgio.cpp \
 FXPPMIcon.cpp \
 FXPPMImage.cpp \
 FXPNGIcon.cpp \
@@ -529,7 +532,7 @@ endif
 
 noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxglyphs.h fxglpriv.h fxraster.h fxrects.h fxstipples.h fxwinmap.h
 
-EXTRA_DIST = \
+EXTRA_DIST = nanosvg.h nanosvgrast.h nanosvg-LICENSE.txt \
 blank_mask.xbm \
 blank.xbm \
 crosshair_mask.xbm \
