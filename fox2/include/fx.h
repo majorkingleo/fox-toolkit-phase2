@@ -286,6 +286,7 @@
 #include "FXMDIButton.h"
 #include "FXMDIClient.h"
 #include "FXMDIChild.h"
+#include "FXShutter.h"
 #include "FXTabBar.h"
 #include "FXTabBook.h"
 #include "FXTabItem.h"

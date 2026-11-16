@@ -143,6 +143,7 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXShutter.h \
 FXMDIClient.h \
 FXMDIChild.h \
 FXMDIButton.h \
