@@ -50,6 +50,7 @@ public:
   FXhalf(FXfloat f){
     union { FXfloat f; FXuint u; } r={f};
     v=fhb[(r.u>>23)&0x1ff]+((r.u&0x007fffff)>>fhs[(r.u>>23)&0x1ff]);
+    if(((r.u&0x7fffffff)>0x7f800000) && (v&0x3ff)==0) v|=0x200;      // NaN must not turn into infinity
     }
 
   // Convert half to float

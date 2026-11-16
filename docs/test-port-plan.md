@@ -181,6 +181,11 @@ change nothing else); the library under them is never touched.
      digits (the C library is exact), so differing strings must still agree
      within 5e-16. Fixed: `%010f` of Inf or NaN padded with zeros instead of
      spaces.
+   - `half --test` done: all 65536 halves converted to float and compared with
+     an exact `ldexp` value and converted back, known float to half cases
+     (limits, overflow, underflow, signed zero), halves around each rounding
+     midpoint, monotonic conversion and the arithmetic operators. Fixed: a NaN
+     float with only low mantissa bits set became infinity in `FXhalf`.
 
 One commit per step, each with the result of both platforms in its message.
 
