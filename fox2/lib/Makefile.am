@@ -42,6 +42,7 @@ FXDCWindow.cpp \
 FXDebugTarget.cpp \
 FXDir.cpp \
 FXDialogBox.cpp \
+FXDirVisitor.cpp \
 FXDragCorner.cpp \
 FXDrawable.cpp \
 fxezquantize.cpp \
@@ -103,6 +104,7 @@ FXShell.cpp \
 FXSlider.cpp \
 FXStat.cpp \
 FXScrollArea.cpp \
+FXSearchDialog.cpp \
 FXScrollBar.cpp \
 FXScrollWindow.cpp \
 FXObjectList.cpp \
@@ -117,6 +119,7 @@ FXConsole.cpp \
 FXGLCanvas.cpp \
 FXGLContext.cpp \
 FXGLVisual.cpp \
+FXGlobVisitor.cpp \
 FXShutter.cpp \
 FXMDIClient.cpp \
 FXMDIChild.cpp \
@@ -192,6 +195,7 @@ FXCalendar.cpp \
 FXCalendarView.cpp \
 FXWizard.cpp \
 FXProgressDialog.cpp \
+FXReplaceDialog.cpp \
 FXKnob.cpp \
 FXDate.cpp \
 FXDirDialog.cpp \
@@ -272,6 +276,7 @@ FXCSS.cpp \
 FXThemeCache.cpp \
 FXDesktopSettings.cpp \
 FX88592Codec.cpp \
+FXCP1252Codec.cpp \
 FXArray.cpp \
 FXCompletion.cpp \
 FXDictionary.cpp \
@@ -297,6 +302,7 @@ FXRex.cpp \
 FXThreadPool.cpp \
 FXTaskGroup.cpp \
 FXUnits.cpp \
+FXUndoList.cpp \
 FXUTF32Codec.cpp \
 FXUTF8Codec.cpp \
 FXVariant.cpp \
