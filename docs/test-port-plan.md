@@ -298,6 +298,10 @@ and the commit that fixed it.
 | switcher | File List page is empty (no directory set in the test) | original behaviour |
 | group 1 | widgets missing in fox2 (spring, header, splitters, tool bars, lists, file/dir dialogs, ...) | copied from fox-1.7.95 (0d65dfc, e365bd4, 102b753, 389631c, 777e970) |
 | switcher, tabbook | FXIconSource only needs BMP and GIF | fox2 copy trimmed to those formats |
+| dialog | dialog opened on a 96 DPI monitor was clipped: `WM_DPICHANGED` scaled the size, fixed pixel margins did not scale | client area kept at least default size (`FXApp_win32.cpp`) |
+| group 2 | widgets missing in fox2 (wizard, knob, 7-segment, calendar, date, progress dialog, image frame) | copied from fox-1.7.95 |
+| datatarget, calendar | fixed window geometry clips content at 144 DPI | by design, see dpi-plan.md |
+| capture script | window rectangle and DWM bounds differed on mixed-DPI monitors (crop failed) | script is now per-monitor-v2 aware |
 
 ## Status
 
@@ -305,7 +309,7 @@ and the commit that fixed it.
 | --- | --- |
 | 0 Groundwork | done |
 | 1 Layout containers | done |
-| 2 Dialogs and data | not started |
+| 2 Dialogs and data | done |
 | 3 Lists and files | not started |
 | 4 Drawing | not started |
 | 5 Special cases | not started |

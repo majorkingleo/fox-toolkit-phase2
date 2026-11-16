@@ -111,6 +111,14 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FX7Segment.cpp \
+FXImageFrame.cpp \
+FXCalendar.cpp \
+FXCalendarView.cpp \
+FXWizard.cpp \
+FXProgressDialog.cpp \
+FXKnob.cpp \
+FXDate.cpp \
 FXDirDialog.cpp \
 FXDirSelector.cpp \
 FXFileDialog.cpp \

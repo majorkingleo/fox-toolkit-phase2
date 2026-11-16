@@ -12,7 +12,7 @@
 # skipped, and the script returns the number of such programs. The smoke tests
 # (bmpicon, textspin, combo, colordlg, fontdlg) end at once and are not listed.
 param(
-  [string[]]$Programs = @('hello','button','dpi','popup','click','menus','tooltip','clipboard','dnd','icon','hello2','layout','ratio','header','splitter','foursplit','gaugetest','switcher','tabbook','groupbox'),
+  [string[]]$Programs = @('hello','button','dpi','popup','click','menus','tooltip','clipboard','dnd','icon','hello2','layout','ratio','header','splitter','foursplit','gaugetest','switcher','tabbook','groupbox','dialog','wizard','datatarget','calendar'),
   [string]$BuildDir,
   [string]$OutDir,
   [double]$Delay = 1.5,
@@ -36,7 +36,7 @@ using System;
 using System.Runtime.InteropServices;
 public static class ShotWin {
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr ctx);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
@@ -66,7 +66,8 @@ public static class ShotWin {
   [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
   }
 '@
-[void][ShotWin]::SetProcessDPIAware()
+# per-monitor v2, so the window rectangle and the DWM bounds use the same pixels on every monitor
+[void][ShotWin]::SetProcessDpiAwarenessContext([IntPtr]-4)
 
 # Save the window h as a PNG; returns false when the window has no size
 function Save-Window([IntPtr]$h,[string]$file){

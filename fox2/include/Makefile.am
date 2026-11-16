@@ -142,6 +142,14 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FX7Segment.h \
+FXImageFrame.h \
+FXCalendar.h \
+FXCalendarView.h \
+FXWizard.h \
+FXProgressDialog.h \
+FXKnob.h \
+FXDate.h \
 FXDirDialog.h \
 FXDirSelector.h \
 FXFileDialog.h \
