@@ -64,7 +64,7 @@ namespace FX {
 #define FXTCSIZE    (64*1024)
 
 // Version of the importer; bump this whenever imported values change
-static const FXint fxtcdefaultversion=1;
+static const FXint fxtcdefaultversion=2;
 
 // Cache counters
 FXint FXThemeCache::importerVersion=fxtcdefaultversion;

@@ -980,6 +980,14 @@ repaint after its buttons and covered them until the pointer moved.  The
 parent repaint is now requested only when the parent is actually the combo or
 list-box shell; ordinary dialog buttons do not touch their container.
 
+**Progress — tooltips (2026-11-16).** GTK tooltip import now checks the
+Breeze names `tooltip_background_breeze`, `tooltip_text_breeze` and their
+generic variants, so Breeze imports `#F7F7F7` on `#232629` instead of the
+classic pale yellow.  `FXToolTip` paints a themed background, uses the theme's
+border and rounded rectangle, and takes its padding from `METRIC_PADDING`;
+classic tips keep the original fixed spacing and border.  Rounded outer
+corners and a drop shadow still need an alpha/shaped popup surface.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane

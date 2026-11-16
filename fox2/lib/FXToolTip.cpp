@@ -67,6 +67,21 @@ using namespace FX;
 
 namespace FX {
 
+
+
+// Padding for a themed tip; the classic tip keeps its fixed padding
+static FXint tipHSPACE(FXWindow* win){
+  FXTheme *theme=win->getApp()->getTheme();
+  return 0<theme->metric(METRIC_CORNER_RADIUS,win->getDisplayScale()) ? FXMAX(theme->metric(METRIC_PADDING,win->getDisplayScale())/2,2) : HSPACE;
+  }
+
+
+static FXint tipVSPACE(FXWindow* win){
+  FXTheme *theme=win->getApp()->getTheme();
+  return 0<theme->metric(METRIC_CORNER_RADIUS,win->getDisplayScale()) ? FXMAX(theme->metric(METRIC_PADDING,win->getDisplayScale())/2,2) : VSPACE;
+  }
+
+
 // Map
 FXDEFMAP(FXToolTip) FXToolTipMap[]={
   FXMAPFUNC(SEL_UPDATE,0,FXToolTip::onUpdate),
@@ -146,7 +161,7 @@ FXint FXToolTip::getDefaultWidth(){
       }
     while(*end!='\0');
     }
-  return tw+HSPACE+HSPACE+2;
+  return tw+tipHSPACE(this)*2+2;
   }
 
 
@@ -164,7 +179,7 @@ FXint FXToolTip::getDefaultHeight(){
       }
     while(*end!='\0');
     }
-  return th+VSPACE+VSPACE+2;
+  return th+tipVSPACE(this)*2+2;
   }
 
 
@@ -176,13 +191,20 @@ long FXToolTip::onPaint(FXObject*,FXSelector,void* ptr){
   FXint tx,ty;
   dc.setForeground(backColor);
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
-  dc.setForeground(textColor);
   dc.setFont(font);
-  dc.drawRectangle(0,0,width-1,height-1);
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(0<radius){
+    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,backColor,theme->color(ROLE_BORDER),1);
+    }
+  else{
+    dc.setForeground(textColor);
+    dc.drawRectangle(0,0,width-1,height-1);
+    }
   beg=label.text();
   if(beg){
-    tx=1+HSPACE;
-    ty=1+VSPACE+font->getFontAscent();
+    tx=1+tipHSPACE(this);
+    ty=1+tipVSPACE(this)+font->getFontAscent();
     do{
       end=beg;
       while(*end!='\0' && *end!='\n') end++;

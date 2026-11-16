@@ -30,7 +30,7 @@ Priority:
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height and focus handling; hover rows, alternates and scrollbars remain. |
 | `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline and disabled colors; the widget has no placeholder API. |
 | `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; popup shadow remains. |
-| `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
+| `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. |
 | `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
 | `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; Wayland check mark is antialiased. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
@@ -42,7 +42,7 @@ Priority:
 | `FXScrollBar` | OPEN | Trough, thumb, hover/pressed/focus states, arrow buttons, radius, thickness from `METRIC_ROW_HEIGHT`/a scrollbar metric. |
 | `FXScrollArea` | OPEN | Viewport background and border; clipping/rounding of the viewport; scrollbar spacing. |
 | `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
-| `FXToolTip` | PARTIAL | Rounded popup frame and shadow in addition to the colors/font. |
+| `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | OPEN | Tab background, selected/hover/focus states, tab radius/height, underline/accent, padding. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
