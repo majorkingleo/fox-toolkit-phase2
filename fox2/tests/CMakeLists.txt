@@ -1,4 +1,4 @@
-foreach(prog hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin combo colordlg fontdlg idle hello2 layout ratio header splitter foursplit gaugetest switcher tabbook)
+foreach(prog hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin combo colordlg fontdlg idle hello2 layout ratio header splitter foursplit gaugetest switcher tabbook groupbox)
   add_executable(${prog} ${prog}.cpp)
   target_link_libraries(${prog} PRIVATE FOX::FOX m)
 endforeach()
