@@ -305,6 +305,12 @@ and the commit that fixed it.
 | switcher | header and items of the file list and tree list kept the font of the system DPI on a 96 DPI monitor | `applyTheme` in header, icon list, tree list, gauge, progress bar, calendar view (0bc101f) |
 | table | row height 20 and column width 100 are fixed pixels: headers clipped at 144 DPI | `FXTable::applyTheme` rescales defaults, rows, columns and headers with the display scale |
 | group 3 | `FXTable` missing in fox2 | copied from fox-1.7.95 |
+| group 4 | image codecs, `FXBitmap`, bitmap and image views, gradient bar, ruler, tool bar tab, print widgets, cursors and the `fx*io.cpp` codec sources missing in fox2 | copied from fox-1.7.95; `FXIconSource` is the original again, with all codecs |
+| `FXBitmap` | one file with Windows and X11 code in the middle | split into `FXBitmap.cpp`, `FXBitmap_win32.cpp`, `FXBitmap_x11.cpp`, `FXBitmap_wayland.cpp` (client buffer is the bitmap, as for `FXImage`) |
+| `fxjpegio` | `jmorecfg.h` pulls in `shlwapi.h`, and `xincs.h` leaves `VOID` undefined | `VOID` defined again before the include (Windows only) |
+| bitmapviewer | calls libtiff directly, but the codec libraries are private to the library | linked against `FOX_PRIVATE_LIBRARIES` in `tests/CMakeLists.txt` |
+| image | ruler numbers kept the font of the system DPI | `FXRuler::applyTheme` retargets the font |
+| BMP icons | the corner pixel is taken as transparent colour, so a red 32 bit BMP loses its background | upstream behaviour, unchanged |
 
 ## Status
 
@@ -314,5 +320,5 @@ and the commit that fixed it.
 | 1 Layout containers | done |
 | 2 Dialogs and data | done |
 | 3 Lists and files | done |
-| 4 Drawing | not started |
+| 4 Drawing | done |
 | 5 Special cases | not started |

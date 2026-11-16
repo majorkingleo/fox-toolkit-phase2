@@ -1,7 +1,11 @@
-foreach(prog hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin combo colordlg fontdlg idle hello2 layout ratio header splitter foursplit gaugetest switcher tabbook groupbox dialog wizard datatarget calendar dirlist iconlist table)
+foreach(prog hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin combo colordlg fontdlg idle hello2 layout ratio header splitter foursplit gaugetest switcher tabbook groupbox dialog wizard datatarget calendar dirlist iconlist table image imageviewer scribble dctest)
   add_executable(${prog} ${prog}.cpp)
   target_link_libraries(${prog} PRIVATE FOX::FOX m)
 endforeach()
+
+# bitmapviewer calls libtiff directly when it is available
+add_executable(bitmapviewer bitmapviewer.cpp)
+target_link_libraries(bitmapviewer PRIVATE FOX::FOX ${FOX_PRIVATE_LIBRARIES} m)
 
 # Console tests: no display required
 set(FOX_CONSOLE_TESTS codecs desktop dictest expression format glyphs half match math memmap minheritance parallel process region rex scan thread timefmt unicode units variant winmap xml)

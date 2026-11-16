@@ -38,11 +38,62 @@
 // Built-in image formats
 #include "FXBMPImage.h"
 #include "FXGIFImage.h"
+#include "FXICOImage.h"
+#include "FXIFFImage.h"
+#include "FXPCXImage.h"
+#include "FXPPMImage.h"
+#include "FXRASImage.h"
+#include "FXRGBImage.h"
+#include "FXTGAImage.h"
+#include "FXXBMImage.h"
+#include "FXXPMImage.h"
+#include "FXDDSImage.h"
+#include "FXEXEImage.h"
+#include "FXQOIFImage.h"
 
 // Built-in icon formats
 #include "FXBMPIcon.h"
 #include "FXGIFIcon.h"
+#include "FXICOIcon.h"
+#include "FXIFFIcon.h"
+#include "FXPCXIcon.h"
+#include "FXPPMIcon.h"
+#include "FXRASIcon.h"
+#include "FXRGBIcon.h"
+#include "FXTGAIcon.h"
+#include "FXXBMIcon.h"
+#include "FXXPMIcon.h"
+#include "FXDDSIcon.h"
+#include "FXEXEIcon.h"
+#include "FXQOIFIcon.h"
 
+// Formats requiring external libraries
+#ifndef CORE_IMAGE_FORMATS
+#ifdef HAVE_JPEG_H
+#include "FXJPGImage.h"
+#include "FXJPGIcon.h"
+#endif
+#ifdef HAVE_ZLIB_H
+#include "FXPNGImage.h"
+#include "FXPNGIcon.h"
+#endif
+#ifdef HAVE_TIFF_H
+#include "FXTIFImage.h"
+#include "FXTIFIcon.h"
+#endif
+#endif
+#ifdef HAVE_JP2_H
+#include "FXJP2Image.h"
+#include "FXJP2Icon.h"
+#endif
+#ifdef HAVE_WEBP_H
+#include "FXWEBPImage.h"
+#include "FXWEBPIcon.h"
+#endif
+#ifdef HAVE_JXL_H
+#include "FXJXLImage.h"
+#include "FXJXLIcon.h"
+#endif
 
 /*
   Notes:
@@ -92,6 +143,74 @@ FXIcon *FXIconSource::iconFromType(FXApp* app,const FXString& type) const {
   if(FXString::comparecase(FXGIFIcon::fileExt,type)==0){
     return new FXGIFIcon(app);
     }
+  if(FXString::comparecase(FXICOIcon::fileExt,type)==0 || FXString::comparecase("cur",type)==0){
+    return new FXICOIcon(app);
+    }
+  if(FXString::comparecase(FXIFFIcon::fileExt,type)==0 || FXString::comparecase("lbm",type)==0){
+    return new FXIFFIcon(app);
+    }
+  if(FXString::comparecase(FXPCXIcon::fileExt,type)==0){
+    return new FXPCXIcon(app);
+    }
+  if(FXString::comparecase(FXPPMIcon::fileExt,type)==0 || FXString::comparecase("pbm",type)==0 || FXString::comparecase("pgm",type)==0 || FXString::comparecase("pnm",type)==0){
+    return new FXPPMIcon(app);
+    }
+  if(FXString::comparecase(FXRASIcon::fileExt,type)==0){
+    return new FXRASIcon(app);
+    }
+  if(FXString::comparecase(FXRGBIcon::fileExt,type)==0){
+    return new FXRGBIcon(app);
+    }
+  if(FXString::comparecase(FXTGAIcon::fileExt,type)==0){
+    return new FXTGAIcon(app);
+    }
+  if(FXString::comparecase(FXXBMIcon::fileExt,type)==0){
+    return new FXXBMIcon(app);
+    }
+  if(FXString::comparecase(FXXPMIcon::fileExt,type)==0){
+    return new FXXPMIcon(app);
+    }
+  if(FXString::comparecase(FXDDSIcon::fileExt,type)==0){
+    return new FXDDSIcon(app);
+    }
+  if(FXString::comparecase(FXEXEIcon::fileExt,type)==0){
+    return new FXEXEIcon(app);
+    }
+  if(FXString::comparecase(FXQOIFIcon::fileExt,type)==0){
+    return new FXQOIFIcon(app);
+    }
+#ifndef CORE_IMAGE_FORMATS
+#ifdef HAVE_JPEG_H
+  if(FXString::comparecase(FXJPGIcon::fileExt,type)==0 || FXString::comparecase("jpeg",type)==0){
+    return new FXJPGIcon(app);
+    }
+#endif
+#ifdef HAVE_ZLIB_H
+  if(FXString::comparecase(FXPNGIcon::fileExt,type)==0){
+    return new FXPNGIcon(app);
+    }
+#endif
+#ifdef HAVE_TIFF_H
+  if(FXString::comparecase(FXTIFIcon::fileExt,type)==0 || FXString::comparecase("tiff",type)==0){
+    return new FXTIFIcon(app);
+    }
+#endif
+#ifdef HAVE_JP2_H
+  if(FXString::comparecase(FXJP2Icon::fileExt,type)==0){
+    return new FXJP2Icon(app);
+    }
+#endif
+#ifdef HAVE_WEBP_H
+  if(FXString::comparecase(FXWEBPIcon::fileExt,type)==0){
+    return new FXWEBPIcon(app);
+    }
+#endif
+#ifdef HAVE_JXL_H
+  if(FXString::comparecase(FXJXLIcon::fileExt,type)==0){
+    return new FXJXLIcon(app);
+    }
+#endif
+#endif
   return nullptr;
   }
 
@@ -104,6 +223,74 @@ FXImage *FXIconSource::imageFromType(FXApp* app,const FXString& type) const {
   if(FXString::comparecase(FXGIFImage::fileExt,type)==0){
     return new FXGIFImage(app);
     }
+  if(FXString::comparecase(FXICOImage::fileExt,type)==0 || FXString::comparecase("cur",type)==0){
+    return new FXICOImage(app);
+    }
+  if(FXString::comparecase(FXIFFImage::fileExt,type)==0 || FXString::comparecase("lbm",type)==0){
+    return new FXIFFImage(app);
+    }
+  if(FXString::comparecase(FXPCXImage::fileExt,type)==0){
+    return new FXPCXImage(app);
+    }
+  if(FXString::comparecase(FXPPMImage::fileExt,type)==0 || FXString::comparecase("pbm",type)==0 || FXString::comparecase("pgm",type)==0 || FXString::comparecase("pnm",type)==0){
+    return new FXPPMImage(app);
+    }
+  if(FXString::comparecase(FXRASImage::fileExt,type)==0){
+    return new FXRASImage(app);
+    }
+  if(FXString::comparecase(FXRGBImage::fileExt,type)==0){
+    return new FXRGBImage(app);
+    }
+  if(FXString::comparecase(FXTGAImage::fileExt,type)==0){
+    return new FXTGAImage(app);
+    }
+  if(FXString::comparecase(FXXBMImage::fileExt,type)==0){
+    return new FXXBMImage(app);
+    }
+  if(FXString::comparecase(FXXPMImage::fileExt,type)==0){
+    return new FXXPMImage(app);
+    }
+  if(FXString::comparecase(FXDDSImage::fileExt,type)==0){
+    return new FXDDSImage(app);
+    }
+  if(FXString::comparecase(FXEXEImage::fileExt,type)==0){
+    return new FXEXEImage(app);
+    }
+  if(FXString::comparecase(FXQOIFImage::fileExt,type)==0){
+    return new FXQOIFImage(app);
+    }
+#ifndef CORE_IMAGE_FORMATS
+#ifdef HAVE_JPEG_H
+  if(FXString::comparecase(FXJPGImage::fileExt,type)==0 || FXString::comparecase("jpeg",type)==0){
+    return new FXJPGImage(app);
+    }
+#endif
+#ifdef HAVE_ZLIB_H
+  if(FXString::comparecase(FXPNGImage::fileExt,type)==0){
+    return new FXPNGImage(app);
+    }
+#endif
+#ifdef HAVE_TIFF_H
+  if(FXString::comparecase(FXTIFImage::fileExt,type)==0 || FXString::comparecase("tiff",type)==0){
+    return new FXTIFImage(app);
+    }
+#endif
+#ifdef HAVE_JP2_H
+  if(FXString::comparecase(FXJP2Image::fileExt,type)==0){
+    return new FXJP2Image(app);
+    }
+#endif
+#ifdef HAVE_WEBP_H
+  if(FXString::comparecase(FXWEBPImage::fileExt,type)==0){
+    return new FXWEBPImage(app);
+    }
+#endif
+#ifdef HAVE_JXL_H
+  if(FXString::comparecase(FXJXLImage::fileExt,type)==0){
+    return new FXJXLImage(app);
+    }
+#endif
+#endif
   return nullptr;
   }
 
@@ -116,6 +303,74 @@ FXIcon *FXIconSource::iconFromStream(FXApp* app,FXStream& store) const {
   if(fxcheckGIF(store)){
     return new FXGIFIcon(app);
     }
+  if(fxcheckIFF(store)){
+    return new FXIFFIcon(app);
+    }
+  if(fxcheckPPM(store)){
+    return new FXPPMIcon(app);
+    }
+  if(fxcheckRAS(store)){
+    return new FXRASIcon(app);
+    }
+  if(fxcheckXBM(store)){
+    return new FXXBMIcon(app);
+    }
+  if(fxcheckXPM(store)){
+    return new FXXPMIcon(app);
+    }
+  if(fxcheckDDS(store)){
+    return new FXDDSIcon(app);
+    }
+  if(fxcheckEXE(store)){
+    return new FXEXEIcon(app);
+    }
+  if(fxcheckQOIF(store)){
+    return new FXQOIFIcon(app);
+    }
+#ifndef CORE_IMAGE_FORMATS
+#ifdef HAVE_JPEG_H
+  if(fxcheckJPG(store)){
+    return new FXJPGIcon(app);
+    }
+#endif
+#ifdef HAVE_ZLIB_H
+  if(fxcheckPNG(store)){
+    return new FXPNGIcon(app);
+    }
+#endif
+#ifdef HAVE_TIFF_H
+  if(fxcheckTIF(store)){
+    return new FXTIFIcon(app);
+    }
+#endif
+#ifdef HAVE_JP2_H
+  if(fxcheckJP2(store)){
+    return new FXJP2Icon(app);
+    }
+#endif
+#ifdef HAVE_WEBP_H
+  if(fxcheckWEBP(store)){
+    return new FXWEBPIcon(app);
+    }
+#endif
+#endif
+#ifdef HAVE_JXL_H
+  if(fxcheckJXL(store)){
+    return new FXJXLIcon(app);
+    }
+#endif
+  if(fxcheckPCX(store)){
+    return new FXPCXIcon(app);
+    }
+  if(fxcheckICO(store)){
+    return new FXICOIcon(app);
+    }
+  if(fxcheckRGB(store)){
+    return new FXRGBIcon(app);
+    }
+  if(fxcheckTGA(store)){
+    return new FXTGAIcon(app);
+    }
   return nullptr;
   }
 
@@ -127,6 +382,74 @@ FXImage *FXIconSource::imageFromStream(FXApp* app,FXStream& store) const {
     }
   if(fxcheckGIF(store)){
     return new FXGIFImage(app);
+    }
+  if(fxcheckIFF(store)){
+    return new FXIFFImage(app);
+    }
+  if(fxcheckPPM(store)){
+    return new FXPPMImage(app);
+    }
+  if(fxcheckRAS(store)){
+    return new FXRASImage(app);
+    }
+  if(fxcheckXBM(store)){
+    return new FXXBMImage(app);
+    }
+  if(fxcheckXPM(store)){
+    return new FXXPMImage(app);
+    }
+  if(fxcheckDDS(store)){
+    return new FXDDSImage(app);
+    }
+  if(fxcheckEXE(store)){
+    return new FXEXEImage(app);
+    }
+  if(fxcheckQOIF(store)){
+    return new FXQOIFImage(app);
+    }
+#ifndef CORE_IMAGE_FORMATS
+#ifdef HAVE_JPEG_H
+  if(fxcheckJPG(store)){
+    return new FXJPGImage(app);
+    }
+#endif
+#ifdef HAVE_ZLIB_H
+  if(fxcheckPNG(store)){
+    return new FXPNGImage(app);
+    }
+#endif
+#ifdef HAVE_TIFF_H
+  if(fxcheckTIF(store)){
+    return new FXTIFImage(app);
+    }
+#endif
+#ifdef HAVE_JP2_H
+  if(fxcheckJP2(store)){
+    return new FXJP2Image(app);
+    }
+#endif
+#ifdef HAVE_WEBP_H
+  if(fxcheckWEBP(store)){
+    return new FXWEBPImage(app);
+    }
+#endif
+#endif
+#ifdef HAVE_JXL_H
+  if(fxcheckJXL(store)){
+    return new FXJXLImage(app);
+    }
+#endif
+  if(fxcheckPCX(store)){
+    return new FXPCXImage(app);
+    }
+  if(fxcheckICO(store)){
+    return new FXICOImage(app);
+    }
+  if(fxcheckRGB(store)){
+    return new FXRGBImage(app);
+    }
+  if(fxcheckTGA(store)){
+    return new FXTGAImage(app);
     }
   return nullptr;
   }
