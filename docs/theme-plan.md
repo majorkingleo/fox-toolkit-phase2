@@ -913,7 +913,10 @@ role for rounded buttons, shades checked/pressed/disabled states, and gives
 hovered/focused/default buttons the accent border.  Rounded buttons no longer
 draw a second focus ring on top of the accent border.  Classic buttons, which
 have radius 0, remain pixel-identical because their button role equals the
-surface color.
+surface color.  The Wayland fallback had passed the radius doubled to
+`fillRoundRectangle()`/`drawRoundRectangle()` (those take the radius, not the
+arc diameter), which made the corners twice as round as GTK's; the fallback and
+the focus ring now pass the radius once.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

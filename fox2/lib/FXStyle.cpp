@@ -282,7 +282,7 @@ void FXStyle::drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXdou
     r=FXMIN(radius,FXMIN(w,h)/2);
     dc.setForeground(theme->color(ROLE_FOCUS_RING));
     dc.setLineWidth(width);
-    dc.drawRoundRectangle(x+width/2,y+width/2,w-width,h-width,r*2,r*2);
+    dc.drawRoundRectangle(x+width/2,y+width/2,w-width,h-width,r,r);
     dc.setLineWidth(1);
     return;
     }
@@ -401,10 +401,10 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
     // Fallback: hard-edged rounded shape, corners stay transparent
     FXint rr=FXMIN(radius,FXMIN(w,h)/2);
     dc.setForeground(face);
-    dc.fillRoundRectangle(x,y,w,h,rr*2,rr*2);
+    dc.fillRoundRectangle(x,y,w,h,rr,rr);
     if(0<borderWidth){
       dc.setForeground(edge);
-      dc.drawRoundRectangle(x,y,w,h,rr*2,rr*2);
+      dc.drawRoundRectangle(x,y,w,h,rr,rr);
       }
     return FXRectangle(x,y,w,h);
     }
