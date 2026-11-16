@@ -109,6 +109,9 @@ public:
   /// Draw keyboard focus ring at the given display scale; 0 uses the theme scale
   virtual void drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXdouble scale=0.0);
 
+  /// Draw a rounded rectangle with a solid face and border; returns true for the rounded path
+  FXbool drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth=1);
+
   /// Draw border rectangle
   void drawBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
 

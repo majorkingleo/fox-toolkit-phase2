@@ -335,6 +335,31 @@ void FXStyle::drawGrooveRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h
   }
 
 
+// Draw a rounded rectangle with a solid face and border.  Used by the small
+// controls (check and radio indicators) that need the same antialiased chrome
+// as a button without its shadow and state machinery.
+FXbool FXStyle::drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
+  if(0<radius){
+    if(drawRoundRect(dc,x,y,w,h,radius,face,border,borderWidth)) return true;
+    FXint rr=FXMIN(radius,FXMIN(w,h)/2);
+    dc.setForeground(face);
+    dc.fillRoundRectangle(x,y,w,h,rr,rr);
+    if(0<borderWidth){
+      dc.setForeground(border);
+      dc.drawRoundRectangle(x,y,w,h,rr,rr);
+      }
+    return true;
+    }
+  dc.setForeground(face);
+  dc.fillRectangle(x,y,w,h);
+  if(0<borderWidth){
+    dc.setForeground(border);
+    dc.drawRectangle(x,y,w-1,h-1);
+    }
+  return false;
+  }
+
+
 // Draw frame chrome for the given frame options
 void FXStyle::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options){
   drawFrame(dc,x,y,w,h,options,theme->color(ROLE_SURFACE_HILITE),theme->color(ROLE_SURFACE_SHADOW),theme->color(ROLE_BORDER),theme->color(ROLE_SURFACE));

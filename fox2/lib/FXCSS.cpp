@@ -684,6 +684,7 @@ void FXCSS::apply(FXTheme& theme) const {
   theme.setMetric(METRIC_BORDER_WIDTH,length("button","border-width",theme.metric(METRIC_BORDER_WIDTH)));
   theme.setMetric(METRIC_PADDING,length("button","padding",theme.metric(METRIC_PADDING)));
   theme.setMetric(METRIC_FOCUS_WIDTH,length("button","outline-width",theme.metric(METRIC_FOCUS_WIDTH)));
+  theme.setMetric(METRIC_CHECK_SIZE,length("check","min-width",theme.metric(METRIC_CHECK_SIZE)));
 
   // Raised and sunken edges follow the imported surface
   theme.setColor(ROLE_SURFACE_HILITE,makeHiliteColor(theme.color(ROLE_SURFACE)));

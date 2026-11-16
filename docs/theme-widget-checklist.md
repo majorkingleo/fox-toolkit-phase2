@@ -32,6 +32,7 @@ Priority:
 | `FXListBox`, `FXComboBox` | PARTIAL | Field/list colors; arrow and popup chrome remain classic. |
 | `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
 | `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
+| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
 
 ## P0: chrome needed for a native-looking dialog
@@ -47,7 +48,6 @@ Priority:
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
 | `FXMenuButton`, `FXOptionMenu` | OPEN | These derive from `FXLabel`, not `FXButton`; they need button chrome and an arrow color/state. |
-| `FXCheckButton`, `FXRadioButton` | PARTIAL | Label colors/fonts follow the theme, but `boxColor`, `checkColor`, `diskColor` and `radioColor` do not; need indicator size/radius and hover/focus states. |
 | `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | OPEN | Menu background/text, selected/hover background/text, check/radio marks, separator color and menu item height. |
 
 ## P1: common input and data widgets
@@ -117,7 +117,7 @@ use the seam.
 
 - Control/entry/button height.
 - Menu row height and tab height.
-- Scrollbar thickness, slider thickness and check indicator size.
+- Scrollbar thickness and slider thickness.
 - Tab padding and notebook border width.
 - Per-widget corner radius (entry, menu/popup, tab, scrollbar), not just one
   global `corner_radius`.

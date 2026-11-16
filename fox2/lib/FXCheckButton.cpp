@@ -54,6 +54,22 @@ using namespace FX;
 
 namespace FX {
 
+
+// Blend color a toward color b by the given percentage of b
+static FXColor blendColor(FXColor a,FXColor b,FXint percent){
+  FXint tnecrep=100-percent;
+  return FXRGB((FXREDVAL(a)*tnecrep+FXREDVAL(b)*percent+50)/100,
+               (FXGREENVAL(a)*tnecrep+FXGREENVAL(b)*percent+50)/100,
+               (FXBLUEVAL(a)*tnecrep+FXBLUEVAL(b)*percent+50)/100);
+  }
+
+
+// Size of the check indicator for the current theme and display scale
+static FXint indicatorSize(FXWindow* win){
+  return FXMAX(win->getApp()->getTheme()->metric(METRIC_CHECK_SIZE,win->getDisplayScale()),9);
+  }
+
+
 // Map
 FXDEFMAP(FXCheckButton) FXCheckButtonMap[]={
   FXMAPFUNC(SEL_UPDATE,0,FXCheckButton::onUpdate),
@@ -109,12 +125,12 @@ FXbool FXCheckButton::canFocus() const { return true; }
 
 // Get default width
 FXint FXCheckButton::getDefaultWidth(){
-  FXint tw=0,s=0,w;
+  FXint tw=0,s=0,w=indicatorSize(this);
   if(!label.empty()){
     tw=labelWidth(label);
     s=spacing;
     }
-  if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,13); else w=tw+13+s;
+  if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,indicatorSize(this)); else w=tw+indicatorSize(this)+s;
   return padleft+padright+w+(border<<1);
   }
 
@@ -125,8 +141,22 @@ FXint FXCheckButton::getDefaultHeight(){
   if(!label.empty()){
     th=labelHeight(label);
     }
-  if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,13); else h=th+13;
+  if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,indicatorSize(this)); else h=th+indicatorSize(this);
   return padtop+padbottom+h+(border<<1);
+  }
+
+
+// Re-apply theme colors and indicator metrics
+void FXCheckButton::applyTheme(FXTheme* theme){
+  FXLabel::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    if(!boxColorOverride) boxColor=theme->color(ROLE_BUTTON);
+    if(!checkColorOverride) checkColor=theme->color(ROLE_TEXT);
+    }
+  else{
+    if(!boxColorOverride) boxColor=getApp()->getBackColor();
+    if(!checkColorOverride) checkColor=getApp()->getForeColor();
+    }
   }
 
 
@@ -212,6 +242,7 @@ long FXCheckButton::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
 long FXCheckButton::onEnter(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onEnter(sender,sel,ptr);
   if(isEnabled() && (flags&FLAG_PRESSED)) setCheck(!oldcheck);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -220,6 +251,7 @@ long FXCheckButton::onEnter(FXObject* sender,FXSelector sel,void* ptr){
 long FXCheckButton::onLeave(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onLeave(sender,sel,ptr);
   if(isEnabled() && (flags&FLAG_PRESSED)) setCheck(oldcheck);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -337,12 +369,65 @@ long FXCheckButton::onPaint(FXObject*,FXSelector,void* ptr){
     }
 
   // Placement
-  just_x(tx,ix,tw,13);
-  just_y(ty,iy,th,13);
+  FXint isize=indicatorSize(this);
+  just_x(tx,ix,tw,isize);
+  just_y(ty,iy,th,isize);
 
   // Widget background
   dc.setForeground(backColor);
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+
+  // Themed check indicator
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXColor box=theme->color(ROLE_BUTTON);
+    FXColor edge=theme->color(ROLE_BORDER);
+    FXColor mark=theme->color(ROLE_TEXT);
+    FXColor hov=theme->color(ROLE_HOVER_RING);
+    FXColor foc=theme->color(ROLE_FOCUS_RING);
+    FXColor surf=theme->color(ROLE_SURFACE);
+    FXint radius=FXMIN(theme->metric(METRIC_CORNER_RADIUS,getDisplayScale()),isize/2);
+    if(!isEnabled()){
+      box=blendColor(box,surf,45);
+      edge=blendColor(edge,surf,45);
+      mark=theme->color(ROLE_TEXT_DISABLED);
+      }
+    else{
+      if(check!=false){ box=blendColor(box,hov,33); edge=hov; }
+      if(underCursor()) edge=hov;
+      if(hasFocus()) edge=foc;
+      }
+    getApp()->getStyle()->drawRoundedRectangle(dc,ix,iy,isize,isize,radius,box,edge,1);
+    dc.setForeground(mark);
+    if(check!=false){
+      if(options&CHECKBUTTON_PLUS){
+        dc.fillRectangle(ix+isize/2,iy+isize/4,1,isize/2);
+        dc.fillRectangle(ix+isize/4,iy+isize/2,isize/2,1);
+        }
+      else{
+        FXint x1=ix+(isize*22)/100, y1=iy+(isize*50)/100;
+        FXint x2=ix+(isize*43)/100, y2=iy+(isize*72)/100;
+        FXint x3=ix+(isize*78)/100, y3=iy+(isize*28)/100;
+        dc.setLineWidth(FXMAX(1,isize/7));
+        dc.drawLine(x1,y1,x2,y2);
+        dc.drawLine(x2,y2,x3,y3);
+        dc.setLineWidth(1);
+        }
+      }
+    if(!label.empty()){
+      dc.setFont(font);
+      if(isEnabled()){
+        dc.setForeground(textColor);
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      else{
+        dc.setForeground(theme->color(ROLE_TEXT_DISABLED));
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      }
+    drawFrame(dc,0,0,width,height);
+    return 1;
+    }
 
   // Check background
   if(check==maybe || !isEnabled())
@@ -421,6 +506,7 @@ long FXCheckButton::onPaint(FXObject*,FXSelector,void* ptr){
 void FXCheckButton::setCheckColor(FXColor clr){
   if(clr!=checkColor){
     checkColor=clr;
+    checkColorOverride=true;
     update();
     }
   }
@@ -430,6 +516,7 @@ void FXCheckButton::setCheckColor(FXColor clr){
 void FXCheckButton::setBoxColor(FXColor clr){
   if(clr!=boxColor){
     boxColor=clr;
+    boxColorOverride=true;
     update();
     }
   }

@@ -58,7 +58,7 @@ namespace FX {
 
 // Magic number at the start of a cache file, and the layout version
 #define FXTCMAGIC   0x46585443U
-#define FXTCSCHEMA  3
+#define FXTCSCHEMA  4
 
 // Largest cache file we are willing to read
 #define FXTCSIZE    (64*1024)

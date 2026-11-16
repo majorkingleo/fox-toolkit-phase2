@@ -62,6 +62,22 @@ using namespace FX;
 
 namespace FX {
 
+
+// Blend color a toward color b by the given percentage of b
+static FXColor blendColor(FXColor a,FXColor b,FXint percent){
+  FXint tnecrep=100-percent;
+  return FXRGB((FXREDVAL(a)*tnecrep+FXREDVAL(b)*percent+50)/100,
+               (FXGREENVAL(a)*tnecrep+FXGREENVAL(b)*percent+50)/100,
+               (FXBLUEVAL(a)*tnecrep+FXBLUEVAL(b)*percent+50)/100);
+  }
+
+
+// Size of the radio indicator for the current theme and display scale
+static FXint indicatorSize(FXWindow* win){
+  return FXMAX(win->getApp()->getTheme()->metric(METRIC_CHECK_SIZE,win->getDisplayScale()),9);
+  }
+
+
 // Map
 FXDEFMAP(FXRadioButton) FXRadioButtonMap[]={
   FXMAPFUNC(SEL_UPDATE,0,FXRadioButton::onUpdate),
@@ -116,12 +132,12 @@ FXbool FXRadioButton::canFocus() const { return true; }
 
 // Get default width
 FXint FXRadioButton::getDefaultWidth(){
-  FXint tw=0,s=0,w;
+  FXint tw=0,s=0,w=indicatorSize(this);
   if(!label.empty()){
     tw=labelWidth(label);
     s=spacing;
     }
-  if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,13); else w=tw+13+s;
+  if(!(options&(ICON_AFTER_TEXT|ICON_BEFORE_TEXT))) w=FXMAX(tw,indicatorSize(this)); else w=tw+indicatorSize(this)+s;
   return padleft+padright+w+(border<<1);
   }
 
@@ -132,8 +148,22 @@ FXint FXRadioButton::getDefaultHeight(){
   if(!label.empty()){
     th=labelHeight(label);
     }
-  if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,13); else h=th+13;
+  if(!(options&(ICON_ABOVE_TEXT|ICON_BELOW_TEXT))) h=FXMAX(th,indicatorSize(this)); else h=th+indicatorSize(this);
   return padtop+padbottom+h+(border<<1);
+  }
+
+
+// Re-apply theme colors and indicator metrics
+void FXRadioButton::applyTheme(FXTheme* theme){
+  FXLabel::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    if(!radioColorOverride) radioColor=theme->color(ROLE_BORDER);
+    if(!diskColorOverride) diskColor=theme->color(ROLE_TEXT);
+    }
+  else{
+    if(!radioColorOverride) radioColor=getApp()->getForeColor();
+    if(!diskColorOverride) diskColor=getApp()->getBackColor();
+    }
   }
 
 
@@ -227,6 +257,7 @@ long FXRadioButton::onEnter(FXObject* sender,FXSelector sel,void* ptr){
 long FXRadioButton::onLeave(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onLeave(sender,sel,ptr);
   if(isEnabled() && (flags&FLAG_PRESSED)) setCheck(oldcheck);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -347,8 +378,53 @@ long FXRadioButton::onPaint(FXObject*,FXSelector,void* ptr){
     th=labelHeight(label);
     }
 
-  just_x(tx,ix,tw,13);
-  just_y(ty,iy,th,13);
+  FXint isize=indicatorSize(this);
+  just_x(tx,ix,tw,isize);
+  just_y(ty,iy,th,isize);
+
+  // Themed radio indicator
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXColor box=theme->color(ROLE_BUTTON);
+    FXColor edge=theme->color(ROLE_BORDER);
+    FXColor mark=theme->color(ROLE_TEXT);
+    FXColor hov=theme->color(ROLE_HOVER_RING);
+    FXColor foc=theme->color(ROLE_FOCUS_RING);
+    FXColor surf=theme->color(ROLE_SURFACE);
+    FXint dot=FXMAX(4,isize/2-1);
+    if(!isEnabled()){
+      box=blendColor(box,surf,45);
+      edge=blendColor(edge,surf,45);
+      mark=theme->color(ROLE_TEXT_DISABLED);
+      }
+    else{
+      if(check!=false){ box=blendColor(box,hov,33); edge=hov; }
+      if(underCursor()) edge=hov;
+      if(hasFocus()) edge=foc;
+      }
+    getApp()->getStyle()->drawRoundedRectangle(dc,ix,iy,isize,isize,isize/2,box,edge,1);
+    if(check==true){
+      FXint off=(isize-dot)/2;
+      getApp()->getStyle()->drawRoundedRectangle(dc,ix+off,iy+off,dot,dot,dot/2,mark,mark,0);
+      }
+    else if(check==maybe){
+      dc.setForeground(mark);
+      dc.fillRectangle(ix+isize/4,iy+isize/2,isize/2,1);
+      }
+    if(!label.empty()){
+      dc.setFont(font);
+      if(isEnabled()){
+        dc.setForeground(textColor);
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      else{
+        dc.setForeground(theme->color(ROLE_TEXT_DISABLED));
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      }
+    drawFrame(dc,0,0,width,height);
+    return 1;
+    }
 
 
 /*
@@ -460,6 +536,7 @@ long FXRadioButton::onPaint(FXObject*,FXSelector,void* ptr){
 void FXRadioButton::setRadioColor(FXColor clr){
   if(radioColor!=clr){
     radioColor=clr;
+    radioColorOverride=true;
     update();
     }
   }
@@ -469,6 +546,7 @@ void FXRadioButton::setRadioColor(FXColor clr){
 void FXRadioButton::setDiskColor(FXColor clr){
   if(clr!=diskColor){
     diskColor=clr;
+    diskColorOverride=true;
     update();
     }
   }

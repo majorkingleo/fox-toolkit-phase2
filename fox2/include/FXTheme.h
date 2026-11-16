@@ -85,6 +85,7 @@ enum {
   METRIC_ROW_HEIGHT,      /// Default row height
   METRIC_CORNER_RADIUS,   /// Corner radius
   METRIC_ANIMATION_TIME,  /// State transition time in milliseconds
+  METRIC_CHECK_SIZE,      /// Check/radio indicator size
   METRIC_LAST
   };
 

@@ -53,6 +53,8 @@ class FXAPI FXRadioButton : public FXLabel {
 protected:
   FXColor  radioColor;  // Color of radio ball
   FXColor  diskColor;   // Color of radio disk
+  FXbool   radioColorOverride=false; // Radio color set explicitly
+  FXbool   diskColorOverride=false;  // Disk color set explicitly
   FXuchar  check;       // Radio state
   FXuchar  oldcheck;    // Old radio state
 protected:
@@ -93,6 +95,9 @@ public:
 
   /// Get default height
   virtual FXint getDefaultHeight() override;
+
+  /// Re-apply theme colors and indicator metrics
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Set radio button state (TRUE, FALSE or MAYBE)
   void setCheck(FXuchar s=true,FXbool notify=false);

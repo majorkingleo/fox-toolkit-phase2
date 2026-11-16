@@ -56,6 +56,8 @@ class FXAPI FXCheckButton : public FXLabel {
 protected:
   FXColor  checkColor;  // Color of check mark
   FXColor  boxColor;    // Color of check box
+  FXbool   checkColorOverride=false; // Check color set explicitly
+  FXbool   boxColorOverride=false;   // Box color set explicitly
   FXuchar  check;       // Check state
   FXuchar  oldcheck;    // Old check state
 protected:
@@ -97,6 +99,9 @@ public:
 
   /// Get default height
   virtual FXint getDefaultHeight() override;
+
+  /// Re-apply theme colors and indicator metrics
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Set check button state (true, false or maybe)
   void setCheck(FXuchar state=true,FXbool notify=false);

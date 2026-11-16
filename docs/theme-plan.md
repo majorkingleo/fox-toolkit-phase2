@@ -930,6 +930,17 @@ rounded button now marks it dirty even when animation is disabled, so the
 hover outline repaints immediately.  The hover colour therefore lives in the
 theme and is cached with it, instead of being hard-coded in the style.
 
+**Progress — check and radio indicators (2026-11-16).** `METRIC_CHECK_SIZE`
+(default 13, imported from the GTK `check`/`radio` `min-width`) drives the
+indicator size.  `FXCheckButton` and `FXRadioButton` now have `applyTheme()`
+overrides and draw the modern indicator through
+`FXStyle::drawRoundedRectangle()`: face `ROLE_BUTTON`, border `ROLE_BORDER`,
+hover/focus borders, checked fill blended from `ROLE_HOVER_RING`, mark
+`ROLE_TEXT`, disabled `ROLE_TEXT_DISABLED`, rounded check box and circular
+radio.  Enter/leave repaints the indicator even without animation.  The
+classic radius-0 path still uses the original 13 px bevel, so the default FOX
+look is unchanged.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane
