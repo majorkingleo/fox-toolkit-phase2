@@ -50,4 +50,5 @@ Adie.stx \
 LICENSE \
 help.txt \
 $(wildcard *.gif) \
+$(wildcard *.svg) \
 $(wildcard *.bmp)

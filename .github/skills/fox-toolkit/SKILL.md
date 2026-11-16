@@ -126,7 +126,9 @@ machine-independent serialization.  Vector SVG images are supported by
 `FXSVGImage`/`FXSVGIcon`, which rasterize through the vendored NanoSVG at load
 time; `FXIconSource` recognises `.svg` by suffix and content.  Rasterise at the
 target size (the constructor's `w`/`h`) for a sharp result, since a built icon
-is then scaled as pixels. For a subclass that must serialize its
+is then scaled as pixels.  The application icon GIFs have pixel-grid SVG
+counterparts (`scripts/gif2svg.py`), exact at the natural size and at integer
+scales; they are not redrawn smooth artwork. For a subclass that must serialize its
 state, follow the `FXObject::save()`/`load()` conventions and inspect the
 streaming operators and examples before changing the serialized format.
 
