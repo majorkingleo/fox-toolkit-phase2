@@ -27,6 +27,8 @@
 /apps/controlpanel/ControlPanel
 /apps/chart/Makefile.in
 /apps/chart/charttest
+/apps/pathfinder/Makefile.in
+/apps/pathfinder/PathFinder
 /tests/Makefile.in
 *.lo
 *.la

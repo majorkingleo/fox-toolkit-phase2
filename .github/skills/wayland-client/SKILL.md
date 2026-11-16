@@ -243,6 +243,10 @@ which is what happens for the first window of an application.
   presses and releases it. `swaymsg seat - cursor ...` and `wlrctl` both fail on
   a headless sway: the seat has no pointer device, and `wlrctl` destroys its
   virtual pointer before the click is delivered.
+- `scripts/gate-wayland-doubleclick.sh` — double click in the file list of the
+  ported PathFinder and checks that the "Unknown File Type" dialog appears; it
+  fails when `FXApp::dispatchEvent` loses the click counter by using a fresh
+  `FXEvent` instead of the persistent `FXApp::event`.
 - `scripts/gate-wayland-repaint.sh` — drives the same widget state in one click
   and in three and compares the two dumped frames; needs no reference image and
   catches ghosts of widgets that moved.

@@ -257,6 +257,12 @@ Deviations, all on the one pixel outline unless noted:
   returns 0 from `getFontHeight()`/`getTextWidth()`, the Wayland font keeps the
   unrotated metrics.  The chart's `Y` labels show both effects - the X11 frame
   overprints a label it measured as empty, the Wayland frame lays it out.
+- A disabled button draws `drawIconSunken`, which the X11 module builds from
+  the icon's etch bitmap (its visible, dark pixels).  Wayland has no such
+  bitmap, so `FXRaster::drawIconSunken` derives the mask from the icon pixels
+  and paints it in the highlight and shadow colours, one pixel apart, exactly
+  like the X11 mask.  Without it, disabled toolbar buttons showed their full
+  colour (first seen with the ported PathFinder).
 - The DC clip rectangle in `FXDCWindow::begin()` follows the drawable (0,0 to
   its size); before that `getClipX()`/`getClipWidth()` returned the FXDC default
   of 32767, which made the chart widget measure its plot far too large.  Caught
@@ -602,6 +608,11 @@ gates that drive them):
 - Grabs are not a Wayland concept: `FXWindow::grab()` only sets
   `mouseGrabWindow`, and because the press in the gate is followed by the
   release on the same widget, the button still turns the pair into a command.
+- Click counting stays in `FXApp`: `click_time`, `click_button`, `click_count`
+  and `moved` live in its persistent `event` member and must survive from one
+  button or motion event to the next.  The dispatcher uses that member, like
+  the X11 and Win32 modules; replacing it with a fresh `FXEvent` per event
+  resets the counter and breaks double clicks.
 
 - `wl_pointer`: enter, leave, motion, buttons, axis (vertical and horizontal
   wheel, discrete steps), frame; coordinates are the surface-local logical
@@ -1037,6 +1048,17 @@ Done in this phase so far (the build wiring, the metadata and the screenshots):
   surface (`FXWinMap::hitTest(shell,x,y)`), and the screen-wide query is only
   for the backends that know the places.  `tests/winmap` keeps a case that moves
   a shell and checks both conventions.
+- **Double click gate:** `scripts/gate-wayland-doubleclick.sh` runs the ported
+  PathFinder on a directory with one text file and double clicks its first row
+  with the virtual pointer. The program has no association for the file, so a
+  correct run opens the "Unknown File Type" dialog; the gate sees the second
+  window and fails when only the main window is there. This is the regression
+  test for the click counter: `FXApp` carries `click_time`, `click_button`,
+  `click_count` and `moved` in its persistent `event` member, and the first
+  Wayland dispatcher replaced that member with a fresh `FXEvent` for every raw
+  event, so the second press always arrived as click 1.  The list selected the
+  file and nothing else happened; X11 opens the dialog.  The dispatcher now
+  keeps `FXApp::event`, like the X11 and Win32 modules.
 - **Repaint gate:** `scripts/gate-wayland-repaint.sh` needs no reference image.
   It drives `tests/button` to the same state twice, once with one click on
   *After Text* and once with *After Text*, *Centered* and *After Text* again, and

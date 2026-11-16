@@ -437,6 +437,7 @@ apps/Makefile
 apps/calculator/Makefile
 apps/controlpanel/Makefile
 apps/chart/Makefile
+apps/pathfinder/Makefile
 tests/Makefile
 fox-1.7.pc
 fox-config])
