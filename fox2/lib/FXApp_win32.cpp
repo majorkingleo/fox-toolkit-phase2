@@ -1210,6 +1210,20 @@ Alt key seems to repeat.
         updateWindowScale(window);
         if(suggested){
           SetWindowPos((HWND)hwnd,nullptr,suggested->left,suggested->top,suggested->right-suggested->left,suggested->bottom-suggested->top,SWP_NOZORDER|SWP_NOACTIVATE);
+
+          // The suggested rectangle scales the old size by the DPI ratio, but only theme metrics and
+          // fonts scale, not the fixed pixel margins; keep the new client area at least default size
+          if(window->isMemberOf(FXMETACLASS(FXTopWindow))){
+            RECT client;
+            GetClientRect((HWND)hwnd,&client);
+            FXint growx=FXMAX(window->getDefaultWidth()-(FXint)client.right,0);
+            FXint growy=FXMAX(window->getDefaultHeight()-(FXint)client.bottom,0);
+            if(growx || growy){
+              RECT outer;
+              GetWindowRect((HWND)hwnd,&outer);
+              SetWindowPos((HWND)hwnd,nullptr,0,0,outer.right-outer.left+growx,outer.bottom-outer.top+growy,SWP_NOZORDER|SWP_NOACTIVATE|SWP_NOMOVE);
+              }
+            }
           }
       }
       return 0;
