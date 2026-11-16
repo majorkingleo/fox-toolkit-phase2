@@ -50,7 +50,7 @@ console tests, see step 0.
 3. Decide how a ported program gets its resources. The old programs embed GIF
    data produced by `reswrap` (`hello2`, `groupbox`, `header`, `iconlist`,
    `shutter`, `dctest`). The data stays embedded, as in the original, so
-   that a test needs no file; the GIF codec in fox2 reads it. `dippy.h` is
+   that a test needs no file; the GIF codec in fox2 reads it (checked: `fxcheckGIF` and `fxloadGIF` of fox2 decode `dippy` as 138x314). `dippy.h` is
    copied along with `dctest`.
 4. Add a `scripts/capture-test-screenshots.*` pattern, or extend the existing
    capture scripts, so one command stores a screenshot per program per
