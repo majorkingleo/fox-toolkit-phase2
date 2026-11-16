@@ -318,6 +318,7 @@ and the commit that fixed it.
 | `FXGLVisual` | Win32 and GLX code in one file | split into `FXGLVisual.cpp`, `_win32`, `_x11`, `_wayland` (stub: no GL on Wayland yet), shared `fxglpriv.h`; X11 part is untested |
 | `FXGLContext`, `FXGLCanvas` | Win32 and X11 branches are small and interleaved, so they stay in one file | unchanged copies |
 | OpenGL | CMake finds GL on the Wayland platform and would compile the GLX code | `FOXFeatures.cmake` disables OpenGL for `FOX_PLATFORM=wayland` |
+| gltest | the bold label font of the info dialog was created once for the system DPI, so on a lower-DPI monitor the labels stayed large next to the scaled values | the dialog rebuilds the font for its monitor in `applyTheme`; labels with an application font are not rescaled by the library |
 
 ## Status
 

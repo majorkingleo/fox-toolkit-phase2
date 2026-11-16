@@ -27,14 +27,17 @@ class GLSettingsDialog : public FXDialogBox {
 private:
   FXGLCanvas *canvas;
   FXFont     *thickfont;
+  FXint       thickdpi;
   FXList     *extensionlist;
 protected:
   GLSettingsDialog();
   void setup();
+  void replaceFont(FXWindow* win,FXFont* oldfont,FXFont* newfont);
 private:
   GLSettingsDialog(const FXDialogBox&);
   GLSettingsDialog &operator=(const FXDialogBox&);
 public:
+  virtual void applyTheme(FXTheme* theme) override;
   long onCmdSave(FXObject*,FXSelector,void*);
 public:
   enum {
@@ -61,19 +64,46 @@ FXIMPLEMENT(GLSettingsDialog,FXDialogBox,GLSettingsDialogMap,ARRAYNUMBER(GLSetti
 
 
 // Default constructor
-GLSettingsDialog::GLSettingsDialog():canvas(nullptr),thickfont(nullptr),extensionlist(nullptr){
+GLSettingsDialog::GLSettingsDialog():canvas(nullptr),thickfont(nullptr),thickdpi(0),extensionlist(nullptr){
   }
 
 
 // Construct with GL canvas (free floating version)
-GLSettingsDialog::GLSettingsDialog(FXApp *a,FXGLCanvas *ca):FXDialogBox(a,FXString::null,DECOR_STRETCHABLE|DECOR_TITLE|DECOR_BORDER,0,0,0,0,0,0,0,0,0,0),canvas(ca),thickfont(nullptr),extensionlist(nullptr){
+GLSettingsDialog::GLSettingsDialog(FXApp *a,FXGLCanvas *ca):FXDialogBox(a,FXString::null,DECOR_STRETCHABLE|DECOR_TITLE|DECOR_BORDER,0,0,0,0,0,0,0,0,0,0),canvas(ca),thickfont(nullptr),thickdpi(0),extensionlist(nullptr){
   setup();
   }
 
 
 // Construct with GL canvas (modal version)
-GLSettingsDialog::GLSettingsDialog(FXWindow *o,FXGLCanvas *ca):FXDialogBox(o,FXString::null,DECOR_STRETCHABLE|DECOR_TITLE|DECOR_BORDER,0,0,0,0,0,0,0,0,0,0),canvas(ca),thickfont(nullptr),extensionlist(nullptr){
+GLSettingsDialog::GLSettingsDialog(FXWindow *o,FXGLCanvas *ca):FXDialogBox(o,FXString::null,DECOR_STRETCHABLE|DECOR_TITLE|DECOR_BORDER,0,0,0,0,0,0,0,0,0,0),canvas(ca),thickfont(nullptr),thickdpi(0),extensionlist(nullptr){
   setup();
+  }
+
+
+// Labels keep an application font as it is, so the bold font is rebuilt for the monitor the dialog is on
+void GLSettingsDialog::replaceFont(FXWindow* win,FXFont* oldfont,FXFont* newfont){
+  FXWindow* child;
+  FXLabel* label=dynamic_cast<FXLabel*>(win);
+  if(label && label->getFont()==oldfont) label->setFont(newfont);
+  for(child=win->getFirst(); child; child=child->getNext()) replaceFont(child,oldfont,newfont);
+  }
+
+
+void GLSettingsDialog::applyTheme(FXTheme* theme){
+  FXDialogBox::applyTheme(theme);
+  FXint wdpi=getWindowDPI();
+  if(thickfont && wdpi>0 && wdpi!=thickdpi){
+    FXFont* base=getApp()->getNormalFont(wdpi);
+    FXFontDesc fontdescription=base->getFontDesc();
+    fontdescription.weight=FXFont::DemiBold;
+    FXFont* newfont=new FXFont(getApp(),fontdescription);
+    newfont->setResolution(base->getResolution());
+    newfont->create();
+    replaceFont(this,thickfont,newfont);
+    delete thickfont;
+    thickfont=newfont;
+    thickdpi=wdpi;
+    }
   }
 
 
