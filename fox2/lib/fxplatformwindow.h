@@ -101,6 +101,12 @@ enum {
 extern void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXint h,FXint oldw,FXint oldh,FXbool shown,FXuint placement);
 
 
+/// Begin or end a layout pass.  Platforms that share one buffer between all
+/// widgets use this to suppress intermediate exposures while the tree settles.
+extern void fxplatformBeginLayout(void* display);
+extern void fxplatformEndLayout(void* display);
+
+
 /// Map or unmap a native window; mapping needs a positive size.
 extern void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown);
 

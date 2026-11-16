@@ -2531,6 +2531,10 @@ void FXTreeList::setNumVisible(FXint nvis){
 // Re-resolve the normal font for the window's monitor
 void FXTreeList::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
+  lineColor=theme->color(ROLE_SURFACE_SHADOW);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

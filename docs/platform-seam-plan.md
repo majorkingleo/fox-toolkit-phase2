@@ -204,14 +204,17 @@ through the same module pair as creation.
 
 | Part | Location |
 | --- | --- |
-| Internal contract | `fxplatformwindow.h`: `fxplatformPlaceWindow()`, `fxplatformShowWindow()`, `fxplatformReparentWindow()`, `fxplatformRaiseWindow()`, and `fxplatformReleaseMouseGrab()`/`fxplatformReleaseKeyboardGrab()` for the grab that must be released before an unmap |
+| Internal contract | `fxplatformwindow.h`: `fxplatformPlaceWindow()`, `fxplatformShowWindow()`, `fxplatformReparentWindow()`, `fxplatformRaiseWindow()`, `fxplatformBeginLayout()`/`fxplatformEndLayout()`, and `fxplatformReleaseMouseGrab()`/`fxplatformReleaseKeyboardGrab()` for the grab that must be released before an unmap |
 | Windows module | `FXWindow_win32.cpp`: one `SetWindowPos()` with `SWP_NOMOVE`/`SWP_NOSIZE` derived from the placement flags, `ShowWindow()`, `SetParent()`, `HWND_TOP`/`HWND_BOTTOM`, `ReleaseCapture()` plus cursor restore |
 | X11 module | `FXWindow_x11.cpp`: `XMoveWindow()`, `XResizeWindow()`, `XMoveResizeWindow()`, map/unmap around zero-sized windows, `XReparentWindow()` with flush, `XRaiseWindow()`/`XLowerWindow()`, `XUngrabPointer()`/`XUngrabKeyboard()` |
 | Portable core | `FXWindow::move()`, `position()`, `resize()`, `show()`, `hide()`, `reparent()`, `raise()`, `lower()` keep the bookkeeping and call the seam |
 
 The old-size and shown-state arguments to `fxplatformPlaceWindow()` preserve the
 X11 rule that a zero-sized window is unmapped and mapped again when it grows;
-Windows ignores them.
+Windows ignores them.  `fxplatformBeginLayout()`/`fxplatformEndLayout()` are a
+pair of no-ops on X11 and Windows; Wayland uses them to suppress the exposures
+that every intermediate child move would otherwise generate while a theme
+change lays out the whole widget tree.
 
 Deliberately left in `FXWindow.cpp` for now:
 

@@ -141,6 +141,21 @@ void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXi
   }
 
 
+// Begin a layout pass: all widgets share one buffer, so suppress the exposes
+// that every intermediate move would otherwise generate
+void fxplatformBeginLayout(void* display){
+  FXWaylandApp* app=fxwayland(display);
+  if(app) app->inlayout=true;
+  }
+
+
+// End a layout pass
+void fxplatformEndLayout(void* display){
+  FXWaylandApp* app=fxwayland(display);
+  if(app) app->inlayout=false;
+  }
+
+
 // Map or unmap a native window
 void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown){
   FXWaylandApp* app=fxwayland(display);

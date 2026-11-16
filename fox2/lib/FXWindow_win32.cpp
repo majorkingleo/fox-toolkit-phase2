@@ -137,6 +137,15 @@ void fxplatformPlaceWindow(void*,FXID window,FXint x,FXint y,FXint w,FXint h,FXi
   }
 
 
+// Win32 draws every widget into its own HWND; no layout suppression needed
+void fxplatformBeginLayout(void*){
+  }
+
+
+void fxplatformEndLayout(void*){
+  }
+
+
 // Map or unmap
 void fxplatformShowWindow(void*,FXID window,FXint,FXint,FXbool shown){
   ShowWindow((HWND)window,shown?SW_SHOWNOACTIVATE:SW_HIDE);

@@ -14,7 +14,17 @@ The ControlPanel has three tabs: \fBThemes\fP, \fBBindings\fP, and \fBGeneral\fP
 
 .br
 The Themes tab is used to control color themes, individual colors, and the system
-font.
+font.  Next to the built-in FOX color themes, it lists the GTK, KDE and FOX
+themes installed in the usual desktop theme directories; choosing one imports
+its colors and metrics with the theme importer and remembers the source so the
+selection survives a restart.  The \fBImport...\fP button reads a gtk.css,
+gtkrc, .colors or .foxtheme file directly, and \fBRescan\fP refreshes the list
+after a theme was installed.  The \fBShow\fP filter narrows the list to
+GNOME/GTK, KDE, built-in FOX presets, system-wide or per-user themes.
+.br
+The sampler is rendered with the selected theme itself, so it shows the theme's
+colors, metrics, fonts and rounded control shapes.  A note at the bottom of the
+window names the active theme source.
 
 .br
 The Bindings tab is used to associate file extension-associations with a description,

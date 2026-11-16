@@ -263,6 +263,15 @@ void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXi
   }
 
 
+// X11 keeps every widget in a window of its own; no layout suppression needed
+void fxplatformBeginLayout(void*){
+  }
+
+
+void fxplatformEndLayout(void*){
+  }
+
+
 // Map or unmap
 void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown){
   Display* dpy=(Display*)display;

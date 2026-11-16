@@ -112,12 +112,110 @@ const FXint numThemes=ARRAYNUMBER(ColorThemes);
 
 /*******************************************************************************/
 
+// Return true if a directory holds a theme FXCSS understands
+static FXbool hasThemeStyle(const FXString& path){
+  return FXStat::isFile(path+PATHSEPSTRING+"gtk-3.0"+PATHSEPSTRING+"gtk.css") ||
+         FXStat::isFile(path+PATHSEPSTRING+"gtk-4.0"+PATHSEPSTRING+"gtk.css") ||
+         FXStat::isFile(path+PATHSEPSTRING+"gtk-2.0"+PATHSEPSTRING+"gtkrc");
+  }
+
+
+// Append the directories of a PATH-style list, skipping duplicates
+static void appendSearchPaths(FXArray<FXString>& dirs,const FXString& list){
+  FXint start=0;
+  FXint end;
+  while(start<=list.length()){
+#if defined(WIN32)
+    end=list.find(';',start);
+#else
+    end=list.find(':',start);
+#endif
+    if(end<0) end=list.length();
+    FXString dir=list.mid(start,end-start).trim();
+    if(!dir.empty()){
+      FXbool found=false;
+      for(FXival i=0; i<dirs.no(); ++i){
+        if(dirs[i]==dir){ found=true; break; }
+        }
+      if(!found) dirs.append(dir);
+      }
+    start=end+1;
+    }
+  }
+
+
+// Return whether a theme path lives below the user's home directory
+static FXint themeScope(const FXString& path,const FXString& home){
+  if(!home.empty() && (path==home || path.left(home.length()+1)==home+PATHSEPSTRING)) return THEME_SCOPE_USER;
+  return THEME_SCOPE_SYSTEM;
+  }
+
+
+// Guess the theme family from the source file name
+static FXint themeFamily(const FXString& source){
+  if(source.right(7)==".colors") return THEME_FAMILY_KDE;
+  if(source.right(9)==".foxtheme") return THEME_FAMILY_FOX;
+  return THEME_FAMILY_GTK;
+  }
+
+
+// Display name of a theme source path
+static FXString themeLabel(const FXString& source){
+  FXString path=source;
+  FXString name;
+  if(1<path.length() && ISPATHSEP(path[path.length()-1])) path=path.left(path.length()-1);
+  name=FXPath::name(path);
+  if(name=="gtk.css" || name=="gtkrc"){
+    path=FXPath::upLevel(path);                 // gtk-3.0 or gtk-2.0
+    name=FXPath::name(FXPath::upLevel(path));   // theme directory
+    }
+  else if(name.right(7)==".colors") name=name.left(name.length()-7);
+  else if(name.right(9)==".foxtheme") name=name.left(name.length()-9);
+  if(name.empty()) name=path;
+  return name;
+  }
+
+
+// Copy the color fields of a theme, leaving the name alone
+static void copyColors(const ColorTheme& src,ColorTheme& dst){
+  dst.base=src.base;
+  dst.border=src.border;
+  dst.back=src.back;
+  dst.fore=src.fore;
+  dst.selback=src.selback;
+  dst.selfore=src.selfore;
+  dst.tipback=src.tipback;
+  dst.tipfore=src.tipfore;
+  dst.menuback=src.menuback;
+  dst.menufore=src.menufore;
+  }
+
+
+// Copy the semantic roles of a theme onto the color well model
+static void themeColors(const FXTheme& theme,ColorTheme& colors){
+  colors.base=theme.color(ROLE_SURFACE);
+  colors.border=theme.color(ROLE_BORDER);
+  colors.back=theme.color(ROLE_WINDOW_BG);
+  colors.fore=theme.color(ROLE_TEXT);
+  colors.selfore=theme.color(ROLE_SELECTION_TEXT);
+  colors.selback=theme.color(ROLE_SELECTION_BG);
+  colors.tipfore=theme.color(ROLE_TOOLTIP_TEXT);
+  colors.tipback=theme.color(ROLE_TOOLTIP_BG);
+  colors.menuback=theme.color(ROLE_MENU_SEL_BG);
+  colors.menufore=theme.color(ROLE_MENU_SEL_TEXT);
+  }
+
+/*******************************************************************************/
+
 
 // Messages
 FXDEFMAP(FXDesktopSetup) FXDesktopSetupMap[]={
   FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_COLORS,FXDesktopSetup::onColorChanged),
   FXMAPFUNC(SEL_CHANGED,FXDesktopSetup::ID_COLORS,FXDesktopSetup::onColorChanged),
   FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_COLOR_THEME,FXDesktopSetup::onColorTheme),
+  FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_IMPORT_THEME,FXDesktopSetup::onCmdImportTheme),
+  FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_REFRESH_THEMES,FXDesktopSetup::onCmdRefreshThemes),
+  FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_THEME_FILTER,FXDesktopSetup::onCmdThemeFilter),
   FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_CHOOSE_FONT,FXDesktopSetup::onChooseFont),
   FXMAPFUNC(SEL_CHANGED,FXDesktopSetup::ID_SELECT_FILEBINDING,FXDesktopSetup::onCmdFileBinding),
   FXMAPFUNC(SEL_COMMAND,FXDesktopSetup::ID_SELECT_COMMAND,FXDesktopSetup::onCmdSelectCommand),
@@ -208,6 +306,22 @@ FXDesktopSetup::FXDesktopSetup(FXApp *ap):FXMainWindow(ap,FXString::null,nullptr
   new FXLabel(themeframe,tr("Theme: "),nullptr,LAYOUT_CENTER_Y);
   list=new FXListBox(themeframe,this,ID_COLOR_THEME,LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK);
   list->setNumVisible(9);
+
+  FXHorizontalFrame *filterframe=new FXHorizontalFrame(themeframe,LAYOUT_FILL_X,0,0,0,0,0,0,0,0);
+  new FXLabel(filterframe,tr("Show: "),nullptr,LAYOUT_CENTER_Y);
+  themefilter=new FXComboBox(filterframe,8,this,ID_THEME_FILTER,LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK|COMBOBOX_STATIC);
+  themefilter->setNumVisible(7);
+  themefilter->appendItem(tr("All Themes"));
+  themefilter->appendItem(tr("GNOME / GTK"));
+  themefilter->appendItem(tr("KDE"));
+  themefilter->appendItem(tr("FOX Presets"));
+  themefilter->appendItem(tr("System Themes"));
+  themefilter->appendItem(tr("User Themes"));
+  themefilter->setCurrentItem(0);
+
+  FXHorizontalFrame *themebuttons=new FXHorizontalFrame(themeframe,LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,0,0,0,0,0,0,0,0);
+  new FXButton(themebuttons,tr("&Import..."),nullptr,this,ID_IMPORT_THEME,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X);
+  new FXButton(themebuttons,tr("&Rescan"),nullptr,this,ID_REFRESH_THEMES,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X);
 
   new FXSeparator(frame1,SEPARATOR_GROOVE|LAYOUT_FILL_X);
 
@@ -501,6 +615,7 @@ FXDesktopSetup::FXDesktopSetup(FXApp *ap):FXMainWindow(ap,FXString::null,nullptr
 
   // Close button etc.
   new FXSeparator(main,SEPARATOR_GROOVE|LAYOUT_FILL_X);
+  themestatus=new FXLabel(main,FXString::null,nullptr,LAYOUT_FILL_X|LAYOUT_CENTER_Y|JUSTIFY_LEFT,0,0,0,0,DEFAULT_SPACING,2,DEFAULT_SPACING,2);
   FXHorizontalFrame *closebox=new FXHorizontalFrame(main,LAYOUT_BOTTOM|LAYOUT_FILL_X,0,0,0,0,DEFAULT_SPACING,DEFAULT_SPACING,DEFAULT_SPACING,DEFAULT_SPACING);
   vendorandapplication=new FXLabel(closebox,FXString::null,nullptr,LAYOUT_FILL_X|LAYOUT_CENTER_Y|JUSTIFY_LEFT,0,0,0,0,15);
   vendorandapplication->disable();
@@ -508,6 +623,10 @@ FXDesktopSetup::FXDesktopSetup(FXApp *ap):FXMainWindow(ap,FXString::null,nullptr
 
   // Tool tip
   tooltip=new FXToolTip(getApp());
+
+  // Color theme chooser
+  themesource.clear();
+  thememodified=false;
 
   // Initial settings
   theme_current.base=getApp()->getBaseColor();
@@ -520,6 +639,7 @@ FXDesktopSetup::FXDesktopSetup(FXApp *ap):FXMainWindow(ap,FXString::null,nullptr
   theme_current.tipback=getApp()->getTipbackColor();
   theme_current.menufore=getApp()->getSelMenuTextColor();
   theme_current.menuback=getApp()->getSelMenuBackColor();
+  previewtheme=*getApp()->getTheme();
 
   // Timing values
   typingSpeed=getApp()->getTypingSpeed()/milliseconds;
@@ -968,7 +1088,18 @@ long FXDesktopSetup::onChooseFont(FXObject*,FXSelector,void*){
 
 // Changed color, update sampler display
 long FXDesktopSetup::onColorChanged(FXObject*,FXSelector,void*){
-  list->setCurrentItem(list->getNumItems()-1);
+  FXint i;
+  thememodified=true;
+  themesource.clear();
+  setPreviewThemeFromColors();
+  for(i=list->getNumItems()-1; i>=0; --i){
+    ThemeEntry *entry=reinterpret_cast<ThemeEntry*>(list->getItemData(i));
+    if(entry && entry->kind==THEME_ENTRY_USER){
+      list->setCurrentItem(i);
+      break;
+      }
+    }
+  updateThemeStatus(tr("Custom colors"));
   setupColors();
   return 1;
   }
@@ -976,20 +1107,92 @@ long FXDesktopSetup::onColorChanged(FXObject*,FXSelector,void*){
 
 // Picked new theme
 long FXDesktopSetup::onColorTheme(FXObject*,FXSelector,void* ptr){
-  ColorTheme *theme_selected=reinterpret_cast<ColorTheme*>(list->getItemData((FXint)(FXival)ptr));
-  if(theme_selected){
-    theme_current.base     = theme_selected->base;
-    theme_current.border   = theme_selected->border;
-    theme_current.back     = theme_selected->back;
-    theme_current.fore     = theme_selected->fore;
-    theme_current.selfore  = theme_selected->selfore;
-    theme_current.selback  = theme_selected->selback;
-    theme_current.tipfore  = theme_selected->tipfore;
-    theme_current.tipback  = theme_selected->tipback;
-    theme_current.menufore = theme_selected->menufore;
-    theme_current.menuback = theme_selected->menuback;
+  ThemeEntry *entry=reinterpret_cast<ThemeEntry*>(list->getItemData((FXint)(FXival)ptr));
+  FXString summary;
+  FXTheme theme;
+  if(!entry || entry->kind==THEME_ENTRY_USER) return 1;
+  thememodified=true;
+
+  // Go back to the colors found when the window was opened
+  if(entry->kind==THEME_ENTRY_CURRENT){
+    themesource.clear();
+    copyColors(theme_user,theme_current);
+    setPreviewThemeFromColors();
     setupColors();
+    updateThemeStatus(tr("Colors from the current settings"));
+    return 1;
     }
+
+  // Built-in palette
+  if(entry->kind==THEME_ENTRY_PRESET){
+    const ColorTheme& preset=ColorThemes[entry->preset];
+    themesource.clear();
+    copyColors(preset,theme_current);
+    setPreviewThemeFromColors();
+    setupColors();
+    updateThemeStatus(tr("Built-in color theme: ")+entry->name);
+    return 1;
+    }
+
+  // Installed GTK, KDE or FOX theme
+  if(loadTheme(entry->source,theme,summary)){
+    themesource=entry->source;
+    applyThemeColors(theme);
+    updateThemeStatus(summary);
+    }
+  else{
+    updateThemeStatus(tr("Cannot import: ")+entry->source);
+    }
+  return 1;
+  }
+
+
+// Import a theme file chosen by the user
+long FXDesktopSetup::onCmdImportTheme(FXObject*,FXSelector,void*){
+  FXString start=FXPath::expand("~");
+  FXString source;
+  FXTheme theme;
+  FXString summary;
+  if(!themesource.empty()) start=FXPath::directory(themesource);
+  source=FXFileDialog::getOpenFilename(this,tr("Import Theme"),start,tr("Theme Files (*.css,gtkrc,*.colors,*.foxtheme)\nAll Files (*)"));
+  if(source.empty()) return 1;
+  if(!loadTheme(source,theme,summary)){
+    FXMessageBox::error(this,MBOX_OK,tr("Import Theme"),tr("Cannot read theme:\n%s"),source.text());
+    return 1;
+    }
+  thememodified=true;
+  themesource=source;
+  previewtheme=theme;
+  themeColors(theme,theme_current);
+  initColors();
+  setupColors();
+  updateThemeStatus(summary);
+  return 1;
+  }
+
+
+// Scan the desktop theme directories again
+long FXDesktopSetup::onCmdRefreshThemes(FXObject*,FXSelector,void*){
+  FXTheme theme;
+  FXString summary;
+  if(!themesource.empty() && loadTheme(themesource,theme,summary)){
+    previewtheme=theme;
+    themeColors(theme,theme_current);
+    }
+  else{
+    setPreviewThemeFromColors();
+    }
+  initColors();
+  setupColors();
+  if(!summary.empty()) updateThemeStatus(summary);
+  return 1;
+  }
+
+
+// Show only one family or scope of themes
+long FXDesktopSetup::onCmdThemeFilter(FXObject*,FXSelector,void*){
+  initColors();
+  setupColors();
   return 1;
   }
 
@@ -1039,208 +1242,258 @@ void FXDesktopSetup::setupFileBindings(){
   }
 
 
+// Forget the entries of the theme chooser
+void FXDesktopSetup::clearThemeEntries(){
+  for(FXival i=0; i<themeentries.no(); ++i) delete themeentries[i];
+  themeentries.clear();
+  }
+
+
+// Add an entry to the theme chooser
+void FXDesktopSetup::addThemeEntry(const FXString& name,const FXString& source,FXint preset,FXint kind,FXint family,FXint scope){
+  ThemeEntry *entry=new ThemeEntry;
+  entry->name=name;
+  entry->source=source;
+  entry->preset=preset;
+  entry->kind=kind;
+  entry->family=family;
+  entry->scope=scope;
+  themeentries.append(entry);
+  }
+
+
+// Return whether the entry belongs in the list for the current filter
+FXbool FXDesktopSetup::matchesThemeFilter(const ThemeEntry* entry) const {
+  FXint filter=themefilter?themefilter->getCurrentItem():0;
+  if(entry->kind==THEME_ENTRY_CURRENT || entry->kind==THEME_ENTRY_USER) return true;
+  switch(filter){
+    case 1: return entry->family==THEME_FAMILY_GTK;
+    case 2: return entry->family==THEME_FAMILY_KDE;
+    case 3: return entry->family==THEME_FAMILY_PRESET;
+    case 4: return entry->family!=THEME_FAMILY_PRESET && entry->scope==THEME_SCOPE_SYSTEM;
+    case 5: return entry->scope==THEME_SCOPE_USER;
+    default: return true;
+    }
+  }
+
+
+// Return the index of the entry for a source path, or -1
+FXint FXDesktopSetup::findThemeEntry(const FXString& source) const {
+  for(FXival i=0; i<themeentries.no(); ++i){
+    if(themeentries[i]->kind==THEME_ENTRY_SOURCE && themeentries[i]->source==source) return (FXint)i;
+    }
+  return -1;
+  }
+
+
+// Find installed GTK, KDE and FOX themes on the usual desktop paths
+void FXDesktopSetup::discoverThemes(){
+  FXArray<FXString> datadirs;
+  FXArray<FXString> roots;
+  FXArray<FXString> schemes;
+  FXString home=FXPath::expand("~");
+  FXString datahome=FXSystem::getEnvironment("XDG_DATA_HOME");
+  FXString datalist=FXSystem::getEnvironment("XDG_DATA_DIRS");
+  FXString path;
+  FXString name;
+  FXDir dir;
+
+  if(datahome.empty()) datahome=home+PATHSEPSTRING+".local"+PATHSEPSTRING+"share";
+  if(datalist.empty()) datalist="/usr/local/share:/usr/share";
+  appendSearchPaths(datadirs,datahome);
+  appendSearchPaths(datadirs,datalist);
+
+  for(FXival i=0; i<datadirs.no(); ++i){
+    roots.append(datadirs[i]+PATHSEPSTRING+"themes");
+    schemes.append(datadirs[i]+PATHSEPSTRING+"color-schemes");
+    }
+  roots.append(home+PATHSEPSTRING+".themes");
+
+  // GTK theme directories
+  for(FXival i=0; i<roots.no(); ++i){
+    if(!dir.open(roots[i])) continue;
+    while(dir.next(name)){
+      if(name=="." || name=="..") continue;
+      path=roots[i]+PATHSEPSTRING+name;
+      if(FXStat::isDirectory(path) && hasThemeStyle(path)){
+        FXbool found=false;
+        for(FXival j=0; j<themeentries.no(); ++j){
+          if(themeentries[j]->kind==THEME_ENTRY_SOURCE && themeentries[j]->name==name){ found=true; break; }
+          }
+        if(!found) addThemeEntry(name,path,-1,THEME_ENTRY_SOURCE,THEME_FAMILY_GTK,themeScope(path,home));
+        }
+      }
+    dir.close();
+    }
+
+  // KDE color schemes
+  for(FXival i=0; i<schemes.no(); ++i){
+    if(!dir.open(schemes[i])) continue;
+    while(dir.next(name)){
+      if(name.right(7)!=".colors") continue;
+      path=schemes[i]+PATHSEPSTRING+name;
+      if(FXStat::isFile(path) && findThemeEntry(path)<0) addThemeEntry(name.left(name.length()-7),path,-1,THEME_ENTRY_SOURCE,THEME_FAMILY_KDE,themeScope(path,home));
+      }
+    dir.close();
+    }
+  }
+
+
+// Load a .foxtheme file or import a GTK/KDE source, using the cache when valid
+FXbool FXDesktopSetup::loadTheme(const FXString& source,FXTheme& theme,FXString& summary){
+  FXCSS css;
+  if(source.right(9)==".foxtheme"){
+    if(!theme.load(source)) return false;
+    summary=tr("Theme file: ")+source;
+    return true;
+    }
+  if(FXThemeCache::fetch(source,theme)){
+    summary=tr("Imported from cache: ")+source;
+    return true;
+    }
+  if(!css.load(source)) return false;
+  theme.setClassic();
+  css.apply(theme);
+  FXThemeCache::store(source,theme);
+  summary=FXString::value(tr("Imported: %s (%d rules, %d warnings)"),source.text(),css.getRules(),css.getWarnings());
+  return true;
+  }
+
+
+// Copy imported colors into the color well model and refresh the sampler
+void FXDesktopSetup::applyThemeColors(const FXTheme& theme){
+  previewtheme=theme;
+  themeColors(theme,theme_current);
+  setupColors();
+  }
+
+
+// Show a short line about the selected theme
+void FXDesktopSetup::updateThemeStatus(const FXString& text){
+  if(themestatus) themestatus->setText(text);
+  }
+
+
 // Initialize colors
 void FXDesktopSetup::initColors(){
-  FXint i,scheme=-1;
+  FXint i,selected=-1;
 
-  // Find the correct current scheme
+  list->clearItems();
+  clearThemeEntries();
+
+  // Built-in presets first
   for(i=0; i<numThemes; i++){
-    if((theme_current.base==ColorThemes[i].base) &&
-       (theme_current.border==ColorThemes[i].border) &&
-       (theme_current.back==ColorThemes[i].back) &&
-       (theme_current.fore==ColorThemes[i].fore) &&
-       (theme_current.selfore==ColorThemes[i].selfore) &&
-       (theme_current.selback==ColorThemes[i].selback) &&
-       (theme_current.menufore==ColorThemes[i].menufore) &&
-       (theme_current.menuback==ColorThemes[i].menuback) &&
-       (theme_current.tipfore==ColorThemes[i].tipfore) &&
-       (theme_current.tipback==ColorThemes[i].tipback)){
-      scheme=i;
-      break;
+    addThemeEntry(tr(ColorThemes[i].name),FXString::null,i,THEME_ENTRY_PRESET,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+    }
+
+  // Installed themes, sorted by name
+  FXival installed=themeentries.no();
+  discoverThemes();
+  for(FXival a=installed+1; a<themeentries.no(); ++a){
+    ThemeEntry *entry=themeentries[a];
+    FXival b=a-1;
+    while(b>=installed && FXString::comparecase(themeentries[b]->name,entry->name)>0){
+      themeentries[b+1]=themeentries[b];
+      --b;
+      }
+    themeentries[b+1]=entry;
+    }
+
+  // Prefer the remembered source, so imported metrics and fonts survive even
+  // when the colors happen to equal a built-in preset
+  if(!themesource.empty()){
+    selected=findThemeEntry(themesource);
+    if(selected<0){
+      addThemeEntry(themeLabel(themesource),themesource,-1,THEME_ENTRY_SOURCE,themeFamily(themesource),themeScope(themesource,FXPath::expand("~")));
+      selected=(FXint)themeentries.no()-1;
       }
     }
 
-  // Clear items
+  // Match the current colors against a built-in preset
+  if(selected<0){
+    for(i=0; i<numThemes; i++){
+      if((theme_current.base==ColorThemes[i].base) &&
+         (theme_current.border==ColorThemes[i].border) &&
+         (theme_current.back==ColorThemes[i].back) &&
+         (theme_current.fore==ColorThemes[i].fore) &&
+         (theme_current.selfore==ColorThemes[i].selfore) &&
+         (theme_current.selback==ColorThemes[i].selback) &&
+         (theme_current.menufore==ColorThemes[i].menufore) &&
+         (theme_current.menuback==ColorThemes[i].menuback) &&
+         (theme_current.tipfore==ColorThemes[i].tipfore) &&
+         (theme_current.tipback==ColorThemes[i].tipback)){
+        selected=i;
+        break;
+        }
+      }
+    }
+
+  // Custom colors from the settings file
+  if(selected<0){
+    selected=(FXint)themeentries.no();
+    copyColors(theme_current,theme_user);
+    addThemeEntry(tr("Current"),FXString::null,-1,THEME_ENTRY_CURRENT,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+    }
+
+  // Manual color edits live under this entry
+  addThemeEntry(tr("User Defined"),FXString::null,-1,THEME_ENTRY_USER,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+
+  // Rebuild the list; item data points at the entries, which stay put until
+  // the next scan.  The selected entry is always visible, even when the
+  // filter would hide it, so the combo keeps showing the active theme.
   list->clearItems();
-
-  // Add Standard Themes to List
-  for(i=0; i<numThemes; i++){
-    list->appendItem(tr(ColorThemes[i].name),nullptr,(void*)&ColorThemes[i]);
+  FXint listselected=-1;
+  for(i=0; i<(FXint)themeentries.no(); i++){
+    if(i!=selected && !matchesThemeFilter(themeentries[i])) continue;
+    if(i==selected) listselected=list->getNumItems();
+    list->appendItem(themeentries[i]->name,nullptr,themeentries[i]);
     }
+  list->setCurrentItem(listselected);
 
-  // Custom colors were used
-  if(scheme==-1){
-    theme_user.base=theme_current.base;
-    theme_user.border=theme_current.border;
-    theme_user.back=theme_current.back;
-    theme_user.fore=theme_current.fore;
-    theme_user.selfore=theme_current.selfore;
-    theme_user.selback=theme_current.selback;
-    theme_user.menufore=theme_current.menufore;
-    theme_user.menuback=theme_current.menuback;
-    theme_user.tipfore=theme_current.tipfore;
-    theme_user.tipback=theme_current.tipback;
-    scheme=list->getNumItems();
-    list->appendItem(tr("Current"),nullptr,&theme_user);
+  if(0<=selected){
+    ThemeEntry *entry=themeentries[selected];
+    switch(entry->kind){
+      case THEME_ENTRY_SOURCE:  updateThemeStatus(tr("Source: ")+entry->source); break;
+      case THEME_ENTRY_CURRENT: updateThemeStatus(tr("Colors from the current settings")); break;
+      case THEME_ENTRY_USER:    updateThemeStatus(tr("Custom colors")); break;
+      default:                  updateThemeStatus(tr("Built-in color theme: ")+entry->name); break;
+      }
     }
+  }
 
-  // User defined theme
-  list->appendItem(tr("User Defined"));
-  list->setCurrentItem(scheme);
+
+// Build a classic theme from the color wells; used for the built-in presets
+// and for hand-edited colors
+void FXDesktopSetup::setPreviewThemeFromColors(){
+  previewtheme.setClassic();
+  previewtheme.setColor(ROLE_WINDOW_BG,theme_current.back);
+  previewtheme.setColor(ROLE_SURFACE,theme_current.base);
+  previewtheme.setColor(ROLE_SURFACE_HILITE,makeHiliteColor(theme_current.base));
+  previewtheme.setColor(ROLE_SURFACE_SHADOW,makeShadowColor(theme_current.base));
+  previewtheme.setColor(ROLE_TEXT,theme_current.fore);
+  previewtheme.setColor(ROLE_BORDER,theme_current.border);
+  previewtheme.setColor(ROLE_SELECTION_BG,theme_current.selback);
+  previewtheme.setColor(ROLE_SELECTION_TEXT,theme_current.selfore);
+  previewtheme.setColor(ROLE_MENU_SEL_BG,theme_current.menuback);
+  previewtheme.setColor(ROLE_MENU_SEL_TEXT,theme_current.menufore);
+  previewtheme.setColor(ROLE_TOOLTIP_BG,theme_current.tipback);
+  previewtheme.setColor(ROLE_TOOLTIP_TEXT,theme_current.tipfore);
+  previewtheme.updateDerived();
+  }
+
+
+// Apply the previewed theme to the whole window, so the sampler is rendered
+// by the real style: rounded borders, metrics, fonts and all
+void FXDesktopSetup::applyPreviewTheme(){
+  FXTheme theme=previewtheme;
+  theme.setScale(getApp()->getTheme()->getScale());
+  getApp()->setTheme(theme);
   }
 
 
 // Update sampler
 void FXDesktopSetup::setupColors(){
-  FXColor shadow=makeShadowColor(theme_current.base);
-  FXColor hilite=makeHiliteColor(theme_current.base);
-
-  tabitem->setBorderColor(theme_current.border);
-  tabitem->setBaseColor(theme_current.base);
-  tabitem->setBackColor(theme_current.base);
-  tabitem->setTextColor(theme_current.fore);
-  tabitem->setShadowColor(shadow);
-  tabitem->setHiliteColor(hilite);
-
-  tabframe->setBorderColor(theme_current.border);
-  tabframe->setBaseColor(theme_current.base);
-  tabframe->setBackColor(theme_current.base);
-  tabframe->setShadowColor(shadow);
-  tabframe->setHiliteColor(hilite);
-
-
-  tabsubframe->setBorderColor(theme_current.border);
-  tabsubframe->setBaseColor(theme_current.base);
-  tabsubframe->setBackColor(theme_current.base);
-  tabsubframe->setShadowColor(shadow);
-  tabsubframe->setHiliteColor(hilite);
-
-  menuframe->setBorderColor(theme_current.border);
-  menuframe->setBaseColor(theme_current.base);
-  menuframe->setBackColor(theme_current.base);
-  menuframe->setShadowColor(shadow);
-  menuframe->setHiliteColor(hilite);
-
-  grpbox1->setBorderColor(theme_current.border);
-  grpbox1->setBaseColor(theme_current.base);
-  grpbox1->setBackColor(theme_current.base);
-  grpbox1->setShadowColor(shadow);
-  grpbox1->setHiliteColor(hilite);
-  grpbox1->setTextColor(theme_current.fore);
-
-  grpbox2->setBorderColor(theme_current.border);
-  grpbox2->setBaseColor(theme_current.base);
-  grpbox2->setBackColor(theme_current.base);
-  grpbox2->setShadowColor(shadow);
-  grpbox2->setHiliteColor(hilite);
-  grpbox2->setTextColor(theme_current.fore);
-
-  sep1->setBorderColor(theme_current.border);
-  sep1->setBaseColor(theme_current.base);
-  sep1->setBackColor(theme_current.base);
-  sep1->setShadowColor(shadow);
-  sep1->setHiliteColor(hilite);
-
-  sep2->setBorderColor(theme_current.border);
-  sep2->setBaseColor(theme_current.base);
-  sep2->setBackColor(theme_current.base);
-  sep2->setShadowColor(shadow);
-  sep2->setHiliteColor(hilite);
-
-  sep3->setBorderColor(theme_current.border);
-  sep3->setBaseColor(theme_current.base);
-  sep3->setBackColor(theme_current.base);
-  sep3->setShadowColor(shadow);
-  sep3->setHiliteColor(hilite);
-
-  labeltextframe1->setBorderColor(theme_current.border);
-  labeltextframe1->setBaseColor(theme_current.base);
-  labeltextframe1->setBackColor(theme_current.base);
-  labeltextframe1->setShadowColor(shadow);
-  labeltextframe1->setHiliteColor(hilite);
-
-
-  labeltextframe2->setBorderColor(theme_current.border);
-  labeltextframe2->setBaseColor(theme_current.base);
-  labeltextframe2->setBackColor(theme_current.base);
-  labeltextframe2->setShadowColor(shadow);
-  labeltextframe2->setHiliteColor(hilite);
-
-  label1->setBorderColor(theme_current.border);
-  label1->setBaseColor(theme_current.base);
-  label1->setBackColor(theme_current.base);
-  label1->setTextColor(theme_current.fore);
-  label1->setShadowColor(shadow);
-  label1->setHiliteColor(hilite);
-
-  label2->setBorderColor(theme_current.tipfore);
-  label2->setBaseColor(theme_current.tipback);
-  label2->setBackColor(theme_current.tipback);
-  label2->setTextColor(theme_current.tipfore);
-  label2->setShadowColor(shadow);
-  label2->setHiliteColor(hilite);
-
-  label3->setBorderColor(theme_current.border);
-  label3->setBaseColor(theme_current.base);
-  label3->setBackColor(theme_current.selback);
-  label3->setTextColor(theme_current.selfore);
-  label3->setShadowColor(shadow);
-  label3->setHiliteColor(hilite);
-
-  label4->setBorderColor(theme_current.border);
-  label4->setBaseColor(theme_current.base);
-  label4->setBackColor(theme_current.base);
-  label4->setTextColor(theme_current.fore);
-  label4->setShadowColor(shadow);
-  label4->setHiliteColor(hilite);
-
-  label5->setBorderColor(theme_current.tipfore);
-  label5->setBaseColor(theme_current.tipback);
-  label5->setBackColor(theme_current.tipback);
-  label5->setTextColor(theme_current.tipfore);
-  label5->setShadowColor(shadow);
-  label5->setHiliteColor(hilite);
-
-  for(FXint i=0; i<6; i++){
-    menulabels[i]->setBorderColor(theme_current.border);
-    menulabels[i]->setBaseColor(theme_current.base);
-    menulabels[i]->setBackColor(theme_current.base);
-    menulabels[i]->setTextColor(theme_current.fore);
-    menulabels[i]->setShadowColor(shadow);
-    menulabels[i]->setHiliteColor(hilite);
-    }
-
-  menulabels[4]->setBorderColor(theme_current.border);
-  menulabels[4]->setBaseColor(theme_current.menuback);
-  menulabels[4]->setBackColor(theme_current.menuback);
-  menulabels[4]->setTextColor(theme_current.menufore);
-  menulabels[4]->setShadowColor(shadow);
-  menulabels[4]->setHiliteColor(hilite);
-
-  textframe1->setBorderColor(theme_current.border);
-  textframe1->setBaseColor(theme_current.base);
-  textframe1->setBackColor(theme_current.back);
-  textframe1->setShadowColor(shadow);
-  textframe1->setHiliteColor(hilite);
-
-  textframe2->setBorderColor(theme_current.border);
-  textframe2->setBaseColor(theme_current.base);
-  textframe2->setBackColor(theme_current.back);
-  textframe2->setShadowColor(shadow);
-  textframe2->setHiliteColor(hilite);
-
-  textfield1->setBorderColor(theme_current.border);
-  textfield1->setBackColor(theme_current.back);
-  textfield1->setBaseColor(theme_current.base);
-  textfield1->setTextColor(theme_current.fore);
-  textfield1->setSelTextColor(theme_current.selfore);
-  textfield1->setSelBackColor(theme_current.selback);
-  textfield1->setCursorColor(theme_current.fore);
-  textfield1->setShadowColor(shadow);
-  textfield1->setHiliteColor(hilite);
-
-  tooltip->setTextColor(theme_current.tipfore);
-  tooltip->setBackColor(theme_current.tipback);
+  applyPreviewTheme();
   }
 
 
@@ -1291,9 +1544,9 @@ FXbool FXDesktopSetup::setApplicationAndVendor(const FXString& an,const FXString
 
   readSettingsFile(path);
   setupFileBindings();
-  setupColors();
   initColors();
   setupFont();
+  setupColors();
   return true;
   }
 
@@ -1322,6 +1575,15 @@ FXbool FXDesktopSetup::readSettingsFile(const FXString& file){
     theme_current.tipback=desktopsettings.readColorEntry("SETTINGS","tipbackcolor",getApp()->getTipbackColor());
     theme_current.menufore=desktopsettings.readColorEntry("SETTINGS","selmenutextcolor",getApp()->getSelMenuTextColor());
     theme_current.menuback=desktopsettings.readColorEntry("SETTINGS","selmenubackcolor",getApp()->getSelMenuBackColor());
+
+    // Theme selection: a path is imported, anything else is a preset or auto
+    FXString selected=desktopsettings.readStringEntry("SETTINGS","theme",nullptr);
+    if(selected.empty() || selected=="auto" || selected=="dark" || selected=="classic"){
+      themesource.clear();
+      }
+    else{
+      themesource=selected;
+      }
 
     // General Settings
     typingSpeed=desktopsettings.readLongEntry("SETTINGS","typingspeed",getApp()->getTypingSpeed())/milliseconds;
@@ -1369,6 +1631,21 @@ FXbool FXDesktopSetup::readSettingsFile(const FXString& file){
     hinting=desktopsettings.readBoolEntry("Xft","hinting",true);
     autohint=desktopsettings.readBoolEntry("Xft","autohint",false);
     antialias=desktopsettings.readBoolEntry("Xft","antialias",true);
+    // The source of an imported theme is authoritative for the colors
+    if(!themesource.empty()){
+      FXTheme loaded;
+      FXString summary;
+      if(loadTheme(themesource,loaded,summary)){
+        previewtheme=loaded;
+        themeColors(loaded,theme_current);
+        }
+      else{
+        setPreviewThemeFromColors();
+        }
+      }
+    else{
+      setPreviewThemeFromColors();
+      }
     return true;
     }
   return false;
@@ -1395,6 +1672,12 @@ FXbool FXDesktopSetup::writeSettingsFile(const FXString& file){
   desktopsettings.writeColorEntry("SETTINGS","tipbackcolor",theme_current.tipback);
   desktopsettings.writeColorEntry("SETTINGS","selmenutextcolor",theme_current.menufore);
   desktopsettings.writeColorEntry("SETTINGS","selmenubackcolor",theme_current.menuback);
+
+  // Remember an imported theme by source, or clear the selection for built-in
+  // and custom colors so FXApp::init() does not re-import an older theme
+  if(thememodified){
+    desktopsettings.writeStringEntry("SETTINGS","theme",themesource.empty()?"classic":themesource.text());
+    }
 
   // Save General Settings
   desktopsettings.writeLongEntry("SETTINGS","typingspeed",typingSpeed*milliseconds);
@@ -1479,6 +1762,7 @@ FXDesktopSetup::~FXDesktopSetup(){
   delete iconimage[BIG_ICON];
   delete iconimage[MINI_ICON_OPEN];
   delete iconimage[BIG_ICON_OPEN];
+  clearThemeEntries();
   }
 
 /*******************************************************************************/

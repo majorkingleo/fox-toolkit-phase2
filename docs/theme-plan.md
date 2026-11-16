@@ -879,6 +879,46 @@ reports (`#C6C8C9`); both are valid hairlines for the same surface, and the
 difference is expected because KDE themes draw their frames, not their
 backgrounds.
 
+**Progress — ControlPanel theme chooser (2026-11-16).** The Themes tab no
+longer stops at the compiled-in `ColorThemes` table. It now builds its list from
+those presets plus the themes found under `$XDG_DATA_HOME/themes`,
+`$XDG_DATA_DIRS/themes`, `~/.themes` and the `color-schemes` directories, and
+it accepts a `gtk.css`, `gtkrc`, `.colors` or `.foxtheme` chosen through the new
+`Import...` button. Selecting a source loads it through the cache and the same
+`FXCSS`/`FXTheme` path as `FXApp::init()`, maps the semantic roles onto the
+color wells for the sampler, and remembers the source in `SETTINGS/theme` so the
+choice survives a restart.  The sampler is not merely recolored: the resolved
+`FXTheme` is applied through `FXApp::setTheme()`, so the preview uses the real
+style, including rounded control corners and the theme's metrics and fonts.
+Editing a color well clears the source and falls back to explicit palette
+colors, the `Show` filter narrows the list to GNOME/GTK, KDE, FOX presets,
+system or user themes, and `Rescan` rebuilds the list after a theme is
+installed.  The source line is a footer note instead of a line below the
+buttons.  Verified with `Breeze` and `Breeze-Dark`: the chooser lists them,
+selecting one renders surface `#EFF0F1` / `#202326` with corner radius 5, the
+GTK filter shows 4 installed themes and the system filter 16, and the written
+settings contain the source path plus the mapped palette; selecting `FOX`
+restores radius 0 and writes `theme=classic` again.
+
+**Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
+imported theme is not possible with the current contract: `FXStyle` and the
+theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane
+styling would need a style override that resolves through the widget ancestry,
+which is a larger API change than the preview is worth.  Option 2 (theme the
+whole dialog) is therefore the chosen behaviour, and the remaining defects were
+fixed in the theme core: `FXApp::setTheme()` now applies colors and metrics
+without queuing intermediate repaints, lays the tree out top down, suppresses
+Wayland exposures during that pass through the new
+`fxplatformBeginLayout()`/`fxplatformEndLayout()` seam, grows a window that the
+new metrics made too small, and repaints once afterwards.  `FXWindow::applyTheme()`
+now updates the base background as well, and the text, selection, cursor and
+list colors of `FXTextField`, `FXList`, `FXIconList`, `FXTreeList`, `FXGroupBox`,
+`FXListBox`, `FXComboBox` and `FXToolTip` follow the theme, which makes a switch
+to a dark import readable.  Verified with `Breeze` and `Breeze-Dark` switched at
+runtime on both the X11 and Wayland builds: the dialog resizes from 659x513 to
+699x663, all widgets repaint once at their final geometry, the footer note
+remains at the bottom, and the preview shows rounded buttons with radius 5.
+
 
 ## Validation
 

@@ -1445,9 +1445,11 @@ FXbool FXWindow::cursorShown() const {
   }
 
 
-// Set window background
-// Re-apply theme colors to this window
-void FXWindow::applyTheme(FXTheme*){
+// Re-apply theme colors unless the application overrode them
+void FXWindow::applyTheme(FXTheme* theme){
+  if(!backColorOverride){
+    backColor=theme->color(ROLE_SURFACE);
+    }
   }
 
 
