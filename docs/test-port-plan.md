@@ -107,6 +107,11 @@ change nothing else); the library under them is never touched.
 
 1. B and A: `match`, `codecs`, `minheritance`, `scan`, `unicode`. These only
    need a count and a return value, and `match` has a defect behind it.
+   Done: all five return 0 on Windows and Linux. The `match` defect was in the
+   test, not in the library: with `PathName` the separator is `PATHSEP`, which
+   is `\` on Windows, so the test now builds its subjects with
+   `PATHSEPSTRING`. `codecs` runs the performance part only with `--perf`,
+   `unicode` dumps its table only with `--dump`.
 2. C: `dictest`, `memmap`, `process`, `thread`, `parallel`. They get a
    self-contained default run.
 3. C and E: `rex`, `expression`, `units` with tables of expected results.

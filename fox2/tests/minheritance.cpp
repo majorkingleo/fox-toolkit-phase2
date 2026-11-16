@@ -161,6 +161,11 @@ public:
 
 /*******************************************************************************/
 
+// Which object a handler ran on, and the number of failed checks
+static const void* seen=nullptr;
+static FXint failures=0;
+
+
 Base1::Base1(){
   FXTRACE(100,"Base1::Base1 at %p\n",this);
   a=1;
@@ -186,6 +191,7 @@ Base2::Base2(){
   }
 
 long Base2::onCmdBase2(FXObject*,FXSelector,void*){
+  seen=this;
   FXTRACE(100,"Base2::onCmdBase2 at %p b=%d\n",this,b);
   return 1;
   }
@@ -225,6 +231,7 @@ TwoBaseOne::TwoBaseOne(){
   }
 
 long TwoBaseOne::onCmdTwoBaseOne(FXObject*,FXSelector,void*){
+  seen=this;
   FXTRACE(100,"TwoBaseOne::onCmdTwoBaseOne at %p d=%d\n",this,d);
   return 1;
   }
@@ -248,6 +255,7 @@ TwoBaseTwo::TwoBaseTwo(){
   }
 
 long TwoBaseTwo::onCmdTwoBaseTwo(FXObject*,FXSelector,void*){
+  seen=this;
   FXTRACE(100,"TwoBaseTwo::onCmdTwoBaseTwo at %p e=%d\n",this,e);
   return 1;
   }
@@ -274,6 +282,7 @@ ThreeBase::ThreeBase(){
   }
 
 long ThreeBase::onCmdThreeBase(FXObject*,FXSelector,void*){
+  seen=this;
   FXTRACE(100,"ThreeBase::onCmdThreeBase at %p f=%d\n",this,f);
   return 1;
   }
@@ -286,6 +295,15 @@ ThreeBase::~ThreeBase(){
 /*******************************************************************************/
 
 
+// Send message to target, handler must run once and see the expected object
+static void call(const char* what,FXObject* target,FXSelector sel,const void* self){
+  seen=nullptr;
+  FXbool ok=(target->handle(nullptr,sel,nullptr)==1) && (seen==self);
+  if(!ok) failures++;
+  printf("%s %s\n",ok?"ok   ":"BAD  ",what);
+  }
+
+
 // Start the whole thing
 int main(int argc,char* argv[]){
   fxtestargs(argc,argv);
@@ -296,11 +314,11 @@ int main(int argc,char* argv[]){
 
   // Found in TwoBaseOne
   FXTRACE(100,"calling TwoBaseOne\n");
-  twobase1.handle(nullptr,FXSEL(SEL_COMMAND,TwoBaseOne::ID_TWOBASEONE),nullptr);
+  call("TwoBaseOne handler",&twobase1,FXSEL(SEL_COMMAND,TwoBaseOne::ID_TWOBASEONE),static_cast<TwoBaseOne*>(&twobase1));
 
   // Found in Base2
   FXTRACE(100,"calling Base2\n");
-  twobase1.handle(nullptr,FXSEL(SEL_COMMAND,Base2::ID_BASE2),nullptr);
+  call("Base2 handler of TwoBaseOne",&twobase1,FXSEL(SEL_COMMAND,Base2::ID_BASE2),static_cast<Base2*>(&twobase1));
   }
 
   FXTRACE(100,"=============\n");
@@ -310,11 +328,11 @@ int main(int argc,char* argv[]){
 
   // Found in TwoBaseTwo
   FXTRACE(100,"calling TwoBaseTwo\n");
-  twobase2.handle(nullptr,FXSEL(SEL_COMMAND,TwoBaseTwo::ID_TWOBASETWO),nullptr);
+  call("TwoBaseTwo handler",&twobase2,FXSEL(SEL_COMMAND,TwoBaseTwo::ID_TWOBASETWO),static_cast<TwoBaseTwo*>(&twobase2));
 
   // Found in Base2
   FXTRACE(100,"calling Base2\n");
-  twobase2.handle(nullptr,FXSEL(SEL_COMMAND,Base2::ID_BASE2),nullptr);
+  call("Base2 handler of TwoBaseTwo",&twobase2,FXSEL(SEL_COMMAND,Base2::ID_BASE2),static_cast<Base2*>(&twobase2));
   }
 
   FXTRACE(100,"=============\n");
@@ -324,26 +342,29 @@ int main(int argc,char* argv[]){
 
   // Found in ThreeBase
   FXTRACE(100,"calling ThreeBase\n");
-  threebase.handle(nullptr,FXSEL(SEL_COMMAND,ThreeBase::ID_THREEBASE),nullptr);
+  call("ThreeBase handler",&threebase,FXSEL(SEL_COMMAND,ThreeBase::ID_THREEBASE),static_cast<ThreeBase*>(&threebase));
 
   // Found in TwoBaseOne
   FXTRACE(100,"calling TwoBaseOne\n");
-  threebase.handle(nullptr,FXSEL(SEL_COMMAND,TwoBaseOne::ID_TWOBASEONE),nullptr);
+  call("TwoBaseOne handler of ThreeBase",&threebase,FXSEL(SEL_COMMAND,TwoBaseOne::ID_TWOBASEONE),static_cast<TwoBaseOne*>(&threebase));
 
   // Found in Base2
   FXTRACE(100,"calling Base2\n");
-  threebase.handle(nullptr,FXSEL(SEL_COMMAND,Base2::ID_BASE2),nullptr);
+  call("Base2 handler of ThreeBase",&threebase,FXSEL(SEL_COMMAND,Base2::ID_BASE2),static_cast<Base2*>(&threebase));
 
   // Found in TwoBaseOne
   FXTRACE(100,"calling TwoBaseOne via ThreeBase\n");
-  threebase.handle(nullptr,FXSEL(SEL_COMMAND,ThreeBase::ID_TWOBASEONE),nullptr);
+  call("TwoBaseOne handler bound in ThreeBase",&threebase,FXSEL(SEL_COMMAND,ThreeBase::ID_TWOBASEONE),static_cast<TwoBaseOne*>(&threebase));
 
   // Found in Base2
   FXTRACE(100,"calling Base2 via ThreeBase\n");
-  threebase.handle(nullptr,FXSEL(SEL_COMMAND,ThreeBase::ID_BASE2),nullptr);
+  call("Base2 handler bound in ThreeBase",&threebase,FXSEL(SEL_COMMAND,ThreeBase::ID_BASE2),static_cast<Base2*>(&threebase));
   }
 
-  return 1;
+  if(failures){
+    printf("FAILED: %d call(s)\n",failures);
+    return 1;
+    }
+  printf("all calls passed\n");
+  return 0;
   }
-
-

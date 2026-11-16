@@ -16,11 +16,14 @@
 
 /*******************************************************************************/
 
+static FXint failures=0;
+
 static FXbool matchtest(const FXchar* pattern,const FXchar* string,FXuint flags,FXbool expected){
   const FXchar *const passorfail[]={"false","true "};
   const FXchar *const okorbad[]={"BAD","   "};
   FXbool result=FXPath::match(string,pattern,flags);
   FXbool ok=result==expected;
+  if(!ok) failures++;
   fxwarning("%s pattern: %-25s match: %-25s  result: %s expected: %s\n",okorbad[ok],pattern,string,passorfail[result],passorfail[expected]);
   return ok;
   }
@@ -39,7 +42,7 @@ int main(int argc,char* argv[]){
   matchtest("A*", "ab", FXPath::CaseFold, true);
   matchtest("A*", "abc", FXPath::CaseFold, true);
   matchtest("A*", "a/b", FXPath::CaseFold, true);
-  matchtest("A*", "a/b", FXPath::CaseFold|FXPath::PathName, false);
+  matchtest("A*", "a" PATHSEPSTRING "b", FXPath::CaseFold|FXPath::PathName, false);
   matchtest("*", ".bashrc", FXPath::CaseFold, true);
   matchtest("*", ".bashrc", FXPath::CaseFold|FXPath::DotFile, false);
   matchtest("*.bashrc", ".bashrc", FXPath::CaseFold|FXPath::DotFile, true);
@@ -72,12 +75,15 @@ int main(int argc,char* argv[]){
   matchtest("(a.(b|c)|d.(e|f))", "a.c", 0, true);
   matchtest("(a.(b|c)|d.(e|f*))", "d.fx", 0, true);
   matchtest("(a|([bc()d])|e)F", "EF", FXPath::CaseFold, true);
-  matchtest("A*", "a/b", FXPath::CaseFold|FXPath::PathName|FXPath::LeadDir, true);
+  matchtest("A*", "a" PATHSEPSTRING "b", FXPath::CaseFold|FXPath::PathName|FXPath::LeadDir, true);
   matchtest("((A|B)C|D)E", "DE", 0, true);
   matchtest("(AB|EF)", "EF", 0, true);
   matchtest("(AB|EF))", "EF", 0, false);
-/*
-*/
-  return 1;
+  if(failures){
+    printf("FAILED: %d case(s)\n",failures);
+    return 1;
+    }
+  printf("all cases passed\n");
+  return 0;
   }
 

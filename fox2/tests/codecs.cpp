@@ -142,6 +142,10 @@ void utf8roundtriptest(FXTextCodec *codec){
 static FXchar  buffer[1024];
 
 
+// Number of failed checks
+static FXint problems=0;
+
+
 // Start the whole thing
 int main(int argc,char *argv[]){
   fxtestargs(argc,argv);
@@ -151,13 +155,15 @@ int main(int argc,char *argv[]){
   FXwchar w1,w2;
   FXint n,m,s;
   FXint mode=0;
+  FXbool perf=false;
 
   // Round-trip tests
   fxmessage("**** Testing utf2wcs(wcs2utf(str))\n");
 
-  // Probability distributions
-  if(1<argc){
-    mode=strtoul(argv[1],nullptr,0);
+  // Performance tests only on request: codecs --perf [mode]
+  if(1<argc && strcmp(argv[1],"--perf")==0){
+    perf=true;
+    if(2<argc) mode=strtoul(argv[2],nullptr,0);
     }
 
   // Test utf for codes of 4 bytes
@@ -165,7 +171,7 @@ int main(int argc,char *argv[]){
   for(w1=0x10000; w1<0x110000; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     n=utf2wcs(&w2,buffer,1,m);
-    if(w1!=w2 || m!=4 || n!=1) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2 || m!=4 || n!=1) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   // Test utf for codes of 3 bytes
@@ -173,7 +179,7 @@ int main(int argc,char *argv[]){
   for(w1=0x800; w1<0x10000; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     n=utf2wcs(&w2,buffer,1,m);
-    if(w1!=w2 || m!=3 || n!=1) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2 || m!=3 || n!=1) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   // Test utf for codes of 2 bytes
@@ -181,7 +187,7 @@ int main(int argc,char *argv[]){
   for(w1=0x80; w1<0x800; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     n=utf2wcs(&w2,buffer,1,m);
-    if(w1!=w2 || m!=2 || n!=1) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2 || m!=2 || n!=1) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   // Test utf for codes of 1 byte
@@ -189,7 +195,7 @@ int main(int argc,char *argv[]){
   for(w1=0; w1<0x80; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     n=utf2wcs(&w2,buffer,1,m);
-    if(w1!=w2 || m!=1 || n!=1) fxmessage("%06X: Problem: %06X m=%d n=%d\n",w1,w2,m,n);
+    if(w1!=w2 || m!=1 || n!=1) problems++,fxmessage("%06X: Problem: %06X m=%d n=%d\n",w1,w2,m,n);
     }
 
   // Round-trip tests
@@ -201,8 +207,8 @@ int main(int argc,char *argv[]){
     s=wc2nc(scratch,w1);
     m=ncs2utf(buffer,scratch,4,s);
     n=utf2ncs(hctarcs,buffer,2,m);
-    if(n==1 && (scratch[0]!=hctarcs[0])) fxmessage("%06X: Problem: %04X s=%d n=%d\n",w1,hctarcs[0],s,n);
-    if(n==2 && (scratch[0]!=hctarcs[0] || scratch[1]!=hctarcs[1])) fxmessage("%06X: Problem: %04X %04X s=%d n=%d\n",w1,hctarcs[0],hctarcs[1],s,n);
+    if(n==1 && (scratch[0]!=hctarcs[0])) problems++,fxmessage("%06X: Problem: %04X s=%d n=%d\n",w1,hctarcs[0],s,n);
+    if(n==2 && (scratch[0]!=hctarcs[0] || scratch[1]!=hctarcs[1])) problems++,fxmessage("%06X: Problem: %04X %04X s=%d n=%d\n",w1,hctarcs[0],hctarcs[1],s,n);
     }
 
   fxmessage("**** Testing wcs2utf(wc)\n");
@@ -212,7 +218,7 @@ int main(int argc,char *argv[]){
   for(w1=0x10000; w1<0x110000; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     w2=((FXuchar)buffer[0]<<18) ^ ((FXuchar)buffer[1]<<12) ^ ((FXuchar)buffer[2]<<6) ^ (FXuchar)buffer[3] ^ 0x3C82080;
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   // Test utf for codes of 3 bytes
@@ -220,7 +226,7 @@ int main(int argc,char *argv[]){
   for(w1=0x800; w1<0x10000; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     w2=((FXuchar)buffer[0]<<12) ^ ((FXuchar)buffer[1]<<6) ^ (FXuchar)buffer[2] ^ 0x0E2080;
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   // Test utf for codes of 2 bytes
@@ -228,7 +234,7 @@ int main(int argc,char *argv[]){
   for(w1=0x80; w1<0x800; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     w2=((FXuchar)buffer[0]<<6) ^ (FXuchar)buffer[1] ^ 0x3080;
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   // Test utf for codes of 1 byte
@@ -236,7 +242,7 @@ int main(int argc,char *argv[]){
   for(w1=0; w1<0x80; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     w2=(FXuchar)buffer[0];
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
     }
 
   fxmessage("**** Testing WCINC(ptr)\n");
@@ -247,16 +253,16 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer;
     w2=wcnxt(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer+4!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+4,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer+4!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+4,ptr);
     }
   fxmessage("3-byte step forward\n");
   for(w1=0x800; w1<0x10000; w1++){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer;
     w2=wcnxt(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer+3!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+3,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer+3!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+3,ptr);
     }
 
   fxmessage("2-byte step forward\n");
@@ -264,8 +270,8 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer;
     w2=wcnxt(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer+2!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+2,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer+2!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+2,ptr);
     }
 
   fxmessage("1-byte step forward\n");
@@ -273,8 +279,8 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer;
     w2=wcnxt(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer+1!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+1,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer+1!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer+1,ptr);
     }
 
   fxmessage("**** Testing WCDEC(ptr)\n");
@@ -285,8 +291,8 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer+4;
     w2=wcprv(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
     }
 
   fxmessage("3-byte step backward\n");
@@ -294,8 +300,8 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer+3;
     w2=wcprv(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
     }
 
   fxmessage("2-byte step backward\n");
@@ -303,8 +309,8 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer+2;
     w2=wcprv(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
     }
 
   fxmessage("1-byte step backward\n");
@@ -312,11 +318,19 @@ int main(int argc,char *argv[]){
     m=wcs2utf(buffer,&w1,4,1);
     ptr=buffer+1;
     w2=wcprv(ptr);
-    if(w1!=w2) fxmessage("%06X: Problem: %06X\n",w1,w2);
-    if(buffer!=ptr) fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
+    if(w1!=w2) problems++,fxmessage("%06X: Problem: %06X\n",w1,w2);
+    if(buffer!=ptr) problems++,fxmessage("%06X: Problem: %p!=%p\n",w1,buffer,ptr);
     }
 
   fxmessage("**** Performance tests\n");
+  if(!perf){
+    if(problems){
+      printf("FAILED: %d check(s)\n",problems);
+      return 1;
+      }
+    printf("all checks passed\n");
+    return 0;
+    }
   FXRandom rnd(FXThread::time());
   FXArray<FXchar> data('\0',100000000);
   FXchar* head=data.data();
@@ -619,5 +633,5 @@ int main(int argc,char *argv[]){
     }
 */
 
-  return 1;
+  return problems?1:0;
   }

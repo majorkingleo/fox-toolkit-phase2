@@ -232,6 +232,7 @@ int main(int argc,char* argv[]){
   FXfloat  fa,fb,fc;
   FXchar   str[1000];
   FXchar   buf[2000];
+  FXint    failures=0;
 /*
 
 //  const FXchar* string="0x1.ac53a7df93d691111p+66";
@@ -265,6 +266,7 @@ __snprintf(buf,sizeof(buf),"format=\"%s\" input=%s  res=%d  num=%.18lg = 0x%016l
     __sscanf(floatnumbers[y],"%'lf",&dc);
     snprintf(buf,sizeof(buf),"strtod=%- 30.18lg (0x%016llx %- 5lld) __strtod=%- 30.18lg (0x%016llx %- 5lld) __sscanf=%-30.18lg  (0x%016llx %- 5lld) input=%s",da,Math::fpMantissa(da),((Math::fpBits(da)>>52)&0x7ff),db,Math::fpMantissa(db),((Math::fpBits(db)>>52)&0x7ff),dc,Math::fpMantissa(dc),((Math::fpBits(dc)>>52)&0x7ff),floatnumbers[y]);
     fprintf(stdout,"%s\n",buf);
+    if(!(da==db || (da!=da && db!=db))){ failures++; fprintf(stdout,"BAD: __strtod differs from strtod for input=%s\n",floatnumbers[y]); }
     }
   fprintf(stdout,"\n");
 
@@ -275,6 +277,7 @@ __snprintf(buf,sizeof(buf),"format=\"%s\" input=%s  res=%d  num=%.18lg = 0x%016l
     __sscanf(floatnumbers[y],"%'f",&fc);
     snprintf(buf,sizeof(buf),"strtof=%- 30.18lg (0x%08x %- 5d) __strtof=%- 30.18lg (0x%08x %- 5d) __sscanf=%-30.18lg  (0x%08lx %- 5d) input=%s",(FXdouble)fa,Math::fpMantissa(fa),((Math::fpBits(fa)>>23)&0xff),(FXdouble)fb,Math::fpMantissa(fb),((Math::fpBits(fb)>>23)&0xff),(FXdouble)fc,Math::fpMantissa(fc),((Math::fpBits(fc)>>23)&0xff),floatnumbers[y]);
     fprintf(stdout,"%s\n",buf);
+    if(!(fa==fb || (fa!=fa && fb!=fb))){ failures++; fprintf(stdout,"BAD: __strtof differs from strtof for input=%s\n",floatnumbers[y]); }
     }
   fprintf(stdout,"\n");
   fprintf(stdout,"\n");
@@ -333,6 +336,31 @@ __snprintf(buf,sizeof(buf),"format=\"%s\" input=%s  res=%d  num=%.18lg = 0x%016l
     }
   fprintf(stdout,"\n");
 
-  return 1;
+  // Known results
+  res=__sscanf("111","%d",&ia);
+  if(res!=1 || ia!=111){ failures++; fprintf(stdout,"BAD: %%d of 111\n"); }
+  res=__sscanf("-111","%d",&ia);
+  if(res!=1 || ia!=-111){ failures++; fprintf(stdout,"BAD: %%d of -111\n"); }
+  res=__sscanf("0xff","%i",&ia);
+  if(res!=1 || ia!=255){ failures++; fprintf(stdout,"BAD: %%i of 0xff\n"); }
+  res=__sscanf("0377","%i",&ia);
+  if(res!=1 || ia!=255){ failures++; fprintf(stdout,"BAD: %%i of 0377\n"); }
+  res=__sscanf("1,234,567","%'d",&ia);
+  if(res!=1 || ia!=1234567){ failures++; fprintf(stdout,"BAD: %%'d of 1,234,567\n"); }
+  res=__sscanf("111 222 333","%i %i %i",&ia,&ib,&ic);
+  if(res!=3 || ia!=111 || ib!=222 || ic!=333){ failures++; fprintf(stdout,"BAD: %%i %%i %%i\n"); }
+  res=__sscanf("111 222 333","%3$i %1$i %2$i",&ia,&ib,&ic);
+  if(res!=3 || ia!=222 || ib!=333 || ic!=111){ failures++; fprintf(stdout,"BAD: %%3$i %%1$i %%2$i\n"); }
+  res=__sscanf("3.5","%lf",&da);
+  if(res!=1 || da!=3.5){ failures++; fprintf(stdout,"BAD: %%lf of 3.5\n"); }
+  res=__sscanf("Camel_Case_1337","%[a-zA-Z0-9_]",str);
+  if(res!=1 || strcmp(str,"Camel_Case_1337")!=0){ failures++; fprintf(stdout,"BAD: %%[a-zA-Z0-9_]\n"); }
+
+  if(failures){
+    fprintf(stdout,"FAILED: %d check(s)\n",failures);
+    return 1;
+    }
+  fprintf(stdout,"all checks passed\n");
+  return 0;
   }
 
