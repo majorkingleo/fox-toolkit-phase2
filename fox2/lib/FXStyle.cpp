@@ -263,9 +263,9 @@ void FXStyle::drawDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,F
 
 
 // Draw keyboard focus ring
-void FXStyle::drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
-  FXint radius=theme->metric(METRIC_CORNER_RADIUS);
-  FXint width=FXMAX(theme->metric(METRIC_FOCUS_WIDTH),1);
+void FXStyle::drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXdouble scale){
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,scale);
+  FXint width=FXMAX(theme->metric(METRIC_FOCUS_WIDTH,scale),1);
   FXint r;
 
   // Rounded ring in the accent color for themed controls
@@ -353,8 +353,8 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
   FXColor edge=state.edge;
   FXColor surface=state.surface;
   FXColor face=state.engaged?hilite:state.back;
-  FXint borderWidth=theme->metric(METRIC_BORDER_WIDTH);
-  FXint radius=theme->metric(METRIC_CORNER_RADIUS);
+  FXint borderWidth=theme->metric(METRIC_BORDER_WIDTH,state.scale);
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,state.scale);
   FXint border=state.border;
   FXuint options=state.options;
 

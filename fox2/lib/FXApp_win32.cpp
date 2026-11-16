@@ -1207,8 +1207,7 @@ Alt key seems to repeat.
         if(newdpi<=0) newdpi=(FXint)LOWORD(wParam);
         if(newdpi<=0) break;
         applyWindowDPI(window,newdpi);
-        dpicurrent=newdpi;
-        if(dpiautoscale) setThemeScale(dpifactor*FXdouble(newdpi)/96.0);
+        updateWindowScale(window);
         if(suggested){
           SetWindowPos((HWND)hwnd,nullptr,suggested->left,suggested->top,suggested->right-suggested->left,suggested->bottom-suggested->top,SWP_NOZORDER|SWP_NOACTIVATE);
           }
@@ -1219,7 +1218,10 @@ Alt key seems to repeat.
     case WM_DPICHANGED_AFTERPARENT:
       {
         FXint newdpi=getWindowDPI(hwnd);
-        if(newdpi>0) applyWindowDPI(window,newdpi);
+        if(newdpi>0){
+          applyWindowDPI(window,newdpi);
+          updateWindowScale(window);
+          }
       }
       return 0;
 

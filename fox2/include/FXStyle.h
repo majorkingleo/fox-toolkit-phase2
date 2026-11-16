@@ -54,6 +54,8 @@ struct FXButtonState {
   FXColor surface;    /// Base color of the widget
   FXColor text;       /// Text color of the widget
   FXColor parentBack; /// Background color of the parent
+  FXdouble scale;     /// Display scale of the window, 0 for the theme scale
+  FXButtonState():enabled(false),hover(false),down(false),engaged(false),focused(false),defaulted(false),toolbar(false),border(0),options(0),back(0),hilite(0),shadow(0),edge(0),surface(0),text(0),parentBack(0),scale(0.0){}
   };
 
 
@@ -104,8 +106,8 @@ public:
   /// Draw frame chrome with the colors of the widget
   void drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options,FXColor hilite,FXColor shadow,FXColor border,FXColor surface);
 
-  /// Draw keyboard focus ring
-  virtual void drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
+  /// Draw keyboard focus ring at the given display scale; 0 uses the theme scale
+  virtual void drawFocusRing(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXdouble scale=0.0);
 
   /// Draw border rectangle
   void drawBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);

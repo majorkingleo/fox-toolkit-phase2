@@ -194,6 +194,13 @@ void FXStatusLine::setNormalText(const FXString& text){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXStatusLine::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXStatusLine::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

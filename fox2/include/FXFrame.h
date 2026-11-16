@@ -67,6 +67,7 @@ protected:
   FXint   padbottom;    // Bottom padding
   FXint   padleft;      // Left padding
   FXint   padright;     // right padding
+  FXuchar padauto=0;    // Pads that follow the theme padding: 1 left, 2 right, 4 top, 8 bottom
   FXint   border;       // Border size
 protected:
   FXFrame();

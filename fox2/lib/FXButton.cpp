@@ -386,6 +386,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   st.surface=baseColor;
   st.text=textColor;
   st.parentBack=getParent()?getParent()->getBackColor():backColor;
+  st.scale=getDisplayScale();
 
   // Draw the chrome; the classic style leaves the content area unchanged
   getApp()->getStyle()->drawButton(dc,0,0,width,height,st);
@@ -417,7 +418,7 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
       }
     if(hasFocus()){
-      getApp()->getStyle()->drawFocusRing(dc,border+1,border+1,width-2*border-2,height-2*border-2);
+      getApp()->getStyle()->drawFocusRing(dc,border+1,border+1,width-2*border-2,height-2*border-2,getDisplayScale());
       }
     }
 

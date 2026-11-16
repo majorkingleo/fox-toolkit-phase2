@@ -346,6 +346,13 @@ void FXMenuCaption::setIcon(FXIcon* ic){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXMenuCaption::applyTheme(FXTheme* theme){
+  FXWindow::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change font
 void FXMenuCaption::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

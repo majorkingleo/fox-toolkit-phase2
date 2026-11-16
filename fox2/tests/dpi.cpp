@@ -321,7 +321,7 @@ FXIMPLEMENT(DPITest,FXObject,DPITestMap,ARRAYNUMBER(DPITestMap))
 
 // Refresh the information labels
 void DPITest::updateLabels(){
-  FXint percent=FXint(app->getDisplayScale()*100.0+0.5);
+  FXint percent=FXint(window->getDisplayScale()*100.0+0.5);
   slider->setValue(FXCLAMP(DPI_SCALE_MIN,percent,DPI_SCALE_MAX),false);
   awarenessLabel->setText(FXString::value("Process awareness: %s (%d)",awarenessName(app->getDPIAwareness()),app->getDPIAwareness()));
   dpiLabel->setText(FXString::value("System DPI: %d    Window DPI: %d",app->getDPI(),window->getWindowDPI()));
@@ -332,7 +332,7 @@ void DPITest::updateLabels(){
 
 // Refresh the labels and keep the whole test UI visible as it scales
 void DPITest::update(){
-  FXdouble scale=app->getDisplayScale();
+  FXdouble scale=window->getDisplayScale();
   FXint wantw,wanth;
   updateLabels();
 
@@ -352,11 +352,11 @@ void DPITest::update(){
 
 // Write the current DPI and monitor state to the log
 void DPITest::snapshot(const FXchar* reason){
-  FXint percent=FXint(app->getDisplayScale()*100.0+0.5);
+  FXint percent=FXint(window->getDisplayScale()*100.0+0.5);
   if(!log || !log->isOpen()) return;
   log->separator(reason);
   log->line("awareness=%s(%d) system_dpi=%d",awarenessName(app->getDPIAwareness()),app->getDPIAwareness(),app->getDPI());
-  log->line("theme_scale=%.3f (%d%%) auto=%s factor=%.3f",app->getDisplayScale(),percent,app->getDisplayScaleAuto()?"yes":"no",app->getDisplayScaleFactor());
+  log->line("theme_scale=%.3f (%d%%) auto=%s factor=%.3f",window->getDisplayScale(),percent,app->getDisplayScaleAuto()?"yes":"no",app->getDisplayScaleFactor());
   log->line("window_dpi_fox=%d window_scale=%.3f",window->getWindowDPI(),window->getScale());
   log->line("window_pos=%d,%d window_size=%dx%d",window->getX(),window->getY(),window->getWidth(),window->getHeight());
   lastdpi=window->getWindowDPI();
@@ -503,9 +503,15 @@ long DPITest::onCmdAuto(FXObject*,FXSelector,void*){
 // Sample button clicked; proves the hit target moved and scaled with the UI
 long DPITest::onCmdSample(FXObject*,FXSelector,void*){
   clicks++;
-  clickLabel->setText(FXString::value("Button clicks: %d  (hit test at %d%%)",clicks,FXint(app->getDisplayScale()*100.0+0.5)));
-  if(log) log->line("user: sample click %d at %d%%, window dpi %d",clicks,FXint(app->getDisplayScale()*100.0+0.5),window->getWindowDPI());
+  clickLabel->setText(FXString::value("Button clicks: %d  (hit test at %d%%)",clicks,FXint(window->getDisplayScale()*100.0+0.5)));
+  if(log) log->line("user: sample click %d at %d%%, window dpi %d",clicks,FXint(window->getDisplayScale()*100.0+0.5),window->getWindowDPI());
   return 1;
+  }
+
+
+// Print the scale and a font height of one window
+static void reportWindow(const FXchar* name,FXWindow* win,FXLabel* label){
+  printf("    %-18s: scale %.2f  font height %d  bounds %dx%d\n",name,win->getDisplayScale(),label->getFont()->getFontHeight(),win->getWidth(),win->getHeight());
   }
 
 
@@ -514,6 +520,9 @@ int main(int argc,char* argv[]){
   fxtestargs(argc,argv);
   FXApp application("DPITest","FoxTest");
   FXMainWindow *main;
+  FXMainWindow *other=nullptr;
+  FXLabel *titleLabel;
+  FXLabel *otherLabel=nullptr;
   FXSlider *slider;
   FXLabel *scaleLabel;
   FXLabel *awarenessLabel;
@@ -543,7 +552,7 @@ int main(int argc,char* argv[]){
   main=new FXMainWindow(&application,"FOX DPI test",nullptr,nullptr,DECOR_ALL,0,0,520,320);
   content=new FXVerticalFrame(main,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
 
-  new FXLabel(content,"FOX DPI test",nullptr,LABEL_NORMAL|LAYOUT_FILL_X);
+  titleLabel=new FXLabel(content,"FOX DPI test",nullptr,LABEL_NORMAL|LAYOUT_FILL_X);
 
   info=new FXVerticalFrame(content,LAYOUT_FILL_X|FRAME_GROOVE,0,0,0,0);
   awarenessLabel=new FXLabel(info,"",nullptr,LABEL_NORMAL|LAYOUT_FILL_X);
@@ -576,8 +585,16 @@ int main(int argc,char* argv[]){
   tester.setWidgets(slider,scaleLabel,awarenessLabel,dpiLabel,sizeLabel,clickLabel);
   tester.setLog(&log,logLabel);
 
+  // A second top-level window that must stay at its own scale
+  if(simulate){
+    other=new FXMainWindow(&application,"FOX DPI other window",nullptr,nullptr,DECOR_ALL,0,0,260,80);
+    otherLabel=new FXLabel(other,"Other window, stays on its monitor",nullptr,LABEL_NORMAL);
+    new FXTextField(other,24);
+    }
+
   application.create();
   main->show(PLACEMENT_SCREEN);
+  if(other) other->show(PLACEMENT_SCREEN);
   tester.update();
 
   // Session header, then the first complete state
@@ -592,7 +609,7 @@ int main(int argc,char* argv[]){
   printf("FOX DPI test\n");
   printf("  process awareness : %d (%s)\n",application.getDPIAwareness(),awarenessName(application.getDPIAwareness()));
   printf("  system DPI        : %d\n",application.getDPI());
-  printf("  theme scale       : %.2f\n",application.getDisplayScale());
+  printf("  theme scale       : %.2f\n",main->getDisplayScale());
   printf("  window DPI (FOX)  : %d\n",main->getWindowDPI());
   printf("  log file          : %s\n",log.isOpen()?log.getFilename().text():"(could not be opened)");
 
@@ -618,29 +635,36 @@ int main(int argc,char* argv[]){
   if(simulate){
     HWND hwnd=(HWND)main->id();
     RECT rect;
+    FXint sysdpi=application.getDPI();
+    FXint simdpi=(sysdpi>=144)?96:144;
+    printf("  before WM_DPICHANGED:\n");
+    reportWindow("main window",main,titleLabel);
+    reportWindow("other window",other,otherLabel);
     GetWindowRect(hwnd,&rect);
-    rect.right=rect.left+(rect.right-rect.left)*3/2;
-    rect.bottom=rect.top+(rect.bottom-rect.top)*3/2;
-    SendMessage(hwnd,WM_DPICHANGED,MAKEWPARAM(144,144),(LPARAM)&rect);
+    rect.right=rect.left+(rect.right-rect.left)*simdpi/sysdpi;
+    rect.bottom=rect.top+(rect.bottom-rect.top)*simdpi/sysdpi;
+    SendMessage(hwnd,WM_DPICHANGED,MAKEWPARAM(simdpi,simdpi),(LPARAM)&rect);
     tester.update();
-    tester.snapshot("after WM_DPICHANGED 144");
-    printf("  after WM_DPICHANGED (144 dpi):\n");
-    printf("    theme scale       : %.2f\n",application.getDisplayScale());
+    tester.snapshot("after WM_DPICHANGED");
+    printf("  after WM_DPICHANGED (%d dpi) on the main window:\n",simdpi);
     printf("    window DPI (FOX)  : %d\n",main->getWindowDPI());
     printf("    window bounds     : %d,%d %dx%d\n",main->getX(),main->getY(),main->getWidth(),main->getHeight());
+    reportWindow("main window",main,titleLabel);
+    reportWindow("other window",other,otherLabel);
     fflush(stdout);
 
     // Round trip: move back to the system DPI
     GetWindowRect(hwnd,&rect);
-    rect.right=rect.left+(rect.right-rect.left)*2/3;
-    rect.bottom=rect.top+(rect.bottom-rect.top)*2/3;
-    SendMessage(hwnd,WM_DPICHANGED,MAKEWPARAM(application.getDPI(),application.getDPI()),(LPARAM)&rect);
+    rect.right=rect.left+(rect.right-rect.left)*sysdpi/simdpi;
+    rect.bottom=rect.top+(rect.bottom-rect.top)*sysdpi/simdpi;
+    SendMessage(hwnd,WM_DPICHANGED,MAKEWPARAM(sysdpi,sysdpi),(LPARAM)&rect);
     tester.update();
     tester.snapshot("after WM_DPICHANGED back to system DPI");
     printf("  after WM_DPICHANGED (%d dpi):\n",application.getDPI());
-    printf("    theme scale       : %.2f\n",application.getDisplayScale());
     printf("    window DPI (FOX)  : %d\n",main->getWindowDPI());
     printf("    window bounds     : %d,%d %dx%d\n",main->getX(),main->getY(),main->getWidth(),main->getHeight());
+    reportWindow("main window",main,titleLabel);
+    reportWindow("other window",other,otherLabel);
     fflush(stdout);
     application.addTimeout(&application,FXApp::ID_QUIT,2000000000);
     }

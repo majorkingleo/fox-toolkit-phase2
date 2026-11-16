@@ -127,6 +127,9 @@ public:
   /// Return the text font
   FXFont* getFont() const { return font; }
 
+  /// Re-resolve the normal font for the window's monitor
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Set menu caption style
   void setMenuStyle(FXuint style);
 

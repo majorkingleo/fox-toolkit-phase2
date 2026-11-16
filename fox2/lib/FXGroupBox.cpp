@@ -122,6 +122,13 @@ void FXGroupBox::disable(){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXGroupBox::applyTheme(FXTheme* theme){
+  FXPacker::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXGroupBox::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

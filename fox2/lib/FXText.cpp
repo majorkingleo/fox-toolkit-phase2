@@ -6197,6 +6197,13 @@ FXuint FXText::getTextStyle() const {
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXText::applyTheme(FXTheme* theme){
+  FXScrollArea::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXText::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

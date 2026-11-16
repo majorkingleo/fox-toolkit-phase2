@@ -360,6 +360,9 @@ public:
   /// Get the text font
   FXFont* getFont() const { return font; }
 
+  /// Re-resolve the normal font for the window's monitor
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Change number of visible columns
   void setNumColumns(FXint cols);
 

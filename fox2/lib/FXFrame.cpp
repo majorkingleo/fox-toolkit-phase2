@@ -88,11 +88,11 @@ FXFrame::FXFrame(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXin
   shadowColor=getApp()->getTheme()->color(ROLE_SURFACE_SHADOW);
   borderColor=getApp()->getTheme()->color(ROLE_BORDER);
 
-  // DEFAULT_PAD means "the theme's default padding"
-  if(pl==DEFAULT_PAD) pl=getApp()->getTheme()->metric(METRIC_PADDING);
-  if(pr==DEFAULT_PAD) pr=getApp()->getTheme()->metric(METRIC_PADDING);
-  if(pt==DEFAULT_PAD) pt=getApp()->getTheme()->metric(METRIC_PADDING);
-  if(pb==DEFAULT_PAD) pb=getApp()->getTheme()->metric(METRIC_PADDING);
+  // DEFAULT_PAD means "the theme's default padding", which follows the window scale
+  if(pl==DEFAULT_PAD){ pl=metric(METRIC_PADDING); padauto|=1; }
+  if(pr==DEFAULT_PAD){ pr=metric(METRIC_PADDING); padauto|=2; }
+  if(pt==DEFAULT_PAD){ pt=metric(METRIC_PADDING); padauto|=4; }
+  if(pb==DEFAULT_PAD){ pb=metric(METRIC_PADDING); padauto|=8; }
   padtop=pt;
   padbottom=pb;
   padleft=pl;
@@ -233,6 +233,20 @@ void FXFrame::applyTheme(FXTheme* theme){
     shadowColor=theme->color(ROLE_SURFACE_SHADOW);
     borderColor=theme->color(ROLE_BORDER);
     }
+
+  // Default padding follows the scale of the window's monitor
+  if(padauto){
+    FXint p=metric(METRIC_PADDING);
+    FXbool changed=false;
+    if((padauto&1) && padleft!=p){ padleft=p; changed=true; }
+    if((padauto&2) && padright!=p){ padright=p; changed=true; }
+    if((padauto&4) && padtop!=p){ padtop=p; changed=true; }
+    if((padauto&8) && padbottom!=p){ padbottom=p; changed=true; }
+    if(changed){
+      recalc();
+      update();
+      }
+    }
   }
 
 
@@ -313,6 +327,7 @@ void FXFrame::setBorderColor(FXColor clr){
 
 // Change top padding
 void FXFrame::setPadTop(FXint pt){
+  padauto&=~4;
   if(padtop!=pt){
     padtop=pt;
     recalc();
@@ -323,6 +338,7 @@ void FXFrame::setPadTop(FXint pt){
 
 // Change bottom padding
 void FXFrame::setPadBottom(FXint pb){
+  padauto&=~8;
   if(padbottom!=pb){
     padbottom=pb;
     recalc();
@@ -333,6 +349,7 @@ void FXFrame::setPadBottom(FXint pb){
 
 // Change left padding
 void FXFrame::setPadLeft(FXint pl){
+  padauto&=~1;
   if(padleft!=pl){
     padleft=pl;
     recalc();
@@ -343,6 +360,7 @@ void FXFrame::setPadLeft(FXint pl){
 
 // Change right padding
 void FXFrame::setPadRight(FXint pr){
+  padauto&=~2;
   if(padright!=pr){
     padright=pr;
     recalc();

@@ -1967,6 +1967,13 @@ void FXList::setNumVisible(FXint nvis){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXList::applyTheme(FXTheme* theme){
+  FXScrollArea::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXList::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

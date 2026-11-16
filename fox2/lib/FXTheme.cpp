@@ -197,6 +197,14 @@ FXint FXTheme::metric(FXint subject) const {
   }
 
 
+// Return value of given metric at an explicit scale
+FXint FXTheme::metric(FXint subject,FXdouble s) const {
+  if(subject<0 || METRIC_LAST<=subject) return 0;
+  if(subject==METRIC_ANIMATION_TIME) return metrics[subject];
+  return FXint(metrics[subject]*(s>0.0?s:scale)+0.5);
+  }
+
+
 // Change value of given metric
 void FXTheme::setMetric(FXint subject,FXint value){
   if(0<=subject && subject<METRIC_LAST){

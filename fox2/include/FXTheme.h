@@ -122,6 +122,9 @@ public:
   /// Return value of given metric, scaled for the display DPI
   FXint metric(FXint subject) const;
 
+  /// Return value of given metric at an explicit scale; a scale of 0 uses the theme scale
+  FXint metric(FXint subject,FXdouble s) const;
+
   /// Change value of given metric
   void setMetric(FXint subject,FXint value);
 

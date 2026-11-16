@@ -375,7 +375,10 @@ private:
   FXbool parsePlatformArgument(int argc,char** argv,FXint& j,const FXchar*& dpy,const FXchar*& istyle);
   FXdouble getFontScale() const;
   void applyFontScale();
-  void setThemeScale(FXdouble scale);
+  void setThemeScale(FXdouble scale,FXbool force=false);
+  void rescaleWindows();
+  void updateWindowScale(FXWindow* window);
+  void destroyFontSets();
   static void applyWindowDPI(FXWindow* window,FXint dpivalue);
   static FXival CALLBACK wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
   void addRepaint(FXID win,FXint x,FXint y,FXint w,FXint h,FXbool synth=false);
@@ -499,6 +502,9 @@ public:
   /// Return the normal font realized for a given DPI; 0 uses the system DPI
   FXFont* getNormalFont(FXint dpivalue);
 
+  /// If font is the normal font of any DPI return the normal font for the given DPI, else return font
+  FXFont* retargetNormalFont(FXFont* font,FXint dpivalue);
+
   /// Begin of wait-cursor block; wait-cursor blocks may be nested.
   void beginWaitCursor();
 
@@ -548,6 +554,9 @@ public:
 
   /// Return the display scale; 1.0 corresponds to 96 DPI
   FXdouble getDisplayScale() const { return theme.getScale(); }
+
+  /// Return the display scale of a window on a monitor with the given DPI
+  FXdouble getWindowScale(FXint dpivalue) const;
 
   /// Return true when the display scale follows the monitor DPI
   FXbool getDisplayScaleAuto() const { return dpiautoscale; }

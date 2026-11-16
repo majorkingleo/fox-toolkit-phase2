@@ -421,6 +421,12 @@ public:
   /// Return the scale factor from 96-DPI logical units to device pixels
   FXdouble getScale() const;
 
+  /// Return the display scale applied to theme metrics and fonts of this window
+  FXdouble getDisplayScale() const;
+
+  /// Return the value of a theme metric at this window's display scale
+  FXint metric(FXint subject) const;
+
   /// Convert a logical length to device pixels
   FXint scale(FXint value) const;
 

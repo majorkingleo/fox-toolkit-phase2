@@ -100,6 +100,9 @@ public:
   /// Return the current font
   FXFont* getFont() const { return font; }
 
+  /// Re-resolve the normal font for the window's monitor
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Return the text color
   FXColor getTextColor() const { return textColor; }
 

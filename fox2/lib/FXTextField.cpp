@@ -2198,6 +2198,13 @@ long FXTextField::onUpdToggleEditable(FXObject* sender,FXSelector,void*){
 
 /*******************************************************************************/
 
+// Re-resolve the normal font for the window's monitor
+void FXTextField::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXTextField::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

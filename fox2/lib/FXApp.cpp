@@ -554,6 +554,15 @@ void FXApp::setTranslator(FXTranslator* trans){
 
 /*******************************************************************************/
 
+// Fonts realized for a monitor with a different DPI
+struct FXApp::FXFontSet {
+  FXint      dpi;                       // Monitor DPI
+  FXFont    *normal;                    // Normal font for this DPI
+  FXFont    *roles[FONT_LAST];          // Role fonts for this DPI
+  FXFontSet *next;                      // Next font set
+  };
+
+
 // Return the DPI of the monitor a native window is on, or 0 if unknown
 FXint FXApp::getWindowDPI(FXID hwnd) const {
   FXint value=fxplatformGetWindowDPI(hwnd);
@@ -579,9 +588,19 @@ FXdouble FXApp::getFontScale() const {
   }
 
 
-// Apply the display scale to the normal font and drop the cached role fonts
+// Return the display scale of a window on a monitor with the given DPI; with
+// automatic scaling every window follows its own monitor, otherwise (pinned
+// scale or unknown monitor) the app-wide scale applies
+FXdouble FXApp::getWindowScale(FXint dpivalue) const {
+  if(dpiautoscale && 0<dpivalue) return dpifactor*FXdouble(dpivalue)/96.0;
+  return theme.getScale();
+  }
+
+
+// Apply the display scale to the normal fonts and drop the cached role fonts
 void FXApp::applyFontScale(){
   FXFontDesc desc;
+  FXFontSet *set;
   FXdouble factor=getFontScale();
   if(basefontdesc.size){
     desc=basefontdesc;
@@ -591,25 +610,68 @@ void FXApp::applyFontScale(){
       normalFont->destroy();
       normalFont->create();
       }
+
+    // Normal fonts of other monitors are rescaled in place, so widgets that
+    // hold one of them keep a valid pointer
+    for(set=fontsets; set; set=set->next){
+      if(set->normal){
+        desc=basefontdesc;
+        desc.size=FXint(FXdouble(desc.size)*getWindowScale(set->dpi)/(FXdouble(set->dpi)/96.0)+0.5);
+        set->normal->setFontDesc(desc);
+        if(isInitialized()){
+          set->normal->destroy();
+          set->normal->create();
+          }
+        }
+      }
     }
   releaseRoleFonts();
   }
 
 
-// Change the theme scale and relayout if it actually changed
-void FXApp::setThemeScale(FXdouble scale){
-  if(theme.getScale()!=scale){
-    theme.setScale(scale);
-    applyFontScale();
-    style.invalidate();
-    themeChanged();
-    if(root){
-      FXWindow *win;
-      for(win=root->getFirst(); win; win=win->getNext()){
-        win->recalc();
-        }
+// Rebuild fonts and relayout every window after the scale mode or value changed
+void FXApp::rescaleWindows(){
+  applyFontScale();
+  style.invalidate();
+  themeChanged();
+  if(root){
+    FXWindow *win;
+    for(win=root->getFirst(); win; win=win->getNext()){
+      win->recalc();
       }
     }
+  }
+
+
+// Change the theme scale and relayout if it actually changed, or when forced
+// because the scale mode changed and per-window scales may differ
+void FXApp::setThemeScale(FXdouble scale,FXbool force){
+  if(theme.getScale()!=scale){
+    theme.setScale(scale);
+    rescaleWindows();
+    }
+  else if(force){
+    rescaleWindows();
+    }
+  }
+
+
+// Re-apply the theme to a window and its descendants and relayout it; used
+// when only this window's monitor changed
+static void applyThemeToWindow(FXWindow* win,FXTheme* theme){
+  FXWindow *child;
+  win->applyTheme(theme);
+  win->update();
+  for(child=win->getFirst(); child; child=child->getNext()){
+    applyThemeToWindow(child,theme);
+    }
+  }
+
+
+// A window moved to a monitor with another DPI: only this window tree changes
+void FXApp::updateWindowScale(FXWindow* window){
+  applyThemeToWindow(window,&theme);
+  window->recalc();
   }
 
 
@@ -1349,8 +1411,8 @@ void FXApp::destroy(){
   normalFont->destroy();
   stockFont->destroy();
 
-  // Destroy the fonts of the theme's font roles
-  releaseRoleFonts();
+  // Destroy the fonts of the theme's font roles and of other monitors
+  destroyFontSets();
 
   // Destroy wait cursor
   waitCursor->destroy();
@@ -1390,18 +1452,10 @@ void FXApp::destroy(){
   }
 
 
-// Fonts realized for a monitor with a different DPI
-struct FXApp::FXFontSet {
-  FXint      dpi;                       // Monitor DPI
-  FXFont    *normal;                    // Normal font for this DPI
-  FXFont    *roles[FONT_LAST];          // Role fonts for this DPI
-  FXFontSet *next;                      // Next font set
-  };
-
-
-// Destroy and forget the cached theme role fonts
+// Destroy and forget the cached theme role fonts; the normal fonts of other
+// monitors stay, they are rescaled in place
 void FXApp::releaseRoleFonts(){
-  FXFontSet *set,*nextset;
+  FXFontSet *set;
   FXint i;
   for(i=0; i<FONT_LAST; i++){
     if(roleFonts[i] && roleFonts[i]!=normalFont){
@@ -1410,12 +1464,22 @@ void FXApp::releaseRoleFonts(){
       }
     roleFonts[i]=nullptr;
     }
+  for(set=fontsets; set; set=set->next){
+    for(i=0; i<FONT_LAST; i++){
+      if(set->roles[i]){ set->roles[i]->destroy(); delete set->roles[i]; }
+      set->roles[i]=nullptr;
+      }
+    }
+  }
+
+
+// Destroy the fonts realized for other monitors
+void FXApp::destroyFontSets(){
+  FXFontSet *set,*nextset;
+  releaseRoleFonts();
   for(set=fontsets; set; set=nextset){
     nextset=set->next;
     if(set->normal){ set->normal->destroy(); delete set->normal; }
-    for(i=0; i<FONT_LAST; i++){
-      if(set->roles[i]){ set->roles[i]->destroy(); delete set->roles[i]; }
-      }
     delete set;
     }
   fontsets=nullptr;
@@ -1460,7 +1524,7 @@ FXFont* FXApp::getRoleFont(FXint role,FXint dpivalue){
     fontsets=set;
     }
   if(!set->roles[role]){
-    factor=theme.getScale()/(FXdouble(dpivalue)/96.0);
+    factor=getWindowScale(dpivalue)/(FXdouble(dpivalue)/96.0);
     if(desc.size) desc.size=FXint(FXdouble(desc.size)*factor+0.5);
     set->roles[role]=new FXFont(this,desc);
     set->roles[role]->setResolution(dpivalue);
@@ -1488,13 +1552,25 @@ FXFont* FXApp::getNormalFont(FXint dpivalue){
     }
   if(!set->normal){
     desc=basefontdesc;
-    factor=theme.getScale()/(FXdouble(dpivalue)/96.0);
+    factor=getWindowScale(dpivalue)/(FXdouble(dpivalue)/96.0);
     if(desc.size) desc.size=FXint(FXdouble(desc.size)*factor+0.5);
     set->normal=new FXFont(this,desc);
     set->normal->setResolution(dpivalue);
     if(isInitialized()) set->normal->create();
     }
   return set->normal;
+  }
+
+
+// Return the normal font for another DPI if font is a normal font of some DPI;
+// fonts the application chose are returned unchanged
+FXFont* FXApp::retargetNormalFont(FXFont* font,FXint dpivalue){
+  FXFontSet *set;
+  if(font==normalFont) return getNormalFont(dpivalue);
+  for(set=fontsets; set; set=set->next){
+    if(font==set->normal) return getNormalFont(dpivalue);
+    }
+  return font;
   }
 
 
@@ -1695,7 +1771,7 @@ void FXApp::setScrollBarSize(FXint size){
 void FXApp::setDisplayScale(FXdouble scale){
   dpiautoscale=false;
   dpifactor=1.0;
-  setThemeScale(scale);
+  setThemeScale(scale,true);
   }
 
 
@@ -1704,7 +1780,7 @@ void FXApp::setDisplayScaleFactor(FXdouble factor){
   FXint monitor=dpicurrent?dpicurrent:dpi;
   dpiautoscale=true;
   dpifactor=factor;
-  setThemeScale(dpifactor*(monitor?FXdouble(monitor)/96.0:1.0));
+  setThemeScale(dpifactor*(monitor?FXdouble(monitor)/96.0:1.0),true);
   }
 
 
@@ -1713,7 +1789,7 @@ void FXApp::setDisplayScaleAuto(){
   FXint monitor=dpicurrent?dpicurrent:dpi;
   dpiautoscale=true;
   dpifactor=1.0;
-  setThemeScale(monitor?FXdouble(monitor)/96.0:1.0);
+  setThemeScale(monitor?FXdouble(monitor)/96.0:1.0,true);
   }
 
 

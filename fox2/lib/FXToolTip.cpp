@@ -281,6 +281,13 @@ void FXToolTip::setText(const FXString& text){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXToolTip::applyTheme(FXTheme* theme){
+  FXShell::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXToolTip::setFont(FXFont *fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

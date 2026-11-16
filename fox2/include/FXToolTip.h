@@ -101,6 +101,9 @@ public:
   /// Get the tip text font
   FXFont* getFont() const { return font; }
 
+  /// Re-resolve the normal font for the window's monitor
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Get the current tip text color
   FXColor getTextColor() const { return textColor; }
 

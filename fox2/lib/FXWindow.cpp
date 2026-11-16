@@ -339,6 +339,18 @@ FXdouble FXWindow::getScale() const {
   }
 
 
+// Return the display scale applied to theme metrics and fonts of this window
+FXdouble FXWindow::getDisplayScale() const {
+  return getApp()->getWindowScale(dpi);
+  }
+
+
+// Return the value of a theme metric at this window's display scale
+FXint FXWindow::metric(FXint subject) const {
+  return getApp()->getTheme()->metric(subject,getDisplayScale());
+  }
+
+
 /*******************************************************************************/
 
 // The idea is to recurse down, but not sideways or upward.  Recursing upward
