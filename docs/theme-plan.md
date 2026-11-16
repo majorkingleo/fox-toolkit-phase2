@@ -98,6 +98,7 @@ so mapping is mechanical and reversible:
 | `Accent` | `selbackColor` (new role, same default) |
 | `FocusRing` | `Accent` (new role) |
 | `Button` | `Surface` (new role; Breeze/KDE import their real button face) |
+| `HoverRing` | `Accent` (new role; Breeze/KDE import their hover decoration) |
 
 State variants are resolved by `FXTheme` from the base roles rather than stored
 individually: `Normal`, `Hover`, `Active`, `Disabled`, `Selected`, `Focused`.
@@ -364,6 +365,7 @@ This machine already has useful corpora for the GTK path:
 | `insensitive_bg_color` / `insensitive_fg_color` | `Surface`, `TextDisabled` |
 | `borders` | `Border` |
 | `theme_button_background_normal*` / `button_bg_color` | `Button` |
+| `theme_button_decoration_hover*` / `hover_color` | `HoverRing` |
 | `unfocused_bg_color` / `unfocused_fg_color` | `WindowBg`, `TextDisabled` |
 | `theme_unfocused_selected_bg_color` | `SelectionBg` (inactive variant) |
 
@@ -920,6 +922,13 @@ the focus ring now pass the radius once.  Wayland also lacks XRender, so the
 style now rasterizes the rounded rectangle itself: the straight bands are
 filled, the four corners are blended with 4x4 supersampled coverage through
 `FXRaster::blend()`, and a 1 px Breeze-style shadow is drawn under the face.
+The hover outline is now its own `ROLE_HOVER_RING`, imported from
+`theme_button_decoration_hover*` in GTK CSS and from
+`[Colors:Button] DecorationHover` in KDE schemes, falling back on the accent;
+focus and default buttons use `ROLE_FOCUS_RING`.  Entering and leaving a
+rounded button now marks it dirty even when animation is disabled, so the
+hover outline repaints immediately.  The hover colour therefore lives in the
+theme and is cached with it, instead of being hard-coded in the style.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

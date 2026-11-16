@@ -385,9 +385,10 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
       face=blendColor(face,state.text,12);
       }
 
-    // Hover, keyboard focus and the default button get an accent border
-    if(state.enabled && (state.hover || state.focused || state.defaulted)){
-      edge=accent;
+    // Hover, keyboard focus and the default button get their theme decoration
+    if(state.enabled){
+      if(state.focused || state.defaulted) edge=theme->color(ROLE_FOCUS_RING);
+      else if(state.hover) edge=theme->color(ROLE_HOVER_RING);
       }
 
     // Windows are created with a black background pixel, so the area outside

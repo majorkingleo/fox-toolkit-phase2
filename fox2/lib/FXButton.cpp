@@ -236,7 +236,7 @@ long FXButton::onEnter(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onEnter(sender,sel,ptr);
   if(isEnabled()){
     if((flags&FLAG_PRESSED) && (state!=STATE_ENGAGED)) setState(STATE_DOWN);
-    if(options&BUTTON_TOOLBAR) update();
+    if((options&BUTTON_TOOLBAR) || 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
     updateAnimatedColor(true);
     }
   return 1;
@@ -248,7 +248,7 @@ long FXButton::onLeave(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onLeave(sender,sel,ptr);
   if(isEnabled()){
     if((flags&FLAG_PRESSED) && (state!=STATE_ENGAGED)) setState(STATE_UP);
-    if(options&BUTTON_TOOLBAR) update();
+    if((options&BUTTON_TOOLBAR) || 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
     updateAnimatedColor(false);
     }
   return 1;

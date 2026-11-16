@@ -593,6 +593,8 @@ void FXCSS::applyKde(FXTheme& theme) const {
     }
   value=property("[Colors:Button]","BackgroundNormal");
   if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_BUTTON,clr); }
+  value=property("[Colors:Button]","DecorationHover");
+  if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_HOVER_RING,clr); }
   value=property("[Colors:Button]","DecorationFocus");
   if(!value.empty()){ clr=lookupTriplet(value); if(clr) theme.setColor(ROLE_FOCUS_RING,clr); }
 
@@ -636,6 +638,8 @@ void FXCSS::apply(FXTheme& theme) const {
   static const FXchar* tipfg[]={ "theme_tooltip_fg_color","tooltip_fg_color" };
   static const FXchar* accents[]={ "theme_selected_bg_color","accent_bg_color","accent_color" };
   static const FXchar* buttons[]={ "theme_button_background_normal_breeze","theme_button_background_normal","theme_button_bg_color","button_bg_color" };
+  static const FXchar* hovers[]={ "theme_button_decoration_hover_breeze","theme_button_decoration_hover","theme_hover_color","hover_color" };
+  FXColor hover=0;
   FXColor clr;
 
   // Base colors, in order of preference
@@ -671,6 +675,10 @@ void FXCSS::apply(FXTheme& theme) const {
   if(!clr) clr=buttonFace(theme.color(ROLE_SURFACE));
   theme.setColor(ROLE_BUTTON,clr);
 
+  // Hover decoration, falling back on the accent below
+  if((hover=color(hovers[0]))==0 && (hover=color(hovers[1]))==0 && (hover=color(hovers[2]))==0) hover=color(hovers[3]);
+  if(hover) theme.setColor(ROLE_HOVER_RING,hover);
+
   // Metrics taken from the button rule, falling back on the theme defaults
   theme.setMetric(METRIC_CORNER_RADIUS,length("button","border-radius",theme.metric(METRIC_CORNER_RADIUS)));
   theme.setMetric(METRIC_BORDER_WIDTH,length("button","border-width",theme.metric(METRIC_BORDER_WIDTH)));
@@ -691,6 +699,7 @@ void FXCSS::apply(FXTheme& theme) const {
 
   // Recompute the colors derived from the base roles
   theme.updateDerived();
+  if(!hover) theme.setColor(ROLE_HOVER_RING,theme.color(ROLE_ACCENT));
 
   // KDE color schemes carry their colors under section/key names
   applyKde(theme);

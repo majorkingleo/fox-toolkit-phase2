@@ -82,6 +82,7 @@ void FXTheme::setClassic(){
   colors[ROLE_TOOLTIP_BG]=FXRGB(255,255,225);
   colors[ROLE_TOOLTIP_TEXT]=FXRGB(0,0,0);
   updateDerived();
+  colors[ROLE_HOVER_RING]=colors[ROLE_ACCENT];
   metrics[METRIC_PADDING]=2;          // Matches DEFAULT_PAD
   metrics[METRIC_MARGIN]=0;
   metrics[METRIC_BORDER_WIDTH]=1;
@@ -119,6 +120,7 @@ void FXTheme::setDark(){
   colors[ROLE_TOOLTIP_BG]=FXRGB(60,60,45);
   colors[ROLE_TOOLTIP_TEXT]=FXRGB(240,240,240);
   updateDerived();
+  colors[ROLE_HOVER_RING]=colors[ROLE_ACCENT];
   }
 
 
@@ -127,7 +129,7 @@ FXbool FXTheme::load(const FXString& path){
   static const FXchar *colorkeys[ROLE_LAST]={
     "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
     "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
-    "tooltip_bg","tooltip_text","accent","focus_ring","button"
+    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring"
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
@@ -142,7 +144,9 @@ FXbool FXTheme::load(const FXString& path){
   FXString current;
   if(!settings.parseFile(path)) return false;
   for(i=0; i<ROLE_LAST; i++){
-    colors[i]=settings.readColorEntry("colors",colorkeys[i],i==ROLE_BUTTON?colors[ROLE_SURFACE]:colors[i]);
+    colors[i]=settings.readColorEntry("colors",colorkeys[i],
+                                      i==ROLE_BUTTON?colors[ROLE_SURFACE]:
+                                      i==ROLE_HOVER_RING?colors[ROLE_ACCENT]:colors[i]);
     }
   for(i=0; i<METRIC_LAST; i++){
     metrics[i]=settings.readIntEntry("metrics",metrickeys[i],metrics[i]);
@@ -240,7 +244,7 @@ FXString FXTheme::describe(const FXString& name,const FXString& source) const {
   static const FXchar *colorkeys[ROLE_LAST]={
     "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
     "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
-    "tooltip_bg","tooltip_text","accent","focus_ring","button"
+    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring"
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
