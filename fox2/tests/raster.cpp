@@ -83,7 +83,7 @@ static const FXCellDesc celldesc[NCELLS]={
   {"rect",       true,  0},
   {"roundrect",  false, 70},
   {"fillround",  false, 30},
-  {"arc",        false, 110},
+  {"arc",        false, 140},
   {"fillarc",    false, 30},
   {"chord",      false, 70},
   {"ellipse",    false, 170},
@@ -344,6 +344,9 @@ static void drawCell(DC& dc,FXint i,FXint x,FXint y,const FXAssets& a){
     case 13:
       dc.drawArc(x+6,y+6,CELLW-12,CELLH-12,0,5760);
       dc.drawArc(x+6,y+6,CELLW-12,CELLH-12,5760,11520);
+      // Negative sweep runs clockwise, as on X11; the rasterizer must
+      // normalise the start angle instead of sweeping the wrong half.
+      dc.drawArc(x+14,y+14,CELLW-28,CELLH-28,64*150,-64*120);
       break;
 
     // Filled arcs
