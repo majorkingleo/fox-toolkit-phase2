@@ -197,6 +197,8 @@ void FXStatusLine::setNormalText(const FXString& text){
 // Re-resolve the normal font for the window's monitor
 void FXStatusLine::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
+  textHighlightColor=theme->color(ROLE_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 

@@ -613,9 +613,12 @@ FXDesktopSetup::FXDesktopSetup(FXApp *ap):FXMainWindow(ap,FXString::null,nullptr
   new FXLabel(matrix3,tr("Xft font anti-aliasing"),nullptr,LAYOUT_RIGHT|LAYOUT_CENTER_Y);
   new FXCheckButton(matrix3,FXString::null,&target_antialias,FXDataTarget::ID_VALUE);
 
-  // Close button etc.
+  // Footer status bar and close button
   new FXSeparator(main,SEPARATOR_GROOVE|LAYOUT_FILL_X);
-  themestatus=new FXLabel(main,FXString::null,nullptr,LAYOUT_FILL_X|LAYOUT_CENTER_Y|JUSTIFY_LEFT,0,0,0,0,DEFAULT_SPACING,2,DEFAULT_SPACING,2);
+  FXStatusBar *footer=new FXStatusBar(main,LAYOUT_FILL_X,0,0,0,0,DEFAULT_SPACING,2,DEFAULT_SPACING,0);
+  themestatus=footer->getStatusLine();
+  themestatus->setText(FXString::null);
+  themestatus->setNormalText(FXString::null);
   FXHorizontalFrame *closebox=new FXHorizontalFrame(main,LAYOUT_BOTTOM|LAYOUT_FILL_X,0,0,0,0,DEFAULT_SPACING,DEFAULT_SPACING,DEFAULT_SPACING,DEFAULT_SPACING);
   vendorandapplication=new FXLabel(closebox,FXString::null,nullptr,LAYOUT_FILL_X|LAYOUT_CENTER_Y|JUSTIFY_LEFT,0,0,0,0,15);
   vendorandapplication->disable();
@@ -1370,7 +1373,10 @@ void FXDesktopSetup::applyThemeColors(const FXTheme& theme){
 
 // Show a short line about the selected theme
 void FXDesktopSetup::updateThemeStatus(const FXString& text){
-  if(themestatus) themestatus->setText(text);
+  if(themestatus){
+    themestatus->setNormalText(text);
+    themestatus->setText(text);
+    }
   }
 
 

@@ -112,7 +112,7 @@ private:
   FXButton          *iconbutton[4];
   FXIcon            *iconimage[4];
   FXLabel           *vendorandapplication;
-  FXLabel           *themestatus;
+  FXStatusLine      *themestatus;
 private:
   FXToolTip         *tooltip;
   FXTabBook         *tabbook;
