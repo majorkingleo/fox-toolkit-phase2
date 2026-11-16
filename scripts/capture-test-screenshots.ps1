@@ -12,7 +12,7 @@
 # skipped, and the script returns the number of such programs. The smoke tests
 # (bmpicon, textspin, combo, colordlg, fontdlg) end at once and are not listed.
 param(
-  [string[]]$Programs = @('hello','button','dpi','popup','click','menus','tooltip','clipboard','dnd','icon'),
+  [string[]]$Programs = @('hello','button','dpi','popup','click','menus','tooltip','clipboard','dnd','icon','hello2','layout'),
   [string]$BuildDir,
   [string]$OutDir,
   [double]$Delay = 1.5,
