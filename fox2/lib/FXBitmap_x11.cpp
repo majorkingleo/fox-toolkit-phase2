@@ -251,6 +251,18 @@ void FXBitmap::resize(FXint w,FXint h){
   }
 
 
+// X11 has no device context handles
+FXID FXBitmap::GetDC() const {
+  return 0;
+  }
+
+
+// Nothing to release
+int FXBitmap::ReleaseDC(FXID) const {
+  return 0;
+  }
+
+
 }
 
 #endif
