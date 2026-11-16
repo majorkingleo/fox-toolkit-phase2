@@ -39,6 +39,7 @@ protected:
   FXApp* app;
   FXMainWindow* shell;
   FXMenuPane* pane;
+  FXButton* button;
 public:
   enum { ID_OPEN = FXApp::ID_LAST, ID_STOP, ID_LAST };
 public:
@@ -46,12 +47,13 @@ public:
     app=nullptr;
     shell=nullptr;
     pane=nullptr;
+    button=nullptr;
     }
-  void setup(FXApp* a,FXMainWindow* m,FXMenuPane* p){ app=a; shell=m; pane=p; }
+  void setup(FXApp* a,FXMainWindow* m,FXMenuPane* p,FXButton* b){ app=a; shell=m; pane=p; button=b; }
   long onOpen(FXObject*,FXSelector,void*){
     fxmessage("opening the pane\n");
     FXint rx,ry;
-    shell->translateCoordinatesTo(rx,ry,shell->getRoot(),60,40);   // popup() takes root coordinates
+    button->translateCoordinatesTo(rx,ry,shell->getRoot(),0,button->getHeight());   // popup() takes root coordinates
     pane->popup(shell,rx,ry);
     return 1;
     }
@@ -80,14 +82,14 @@ int main(int argc,char** argv){
   application.init(argc,argv);
 
   FXMainWindow *main=new FXMainWindow(&application,"Popup",nullptr,nullptr,DECOR_ALL);
-  new FXButton(main,"&Open",nullptr,nullptr,0,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X);
+  FXButton *button=new FXButton(main,"&Open",nullptr,nullptr,0,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X);
 
   FXMenuPane *pane=new FXMenuPane(main);
   new FXButton(pane,"First entry",nullptr,nullptr,0,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X);
   new FXButton(pane,"Second entry",nullptr,nullptr,0,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X);
 
   PopupDriver driver;
-  driver.setup(&application,main,pane);
+  driver.setup(&application,main,pane,button);
 
   application.create();
   main->show(PLACEMENT_SCREEN);
