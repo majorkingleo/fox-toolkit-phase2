@@ -139,6 +139,9 @@ public:
   /// Perform layout
   virtual void layout() override;
 
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Return true if horizontally scrollable
   FXbool isHorizontalScrollable() const;
 

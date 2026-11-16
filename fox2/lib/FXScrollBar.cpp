@@ -72,6 +72,16 @@ using namespace FX;
 
 namespace FX {
 
+
+// Blend color a toward color b by the given percentage of b
+static FXColor blendColor(FXColor a,FXColor b,FXint percent){
+  FXint tnecrep=100-percent;
+  return FXRGB((FXREDVAL(a)*tnecrep+FXREDVAL(b)*percent+50)/100,
+               (FXGREENVAL(a)*tnecrep+FXGREENVAL(b)*percent+50)/100,
+               (FXBLUEVAL(a)*tnecrep+FXBLUEVAL(b)*percent+50)/100);
+  }
+
+
 // Map
 FXDEFMAP(FXScrollBar) FXScrollBarMap[]={
   FXMAPFUNC(SEL_PAINT,0,FXScrollBar::onPaint),
@@ -852,6 +862,40 @@ long FXScrollBar::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   int total;
   FXDCWindow dc(this,ev);
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(0<radius){
+    FXColor surface=theme->color(ROLE_SURFACE);
+    FXColor thumb=blendColor(surface,theme->color(ROLE_TEXT),35);
+    FXColor thumbedge=blendColor(thumb,theme->color(ROLE_TEXT),20);
+    if((mode==MODE_DRAG) || (mode==MODE_FINE_DRAG) || underCursor()){
+      thumb=blendColor(surface,theme->color(ROLE_TEXT),50);
+      thumbedge=blendColor(thumb,theme->color(ROLE_TEXT),25);
+      }
+    dc.setForeground(backColor);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+    if(options&SCROLLBAR_HORIZONTAL){
+      total=width-height-height;
+      if(thumbsize<total && 0<thumbsize){
+        FXint h=height-4;
+        if(0<h) getApp()->getStyle()->drawRoundedRectangle(dc,thumbpos,2,thumbsize,h,h/2,thumb,thumbedge,1);
+        }
+      dc.setForeground(theme->color(ROLE_TEXT));
+      drawLeftArrow(dc,0,0,height,height,false);
+      drawRightArrow(dc,width-height,0,height,height,false);
+      }
+    else{
+      total=height-width-width;
+      if(thumbsize<total && 0<thumbsize){
+        FXint w=width-4;
+        if(0<w) getApp()->getStyle()->drawRoundedRectangle(dc,2,thumbpos,w,thumbsize,w/2,thumb,thumbedge,1);
+        }
+      dc.setForeground(theme->color(ROLE_TEXT));
+      drawUpArrow(dc,0,0,width,width,false);
+      drawDownArrow(dc,0,height-width,width,width,false);
+      }
+    return 1;
+    }
   if(options&SCROLLBAR_HORIZONTAL){
     total=width-height-height;
     if(thumbsize<total){                                    // Scrollable
@@ -1063,6 +1107,10 @@ void FXScrollBar::setBarSize(FXint size){
 void FXScrollBar::applyTheme(FXTheme* theme){
   FXint size;
   FXWindow::applyTheme(theme);
+  hiliteColor=theme->color(ROLE_SURFACE_HILITE);
+  shadowColor=theme->color(ROLE_SURFACE_SHADOW);
+  borderColor=theme->color(ROLE_BORDER);
+  arrowColor=theme->color(ROLE_TEXT);
   if(barauto){
     size=FXMAX(FXint(getApp()->getScrollBarSize()*getDisplayScale()+0.5),1);
     if(barsize!=size){

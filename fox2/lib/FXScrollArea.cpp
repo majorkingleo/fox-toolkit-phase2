@@ -110,6 +110,13 @@ FXDEFMAP(FXScrollArea) FXScrollAreaMap[]={
 FXIMPLEMENT(FXScrollArea,FXComposite,FXScrollAreaMap,ARRAYNUMBER(FXScrollAreaMap))
 
 
+// Re-apply theme colors
+void FXScrollArea::applyTheme(FXTheme* theme){
+  FXComposite::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)) backColor=theme->color(ROLE_WINDOW_BG);
+  }
+
+
 // Scroll acceleration near edge
 static const FXint acceleration[AUTOSCROLL_FUDGE+1]={1,1,1,2,3,4,6,7,8,16,32,64};
 

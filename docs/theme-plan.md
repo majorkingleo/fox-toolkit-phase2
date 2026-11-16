@@ -1001,6 +1001,13 @@ pill.  `FXStyle::drawFrame()` also reduces themed raised/sunken frames to a
 single hairline, so the tab-book page follows the same look.  Left/right/bottom
 tab geometry still needs a visual pass.
 
+**Progress — scroll bars and scroll areas (2026-11-16).** `FXScrollBar` now
+paints a themed trough, a rounded pill thumb, hover/drag shading and flat themed
+arrow ends instead of the classic stippled channel and 3D buttons.  `FXScrollArea`
+takes the view window background for rounded themes; classic bars keep the old
+stipple/bevel drawing.  Scrollbar thickness still follows the application
+setting rather than a theme metric, and scroll area borders/rounding are open.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane
