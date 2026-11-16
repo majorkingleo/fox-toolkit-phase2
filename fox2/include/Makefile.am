@@ -21,6 +21,8 @@ FXMat4d.h \
 FXRangef.h \
 FXRanged.h \
 FXSpheref.h \
+FXSVGImage.h \
+FXSVGIcon.h \
 FXSphered.h \
 FXExtentf.h \
 FXExtentd.h \
