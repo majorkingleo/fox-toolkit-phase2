@@ -945,6 +945,49 @@ composites it through XRender, which is how GTK/cairo gets antialiased marks
 without a server-side primitive.  The classic radius-0 path still uses the
 original 13 px bevel, so the default FOX look is unchanged.
 
+**Progress — list views (2026-11-16).** `FXList`, `FXIconList` and `FXTreeList` now
+switch their view background to `ROLE_WINDOW_BG`, use `ROLE_TEXT_DISABLED` for
+disabled items and skip the classic dashed focus rectangle when the theme has
+rounded chrome.  Their row height is at least `METRIC_ROW_HEIGHT` for themed
+themes, and `FXHeader` takes its text color from the theme.  Classic radius-0
+lists keep their original background, row height and focus rectangles.  Hover
+rows, alternating row colors and themed scrollbars are still open.
+
+**Progress — text fields (2026-11-16).** `FXTextField::onPaint()` now draws a
+rounded entry face and border through `FXStyle::drawRoundedRectangle()` when
+the theme has a corner radius: `ROLE_WINDOW_BG`/`ROLE_SURFACE` for the face,
+`ROLE_BORDER` normally and `ROLE_FOCUS_RING` while focused, with the theme's
+border width.  Focus changes repaint the whole field so the outline updates.
+The classic radius-0 frame and background are untouched.  The widget has no
+placeholder API, so no placeholder role is needed yet.
+
+**Progress — list boxes and combo boxes (2026-11-16).** `FXPacker` now reapplies
+surface, edge and border colors from the theme, and `FXPopup` themes its shell
+colors.  For rounded themes, `FXListBox` and `FXComboBox` drop the outer sunken
+frame and the arrow button's classic raised frame, keep the theme background on
+the field and arrow area, and retain the original frame styles when the theme
+returns to radius 0.  The field, arrow and dropdown list all use the theme
+colors.  The combo/list-box widget itself now paints the single rounded shell;
+the field and arrow are flat children inset into it, so the shell border and
+corners stay intact.  `getDefaultWidth()`/`getDefaultHeight()` include the
+inset, and the field's vertical padding is reduced by the same amount, so the
+combo keeps the normal 34 px control height it has as a text field or button
+instead of shrinking its content.  The popup shadow is still open.
+
+One Wayland repaint trap found here: a themed button used to update its parent
+whenever it gained or lost focus, so the message box button-row frame queued a
+repaint after its buttons and covered them until the pointer moved.  The
+parent repaint is now requested only when the parent is actually the combo or
+list-box shell; ordinary dialog buttons do not touch their container.
+
+**Progress — tooltips (2026-11-16).** GTK tooltip import now checks the
+Breeze names `tooltip_background_breeze`, `tooltip_text_breeze` and their
+generic variants, so Breeze imports `#F7F7F7` on `#232629` instead of the
+classic pale yellow.  `FXToolTip` paints a themed background, uses the theme's
+border and rounded rectangle, and takes its padding from `METRIC_PADDING`;
+classic tips keep the original fixed spacing and border.  Rounded outer
+corners and a drop shadow still need an alpha/shaped popup surface.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane

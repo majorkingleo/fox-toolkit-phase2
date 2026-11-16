@@ -27,10 +27,10 @@ Priority:
 | `FXFrame` | DONE | Base/hilite/shadow/border and theme padding. |
 | `FXLabel` | DONE | Text role and UI font. |
 | `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
-| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors; see list-specific work below. |
-| `FXTextField` | PARTIAL | Text, selection, cursor and background colors; see input-specific work below. |
-| `FXListBox`, `FXComboBox` | PARTIAL | Field/list colors; arrow and popup chrome remain classic. |
-| `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
+| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height and focus handling; hover rows, alternates and scrollbars remain. |
+| `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline and disabled colors; the widget has no placeholder API. |
+| `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; popup shadow remains. |
+| `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. |
 | `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
 | `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; Wayland check mark is antialiased. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
@@ -39,11 +39,10 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXTextField` | PARTIAL | Rounded/inset entry border from `METRIC_CORNER_RADIUS`, `ROLE_BORDER`, `ROLE_WINDOW_BG`; focus ring; placeholder and disabled text roles; entry padding. |
 | `FXScrollBar` | OPEN | Trough, thumb, hover/pressed/focus states, arrow buttons, radius, thickness from `METRIC_ROW_HEIGHT`/a scrollbar metric. |
 | `FXScrollArea` | OPEN | Viewport background and border; clipping/rounding of the viewport; scrollbar spacing. |
 | `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
-| `FXToolTip` | PARTIAL | Rounded popup frame and shadow in addition to the colors/font. |
+| `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | OPEN | Tab background, selected/hover/focus states, tab radius/height, underline/accent, padding. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
@@ -56,7 +55,7 @@ Priority:
 | --- | --- | --- |
 | `FXText` | OPEN | Normal, selected, highlighted and active text/background roles; margins; focus frame; scrollbars. |
 | `FXTable` | OPEN | Text/base/hilite/shadow/border/selection/grid/stipple/cell-border and alternating cell background colors; row/column metrics. |
-| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height, alternating rows, hover/selected decoration, tree lines and expander colors, header colors, focus ring. |
+| `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height is wired; still need alternating rows, hover decoration, tree expander/focus styling and themed scrollbars. Header text color is now themed. |
 | `FXHeader` | PARTIAL | Header button background/hover/pressed, arrow colors, text color and header height. |
 | `FXRuler`, `FXRulerView` | PARTIAL | Tick/number text role and tick colors; font is already retargeted. |
 | `FXCalendarView`, `FXCalendar` | PARTIAL | Today/title/day/other-day/weekend colors and header/selection states; only the font is currently retargeted. |
@@ -155,8 +154,8 @@ use the seam.
 
 ## Suggested order
 
-1. Finish the P0 chrome: `FXTextField`, `FXScrollBar`, `FXToolTip`,
-   `FXPopup`/`FXMenuPane`, tabs, status bar, menu buttons, menu items.
+1. Finish the P0 chrome: `FXScrollBar`, `FXToolTip`, `FXPopup`/`FXMenuPane`,
+   tabs, status bar, menu buttons, menu items.
 2. Add the missing theme roles and metrics those widgets need (entry, menu,
    popup, scrollbar, tab, button text states).
 3. Do the P1 input/data widgets: `FXText`, `FXTable`, lists/trees, sliders,

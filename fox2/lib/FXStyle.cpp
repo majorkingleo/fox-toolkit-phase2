@@ -42,6 +42,7 @@
 #include "FXApp.h"
 #include "FXTheme.h"
 #include "FXFrame.h"
+#include "FXButton.h"
 #include "FXStyle.h"
 
 
@@ -392,8 +393,9 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
   FXint border=state.border;
   FXuint options=state.options;
 
-  // Rounded chrome, when the theme asks for it
-  if(0<radius){
+  // Rounded chrome, when the theme asks for it.  A flat/no-frame button is
+  // used inside combo boxes and must not paint its own shell.
+  if(0<radius && (options&(FRAME_RAISED|FRAME_SUNKEN)) && !(options&BUTTON_TOOLBAR)){
     FXColor accent=theme->color(ROLE_ACCENT);
 
     // Breeze-like face: a light button on a light surface, a slightly lifted
@@ -534,12 +536,14 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
 
   // No borders
   else{
-    if(state.enabled && state.engaged){
-      dc.setForeground(hilite);
+    FXColor flat=state.engaged?hilite:state.back;
+    if(0<radius && !(options&BUTTON_TOOLBAR)){
+      dc.setForeground(state.parentBack);
       dc.fillRectangle(x,y,w,h);
+      drawRoundedRectangle(dc,x,y,w,h,radius,flat,flat,0);
       }
     else{
-      dc.setForeground(state.back);
+      dc.setForeground(flat);
       dc.fillRectangle(x,y,w,h);
       }
     }

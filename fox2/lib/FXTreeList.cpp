@@ -89,6 +89,8 @@ FXIMPLEMENT(FXTreeItem,FXObject,nullptr,0)
 void FXTreeItem::draw(const FXTreeList* list,FXDC& dc,FXint xx,FXint yy,FXint,FXint hh) const {
   FXIcon *icon=(state&OPENED)?openIcon:closedIcon;
   FXFont *font=list->getFont();
+  FXTheme *theme=list->getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   FXint th=0,tw=0,ih=0,iw=0;
   xx+=SIDE_SPACING/2;
   if(icon){
@@ -108,11 +110,11 @@ void FXTreeItem::draw(const FXTreeList* list,FXDC& dc,FXint xx,FXint yy,FXint,FX
       dc.setForeground(list->getSelBackColor());
       dc.fillRectangle(xx,yy,tw,th);
       }
-    if(hasFocus()){
+    if(hasFocus() && !themed){
       dc.drawFocusRectangle(xx+1,yy+1,tw-2,th-2);
       }
     if(!isEnabled())
-      dc.setForeground(makeShadowColor(list->getBackColor()));
+      dc.setForeground(themed?theme->color(ROLE_TEXT_DISABLED):makeShadowColor(list->getBackColor()));
     else if(isSelected())
       dc.setForeground(list->getSelTextColor());
     else
@@ -320,7 +322,12 @@ FXint FXTreeItem::getHeight(const FXTreeList* list) const {
   if(openIcon) oih=list->getScaledIcon(openIcon)->getHeight();
   if(closedIcon) cih=list->getScaledIcon(closedIcon)->getHeight();
   if(!label.empty()) th=4+font->getFontHeight();
-  return FXMAX3(th,oih,cih);
+  FXint h=FXMAX3(th,oih,cih);
+  FXTheme *theme=list->getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale())){
+    h=FXMAX(h,theme->metric(METRIC_ROW_HEIGHT,list->getDisplayScale()));
+    }
+  return h;
   }
 
 
@@ -2531,6 +2538,7 @@ void FXTreeList::setNumVisible(FXint nvis){
 // Re-resolve the normal font for the window's monitor
 void FXTreeList::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+  if(!backColorOverride && 0<theme->metric(METRIC_CORNER_RADIUS)) backColor=theme->color(ROLE_WINDOW_BG);
   textColor=theme->color(ROLE_TEXT);
   selbackColor=theme->color(ROLE_SELECTION_BG);
   seltextColor=theme->color(ROLE_SELECTION_TEXT);

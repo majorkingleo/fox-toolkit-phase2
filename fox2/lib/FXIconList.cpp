@@ -118,6 +118,8 @@ void FXIconItem::draw(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXint w,FX
 void FXIconItem::drawBigIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXint w,FXint h) const {
   FXint iw=0,ih=0,tw=0,th=0,ss=0,len,dw,s,space,xt,yt,xi,yi;
   FXFont *font=list->getFont();
+  FXTheme *theme=list->getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   dc.fillRectangle(x,y,w,h);
   space=w-SIDE_SPACING;
   if(!label.empty()){
@@ -139,14 +141,14 @@ void FXIconItem::drawBigIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
         dc.fillRectangle(xt,yt,tw+dw,th);
         }
       if(!isEnabled())
-        dc.setForeground(makeShadowColor(list->getBackColor()));
+        dc.setForeground(themed?theme->color(ROLE_TEXT_DISABLED):makeShadowColor(list->getBackColor()));
       else if(isSelected())
         dc.setForeground(list->getSelTextColor());
       else
         dc.setForeground(list->getTextColor());
       dc.drawText(xt+2,yt+font->getFontAscent()+2,label.text(),len);
       if(dw) dc.drawText(xt+tw-2,yt+font->getFontAscent()+2,"...",3);
-      if(hasFocus()){
+      if(hasFocus() && !themed){
         dc.drawFocusRectangle(xt+1,yt+1,tw+dw-2,th-2);
         }
       }
@@ -171,6 +173,8 @@ void FXIconItem::drawBigIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
 void FXIconItem::drawMiniIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXint w,FXint h) const {
   FXint iw=0,ih=0,tw=0,th=0,len,dw,s,space;
   FXFont *font=list->getFont();
+  FXTheme *theme=list->getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   dc.fillRectangle(x,y,w,h);
   x+=SIDE_SPACING/2;
   space=w-SIDE_SPACING;
@@ -204,14 +208,14 @@ void FXIconItem::drawMiniIcon(const FXIconList* list,FXDC& dc,FXint x,FXint y,FX
         dc.fillRectangle(x,y,tw+dw,th);
         }
       if(!isEnabled())
-        dc.setForeground(makeShadowColor(list->getBackColor()));
+        dc.setForeground(themed?theme->color(ROLE_TEXT_DISABLED):makeShadowColor(list->getBackColor()));
       else if(isSelected())
         dc.setForeground(list->getSelTextColor());
       else
         dc.setForeground(list->getTextColor());
       dc.drawText(x+2,y+font->getFontAscent()+2,label.text(),len);
       if(dw) dc.drawText(x+tw-2,y+font->getFontAscent()+2,"...",3);
-      if(hasFocus()){
+      if(hasFocus() && !themed){
         dc.drawFocusRectangle(x+1,y+1,tw+dw-2,th-2);
         }
       }
@@ -224,6 +228,8 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
   FXint iw=0,ih=0,tw=0,th=0,yt,beg,end,hi,drw,space,used,dw,xx;
   FXHeader *header=list->getHeader();
   FXFont *font=list->getFont();
+  FXTheme *theme=list->getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   if(header->getNumItems()==0) return;
   if(isSelected()){
     dc.setForeground(list->getSelBackColor());
@@ -232,7 +238,7 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
   else{
     dc.fillRectangle(x,y,w,h);
     }
-  if(hasFocus()){
+  if(hasFocus() && !themed){
     dc.drawFocusRectangle(x+1,y+1,w-2,h-2);
     }
   xx=x+SIDE_SPACING/2;
@@ -249,7 +255,7 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
     dw=font->getTextWidth("...",3);
     yt=y+(h-th-4)/2;
     if(!isEnabled())
-      dc.setForeground(makeShadowColor(list->getBackColor()));
+      dc.setForeground(themed?theme->color(ROLE_TEXT_DISABLED):makeShadowColor(list->getBackColor()));
     else if(isSelected())
       dc.setForeground(list->getSelTextColor());
     else
@@ -475,6 +481,12 @@ FXint FXIconItem::getHeight(const FXIconList* list) const {
     if(miniIcon) ih=list->getScaledIcon(miniIcon)->getHeight();
     if(!label.empty()) th=4+font->getFontHeight();
     h=FXMAX(ih,th);
+    }
+  if(!(options&ICONLIST_BIG_ICONS)){
+    FXTheme *theme=list->getApp()->getTheme();
+    if(0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale())){
+      h=FXMAX(h,theme->metric(METRIC_ROW_HEIGHT,list->getDisplayScale()));
+      }
     }
   return h;
   }
@@ -2899,6 +2911,7 @@ void FXIconList::clearItems(FXbool notify){
 // Re-resolve the normal font for the window's monitor
 void FXIconList::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+  if(!backColorOverride && 0<theme->metric(METRIC_CORNER_RADIUS)) backColor=theme->color(ROLE_WINDOW_BG);
   textColor=theme->color(ROLE_TEXT);
   selbackColor=theme->color(ROLE_SELECTION_BG);
   seltextColor=theme->color(ROLE_SELECTION_TEXT);

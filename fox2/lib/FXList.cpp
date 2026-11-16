@@ -117,6 +117,8 @@ FXIMPLEMENT(FXListItem,FXObject,nullptr,0)
 // Draw item
 void FXListItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FXint hh) const {
   FXFont *font=list->getFont();
+  FXTheme *theme=list->getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   FXint ih=0,th=0;
   if(icon) ih=list->getScaledIcon(icon)->getHeight();
   if(!label.empty()) th=font->getFontHeight();
@@ -125,7 +127,7 @@ void FXListItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FXi
   else
     dc.setForeground(list->getBackColor());     // FIXME maybe paint background in onPaint?
   dc.fillRectangle(xx,yy,ww,hh);
-  if(hasFocus()){
+  if(hasFocus() && !themed){
     dc.drawFocusRectangle(xx+1,yy+1,ww-2,hh-2);
     }
   xx+=SIDE_SPACING/2;
@@ -138,7 +140,7 @@ void FXListItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FXi
     }
   if(!label.empty()){
     if(!isEnabled())
-      dc.setForeground(makeShadowColor(list->getBackColor()));
+      dc.setForeground(themed?theme->color(ROLE_TEXT_DISABLED):makeShadowColor(list->getBackColor()));
     else if(isSelected())
       dc.setForeground(list->getSelTextColor());
     else
@@ -270,7 +272,12 @@ FXint FXListItem::getHeight(const FXList* list) const {
   if(!label.empty()){
     th=font->getFontHeight();
     }
-  return LINE_SPACING+FXMAX(th,ih);
+  FXint h=LINE_SPACING+FXMAX(th,ih);
+  FXTheme *theme=list->getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale())){
+    h=FXMAX(h,theme->metric(METRIC_ROW_HEIGHT,list->getDisplayScale()));
+    }
+  return h;
   }
 
 
@@ -1970,6 +1977,7 @@ void FXList::setNumVisible(FXint nvis){
 // Re-resolve the normal font for the window's monitor
 void FXList::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+  if(!backColorOverride && 0<theme->metric(METRIC_CORNER_RADIUS)) backColor=theme->color(ROLE_WINDOW_BG);
   textColor=theme->color(ROLE_TEXT);
   selbackColor=theme->color(ROLE_SELECTION_BG);
   seltextColor=theme->color(ROLE_SELECTION_TEXT);

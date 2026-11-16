@@ -109,6 +109,17 @@ FXDEFMAP(FXPopup) FXPopupMap[]={
 FXIMPLEMENT(FXPopup,FXShell,FXPopupMap,ARRAYNUMBER(FXPopupMap))
 
 
+// Re-apply theme colors
+void FXPopup::applyTheme(FXTheme* theme){
+  FXShell::applyTheme(theme);
+  backColor=theme->color(ROLE_SURFACE);
+  baseColor=theme->color(ROLE_SURFACE);
+  hiliteColor=theme->color(ROLE_SURFACE_HILITE);
+  shadowColor=theme->color(ROLE_SURFACE_SHADOW);
+  borderColor=theme->color(ROLE_BORDER);
+  }
+
+
 // Deserialization
 FXPopup::FXPopup():prevActive(nullptr),nextActive(nullptr){
   }

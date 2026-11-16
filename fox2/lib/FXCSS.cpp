@@ -634,8 +634,8 @@ void FXCSS::apply(FXTheme& theme) const {
   static const FXchar* selfgs[]={ "theme_selected_fg_color","selected_fg_color" };
   static const FXchar* disfg[]={ "insensitive_fg_color","theme_unfocused_fg_color" };
   static const FXchar* bords[]={ "borders","border_color","theme_border_color" };
-  static const FXchar* tips[]={ "theme_tooltip_bg_color","tooltip_bg_color" };
-  static const FXchar* tipfg[]={ "theme_tooltip_fg_color","tooltip_fg_color" };
+  static const FXchar* tips[]={ "theme_tooltip_bg_color","tooltip_bg_color","tooltip_background_breeze","tooltip_background" };
+  static const FXchar* tipfg[]={ "theme_tooltip_fg_color","tooltip_fg_color","tooltip_text_breeze","tooltip_text" };
   static const FXchar* accents[]={ "theme_selected_bg_color","accent_bg_color","accent_color" };
   static const FXchar* buttons[]={ "theme_button_background_normal_breeze","theme_button_background_normal","theme_button_bg_color","button_bg_color" };
   static const FXchar* hovers[]={ "theme_button_decoration_hover_breeze","theme_button_decoration_hover","theme_hover_color","hover_color" };
@@ -663,9 +663,9 @@ void FXCSS::apply(FXTheme& theme) const {
   if(clr) theme.setColor(ROLE_TEXT_DISABLED,clr);
   if((clr=color(bords[0]))==0 && (clr=color(bords[1]))==0) clr=color(bords[2]);
   if(clr) theme.setColor(ROLE_BORDER,clr);
-  if((clr=color(tips[0]))==0) clr=color(tips[1]);
+  if((clr=color(tips[0]))==0 && (clr=color(tips[1]))==0 && (clr=color(tips[2]))==0) clr=color(tips[3]);
   if(clr) theme.setColor(ROLE_TOOLTIP_BG,clr);
-  if((clr=color(tipfg[0]))==0) clr=color(tipfg[1]);
+  if((clr=color(tipfg[0]))==0 && (clr=color(tipfg[1]))==0 && (clr=color(tipfg[2]))==0) clr=color(tipfg[3]);
   if(clr) theme.setColor(ROLE_TOOLTIP_TEXT,clr);
   if((clr=color(accents[0]))==0 && (clr=color(accents[1]))==0) clr=color(accents[2]);
   if(clr) theme.setColor(ROLE_ACCENT,clr);

@@ -219,6 +219,9 @@ long FXButton::onUpdate(FXObject* sender,FXSelector sel,void* ptr){
 long FXButton::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onFocusIn(sender,sel,ptr);
   update();
+  if(getParent() && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale()) &&
+     (FXString::comparecase(getParent()->getClassName(),"FXListBox")==0 ||
+      FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0)) getParent()->update();
   return 1;
   }
 
@@ -227,6 +230,9 @@ long FXButton::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
 long FXButton::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onFocusOut(sender,sel,ptr);
   update();
+  if(getParent() && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale()) &&
+     (FXString::comparecase(getParent()->getClassName(),"FXListBox")==0 ||
+      FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0)) getParent()->update();
   return 1;
   }
 
@@ -276,13 +282,15 @@ long FXButton::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
 long FXButton::onLeftBtnRelease(FXObject*,FXSelector,void* ptr){
   FXbool click=(state==STATE_DOWN);
   if(isEnabled() && (flags&FLAG_PRESSED)){
+    // Sample hover before the command: it may close and destroy this window
+    FXbool hover=underCursor();
     ungrab();
     flags|=FLAG_UPDATE;
     flags&=~FLAG_PRESSED;
     if(target && target->tryHandle(this,FXSEL(SEL_LEFTBUTTONRELEASE,message),ptr)) return 1;
     if(state!=STATE_ENGAGED) setState(STATE_UP);
+    updateAnimatedColor(hover);
     if(click && target){ target->tryHandle(this,FXSEL(SEL_COMMAND,message),(void*)(FXuval)1); }
-    updateAnimatedColor(underCursor());
     return 1;
     }
   return 0;

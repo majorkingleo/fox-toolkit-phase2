@@ -114,6 +114,9 @@ public:
   /// Perform layout
   virtual void layout() override;
 
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Return a pointer to the prior active popup
   FXPopup* getPrevActive() const { return prevActive; }
 
