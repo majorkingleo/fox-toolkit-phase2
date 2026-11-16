@@ -29,12 +29,11 @@ Not ported (26), grouped by what they exercise:
 | 2 Dialogs and data | `dialog`, `wizard`, `datatarget`, `calendar` | modal windows, focus, owner relations, data targets |
 | 3 Lists and files | `dirlist`, `iconlist`, `table` | icons, scrolling, many items, file system access |
 | 4 Drawing | `image`, `imageviewer`, `bitmapviewer`, `scribble`, `dctest` | `FXDCWindow`, `FXImage`, image codecs, file dialogs |
-| 5 Special cases | `mditest`, `shutter`, `gltest`, `console` | MDI children, shutter widget, OpenGL, a program with no window |
+| 5 Special cases | `mditest`, `shutter`, `gltest`, `console` | MDI children, shutter widget, OpenGL, a text console widget |
 
-`gltest` needs an OpenGL seam that does not exist yet (no GL canvas on
-Wayland or Win32 in fox2). It stays last and may be left out; the decision is
-taken when group 4 is done. `console` is a console program and belongs with the
-console tests, see step 0.
+`gltest` needed GL classes that fox2 did not have; they were copied and the Win32
+part is verified. `console` is not a console program: it shows the `FXConsole`
+widget, so it is a GUI test like the others.
 
 ## Step 0: groundwork
 
@@ -319,6 +318,8 @@ and the commit that fixed it.
 | `FXGLContext`, `FXGLCanvas` | Win32 and X11 branches are small and interleaved, so they stay in one file | unchanged copies |
 | OpenGL | CMake finds GL on the Wayland platform and would compile the GLX code | `FOXFeatures.cmake` disables OpenGL for `FOX_PLATFORM=wayland` |
 | gltest | the bold label font of the info dialog was created once for the system DPI, so on a lower-DPI monitor the labels stayed large next to the scaled values | the dialog rebuilds the font for its monitor in `applyTheme`; labels with an application font are not rescaled by the library |
+| console | `FXConsole` missing in fox2; the plan took `console` for a windowless program | copied from fox-1.7.95, `console` added as a GUI test |
+| console | `FXConsole` fills its area red and shows 30 numbered test lines | upstream work-in-progress code (debug fill and sample text in `FXConsole.cpp`), unchanged |
 
 ## Status
 
@@ -329,4 +330,4 @@ and the commit that fixed it.
 | 2 Dialogs and data | done |
 | 3 Lists and files | done |
 | 4 Drawing | done |
-| 5 Special cases | in progress: `mditest`, `shutter`, `gltest` done |
+| 5 Special cases | done |

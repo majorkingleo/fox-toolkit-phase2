@@ -112,6 +112,7 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXConsole.cpp \
 FXGLCanvas.cpp \
 FXGLContext.cpp \
 FXGLVisual.cpp \
