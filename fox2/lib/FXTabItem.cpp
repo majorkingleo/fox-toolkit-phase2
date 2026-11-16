@@ -239,8 +239,41 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
     else if(!selected && underCursor()){
       face=blendColor(theme->color(ROLE_SURFACE),accent,20);
       }
-    if(hasFocus()) edge=theme->color(ROLE_FOCUS_RING);
+    if(hasFocus() && !selected) edge=theme->color(ROLE_FOCUS_RING);
     getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,edge,1);
+
+    // Square the side that joins the tab bar/page, so only the outer corners
+    // of a top/bottom tab are rounded
+    FXint rr=FXMIN(radius,FXMIN(width,height)/2);
+    if(0<rr){
+      dc.setForeground(face);
+      switch(options&TAB_ORIENT_MASK){
+        case TAB_BOTTOM:
+          dc.fillRectangle(rr,0,width-2*rr,rr);
+          dc.setForeground(edge);
+          dc.fillRectangle(0,0,1,rr);
+          dc.fillRectangle(width-1,0,1,rr);
+          break;
+        case TAB_LEFT:
+          dc.fillRectangle(width-rr,rr,rr,height-2*rr);
+          dc.setForeground(edge);
+          dc.fillRectangle(width-rr,0,rr,1);
+          dc.fillRectangle(width-rr,height-1,rr,1);
+          break;
+        case TAB_RIGHT:
+          dc.fillRectangle(0,rr,rr,height-2*rr);
+          dc.setForeground(edge);
+          dc.fillRectangle(0,0,rr,1);
+          dc.fillRectangle(0,height-1,rr,1);
+          break;
+        default:
+          dc.fillRectangle(rr,height-rr,width-2*rr,rr);
+          dc.setForeground(edge);
+          dc.fillRectangle(0,height-rr,1,rr);
+          dc.fillRectangle(width-1,height-rr,1,rr);
+          break;
+        }
+      }
     if(selected){
       FXint thick=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale())+1,2);
       dc.setForeground(accent);

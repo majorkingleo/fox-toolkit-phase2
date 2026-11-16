@@ -369,6 +369,13 @@ void FXStyle::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint op
 
 // Draw frame chrome with the colors of the widget
 void FXStyle::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options,FXColor hilite,FXColor shadow,FXColor border,FXColor surface){
+  // Rounded themes use a single modern hairline instead of a 3D bevel
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    if(options&(FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK|FRAME_GROOVE|FRAME_RIDGE)){
+      fillBorderRectangle(dc,x,y,w,h,border);
+      }
+    return;
+    }
   switch(options&FRAME_MASK){
     case FRAME_LINE: fillBorderRectangle(dc,x,y,w,h,border); break;
     case FRAME_SUNKEN: fillSunkenRectangle(dc,x,y,w,h,hilite,shadow); break;

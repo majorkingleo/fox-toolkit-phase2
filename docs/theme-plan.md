@@ -994,8 +994,12 @@ outer corners and a drop shadow still need an alpha/shaped popup surface.
 face, with selected, hover and disabled colors, a focus border and the accent
 edge of the selected tab; `FXTabBar`/`FXTabBook` replace the classic 3D frame
 with a themed separator on the tab side.  Classic radius-0 tabs keep the
-original bevel drawing.  A seamless join to the page and the specialised
-left/right/bottom tab geometry remain open.
+original bevel drawing.  The selected tab no longer gets a full accent
+outline just because it has focus: only the top accent edge remains, and the
+side that joins the page is squared so the tab does not look like a floating
+pill.  `FXStyle::drawFrame()` also reduces themed raised/sunken frames to a
+single hairline, so the tab-book page follows the same look.  Left/right/bottom
+tab geometry still needs a visual pass.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
