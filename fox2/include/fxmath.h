@@ -440,7 +440,7 @@ static inline FXlong isign(FXlong x){
 /// Single precision minimum of two
 static inline FXfloat fmin(FXfloat x,FXfloat y){
 #if defined(NO_FMINF)
-  return (x<y)?x:y;
+  return (x<y || Math::fpNan(y))?x:y;
 #else
   return ::fminf(x,y);
 #endif
@@ -450,7 +450,7 @@ static inline FXfloat fmin(FXfloat x,FXfloat y){
 /// Double precision minimum of two
 static inline FXdouble fmin(FXdouble x,FXdouble y){
 #if defined(NO_FMIN)
-  return (x<y)?x:y;
+  return (x<y || Math::fpNan(y))?x:y;
 #else
   return ::fmin(x,y);
 #endif
@@ -460,7 +460,7 @@ static inline FXdouble fmin(FXdouble x,FXdouble y){
 /// Single precision maximum of two
 static inline FXfloat fmax(FXfloat x,FXfloat y){
 #if defined(NO_FMAXF)
-  return (x>y)?x:y;
+  return (x>y || Math::fpNan(y))?x:y;
 #else
   return ::fmaxf(x,y);
 #endif
@@ -469,7 +469,7 @@ static inline FXfloat fmax(FXfloat x,FXfloat y){
 /// Double precision maximum of two
 static inline FXdouble fmax(FXdouble x,FXdouble y){
 #if defined(NO_FMAX)
-  return (x>y)?x:y;
+  return (x>y || Math::fpNan(y))?x:y;
 #else
   return ::fmax(x,y);
 #endif
@@ -966,22 +966,22 @@ static inline FXdouble safesqrt(FXdouble x){
 
 
 /// Single precision cube root
-static inline FXfloat cbrt(FXfloat x){
 #if defined(NO_CBRTF)
-  return ::powf(x,0.333333333333333333333333333333f);
+extern FXAPI FXfloat cbrt(FXfloat x);
 #else
+static inline FXfloat cbrt(FXfloat x){
   return ::cbrtf(x);
-#endif
   }
+#endif
 
 /// Double precision cube root
-static inline FXdouble cbrt(FXdouble x){
 #if defined(NO_CBRT)
-  return ::pow(x,0.333333333333333333333333333333);
+extern FXAPI FXdouble cbrt(FXdouble x);
 #else
+static inline FXdouble cbrt(FXdouble x){
   return ::cbrt(x);
-#endif
   }
+#endif
 
 
 /// Single precision square
@@ -1031,22 +1031,22 @@ static inline FXdouble recip(FXdouble x){
 
 
 /// Single precision calculate hypothenuse sqrt(x^2+y^2)
-static inline FXfloat hypot(FXfloat x,FXfloat y){
 #if defined(NO_HYPOTF)
-  return Math::sqrt(Math::sqr(x)+Math::sqr(y));
+extern FXAPI FXfloat hypot(FXfloat x,FXfloat y);
 #else
+static inline FXfloat hypot(FXfloat x,FXfloat y){
   return ::hypotf(x,y);
-#endif
   }
+#endif
 
 /// Double precision calculate hypothenuse sqrt(x^2+y^2)
-static inline FXdouble hypot(FXdouble x,FXdouble y){
 #if defined(NO_HYPOT)
-  return Math::sqrt(Math::sqr(x)+Math::sqr(y));
+extern FXAPI FXdouble hypot(FXdouble x,FXdouble y);
 #else
+static inline FXdouble hypot(FXdouble x,FXdouble y){
   return ::hypot(x,y);
-#endif
   }
+#endif
 
 
 /// Linearly interpolate between u and v as f goes from 0...1
@@ -1084,22 +1084,22 @@ static inline FXdouble exp(FXdouble x){
 
 
 /// Single precision base E exponential - 1
-static inline FXfloat expm1(FXfloat x){
 #if defined(NO_EXPM1F)
-  return ::expf(x)-1.0f;
+extern FXAPI FXfloat expm1(FXfloat x);
 #else
+static inline FXfloat expm1(FXfloat x){
   return ::expm1f(x);
-#endif
   }
+#endif
 
 /// Double precision base E exponential - 1
-static inline FXdouble expm1(FXdouble x){
 #if defined(NO_EXPM1)
-  return ::exp(x)-1.0;
+extern FXAPI FXdouble expm1(FXdouble x);
 #else
+static inline FXdouble expm1(FXdouble x){
   return ::expm1(x);
-#endif
   }
+#endif
 
 
 /// Single precision power x^y
@@ -1188,43 +1188,43 @@ static inline FXdouble log(FXdouble x){
 
 
 /// Single precision logarithm of 1+x
-static inline FXfloat log1p(FXfloat x){
 #if defined(NO_LOG1PF)
-  return Math::log(1.0f+x);
+extern FXAPI FXfloat log1p(FXfloat x);
 #else
+static inline FXfloat log1p(FXfloat x){
   return ::log1pf(x);
-#endif
   }
+#endif
 
 
 /// Double precision logarithm of 1+x
-static inline FXdouble log1p(FXdouble x){
 #if defined(NO_LOG1P)
-  return Math::log(1.0+x);
+extern FXAPI FXdouble log1p(FXdouble x);
 #else
+static inline FXdouble log1p(FXdouble x){
   return ::log1p(x);
-#endif
   }
+#endif
 
 
 /// Single precision base 2 logarithm
-static inline FXfloat log2(FXfloat x){
 #if defined(NO_LOG2F)
-  return Math::log(x)*1.442695040888963407359924681001892137f;
+extern FXAPI FXfloat log2(FXfloat x);
 #else
+static inline FXfloat log2(FXfloat x){
   return ::log2f(x);
-#endif
   }
+#endif
 
 
 /// Double precision base 2 logarithm
-static inline FXdouble log2(FXdouble x){
 #if defined(NO_LOG2)
-  return Math::log(x)*1.442695040888963407359924681001892137;
+extern FXAPI FXdouble log2(FXdouble x);
 #else
+static inline FXdouble log2(FXdouble x){
   return ::log2(x);
-#endif
   }
+#endif
 
 
 /// Single precision base 10 logarithm

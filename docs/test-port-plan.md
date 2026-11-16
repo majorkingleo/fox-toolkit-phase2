@@ -150,10 +150,26 @@ change nothing else); the library under them is never touched.
    inverting, 4 refused conversions, symbol look-up, span, dimensions, table
    order). The command line modes stay; `rex` and `expression` now return 1
    on a syntax error instead of always 1 / 0. `units --test` found two data
-   errors in the fox2 table (not in FOX 1, which has them too): `hp` had the
+   errors in the fox2 table (FOX 1 has the same two): `hp` had the
    dimensions of energy (`kg*m^2/s^2`, now `kg*m^2/s^3`) and `lbf` was rounded
    to 4.448222 (now 4.4482216152605, so `psi` is 6894.757293 Pa).
-4. D: `math` with a bounded default.
+4. D: `math` with a bounded default. Done: `math --test [--verbose]` checks
+   known values and edge cases for both precisions (zero signs, Inf, NaN,
+   denormals, overflow and underflow, argument reduction, integer helpers,
+   `fpMake` and friends, `log2` of every power of two from -100 to 100)
+   and a fixed-seed sample of every function against the C library within a
+   per-function limit in ulps; it returns 0 only when all hold. The run without
+   arguments is unchanged (all floats, 10^9 doubles); a `names[]` entry
+   missing a comma was fixed. The test found defects in the code which
+   fox2 uses where the C library lacks a function (mingw), all fixed in
+   `fxmath.cpp` and `fxmath.h`: `expm1` and `log1p` lost all precision
+   near zero (which also broke `sinh`, `tanh`, `asinh`, `atanh`);
+   `cbrt` returned NaN for negative arguments and -Inf gave +Inf; `hypot`
+   overflowed above 1e154 and underflowed below 1e-154; `fmin`/`fmax`
+   returned NaN when only the second argument was NaN; `acosh(Inf)` was NaN;
+   `log2` of powers of two was inexact. `inverf` and `inverfc`, used on
+   every platform, started from a wrong estimate (`log(0.5*x*x)` instead of
+   `2*log(0.5*x)`) and were off by up to 2e-6 (double) and 2e-2 (float).
 5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
 
 One commit per step, each with the result of both platforms in its message.

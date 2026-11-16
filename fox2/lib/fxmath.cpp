@@ -226,6 +226,128 @@ FXdouble Math::rint(FXdouble x){
 
 /*******************************************************************************/
 
+// Single precision cube root
+#if defined(NO_CBRTF)
+FXfloat Math::cbrt(FXfloat x){
+  return (FXfloat)Math::cbrt((FXdouble)x);
+  }
+#endif
+
+
+// Double precision cube root; starts with pow() and does one Newton step.
+// Denormals are scaled by 2^54 first, as 2^54 is a perfect cube (2^18)^3
+#if defined(NO_CBRT)
+FXdouble Math::cbrt(FXdouble x){
+  if(__likely(Math::fpFinite(x) && x!=0.0)){
+    FXdouble a=Math::fabs(x);
+    FXdouble s=1.0;
+    FXdouble r;
+    if(a<2.2250738585072014E-308){                      // Denormal
+      a*=18014398509481984.0;
+      s=3.814697265625E-6;
+      }
+    r=Math::pow(a,0.333333333333333333333333333333);
+    r-=(r*r*r-a)/(3.0*r*r);
+    return Math::copysign(r*s,x);
+    }
+  return x;                                             // 0, Inf, NaN
+  }
+#endif
+
+
+// Single precision calculate hypothenuse
+#if defined(NO_HYPOTF)
+FXfloat Math::hypot(FXfloat x,FXfloat y){
+  return (FXfloat)Math::hypot((FXdouble)x,(FXdouble)y);
+  }
+#endif
+
+
+// Double precision calculate hypothenuse; scaled by the larger one to
+// prevent intermediate overflow or underflow, Inf wins over NaN
+#if defined(NO_HYPOT)
+FXdouble Math::hypot(FXdouble x,FXdouble y){
+  x=Math::fabs(x);
+  y=Math::fabs(y);
+  if(__unlikely(Math::fpInfinite(x))){ return x; }
+  if(__unlikely(Math::fpInfinite(y))){ return y; }
+  if(__unlikely(Math::fpNan(x) || Math::fpNan(y))){ return x+y; }
+  if(x<y){ FXdouble t=x; x=y; y=t; }
+  if(x==0.0){ return 0.0; }
+  y/=x;
+  return x*Math::sqrt(1.0+y*y);
+  }
+#endif
+
+
+// Single precision exponential - 1
+#if defined(NO_EXPM1F)
+FXfloat Math::expm1(FXfloat x){
+  return (FXfloat)Math::expm1((FXdouble)x);
+  }
+#endif
+
+
+// Double precision exponential - 1; avoids cancellation near zero by
+// scaling with x/log(exp(x)), which is exact to rounding (W. Kahan)
+#if defined(NO_EXPM1)
+FXdouble Math::expm1(FXdouble x){
+  FXdouble u=Math::exp(x);
+  if(u==1.0){ return x; }                               // Tiny x
+  FXdouble um1=u-1.0;
+  if(um1==-1.0){ return -1.0; }                         // Large negative x
+  if(um1==u){ return u; }                               // Large positive x, Inf
+  return um1*x/Math::log(u);
+  }
+#endif
+
+
+// Single precision logarithm of 1+x
+#if defined(NO_LOG1PF)
+FXfloat Math::log1p(FXfloat x){
+  return (FXfloat)Math::log1p((FXdouble)x);
+  }
+#endif
+
+
+// Double precision logarithm of 1+x; avoids cancellation near zero by
+// scaling with x/((1+x)-1), which is exact to rounding (W. Kahan)
+#if defined(NO_LOG1P)
+FXdouble Math::log1p(FXdouble x){
+  FXdouble u=1.0+x;
+  if(u==1.0){ return x; }                               // Tiny x
+  if(Math::fpInfinite(u)){ return u; }                  // Inf
+  return Math::log(u)*(x/(u-1.0));
+  }
+#endif
+
+/*******************************************************************************/
+// Single precision base 2 logarithm
+#if defined(NO_LOG2F)
+FXfloat Math::log2(FXfloat x){
+  return (FXfloat)Math::log2((FXdouble)x);
+  }
+#endif
+
+
+// Double precision base 2 logarithm; splits off the binary exponent so that
+// powers of two give exact results
+#if defined(NO_LOG2)
+FXdouble Math::log2(FXdouble x){
+  if(__likely(x>0.0 && Math::fpFinite(x))){
+    int ex;
+    FXdouble m=::frexp(x,&ex);                          // 0.5 <= m < 1
+    if(m<0.707106781186547524400844362104849039){       // Keep m near 1
+      m+=m;
+      ex--;
+      }
+    return (FXdouble)ex+Math::log(m)*1.442695040888963407359924681001892137;
+    }
+  return Math::log(x)*1.442695040888963407359924681001892137;   // 0, <0, Inf, NaN
+  }
+#endif
+
+/*******************************************************************************/
 // Single precision hyperbolic sine
 #if defined(NO_SINHF)
 FXfloat Math::sinh(FXfloat x){
@@ -526,7 +648,7 @@ FXfloat Math::acosh(FXfloat x){
     return z.f;                                         // NaN
     }
   if(__unlikely(z.u>=0x4d800000)){                      // x >= big
-    if(__likely(z.u<0x7f800000)){ return Math::log(x)+0.693147180559945309417232121458176568f; }
+    if(__likely(z.u<=0x7f800000)){ return Math::log(x)+0.693147180559945309417232121458176568f; }
     z.u=0x7fffffff;
     return z.f;                                         // NaN
     }
@@ -550,7 +672,7 @@ FXdouble Math::acosh(FXdouble x){
     return z.f;                                         // NaN
     }
   if(__unlikely(z.u>=FXULONG(0x41b0000000000000))){     // x >= big
-    if(__likely(z.u<FXULONG(0x7ff0000000000000))){ return Math::log(x)+0.693147180559945309417232121458176568; }
+    if(__likely(z.u<=FXULONG(0x7ff0000000000000))){ return Math::log(x)+0.693147180559945309417232121458176568; }
     z.u=FXULONG(0x7fffffffffffffff);
     return z.f;                                         // NaN
     }
@@ -684,7 +806,7 @@ FXfloat Math::inverfc(FXfloat x){
     }
 
   // Approximation
-  t=Math::sqrt(-Math::log(0.5f*x*x));
+  t=Math::sqrt(-2.0f*Math::log(0.5f*x));
   result=-0.70711f*((2.30753f+t*0.27061f)/(1.0f+t*(0.99229f+t*0.04481f))-t);
 
   // Newton-Raphson refinement steps f(x)/f'(x)
@@ -713,7 +835,7 @@ FXdouble Math::inverfc(FXdouble x){
     }
 
   // Approximation
-  t=Math::sqrt(-Math::log(0.5*x*x));
+  t=Math::sqrt(-2.0*Math::log(0.5*x));
   result=-0.70711*((2.30753+t*0.27061)/(1.0+t*(0.99229+t*0.04481))-t);
 
   // Newton-Raphson refinement steps f(x)/f'(x)
