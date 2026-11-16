@@ -39,7 +39,7 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb, hover/drag shading and flat themed arrow ends; thickness still comes from the app setting, not a theme metric. |
+| `FXScrollBar` | PARTIAL | Themed trough, thin rounded pill thumb on the full track, hover/drag shading and no stepper arrows in rounded themes; thickness still comes from the app setting. |
 | `FXScrollArea` | OPEN | Viewport background and border; clipping/rounding of the viewport; scrollbar spacing. |
 | `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
 | `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |

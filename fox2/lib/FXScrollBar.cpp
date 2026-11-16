@@ -82,6 +82,12 @@ static FXColor blendColor(FXColor a,FXColor b,FXint percent){
   }
 
 
+// Rounded themes use the flat scrollbar rendering
+static FXbool themedScroll(FXWindow* win){
+  return 0<win->getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,win->getDisplayScale());
+  }
+
+
 // Map
 FXDEFMAP(FXScrollBar) FXScrollBarMap[]={
   FXMAPFUNC(SEL_PAINT,0,FXScrollBar::onPaint),
@@ -237,13 +243,13 @@ long FXScrollBar::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
     if(target && target->tryHandle(this,FXSEL(SEL_LEFTBUTTONPRESS,message),ptr)) return 1;
     flags&=~FLAG_UPDATE;
     if(options&SCROLLBAR_HORIZONTAL){     // Horizontal scrollbar
-      if(event->win_x<height){                   // Left arrow
+      if(!themedScroll(this) && event->win_x<height){ // Left arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)-line);
         p=pos-line;
         update();
         mode=MODE_DEC;
         }
-      else if(width-height<=event->win_x){       // Right arrow
+      else if(!themedScroll(this) && width-height<=event->win_x){ // Right arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)line);
         p=pos+line;
         update();
@@ -268,13 +274,13 @@ long FXScrollBar::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
         }
       }
     else{                                 // Vertical scrollbar
-      if(event->win_y<width){                   // Up arrow
+      if(!themedScroll(this) && event->win_y<width){ // Up arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)-line);
         p=pos-line;
         update();
         mode=MODE_DEC;
         }
-      else if(height-width<=event->win_y){      // Down arrow
+      else if(!themedScroll(this) && height-width<=event->win_y){ // Down arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)line);
         p=pos+line;
         update();
@@ -422,13 +428,13 @@ long FXScrollBar::onRightBtnPress(FXObject*,FXSelector,void* ptr){
     if(target && target->tryHandle(this,FXSEL(SEL_RIGHTBUTTONPRESS,message),ptr)) return 1;
     flags&=~FLAG_UPDATE;
     if(options&SCROLLBAR_HORIZONTAL){     // Horizontal scrollbar
-      if(event->win_x<height){                   // Left arrow
+      if(!themedScroll(this) && event->win_x<height){ // Left arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)-1);
         p=pos-1;
         update();
         mode=MODE_DEC;
         }
-      else if(width-height<=event->win_x){       // Right arrow
+      else if(!themedScroll(this) && width-height<=event->win_x){ // Right arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)1);
         p=pos+1;
         update();
@@ -452,13 +458,13 @@ long FXScrollBar::onRightBtnPress(FXObject*,FXSelector,void* ptr){
         }
       }
     else{                                 // Vertical scrollbar
-      if(event->win_y<width){                   // Up arrow
+      if(!themedScroll(this) && event->win_y<width){ // Up arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)-1);
         p=pos-1;
         update();
         mode=MODE_DEC;
         }
-      else if(height-width<=event->win_y){      // Down arrow
+      else if(!themedScroll(this) && height-width<=event->win_y){ // Down arrow
         getApp()->addTimeout(this,ID_AUTOSCROLL,getApp()->getScrollDelay(),(void*)(FXival)1);
         p=pos+1;
         update();
@@ -866,33 +872,27 @@ long FXScrollBar::onPaint(FXObject*,FXSelector,void* ptr){
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
   if(0<radius){
     FXColor surface=theme->color(ROLE_SURFACE);
-    FXColor thumb=blendColor(surface,theme->color(ROLE_TEXT),35);
+    FXColor thumb=blendColor(surface,theme->color(ROLE_TEXT),20);
     FXColor thumbedge=blendColor(thumb,theme->color(ROLE_TEXT),20);
     if((mode==MODE_DRAG) || (mode==MODE_FINE_DRAG) || underCursor()){
-      thumb=blendColor(surface,theme->color(ROLE_TEXT),50);
+      thumb=blendColor(surface,theme->color(ROLE_TEXT),35);
       thumbedge=blendColor(thumb,theme->color(ROLE_TEXT),25);
       }
     dc.setForeground(backColor);
     dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
     if(options&SCROLLBAR_HORIZONTAL){
-      total=width-height-height;
+      total=width;
       if(thumbsize<total && 0<thumbsize){
-        FXint h=height-4;
-        if(0<h) getApp()->getStyle()->drawRoundedRectangle(dc,thumbpos,2,thumbsize,h,h/2,thumb,thumbedge,1);
+        FXint h=FXMAX(height/3,6);
+        getApp()->getStyle()->drawRoundedRectangle(dc,thumbpos,(height-h)/2,thumbsize,h,h/2,thumb,thumbedge,1);
         }
-      dc.setForeground(theme->color(ROLE_TEXT));
-      drawLeftArrow(dc,0,0,height,height,false);
-      drawRightArrow(dc,width-height,0,height,height,false);
       }
     else{
-      total=height-width-width;
+      total=height;
       if(thumbsize<total && 0<thumbsize){
-        FXint w=width-4;
-        if(0<w) getApp()->getStyle()->drawRoundedRectangle(dc,2,thumbpos,w,thumbsize,w/2,thumb,thumbedge,1);
+        FXint w=FXMAX(width/3,6);
+        getApp()->getStyle()->drawRoundedRectangle(dc,(width-w)/2,thumbpos,w,thumbsize,w/2,thumb,thumbedge,1);
         }
-      dc.setForeground(theme->color(ROLE_TEXT));
-      drawUpArrow(dc,0,0,width,width,false);
-      drawDownArrow(dc,0,height-width,width,width,false);
       }
     return 1;
     }
@@ -1009,12 +1009,14 @@ void FXScrollBar::setPosition(FXint p,FXbool notify){
   if(p>r) p=r;
   if(p<0) p=0;
   FXASSERT(0<=p);
+  FXbool themed=themedScroll(this);
   if(options&SCROLLBAR_HORIZONTAL){
-    total=width-height-height;
+    total=themed?width:width-height-height;
     thumbsize=(total*page)/range;
-    if(thumbsize<(barsize>>1)) thumbsize=(barsize>>1);
+    if(themed){ if(thumbsize<barsize*2) thumbsize=barsize*2; if(total<thumbsize) thumbsize=total; }
+    else if(thumbsize<(barsize>>1)) thumbsize=(barsize>>1);
     travel=total-thumbsize;
-    if(r>0){ thumbpos=height+(FXint)((((FXdouble)p)*travel)/r); } else { thumbpos=height; }
+    if(r>0){ thumbpos=(themed?0:height)+(FXint)((((FXdouble)p)*travel)/r); } else { thumbpos=(themed?0:height); }
     l=thumbpos;
     h=thumbpos+thumbsize;
     if(l!=lo || h!=hi){
@@ -1022,11 +1024,12 @@ void FXScrollBar::setPosition(FXint p,FXbool notify){
       }
     }
   else{
-    total=height-width-width;
+    total=themed?height:height-width-width;
     thumbsize=(total*page)/range;
-    if(thumbsize<(barsize>>1)) thumbsize=(barsize>>1);
+    if(themed){ if(thumbsize<barsize*2) thumbsize=barsize*2; if(total<thumbsize) thumbsize=total; }
+    else if(thumbsize<(barsize>>1)) thumbsize=(barsize>>1);
     travel=total-thumbsize;
-    if(r>0){ thumbpos=width+(FXint)((((FXdouble)p)*travel)/r); } else { thumbpos=width; }
+    if(r>0){ thumbpos=(themed?0:width)+(FXint)((((FXdouble)p)*travel)/r); } else { thumbpos=(themed?0:width); }
     l=thumbpos;
     h=thumbpos+thumbsize;
     if(l!=lo || h!=hi){
