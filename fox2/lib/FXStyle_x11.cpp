@@ -336,6 +336,7 @@ void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor co
 // Draw an antialiased rounded rectangle
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
 #if defined(HAVE_XRENDER_H)
+  if(!hasXRender(dc)) return false;
   Display *display=(Display*)dpy;
   FXDrawable *drawable=dc.drawable();
   FXVisual *visual;
@@ -359,34 +360,38 @@ FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXi
   br=FXMIN(FXMAX(borderWidth,0),r);
   ir=FXMAX(r-br,0);
 
-  // Outer rounded rectangle in the border color
-  dc.setForeground(border);
+  // Outer rounded rectangle: border, or face when there is no border
+  FXColor outer=(0<br)?border:face;
+  dc.setForeground(outer);
   dc.fillRectangle(x+r,y,FXMAX(w-2*r,0),h);
   dc.fillRectangle(x,y+r,w,FXMAX(h-2*r,0));
   mask=getMask(r);
   if(mask){
     for(c=0; c<4; c++){
-      compositeSolid(display,dst,mask->picture[c],border,x+cx[c]*(w-r),y+cy[c]*(h-r),r);
+      compositeSolid(display,dst,mask->picture[c],outer,x+cx[c]*(w-r),y+cy[c]*(h-r),r);
       }
     }
 
-  // Inner rounded rectangle in the face color
-  if(0<br && 2*br<w && 2*br<h){
-    dc.setForeground(face);
-    dc.fillRectangle(x+br+ir,y+br,FXMAX(w-2*br-2*ir,0),h-2*br);
-    dc.fillRectangle(x+br,y+br+ir,w-2*br,FXMAX(h-2*br-2*ir,0));
-    if(0<ir){
-      mask=getMask(ir);
-      if(mask){
-        for(c=0; c<4; c++){
-          compositeSolid(display,dst,mask->picture[c],face,x+br+cx[c]*(w-2*br-ir),y+br+cy[c]*(h-2*br-ir),ir);
+  // Inner rounded rectangle in the face color; with no border the outer
+  // shape is already the face
+  if(0<br){
+    if(2*br<w && 2*br<h){
+      dc.setForeground(face);
+      dc.fillRectangle(x+br+ir,y+br,FXMAX(w-2*br-2*ir,0),h-2*br);
+      dc.fillRectangle(x+br,y+br+ir,w-2*br,FXMAX(h-2*br-2*ir,0));
+      if(0<ir){
+        mask=getMask(ir);
+        if(mask){
+          for(c=0; c<4; c++){
+            compositeSolid(display,dst,mask->picture[c],face,x+br+cx[c]*(w-2*br-ir),y+br+cy[c]*(h-2*br-ir),ir);
+            }
           }
         }
       }
-    }
-  else{
-    dc.setForeground(face);
-    dc.fillRectangle(x+br,y+br,FXMAX(w-2*br,0),FXMAX(h-2*br,0));
+    else{
+      dc.setForeground(face);
+      dc.fillRectangle(x+br,y+br,FXMAX(w-2*br,0),FXMAX(h-2*br,0));
+      }
     }
 
   XRenderFreePicture(display,dst);
