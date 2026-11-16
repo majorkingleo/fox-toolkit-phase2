@@ -219,7 +219,9 @@ long FXButton::onUpdate(FXObject* sender,FXSelector sel,void* ptr){
 long FXButton::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onFocusIn(sender,sel,ptr);
   update();
-  if(getParent() && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) getParent()->update();
+  if(getParent() && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale()) &&
+     (FXString::comparecase(getParent()->getClassName(),"FXListBox")==0 ||
+      FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0)) getParent()->update();
   return 1;
   }
 
@@ -228,7 +230,9 @@ long FXButton::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
 long FXButton::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
   FXLabel::onFocusOut(sender,sel,ptr);
   update();
-  if(getParent() && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) getParent()->update();
+  if(getParent() && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale()) &&
+     (FXString::comparecase(getParent()->getClassName(),"FXListBox")==0 ||
+      FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0)) getParent()->update();
   return 1;
   }
 

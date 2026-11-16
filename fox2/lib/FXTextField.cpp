@@ -1190,7 +1190,7 @@ long FXTextField::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
   FXFrame::onFocusIn(sender,sel,ptr);
   if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
     update();
-    if(getParent()) getParent()->update();
+    if(getParent() && FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0) getParent()->update();
     }
   if(isEditable()){
     getApp()->addTimeout(this,ID_BLINK,getApp()->getBlinkSpeed());
@@ -1208,7 +1208,7 @@ long FXTextField::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
   FXFrame::onFocusOut(sender,sel,ptr);
   if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
     update();
-    if(getParent()) getParent()->update();
+    if(getParent() && FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0) getParent()->update();
     }
   getApp()->removeTimeout(this,ID_BLINK);
   drawCursor(0);

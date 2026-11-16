@@ -974,6 +974,12 @@ inset, and the field's vertical padding is reduced by the same amount, so the
 combo keeps the normal 34 px control height it has as a text field or button
 instead of shrinking its content.  The popup shadow is still open.
 
+One Wayland repaint trap found here: a themed button used to update its parent
+whenever it gained or lost focus, so the message box button-row frame queued a
+repaint after its buttons and covered them until the pointer moved.  The
+parent repaint is now requested only when the parent is actually the combo or
+list-box shell; ordinary dialog buttons do not touch their container.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane
