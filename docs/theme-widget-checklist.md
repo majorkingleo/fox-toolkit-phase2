@@ -43,7 +43,7 @@ Priority:
 | `FXScrollArea` | OPEN | Viewport background and border; clipping/rounding of the viewport; scrollbar spacing. |
 | `FXPopup`, `FXMenuPane` | OPEN | Background, border, padding, radius and the cached 9-slice popup shadow; menu panes currently have no `applyTheme()`. |
 | `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |
-| `FXTabItem`, `FXTabBar`, `FXTabBook` | OPEN | Tab background, selected/hover/focus states, tab radius/height, underline/accent, padding. |
+| `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, selected/hover/focus colors, accent edge and themed tab-bar separator; left/right/bottom styling and a seamless page join remain. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
 | `FXMenuButton`, `FXOptionMenu` | OPEN | These derive from `FXLabel`, not `FXButton`; they need button chrome and an arrow color/state. |

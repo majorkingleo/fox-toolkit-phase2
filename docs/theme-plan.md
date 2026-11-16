@@ -988,6 +988,13 @@ border and rounded rectangle, and takes its padding from `METRIC_PADDING`;
 classic tips keep the original fixed spacing and border.  Rounded outer
 corners and a drop shadow still need an alpha/shaped popup surface.
 
+**Progress — tabs (2026-11-16).** `FXTabItem` now draws a themed rounded tab
+face, with selected, hover and disabled colors, a focus border and the accent
+edge of the selected tab; `FXTabBar`/`FXTabBook` replace the classic 3D frame
+with a themed separator on the tab side.  Classic radius-0 tabs keep the
+original bevel drawing.  A seamless join to the page and the specialised
+left/right/bottom tab geometry remain open.
+
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the
 theme are application-global and widgets call `getApp()->getStyle()`.  Per-pane

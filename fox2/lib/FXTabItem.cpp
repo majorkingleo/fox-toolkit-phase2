@@ -44,6 +44,7 @@
 #include "FXApp.h"
 #include "FXIcon.h"
 #include "FXTabBar.h"
+#include "FXTabBook.h"
 #include "FXTabItem.h"
 
 /*
@@ -70,6 +71,16 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+
+// Blend color a toward color b by the given percentage of b
+static FXColor blendColor(FXColor a,FXColor b,FXint percent){
+  FXint tnecrep=100-percent;
+  return FXRGB((FXREDVAL(a)*tnecrep+FXREDVAL(b)*percent+50)/100,
+               (FXGREENVAL(a)*tnecrep+FXGREENVAL(b)*percent+50)/100,
+               (FXBLUEVAL(a)*tnecrep+FXBLUEVAL(b)*percent+50)/100);
+  }
+
 
 // Map
 FXDEFMAP(FXTabItem) FXTabItemMap[]={
@@ -205,7 +216,44 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
   dc.setForeground(backColor);
 //dc.setForeground(FXRGB(255,0,0));
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
-  switch(options&TAB_ORIENT_MASK){
+
+  // Modern themed tab face
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXbool themed=0<radius;
+  if(themed){
+    FXTabBar *bar=static_cast<FXTabBar*>(getParent());
+    FXint index=bar?bar->indexOfChild(this):-1;
+    FXbool selected=false;
+    if(bar){
+      if(bar->isMemberOf(FXMETACLASS(FXTabBook))) selected=(index>=0 && (index>>1)==bar->getCurrent());
+      else selected=(index==bar->getCurrent());
+      }
+    FXColor face=selected?theme->color(ROLE_SURFACE):blendColor(theme->color(ROLE_SURFACE),theme->color(ROLE_TEXT),20);
+    FXColor edge=selected?theme->color(ROLE_BORDER):blendColor(theme->color(ROLE_SURFACE),theme->color(ROLE_BORDER),35);
+    FXColor accent=theme->color(ROLE_ACCENT);
+    if(!isEnabled()){
+      face=blendColor(face,theme->color(ROLE_SURFACE),45);
+      edge=blendColor(edge,theme->color(ROLE_SURFACE),45);
+      }
+    else if(!selected && underCursor()){
+      face=blendColor(theme->color(ROLE_SURFACE),accent,20);
+      }
+    if(hasFocus()) edge=theme->color(ROLE_FOCUS_RING);
+    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,edge,1);
+    if(selected){
+      FXint thick=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale())+1,2);
+      dc.setForeground(accent);
+      switch(options&TAB_ORIENT_MASK){
+        case TAB_BOTTOM:  dc.fillRectangle(radius,height-thick,width-2*radius,thick); break;
+        case TAB_LEFT:    dc.fillRectangle(0,radius,thick,height-2*radius); break;
+        case TAB_RIGHT:   dc.fillRectangle(width-thick,radius,thick,height-2*radius); break;
+        default:          dc.fillRectangle(radius,0,width-2*radius,thick); break;
+        }
+      }
+    }
+  if(!themed){
+    switch(options&TAB_ORIENT_MASK){
     case TAB_LEFT:
       dc.setForeground(hiliteColor);
       dc.drawLine(2,0,width-1,0);
@@ -253,6 +301,7 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
       dc.drawLine(width-2,1,width-1,2);
       dc.fillRectangle(width-1,2,1,height-3);
       break;
+      }
     }
   if(!label.empty()){
     tw=labelWidth(label);
@@ -275,15 +324,21 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
     if(isEnabled()){
       dc.setForeground(textColor);
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
-      if(hasFocus()){
+      if(hasFocus() && !themed){
         dc.drawFocusRectangle(border+1,border+1,width-2*border-2,height-2*border-2);
         }
       }
     else{
-      dc.setForeground(hiliteColor);
-      drawLabel(dc,label,hotoff,tx+1,ty+1,tw,th);
-      dc.setForeground(shadowColor);
-      drawLabel(dc,label,hotoff,tx,ty,tw,th);
+      if(themed){
+        dc.setForeground(theme->color(ROLE_TEXT_DISABLED));
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      else{
+        dc.setForeground(hiliteColor);
+        drawLabel(dc,label,hotoff,tx+1,ty+1,tw,th);
+        dc.setForeground(shadowColor);
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
       }
     }
   return 1;

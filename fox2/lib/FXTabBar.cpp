@@ -385,7 +385,21 @@ long FXTabBar::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,ev);
   dc.setForeground(backColor);
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
-  drawFrame(dc,0,0,width,height);
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_BORDER));
+    if(options&TABBOOK_SIDEWAYS){
+      if(options&TABBOOK_BOTTOMTABS) dc.fillRectangle(0,0,1,height);
+      else dc.fillRectangle(width-1,0,1,height);
+      }
+    else{
+      if(options&TABBOOK_BOTTOMTABS) dc.fillRectangle(0,0,width,1);
+      else dc.fillRectangle(0,height-1,width,1);
+      }
+    }
+  else{
+    drawFrame(dc,0,0,width,height);
+    }
   return 1;
   }
 
