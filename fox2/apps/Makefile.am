@@ -1,3 +1,3 @@
 ## Process this file with automake to produce Makefile.in
 
-SUBDIRS = calculator controlpanel
+SUBDIRS = calculator controlpanel chart

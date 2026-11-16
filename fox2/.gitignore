@@ -25,6 +25,8 @@
 /apps/calculator/calculator
 /apps/controlpanel/Makefile.in
 /apps/controlpanel/ControlPanel
+/apps/chart/Makefile.in
+/apps/chart/charttest
 /tests/Makefile.in
 *.lo
 *.la

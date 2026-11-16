@@ -326,6 +326,9 @@ and the commit that fixed it.
 | console | `FXConsole` missing in fox2; the plan took `console` for a windowless program | copied from fox-1.7.95, `console` added as a GUI test |
 | console | `FXConsole` fills its area red and shows 30 numbered test lines | upstream work-in-progress code (debug fill and sample text in `FXConsole.cpp`), unchanged |
 | console | `FXConsole` took the normal font of the system DPI, so the text was too large on a lower-DPI monitor | `applyTheme` added, it retargets the normal font to the window DPI like `FXText` |
+| chart | ported to `fox2/apps/chart` as a copy of `fox-1.7.95/chart` (the `charttest` program plus the chart widget sources); the chart measures itself with `FXDC::getClipX()`/`getClipWidth()`, but the Wayland DC only set the rasterizer clip in `begin()`, so those returned 32767 and the plot fill, axes and caption landed outside the image or in one gradient band | `FXDCWindow_wayland.cpp` sets `rect`/`clip` from the drawable in `begin()`, as the X11 and Win32 modules already did |
+| chart | the vertical axis labels and numbers are drawn with `FXFont::setAngle()`; the Wayland rasterizer ignored the angle, so they came out horizontal | `FXRaster` keeps the text angle and rotates each glyph's coverage bitmap around the baseline point; `FXDCWindow_wayland` passes `FXFont::getAngle()` together with the glyph cache |
+| chart | rotated font metrics: Xft reports 0 for `getFontHeight()` and `getTextWidth()` of an angled font, so the X11 frame measures every `Y` label as empty and overprints it on the numbers; the Wayland font keeps its unrotated metrics | not reproduced: the Wayland frame lays the rotated labels out instead of overprinting them; the two screenshots differ in that layout, and in the angled glyph antialiasing, not in a defect |
 
 ## Status
 
