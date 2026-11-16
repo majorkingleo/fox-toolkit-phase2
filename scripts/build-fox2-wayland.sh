@@ -17,6 +17,7 @@
 #   --jobs=N   parallel jobs (default: all cores)
 #   --clean    delete the build directory first
 #   --run      run hello, button and the DPI test for 3 s after building
+#   --opengl   not available on Wayland yet; use the X11 build for OpenGL
 #   -h|--help  show this help
 #
 # Environment:
@@ -36,9 +37,10 @@ jobs=$(nproc 2>/dev/null || echo 4)
 check_only=no
 clean=no
 run_test=no
+with_opengl=no
 
 usage(){
-  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -46,6 +48,7 @@ while [ $# -gt 0 ]; do
     --check)    check_only=yes ;;
     --clean)    clean=yes ;;
     --run)      run_test=yes ;;
+    --opengl)   with_opengl=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -53,6 +56,14 @@ while [ $# -gt 0 ]; do
     esac
   shift
   done
+
+if [ "$with_opengl" = yes ]; then
+  echo "error: OpenGL is not available on the Wayland platform yet." >&2
+  echo "       The Wayland GL modules are stubs; OpenGL is an X11/Win32 feature" >&2
+  echo "       for now (see docs/wayland-plan.md). For an OpenGL build use:" >&2
+  echo "         ./scripts/build-fox2-linux.sh --opengl" >&2
+  exit 2
+  fi
 
 if [ -n "${MSYSTEM-}" ]; then
   echo "error: Wayland needs Linux; in MSYS2 use ./scripts/build-fox2-mingw.sh" >&2
