@@ -112,6 +112,9 @@ public:
   /// Return default height
   virtual FXint getDefaultHeight() override;
 
+  /// Re-resolve the fonts for the monitor of the window
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Set the text for caption
   void setCaption(const FXString& text);
 

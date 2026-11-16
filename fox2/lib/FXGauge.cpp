@@ -655,6 +655,14 @@ void FXGauge::setGaugeStyle(FXuint style){
   }
 
 
+// Re-resolve the normal fonts for the window's monitor
+void FXGauge::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  setNumberFont(getApp()->retargetNormalFont(numberFont,getWindowDPI()));
+  setCaptionFont(getApp()->retargetNormalFont(captionFont,getWindowDPI()));
+  }
+
+
 // Set the number font
 void FXGauge::setNumberFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setNumberFont: NULL font specified.\n",getClassName()); }

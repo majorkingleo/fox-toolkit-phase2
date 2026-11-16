@@ -479,6 +479,13 @@ void FXProgressBar::setBarSize(FXint size){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXProgressBar::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXProgressBar::setFont(FXFont *fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

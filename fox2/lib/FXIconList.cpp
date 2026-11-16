@@ -2896,6 +2896,13 @@ void FXIconList::clearItems(FXbool notify){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXIconList::applyTheme(FXTheme* theme){
+  FXScrollArea::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXIconList::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

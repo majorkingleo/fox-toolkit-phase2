@@ -75,6 +75,7 @@ public:
 
   /// Detach server-side resources
   virtual void detach() override;
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Return default width
   virtual FXint getDefaultWidth() override;

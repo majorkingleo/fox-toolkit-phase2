@@ -2528,6 +2528,13 @@ void FXTreeList::setNumVisible(FXint nvis){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXTreeList::applyTheme(FXTheme* theme){
+  FXScrollArea::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXTreeList::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL argument.\n",getClassName()); }

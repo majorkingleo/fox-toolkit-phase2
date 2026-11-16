@@ -1362,6 +1362,13 @@ void FXHeader::setPosition(FXint p){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXHeader::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXHeader::setFont(FXFont* fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

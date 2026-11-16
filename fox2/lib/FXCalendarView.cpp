@@ -857,6 +857,13 @@ void FXCalendarView::setFirstDay(FXint d){
   }
 
 
+// Re-resolve the normal font for the window's monitor
+void FXCalendarView::applyTheme(FXTheme* theme){
+  FXWindow::applyTheme(theme);
+  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  }
+
+
 // Change the font
 void FXCalendarView::setFont(FXFont *fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }

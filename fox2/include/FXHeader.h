@@ -241,6 +241,7 @@ public:
 
   /// Detach server-side resources
   virtual void detach() override;
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Perform layout
   virtual void layout() override;
