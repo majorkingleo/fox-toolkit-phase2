@@ -38,9 +38,9 @@ console tests, see step 0.
 
 ## Step 0: groundwork
 
-1. List the console tests that fail today and why; fix them or mark each one
-   as a known failure with a reason. Console tests need no display, so they
-   are the first thing a CTest run should be able to trust.
+1. Fix the console tests that fail today, see "Console test inventory" below.
+   Console tests need no display, so they are the first thing a CTest run
+   should be able to trust.
 2. Register every test with CTest (`add_test`), using `--no-dialogs`, and a
    timeout. Console tests run to completion. GUI tests that quit by
    themselves (like `idle`) run to completion; the others get a `--timeout`
@@ -58,6 +58,62 @@ console tests, see step 0.
 
 Acceptance: `ctest` runs all existing tests on Windows and in WSL, and the
 result is a list of passes plus a short, explained list of known failures.
+
+### Console test inventory
+
+Measured on 2026-11-16 by running every console test of the CMake build with
+`--no-dialogs`, stdin closed, a 60 s limit, from `fox2/tests`; Windows is the
+MinGW build, Linux is X11 in WSL. A result of "exit 0" says only that the
+program ended, not that it checked anything.
+
+Most of these programs are not tests but drivers inherited from FOX 1: they
+print, they need arguments or a word list on stdin, they wait for a key, or
+they run for hours. A program that returns `1` at the end of `main()` counts
+as failed although it did its work. The rule from now on: a console test
+takes no input, finishes within seconds, prints what it did, and its exit
+code is 0 if and only if every check held.
+
+Defect kinds: **A** library defect; **B** exit code always wrong; **C** needs
+input, arguments or a person; **D** runs too long; **E** passes but checks
+nothing; **F** self-checking and passing.
+
+| Test | Windows | Linux | Kind | Why | Fix |
+| --- | --- | --- | --- | --- | --- |
+| `match` | exit 1 | exit 1 | A, B | `return 1` at the end; on Windows one real `BAD`: `A*` on `a/b` with `CaseFold|PathName` gives true | count the `BAD` lines and return their number; find out why `PathName` ignores `/` on Windows and fix `FXPath::match` |
+| `codecs` | exit 1 | exit 1 | B, D | `return 1` at the end; only prints `Problem:` lines; the performance part fills 100 MB and takes long | count problems and return them; run the performance part only with `--perf` |
+| `minheritance` | exit 1 | exit 1 | B, E | `return 1` at the end; prints the calls, checks nothing | compare the `this` pointers and the values it passes, return the number of mismatches |
+| `scan` | exit 1 | exit 1 | B, E | `return 1` at the end; prints the results of `strtod`, the FOX `__strtod` and `__sscanf` side by side | return the number of lines where the FOX result differs from the C library where the C library is correct |
+| `unicode` | exit 1 | exit 1 | B, E | `return 1` at the end; dumps 1.2 million lines of the character table | add a handful of known values (category, case mapping, decomposition) and check them; keep the dump behind `--dump` |
+| `memmap` | exit 0 | exit 0 | C | prints usage and exits 0 when it gets no `read|write <length> <file>`; with them it waits in `getchar()` | with no arguments write a temporary file, map it, check the contents, unmap, delete it |
+| `dictest` | timeout | SIGFPE | C, B | reads words from stdin; with none it divides by zero (`tot/ins`); the Windows run waits for stdin | generate the keys itself (a fixed seed), check insert, lookup, replace, remove, and the size after each |
+| `rex` | exit 1 | exit 1 | C | needs `pattern [string]` on the command line | built-in table of pattern, flags, subject, expected match range and captures; keep the command line mode |
+| `expression` | exit 0 | exit 0 | C, E | evaluates the expression given on the command line; no argument, nothing happens | built-in table of expressions and expected values |
+| `units` | exit 0 | exit 0 | C, E | converts what the command line says; nothing without it | built-in table of conversions with expected values |
+| `process` | exit 1 | exit 1 | C | starts `wordpad.exe` on Windows and `/usr/local/bin/adie` elsewhere, which usually do not exist | start the test program itself with a child mode argument, wait, check the exit code it set and its output |
+| `thread` | timeout | exit 1 | C, B | job producer and pool; `return 1`; the Windows run never ends (stdin is not closed by the runner) | no `getchar()`; run a fixed number of jobs, count the ones that ran, return 0 if all did |
+| `parallel` | timeout | exit 0 | C | starts a pool, then `getchar()` | the same; the existing `--pool`, `--loop`, `--invoke` modes keep running and check their results |
+| `math` | timeout | timeout | D, B | tests every one of the 2^32 floats and 10^9 random doubles per function, which takes hours; `report()` prints the worst error and a count, but the exit code ignores it | give each function a bounded sample (fixed seed) by default, `--exhaustive` for the full run, and fail when the error exceeds a per-function limit in ulps |
+| `format`, `half`, `timefmt`, `variant`, `xml` | exit 0 | exit 0 | E | print results, check nothing; `xml` reads `xmltests.json` | compare with known results: for `format` the output of the C library, for `half` the conversions of known bit patterns, for `timefmt` and `variant` round trips, for `xml` and `variant` the parse of the supplied files; list each in the commit that does it |
+| `desktop` | exit 0 | exit 0 | E | prints the scheme, no check | none needed; it reads the system and has no expected value |
+| `glyphs`, `region`, `winmap` | exit 0 | exit 0 | F | already self-checking | none |
+
+The FOX 1 originals are used as the oracle: where a ported test and the same
+program in `fox-1.7.95/tests` print different results, the difference is
+looked at before either is changed. The originals may be edited to return a
+useful exit code and to detect failure (they stay in `fox-1.7.95/tests` and
+change nothing else); the library under them is never touched.
+
+### Console test fix order
+
+1. B and A: `match`, `codecs`, `minheritance`, `scan`, `unicode`. These only
+   need a count and a return value, and `match` has a defect behind it.
+2. C: `dictest`, `memmap`, `process`, `thread`, `parallel`. They get a
+   self-contained default run.
+3. C and E: `rex`, `expression`, `units` with tables of expected results.
+4. D: `math` with a bounded default.
+5. E: `format`, `half`, `timefmt`, `variant`, `xml`.
+
+One commit per step, each with the result of both platforms in its message.
 
 ## Procedure for each program
 
