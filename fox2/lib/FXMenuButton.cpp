@@ -40,6 +40,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXMenuButton.h"
 #include "FXMenuPane.h"
@@ -446,9 +448,32 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,(FXEvent*)ptr);
   FXint tw=0,th=0,iw=0,ih=0,tx,ty,ix,iy;
   FXPoint points[3];
+  FXTheme* theme=getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+
+  if(themed){
+    FXButtonState st;
+    st.enabled=isEnabled();
+    st.hover=underCursor();
+    st.down=state;
+    st.engaged=state;
+    st.focused=hasFocus();
+    st.toolbar=(options&MENUBUTTON_TOOLBAR)!=0;
+    st.border=border;
+    st.options=options;
+    st.back=backColor;
+    st.hilite=hiliteColor;
+    st.shadow=shadowColor;
+    st.edge=theme->color(ROLE_BORDER);
+    st.surface=baseColor;
+    st.text=textColor;
+    st.parentBack=getParent()?getParent()->getBackColor():backColor;
+    st.scale=getDisplayScale();
+    getApp()->getStyle()->drawButton(dc,0,0,width,height,st);
+    }
 
   // Got a border at all?
-  if(options&(FRAME_RAISED|FRAME_SUNKEN)){
+  else if(options&(FRAME_RAISED|FRAME_SUNKEN)){
 
     // Toolbar style
     if(options&MENUBUTTON_TOOLBAR){
@@ -542,7 +567,7 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Draw icon
   if(icon){
-    if(isEnabled())
+    if(isEnabled() || themed)
       dc.drawIcon(getScaledIcon(icon),ix,iy);
     else
       dc.drawIconSunken(getScaledIcon(icon),ix,iy);
@@ -553,10 +578,7 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
 
     // Right arrow
     if((options&MENUBUTTON_RIGHT)==MENUBUTTON_RIGHT){
-      if(isEnabled())
-        dc.setForeground(textColor);
-      else
-        dc.setForeground(shadowColor);
+      dc.setForeground(isEnabled()?textColor:theme->color(ROLE_TEXT_DISABLED));
       points[0].x=ix;
       points[0].y=iy;
       points[1].x=ix;
@@ -568,10 +590,7 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
 
     // Left arrow
     else if(options&MENUBUTTON_LEFT){
-      if(isEnabled())
-        dc.setForeground(textColor);
-      else
-        dc.setForeground(shadowColor);
+      dc.setForeground(isEnabled()?textColor:theme->color(ROLE_TEXT_DISABLED));
       points[0].x=ix+MENUBUTTONARROW_HEIGHT;
       points[0].y=iy;
       points[1].x=ix+MENUBUTTONARROW_HEIGHT;
@@ -583,10 +602,7 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
 
     // Up arrow
     else if(options&MENUBUTTON_UP){
-      if(isEnabled())
-        dc.setForeground(textColor);
-      else
-        dc.setForeground(shadowColor);
+      dc.setForeground(isEnabled()?textColor:theme->color(ROLE_TEXT_DISABLED));
       points[0].x=(FXshort)(ix+(MENUBUTTONARROW_WIDTH>>1));
       points[0].y=iy-1;
       points[1].x=ix;
@@ -598,10 +614,7 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
 
     // Down arrow
     else{
-      if(isEnabled())
-        dc.setForeground(textColor);
-      else
-        dc.setForeground(shadowColor);
+      dc.setForeground(isEnabled()?textColor:theme->color(ROLE_TEXT_DISABLED));
       points[0].x=ix+1;
       points[0].y=iy;
       points[2].x=ix+MENUBUTTONARROW_WIDTH-1;
@@ -619,6 +632,10 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
       dc.setForeground(textColor);
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
       }
+    else if(themed){
+      dc.setForeground(theme->color(ROLE_TEXT_DISABLED));
+      drawLabel(dc,label,hotoff,tx,ty,tw,th);
+      }
     else{
       dc.setForeground(hiliteColor);
       drawLabel(dc,label,hotoff,tx+1,ty+1,tw,th);
@@ -628,7 +645,7 @@ long FXMenuButton::onPaint(FXObject*,FXSelector,void* ptr){
     }
 
   // Draw focus
-  if(hasFocus()){
+  if(hasFocus() && !themed){
     if(isEnabled()){
       dc.drawFocusRectangle(border+1,border+1,width-2*border-2,height-2*border-2);
       }

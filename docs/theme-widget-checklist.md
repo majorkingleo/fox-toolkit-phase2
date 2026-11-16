@@ -46,7 +46,7 @@ Priority:
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, accent edge, square page-side join and hairline themed frames; left/right/bottom orientations still need a visual pass. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
-| `FXMenuButton`, `FXOptionMenu` | OPEN | These derive from `FXLabel`, not `FXButton`; they need button chrome and an arrow color/state. |
+| `FXMenuButton`, `FXOptionMenu` | DONE | Button chrome through `FXStyle::drawButton()`, themed text/arrow/disabled colors, and themed option rows in the popup; classic rendering is unchanged for radius-0 themes. |
 | `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | PARTIAL | Themed text, active/selected rounded fill, disabled text, antialiased check/radio marks and hairline separators; menu row height/padding and explicit per-state colors remain. |
 
 ## P1: common input and data widgets

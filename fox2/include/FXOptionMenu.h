@@ -70,6 +70,9 @@ public:
   /// Return default height
   virtual FXint getDefaultHeight() override;
 
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
+
   /// Returns true because a menu button can receive focus
   virtual FXbool canFocus() const override;
 

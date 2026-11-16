@@ -42,6 +42,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXLabel.h"
 #include "FXPopup.h"
@@ -115,6 +117,14 @@ FXOption::FXOption(FXComposite* p,const FXString& text,FXIcon* ic,FXObject* tgt,
   }
 
 
+// Re-apply theme colors
+void FXOption::applyTheme(FXTheme* theme){
+  FXLabel::applyTheme(theme);
+  selbackColor=theme->color(ROLE_MENU_SEL_BG);
+  seltextColor=theme->color(ROLE_MENU_SEL_TEXT);
+  }
+
+
 // If window can have focus
 FXbool FXOption::canFocus() const { return true; }
 
@@ -159,6 +169,37 @@ long FXOption::onPaint(FXObject*,FXSelector,void* ptr){
   FXint tw=0,th=0,iw=MENUGLYPH_WIDTH,ih=MENUGLYPH_HEIGHT,tx,ty,ix,iy;
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
+  FXTheme* theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXColor bg=theme->color(ROLE_SURFACE);
+    FXColor sel=theme->color(ROLE_MENU_SEL_BG);
+    FXColor text=isEnabled()?theme->color(ROLE_TEXT):theme->color(ROLE_TEXT_DISABLED);
+    dc.setForeground(bg);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+    if(isActive() && isEnabled()){
+      FXint r=FXMIN(theme->metric(METRIC_CORNER_RADIUS,getDisplayScale()),(height-2)/2);
+      getApp()->getStyle()->drawRoundedRectangle(dc,2,1,width-4,height-2,r,sel,sel,0);
+      text=theme->color(ROLE_MENU_SEL_TEXT);
+      }
+    if(!label.empty()){
+      tw=labelWidth(label);
+      th=labelHeight(label);
+      }
+    if(options&OPTIONMENU_NOGLYPH){ iw=0; ih=0; }
+    if(icon){ iw=getScaledIcon(icon)->getWidth(); ih=getScaledIcon(icon)->getHeight(); }
+    just_x(tx,ix,tw,iw);
+    just_y(ty,iy,th,ih);
+    if(icon) dc.drawIcon(getScaledIcon(icon),ix,iy);
+    else if(isActive() && !(options&OPTIONMENU_NOGLYPH)){
+      getApp()->getStyle()->drawRoundedRectangle(dc,ix+2,iy+2,iw-4,ih-4,3,theme->color(ROLE_ACCENT),theme->color(ROLE_ACCENT),0);
+      }
+    if(!label.empty()){
+      dc.setFont(font);
+      dc.setForeground(text);
+      drawLabel(dc,label,hotoff,tx,ty,tw,th);
+      }
+    return 1;
+    }
   if(!label.empty()){
     tw=labelWidth(label);
     th=labelHeight(label);
@@ -455,6 +496,58 @@ long FXOptionMenu::onPaint(FXObject*,FXSelector,void* ptr){
   FXint tw=0,th=0,iw=MENUGLYPH_WIDTH,ih=MENUGLYPH_HEIGHT,tx,ty,ix,iy;
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
+  FXTheme* theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXButtonState st;
+    st.enabled=isEnabled();
+    st.hover=underCursor();
+    st.down=false;
+    st.engaged=false;
+    st.focused=hasFocus();
+    st.toolbar=(options&OPTIONMENU_TOOLBAR)!=0;
+    st.border=border;
+    st.options=options;
+    st.back=backColor;
+    st.hilite=hiliteColor;
+    st.shadow=shadowColor;
+    st.edge=theme->color(ROLE_BORDER);
+    st.surface=baseColor;
+    st.text=textColor;
+    st.parentBack=getParent()?getParent()->getBackColor():backColor;
+    st.scale=getDisplayScale();
+    getApp()->getStyle()->drawButton(dc,0,0,width,height,st);
+    if(!label.empty()){ tw=labelWidth(label); th=labelHeight(label); }
+    if(options&OPTIONMENU_NOGLYPH){ iw=0; ih=0; }
+    if(icon){ iw=getScaledIcon(icon)->getWidth(); ih=getScaledIcon(icon)->getHeight(); }
+    just_x(tx,ix,tw,iw);
+    just_y(ty,iy,th,ih);
+    if(isEnabled()){
+      if(icon) dc.drawIcon(getScaledIcon(icon),ix,iy);
+      else if(!(options&OPTIONMENU_NOGLYPH)){
+        FXPoint pts[3];
+        FXint ax=ix+(MENUGLYPH_WIDTH>>1), ay=iy+(MENUGLYPH_HEIGHT>>1);
+        pts[0].x=ax-5; pts[0].y=ay-2;
+        pts[1].x=ax+5; pts[1].y=ay-2;
+        pts[2].x=ax; pts[2].y=ay+3;
+        dc.setForeground(textColor);
+        dc.fillPolygon(pts,3);
+        }
+      if(!label.empty()){
+        dc.setFont(font);
+        dc.setForeground(textColor);
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      }
+    else{
+      if(icon) dc.drawIcon(getScaledIcon(icon),ix,iy);
+      if(!label.empty()){
+        dc.setFont(font);
+        dc.setForeground(theme->color(ROLE_TEXT_DISABLED));
+        drawLabel(dc,label,hotoff,tx,ty,tw,th);
+        }
+      }
+    return 1;
+    }
 
   // Toolbar style
   if(options&OPTIONMENU_TOOLBAR){
