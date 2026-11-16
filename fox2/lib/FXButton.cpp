@@ -282,13 +282,15 @@ long FXButton::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
 long FXButton::onLeftBtnRelease(FXObject*,FXSelector,void* ptr){
   FXbool click=(state==STATE_DOWN);
   if(isEnabled() && (flags&FLAG_PRESSED)){
+    // Sample hover before the command: it may close and destroy this window
+    FXbool hover=underCursor();
     ungrab();
     flags|=FLAG_UPDATE;
     flags&=~FLAG_PRESSED;
     if(target && target->tryHandle(this,FXSEL(SEL_LEFTBUTTONRELEASE,message),ptr)) return 1;
     if(state!=STATE_ENGAGED) setState(STATE_UP);
+    updateAnimatedColor(hover);
     if(click && target){ target->tryHandle(this,FXSEL(SEL_COMMAND,message),(void*)(FXuval)1); }
-    updateAnimatedColor(underCursor());
     return 1;
     }
   return 0;
