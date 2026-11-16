@@ -178,9 +178,9 @@ FXbool FXVariant::clear(){
 // Make a copy
 FXVariant& FXVariant::assign(const FXVariant& other){
   if(this!=&other){
-    clear();
-    type=other.type;
-    switch(type){
+    FXVariant temp;                     // Copy first, other may live inside this
+    temp.type=other.type;
+    switch(temp.type){
     case BoolType:
     case CharType:
     case IntType:
@@ -190,22 +190,23 @@ FXVariant& FXVariant::assign(const FXVariant& other){
     case FloatType:
     case DoubleType:
     case PointerType:
-      value=other.value;
-      return *this;
+      temp.value=other.value;
+      break;
     case StringType:
-      construct(reinterpret_cast<FXString*>(&value.p),*reinterpret_cast<const FXString*>(&other.value.p));
-      return *this;
+      construct(reinterpret_cast<FXString*>(&temp.value.p),*reinterpret_cast<const FXString*>(&other.value.p));
+      break;
     case ArrayType:
-      construct(reinterpret_cast<FXVariantArray*>(&value.p),*reinterpret_cast<const FXVariantArray*>(&other.value.p));
-      return *this;
+      construct(reinterpret_cast<FXVariantArray*>(&temp.value.p),*reinterpret_cast<const FXVariantArray*>(&other.value.p));
+      break;
     case MapType:
-      construct(reinterpret_cast<FXVariantMap*>(&value.p),*reinterpret_cast<const FXVariantMap*>(&other.value.p));
-      return *this;
+      construct(reinterpret_cast<FXVariantMap*>(&temp.value.p),*reinterpret_cast<const FXVariantMap*>(&other.value.p));
+      break;
     case NullType:
-      return *this;
+      break;
     default:
      __unreachable();
       }
+    adopt(temp);
     }
   return *this;
   }
@@ -386,10 +387,14 @@ FXint FXVariant::toInt(FXbool* ok) const {
   case IntType:
   case UIntType:
   case LongType:
-  case ULongType:
     result=value.i;
     if(__unlikely(result>INT_MAX)){ result=INT_MAX; break; }
     if(__unlikely(result<INT_MIN)){ result=INT_MIN; break; }
+    flag=true;
+    break;
+  case ULongType:
+    if(__unlikely(value.u>(FXulong)INT_MAX)){ result=INT_MAX; break; }
+    result=(FXlong)value.u;
     flag=true;
     break;
   case FloatType:
@@ -424,10 +429,14 @@ FXuint FXVariant::toUInt(FXbool* ok) const {
   case IntType:
   case UIntType:
   case LongType:
-  case ULongType:
     result=value.i;
-    if(__unlikely(result<=0)){ result=0; break; }
-    if(__unlikely(result>=UINT_MAX)){ result=UINT_MAX; break; }
+    if(__unlikely(result<0)){ result=0; break; }
+    if(__unlikely(result>(FXlong)UINT_MAX)){ result=UINT_MAX; break; }
+    flag=true;
+    break;
+  case ULongType:
+    if(__unlikely(value.u>(FXulong)UINT_MAX)){ result=UINT_MAX; break; }
+    result=(FXlong)value.u;
     flag=true;
     break;
   case FloatType:
@@ -462,8 +471,12 @@ FXlong FXVariant::toLong(FXbool* ok) const {
   case IntType:
   case UIntType:
   case LongType:
-  case ULongType:
     result=value.i;
+    flag=true;
+    break;
+  case ULongType:
+    if(__unlikely(value.u>(FXulong)LLONG_MAX)){ result=LLONG_MAX; break; }
+    result=(FXlong)value.u;
     flag=true;
     break;
   case FloatType:
@@ -493,11 +506,15 @@ FXulong FXVariant::toULong(FXbool* ok) const {
   FXulong result=0;
   FXbool flag=false;
   switch(type){
-  case BoolType:
   case CharType:
   case IntType:
-  case UIntType:
   case LongType:
+    if(__unlikely(value.i<0)){ result=0; break; }
+    result=value.u;
+    flag=true;
+    break;
+  case BoolType:
+  case UIntType:
   case ULongType:
     result=value.u;
     flag=true;
@@ -530,12 +547,12 @@ FXfloat FXVariant::toFloat(FXbool* ok) const {
   FXbool flag=false;
   switch(type){
   case BoolType:
+  case CharType:
   case IntType:
   case LongType:
     result=(FXfloat)value.i;
     flag=true;
     break;
-  case CharType:
   case UIntType:
   case ULongType:
     result=(FXfloat)value.u;
@@ -567,12 +584,12 @@ FXdouble FXVariant::toDouble(FXbool* ok) const {
   FXbool flag=false;
   switch(type){
   case BoolType:
+  case CharType:
   case IntType:
   case LongType:
     result=(FXdouble)value.i;
     flag=true;
     break;
-  case CharType:
   case UIntType:
   case ULongType:
     result=(FXdouble)value.u;
@@ -726,8 +743,9 @@ FXVariant& FXVariant::operator=(FXptr val){
 
 // Assign with string
 FXVariant& FXVariant::operator=(const FXchar* val){
+  FXString copy(val);                   // val may point into this
   clear();
-  construct(reinterpret_cast<FXString*>(&value.p),val);
+  construct(reinterpret_cast<FXString*>(&value.p),copy);
   type=StringType;
   return *this;
   }
@@ -735,8 +753,9 @@ FXVariant& FXVariant::operator=(const FXchar* val){
 
 // Assign with string
 FXVariant& FXVariant::operator=(const FXString& val){
+  FXString copy(val);                   // val may live inside this
   clear();
-  construct(reinterpret_cast<FXString*>(&value.p),val);
+  construct(reinterpret_cast<FXString*>(&value.p),copy);
   type=StringType;
   return *this;
   }

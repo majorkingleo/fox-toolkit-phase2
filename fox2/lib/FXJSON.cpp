@@ -274,6 +274,22 @@ static const union{ FXulong u; FXdouble f; } dblnan={FXULONG(0x7fffffffffffffff)
 
 // Furnish our own versions
 extern FXAPI FXlong __strtoll(const FXchar *beg,const FXchar** end=nullptr,FXint base=0,FXbool* ok=nullptr);
+extern FXAPI FXulong __strtoull(const FXchar *beg,const FXchar** end=nullptr,FXint base=0,FXbool* ok=nullptr);
+
+// Set variant to integer number; magnitudes beyond the signed range are kept as unsigned
+static void setinteger(FXVariant& var,const FXchar* ptr,FXint base,FXbool neg){
+  FXbool ok=false;
+  FXulong mag=__strtoull(ptr,nullptr,base,&ok);
+  if(neg){
+    if(ok && mag<=(FXulong)LLONG_MAX+1) var=(FXlong)(0-mag);
+    else var=(FXlong)LLONG_MIN;
+    }
+  else{
+    if(ok && mag<=(FXulong)LLONG_MAX) var=(FXlong)mag;
+    else if(ok) var=mag;
+    else var=(FXulong)ULLONG_MAX;
+    }
+  }
 extern FXAPI FXdouble __strtod(const FXchar *beg,const FXchar** end=nullptr,FXbool* ok=nullptr);
 
 // Unicode IdentifierStart character category set
@@ -903,7 +919,10 @@ end:    value.append(rptr,(FXint)(sptr-rptr));          // Reserved words can be
       rptr=sptr;
       }
     }
-  return TK_EOF;
+
+  // Identifier ends at end of input
+  value.append(rptr,(FXint)(sptr-rptr));
+  return identoken(value);
   }
 
 
@@ -1247,12 +1266,12 @@ FXJSON::Error FXJSON::loadVariant(FXVariant& var){
     token=next();
     if(token==TK_EOF) return ErrEnd;
     if(token==TK_INT){                          // +Integer
-      var=__strtoll(rptr,nullptr,10);
+      setinteger(var,rptr,10,false);
       token=next();
       return ErrOK;
       }
     if(token==TK_HEX){                          // +Hexadecimal
-      var=__strtoll(rptr,nullptr,16);
+      setinteger(var,rptr,16,false);
       token=next();
       return ErrOK;
       }
@@ -1276,12 +1295,12 @@ FXJSON::Error FXJSON::loadVariant(FXVariant& var){
     token=next();
     if(token==TK_EOF) return ErrEnd;
     if(token==TK_INT){                          // -Integer
-      var=-__strtoll(rptr,nullptr,10);
+      setinteger(var,rptr,10,true);
       token=next();
       return ErrOK;
       }
     if(token==TK_HEX){                          // -Hexadecimal
-      var=-__strtoll(rptr,nullptr,16);
+      setinteger(var,rptr,16,true);
       token=next();
       return ErrOK;
       }
@@ -1314,11 +1333,11 @@ FXJSON::Error FXJSON::loadVariant(FXVariant& var){
     token=next();
     return ErrOK;
   case TK_INT:                                  // Integer
-    var=__strtoll(rptr,nullptr,10);
+    setinteger(var,rptr,10,false);
     token=next();
     return ErrOK;
   case TK_HEX:                                  // Hex
-    var=__strtoll(rptr,nullptr,16);
+    setinteger(var,rptr,16,false);
     token=next();
     return ErrOK;
   case TK_REAL:                                 // Real
@@ -1337,6 +1356,7 @@ FXJSON::Error FXJSON::loadVariant(FXVariant& var){
     token=next();
     if(token==TK_EOF) return ErrEnd;
     if((err=loadArray(var))!=ErrOK) return err;
+    if(token==TK_EOF) return ErrEnd;
     if(token!=TK_RBRACK) return ErrBracket;     // Expected closing bracket
     token=next();
     return ErrOK;
@@ -1344,6 +1364,7 @@ FXJSON::Error FXJSON::loadVariant(FXVariant& var){
     token=next();
     if(token==TK_EOF) return ErrEnd;
     if((err=loadMap(var))!=ErrOK) return err;
+    if(token==TK_EOF) return ErrEnd;
     if(token!=TK_RBRACE) return ErrBrace;       // Expected closing brace
     token=next();
     return ErrOK;

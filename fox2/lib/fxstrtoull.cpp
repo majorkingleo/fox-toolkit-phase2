@@ -50,7 +50,8 @@ extern FXAPI FXuint __strtoul(const FXchar* beg,const FXchar** end=nullptr,FXint
 // Convert string to unsigned long
 FXulong __strtoull(const FXchar *s,const FXchar** e,FXint base,FXbool* ok){
   FXulong value=0;
-  FXulong prior=0;
+  FXulong cutoff=0;
+  FXulong cutlim=0;
   FXulong ovf=0;
   FXint neg;
   FXint v;
@@ -76,20 +77,17 @@ FXulong __strtoull(const FXchar *s,const FXchar** e,FXint base,FXbool* ok){
 
     // Check for '0x...', '0b...', or '00...'
     if(s[0]=='0'){
-      ++s;
-      if((s[0]|32)=='x'){
-        if(base==0 || base==16){ base=16; ++s; }
-        }
-      else if((s[0]|32)=='b'){
-        if(base==0 || base==2){ base=2; ++s; }
-        }
-      else{
-        if(base==0){ base=8; }
-        }
+      if((s[1]|32)=='x' && (base==0 || base==16)){ base=16; s+=2; }
+      else if((s[1]|32)=='b' && (base==0 || base==2)){ base=2; s+=2; }
+      else if(base==0){ base=8; }                       // Leading zero is itself a digit
       }
 
     // Base=10 if not already set
     if(!base) base=10;
+
+    // Largest value that can take another digit
+    cutoff=ULLONG_MAX/base;
+    cutlim=ULLONG_MAX%base;
 
     // Scan digits and aggregate number
     v=Ascii::digitValue(*s);
@@ -97,10 +95,8 @@ FXulong __strtoull(const FXchar *s,const FXchar** e,FXint base,FXbool* ok){
 
       // Parse digits
       do{
-        prior=value;
-        value*=base;
-        ovf|=((FXlong)(value-prior))>>63; // Check overflow, branch-free
-        value+=v;
+        ovf|=(value>cutoff) || (value==cutoff && (FXulong)v>cutlim);   // Check overflow
+        value=value*base+v;
         v=Ascii::digitValue(*++s);
         }
       while(0<=v && v<base);

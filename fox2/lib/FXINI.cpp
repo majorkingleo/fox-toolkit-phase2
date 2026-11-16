@@ -238,16 +238,15 @@ FXint FXINI::next(){
         sptr++;
         continue;
       case '\r':                                // Carriage return
-        if(sptr[1]=='\n'){
-          offset++;
-          sptr++;
-          }
-        //FALL//
       case '\n':                                // Newline
         state=ST_DEF;
         if(!(s&ST_CMT)){
-          if(s&ST_VAL) return TK_VALUE;
+          if(s&ST_VAL) return TK_VALUE;         // Value ends before the line break
           if(s&ST_CHR) return TK_ERROR;         // '=' expected
+          }
+        if(c=='\r' && sptr[1]=='\n'){
+          offset++;
+          sptr++;
           }
         line++;
         column=0;
@@ -504,6 +503,12 @@ FXint FXINI::next(){
         return TK_ERROR;                        // Bad token
       }
     }
+
+  // Value runs up to the end of input
+  if((state&ST_VAL) && !(state&ST_CMT)){
+    state=ST_DEF;
+    return TK_VALUE;
+    }
   return TK_EOF;
   }
 
@@ -532,6 +537,8 @@ FXINI::Error FXINI::loadVariant(FXVariant& var){
 
       // Get entry key
       entrykey.assign(rptr,(FXint)(sptr-rptr));
+      entrykey.trim();                          // Blanks around key are not part of it
+      entrykey.trim();                          // Blanks around key are not part of it
 
       // Empty entry key
       if(entrykey.empty()) return ErrToken;
@@ -545,7 +552,9 @@ FXINI::Error FXINI::loadVariant(FXVariant& var){
       if(token!=TK_VALUE) return ErrToken;
 
       // Get entry value
-      entryvalue=FXString::unescape(rptr,(FXint)(sptr-rptr),'"','"');
+      entryvalue.assign(rptr,(FXint)(sptr-rptr));
+      entryvalue.trim();                        // Blanks around value are not part of it
+      entryvalue=FXString::unescape(entryvalue.text(),entryvalue.length(),'"','"');
 
       FXTRACE(TOPIC_DEBUG,"entryvalue=\"%s\"\n",entryvalue.text());
 

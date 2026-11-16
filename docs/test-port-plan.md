@@ -200,7 +200,26 @@ change nothing else); the library under them is never touched.
      wrong way round; `%U`, `%W` and `%V` were ignored when followed by
      `%T`, `%D`, `%F` and the like (derived fields were calculated inside the
      nested parse); `%s` could not parse negative times and overflowed.
-
+   - `variant --test` done: construction, deep copies, self and partial
+     self assignment, every conversion with its clamping and `ok` flag, arrays
+     and maps, exact JSON output (every flow, version, escape mode, quote,
+     precision and number format), a table of good and bad JSON text with
+     expected errors, save and load round trips under every setting, INI output
+     and parsing, and string round trips under every INI escape mode. Fixed:
+     `v=v["a"]` and `v=v.asChars()+1` read freed memory (assignment now copies
+     first); `toUInt` reported 0 and `UINT_MAX` as failures; `toInt`,
+     `toUInt`, `toLong` and `toULong` mangled `ULong` and negative values
+     instead of clamping; `toFloat`/`toDouble` of a negative `char` gave a huge
+     number; `__strtoll`/`__strtoull` flagged valid values as overflow
+     (`18446744073709551615`) and reported `0` as a failure; JSON integers above
+     `LLONG_MAX` or equal to `LLONG_MIN` were lost (now `ULong`/exact); a bare
+     `null`, `true`, `false` or identifier at the very end of JSON text was
+     reported as end of input; unterminated arrays and objects gave
+     `ErrBracket`/`ErrBrace` instead of `ErrEnd`; INI values kept a trailing
+     `\r` on CRLF files, a last value without newline was a parse error, and
+     blanks around keys and values were kept. Noted, not changed: loading JSON
+     into a populated variant replaces it (the header comment about overlaying
+     keys is wrong); INI values always load as strings.
 One commit per step, each with the result of both platforms in its message.
 
 ## Procedure for each program
