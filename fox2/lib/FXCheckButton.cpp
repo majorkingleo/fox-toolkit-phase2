@@ -398,21 +398,17 @@ long FXCheckButton::onPaint(FXObject*,FXSelector,void* ptr){
       if(hasFocus()) edge=foc;
       }
     getApp()->getStyle()->drawRoundedRectangle(dc,ix,iy,isize,isize,radius,box,edge,1);
-    dc.setForeground(mark);
-    if(check!=false){
-      if(options&CHECKBUTTON_PLUS){
-        dc.fillRectangle(ix+isize/2,iy+isize/4,1,isize/2);
-        dc.fillRectangle(ix+isize/4,iy+isize/2,isize/2,1);
+    if(options&CHECKBUTTON_PLUS){
+      getApp()->getStyle()->drawRoundedRectangle(dc,ix+isize/4,iy+isize/2-1,isize/2,2,1,mark,mark,0);
+      if(check!=true){
+        getApp()->getStyle()->drawRoundedRectangle(dc,ix+isize/2-1,iy+isize/4,2,isize/2,1,mark,mark,0);
         }
-      else{
-        FXint x1=ix+(isize*22)/100, y1=iy+(isize*50)/100;
-        FXint x2=ix+(isize*43)/100, y2=iy+(isize*72)/100;
-        FXint x3=ix+(isize*78)/100, y3=iy+(isize*28)/100;
-        dc.setLineWidth(FXMAX(1,isize/7));
-        dc.drawLine(x1,y1,x2,y2);
-        dc.drawLine(x2,y2,x3,y3);
-        dc.setLineWidth(1);
-        }
+      }
+    else if(check==maybe){
+      getApp()->getStyle()->drawRoundedRectangle(dc,ix+isize/4,iy+isize/2-1,isize/2,2,1,mark,mark,0);
+      }
+    else if(check!=false){
+      getApp()->getStyle()->drawCheckMark(dc,ix,iy,isize,mark);
       }
     if(!label.empty()){
       dc.setFont(font);

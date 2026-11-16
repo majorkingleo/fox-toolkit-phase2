@@ -121,6 +121,56 @@ static void blendCorner(FXDCWindow& dc,FXRaster* raster,FXint x,FXint y,FXint cx
   }
 
 
+// Distance from a point to a line segment
+static FXdouble segmentDistance(FXdouble px,FXdouble py,FXdouble ax,FXdouble ay,FXdouble bx,FXdouble by){
+  FXdouble dx=bx-ax;
+  FXdouble dy=by-ay;
+  FXdouble t=((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy);
+  FXdouble qx,qy;
+  if(t<0.0) t=0.0;
+  else if(1.0<t) t=1.0;
+  qx=ax+t*dx;
+  qy=ay+t*dy;
+  return sqrt((px-qx)*(px-qx)+(py-qy)*(py-qy));
+  }
+
+
+// Draw an antialiased check mark with supersampled segment coverage
+void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor color){
+  FXRaster *raster=(FXRaster*)dc.context();
+  const FXint samples=4;
+  FXdouble ax,ay,bx,by,cx,cy,width;
+  FXint px,py,sx,sy;
+  if(!raster || size<=0){
+    dc.setForeground(color);
+    dc.setLineWidth(FXMAX(1,size/7));
+    dc.drawLine(x+(size*22)/100,y+(size*50)/100,x+(size*43)/100,y+(size*72)/100);
+    dc.drawLine(x+(size*43)/100,y+(size*72)/100,x+(size*78)/100,y+(size*28)/100);
+    dc.setLineWidth(1);
+    return;
+    }
+  ax=x+size*0.22; ay=y+size*0.50;
+  bx=x+size*0.43; by=y+size*0.72;
+  cx=x+size*0.78; cy=y+size*0.28;
+  width=FXMAX(1.0,size/14.0);
+  dc.setForeground(color);
+  for(py=y; py<y+size; py++){
+    for(px=x; px<x+size; px++){
+      FXint inside=0;
+      for(sy=0; sy<samples; sy++){
+        FXdouble fy=py+(sy+0.5)/samples;
+        for(sx=0; sx<samples; sx++){
+          FXdouble fx=px+(sx+0.5)/samples;
+          if(segmentDistance(fx,fy,ax,ay,bx,by)<=width ||
+             segmentDistance(fx,fy,bx,by,cx,cy)<=width) inside++;
+          }
+        }
+      if(inside) raster->blend(px,py,(FXuint)((inside*255+samples*samples/2)/(samples*samples)));
+      }
+    }
+  }
+
+
 // Draw an antialiased rounded rectangle with a solid face and border
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
   FXRaster *raster=(FXRaster*)dc.context();

@@ -85,6 +85,16 @@ FXStyle::FXCornerMask* FXStyle::getMask(FXint radius){
   }
 
 
+// Draw a check mark; GDI has no small AA primitive here, use the line primitives
+void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor color){
+  dc.setForeground(color);
+  dc.setLineWidth(FXMAX(1,size/7));
+  dc.drawLine(x+(size*22)/100,y+(size*50)/100,x+(size*43)/100,y+(size*72)/100);
+  dc.drawLine(x+(size*43)/100,y+(size*72)/100,x+(size*78)/100,y+(size*28)/100);
+  dc.setLineWidth(1);
+  }
+
+
 // Draw an antialiased rounded rectangle
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
   return false;

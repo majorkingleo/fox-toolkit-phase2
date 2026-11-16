@@ -937,9 +937,11 @@ overrides and draw the modern indicator through
 `FXStyle::drawRoundedRectangle()`: face `ROLE_BUTTON`, border `ROLE_BORDER`,
 hover/focus borders, checked fill blended from `ROLE_HOVER_RING`, mark
 `ROLE_TEXT`, disabled `ROLE_TEXT_DISABLED`, rounded check box and circular
-radio.  Enter/leave repaints the indicator even without animation.  The
-classic radius-0 path still uses the original 13 px bevel, so the default FOX
-look is unchanged.
+radio.  Enter/leave repaints the indicator even without animation.  The check mark and
+the indeterminate dash are drawn with 4x4 supersampled coverage on Wayland
+(`FXStyle::drawCheckMark()`), so the glyph is antialiased like the indicator
+outline.  The classic radius-0 path still uses the original 13 px bevel, so the
+default FOX look is unchanged.
 
 **Option 1 vs option 2 (2026-11-16).** Rendering only the preview pane with the
 imported theme is not possible with the current contract: `FXStyle` and the

@@ -32,7 +32,7 @@ Priority:
 | `FXListBox`, `FXComboBox` | PARTIAL | Field/list colors; arrow and popup chrome remain classic. |
 | `FXToolTip` | PARTIAL | Tooltip colors and font; no rounded frame or shadow. |
 | `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
-| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; classic path unchanged. |
+| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; Wayland check mark is antialiased. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
 
 ## P0: chrome needed for a native-looking dialog
@@ -143,6 +143,8 @@ use the seam.
 | Area | State | Needed |
 | --- | --- | --- |
 | Wayland rounded corners | DONE | Software 4x4 coverage blending. |
+| Wayland check marks | DONE | 4x4 supersampled segment coverage through `FXStyle::drawCheckMark()`. |
+| X11/Win32 check marks | PARTIAL | Still use the platform line primitives; no XRender/GDI+ antialiasing yet. |
 | Wayland shadows | OPEN | No 9-slice cached shadow; buttons use only a 1 px bottom shade. |
 | X11 rounded corners | DONE with XRender | Bitmap/mask fallback is still hard-edged. |
 | Win32 rounded corners | OPEN | `FXStyle_win32.cpp` returns false from `drawRoundRect`; no antialiasing. |

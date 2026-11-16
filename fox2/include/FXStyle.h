@@ -112,6 +112,9 @@ public:
   /// Draw a rounded rectangle with a solid face and border; returns true for the rounded path
   FXbool drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth=1);
 
+  /// Draw an antialiased check mark in the given square
+  virtual void drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor color);
+
   /// Draw border rectangle
   void drawBorderRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
 
