@@ -34,6 +34,7 @@ the fixes in the test programs themselves (the `match` test used `/` where
 | 9b90187 | half float | `FXhalf.h` | `FXhalf.h` |
 | 097dc42 | time format and parse | `FXSystemTime.cpp`, `FXSystemTimeFormat.cpp`, `FXSystemTimeParse.cpp` | same names |
 | 4ae416b | variant, JSON, INI, string to integer | `FXVariant.cpp`, `FXJSON.cpp`, `FXINI.cpp`, `fxstrtoll.cpp`, `fxstrtoull.cpp` | same names |
+| c6e8176 | XML reader and writer | `FXXML.cpp` | `FXXML.cpp` |
 
 Line numbers refer to the files of `fox-1.7.95` as they are in this repository.
 
@@ -190,3 +191,45 @@ that loading into a populated variant overlays keys, but `loadMap` calls
 load as strings. The default INI constructor and the buffer constructor use a
 different numeric precision (15 and 16). The FOX string to double conversion
 returns Inf for `DBL_MAX` written with 17 digits.
+
+## c6e8176: XML reader and writer
+
+Found by `xml --test`. FOX 1: `lib/FXXML.cpp`.
+
+1. `FXXML::encode` escapes every byte whose table entry has the `ESCAPE` bit,
+   and the table marks the UTF-8 continuation bytes 0x80 to 0x9F that way. The
+   writer therefore turns `E2 82 AC` (the euro sign) into `E2 &#x82; AC`, which
+   reads back as U+0082 and corrupts the text; the same happens to the
+   typographic quotes (`E2 80 9C`) and most other characters outside Latin 1.
+   Only bytes below 0x80 should be escaped. FOX 1: lines 493 and 534
+   (`if(restrictedChar(ch) && (flags&REFS))`).
+2. The same table has the `ESCAPE` bit on `;` (entry 59, value 0x26; it must
+   be 0x22), so every `;` is written as `&#x3B;`. FOX 1: line 238.
+3. `encode` writes a CR raw. The reader turns a raw CR into LF (flag `CRLF`),
+   so a CR does not survive a round trip; write it as `&#x0D;`. FOX 1: lines
+   493 and 534.
+4. `parseprocessing` keeps the blank between the target and the data, so
+   `<?pi data?>` is reported as target `pi` and data ` data`, and the writer,
+   which writes a blank of its own, gives `<?pi  data?>` after a round trip.
+   Skip the white space (`spaces()`) before the data. FOX 1: line 1195.
+5. `parseexternalid` tests `match("SYSTEM",6)` and then `match("PUBLIC",6)`;
+   `match` reads the next name and consumes it even when it does not match, so
+   `PUBLIC` is never recognized and `<!DOCTYPE a PUBLIC "id" "a.dtd">` fails
+   with `ErrToken`. Read the keyword once and compare it twice; an unknown
+   keyword is then an error instead of being accepted. FOX 1: lines 1059 to
+   1075.
+6. A run of white space (blank, tab, line feed) longer than the buffer minus
+   `MAXTOKEN` gives `ErrEof` when reading from a file: the pending text is only
+   handed over (`characters`, `str.append`, `data.append`) in the `default`
+   branch of the scan loop, never in the white space branches, so the buffer
+   cannot be refilled. It affects text, attribute values, comments, CDATA and
+   processing instructions. Do the check at the top of the loop. FOX 1:
+   `parsestring` (line 865), `parseprocessing` (1190), `parsecomment` (1244),
+   `parsecdata` (1402) and `parsecontents` (1455).
+
+Noted and not changed, in both versions: `parsecontents` calls `characters`
+with an empty string before every child element; nothing after the root
+element is checked; `ErrReference` is never returned; the encoder does not
+escape the control characters U+0080 to U+009F that the XML grammar lists as
+restricted; a truncated end tag (`<a>x</a`) gives `ErrNoMatch` and not
+`ErrEof`; the writer writes `\r\n` for a line feed on Windows.
