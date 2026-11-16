@@ -304,6 +304,7 @@
 #include "FXFontSelector.h"
 #include "FXFontDialog.h"
 #include "FXDockBar.h"
+#include "FXDockTitle.h"
 #include "FXToolBar.h"
 #include "FXDockHandler.h"
 #include "FXToolBarGrip.h"
