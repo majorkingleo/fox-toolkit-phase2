@@ -510,8 +510,8 @@ long DPITest::onCmdSample(FXObject*,FXSelector,void*){
 
 
 // Print the scale and a font height of one window
-static void reportWindow(const FXchar* name,FXWindow* win,FXLabel* label){
-  printf("    %-18s: scale %.2f  font height %d  bounds %dx%d\n",name,win->getDisplayScale(),label->getFont()->getFontHeight(),win->getWidth(),win->getHeight());
+static void reportWindow(const FXchar* name,FXWindow* win,FXLabel* label,FXScrollBar* bar){
+  printf("    %-18s: scale %.2f  font height %d  scroll bar %d  bounds %dx%d\n",name,win->getDisplayScale(),label->getFont()->getFontHeight(),bar->getBarSize(),win->getWidth(),win->getHeight());
   }
 
 
@@ -523,6 +523,8 @@ int main(int argc,char* argv[]){
   FXMainWindow *other=nullptr;
   FXLabel *titleLabel;
   FXLabel *otherLabel=nullptr;
+  FXScrollBar *mainBar=nullptr;
+  FXScrollBar *otherBar=nullptr;
   FXSlider *slider;
   FXLabel *scaleLabel;
   FXLabel *awarenessLabel;
@@ -590,6 +592,8 @@ int main(int argc,char* argv[]){
     other=new FXMainWindow(&application,"FOX DPI other window",nullptr,nullptr,DECOR_ALL,0,0,260,80);
     otherLabel=new FXLabel(other,"Other window, stays on its monitor",nullptr,LABEL_NORMAL);
     new FXTextField(other,24);
+    otherBar=new FXScrollBar(other,nullptr,0,SCROLLBAR_HORIZONTAL|LAYOUT_FILL_X);
+    mainBar=new FXScrollBar(content,nullptr,0,SCROLLBAR_HORIZONTAL|LAYOUT_FILL_X);
     }
 
   application.create();
@@ -638,8 +642,8 @@ int main(int argc,char* argv[]){
     FXint sysdpi=application.getDPI();
     FXint simdpi=(sysdpi>=144)?96:144;
     printf("  before WM_DPICHANGED:\n");
-    reportWindow("main window",main,titleLabel);
-    reportWindow("other window",other,otherLabel);
+    reportWindow("main window",main,titleLabel,mainBar);
+    reportWindow("other window",other,otherLabel,otherBar);
     GetWindowRect(hwnd,&rect);
     rect.right=rect.left+(rect.right-rect.left)*simdpi/sysdpi;
     rect.bottom=rect.top+(rect.bottom-rect.top)*simdpi/sysdpi;
@@ -649,8 +653,8 @@ int main(int argc,char* argv[]){
     printf("  after WM_DPICHANGED (%d dpi) on the main window:\n",simdpi);
     printf("    window DPI (FOX)  : %d\n",main->getWindowDPI());
     printf("    window bounds     : %d,%d %dx%d\n",main->getX(),main->getY(),main->getWidth(),main->getHeight());
-    reportWindow("main window",main,titleLabel);
-    reportWindow("other window",other,otherLabel);
+    reportWindow("main window",main,titleLabel,mainBar);
+    reportWindow("other window",other,otherLabel,otherBar);
     fflush(stdout);
 
     // Round trip: move back to the system DPI
@@ -663,8 +667,8 @@ int main(int argc,char* argv[]){
     printf("  after WM_DPICHANGED (%d dpi):\n",application.getDPI());
     printf("    window DPI (FOX)  : %d\n",main->getWindowDPI());
     printf("    window bounds     : %d,%d %dx%d\n",main->getX(),main->getY(),main->getWidth(),main->getHeight());
-    reportWindow("main window",main,titleLabel);
-    reportWindow("other window",other,otherLabel);
+    reportWindow("main window",main,titleLabel,mainBar);
+    reportWindow("other window",other,otherLabel,otherBar);
     fflush(stdout);
     application.addTimeout(&application,FXApp::ID_QUIT,2000000000);
     }

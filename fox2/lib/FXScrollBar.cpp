@@ -117,6 +117,7 @@ FXScrollBar::FXScrollBar(){
   arrowColor=0;
   dragpoint=0;
   mode=MODE_NONE;
+  barauto=0;
   }
 
 
@@ -129,7 +130,8 @@ FXScrollBar::FXScrollBar(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts
   shadowColor=getApp()->getShadowColor();
   borderColor=getApp()->getBorderColor();
   arrowColor=getApp()->getForeColor();
-  barsize=getApp()->getScrollBarSize();
+  barsize=FXMAX(FXint(getApp()->getScrollBarSize()*getDisplayScale()+0.5),1);
+  barauto=1;
   thumbpos=barsize;
   thumbsize=barsize>>1;
   target=tgt;
@@ -1049,9 +1051,25 @@ void FXScrollBar::setScrollBarStyle(FXuint style){
 
 // Change the bar size
 void FXScrollBar::setBarSize(FXint size){
+  barauto=0;
   if(barsize!=size){
     barsize=size;
     recalc();
+    }
+  }
+
+
+// Resolve the bar size at the scale of the window
+void FXScrollBar::applyTheme(FXTheme* theme){
+  FXint size;
+  FXWindow::applyTheme(theme);
+  if(barauto){
+    size=FXMAX(FXint(getApp()->getScrollBarSize()*getDisplayScale()+0.5),1);
+    if(barsize!=size){
+      barsize=size;
+      recalc();
+      update();
+      }
     }
   }
 

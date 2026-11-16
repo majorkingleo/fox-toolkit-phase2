@@ -352,9 +352,11 @@ build is required:
 
 ### 7. Next actions, in order
 
-1. **Per-window metrics.** Implemented (step 5): fonts, default padding and
-   chrome follow each window's monitor scale. Remaining: hard-coded pixel
-   sizes in scroll bars, sliders and icons, and Wayland window DPI.
+1. **Per-window metrics.** Implemented (step 5): fonts, default padding,
+   chrome and the scroll bar thickness (`FXApp::getScrollBarSize()` is the
+   96-DPI size, each bar scales it at its window; `setBarSize()` pins a bar).
+   Remaining: hard-coded pixel sizes in sliders, icons and `FXPacker` spacing,
+   and Wayland window DPI.
 2. **DPI-keyed icon/bitmap caches.** Cache as `(image,dpi)` and rebuild on DPI
    change once icons are wired into the subset.
 3. **Real monitor validation.** Repeat the `tests/dpi` checks on a 150% and a

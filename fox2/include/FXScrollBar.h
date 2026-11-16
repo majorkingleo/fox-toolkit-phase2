@@ -73,6 +73,7 @@ protected:
   FXColor    arrowColor;      // Arrow color
   FXint      dragpoint;       // Point where grabbed
   FXuchar    mode;            // Current mode of control
+  FXuchar    barauto;         // Bar size follows the window scale
 protected:
   FXScrollBar();
   void drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXbool down);
@@ -204,11 +205,14 @@ public:
   /// Return the scrollbar style
   FXuint getScrollBarStyle() const;
 
-  /// Change the bar size
+  /// Change the bar size; a bar size set here no longer follows the window scale
   void setBarSize(FXint size);
 
   /// Return the bar size
   FXint getBarSize() const { return barsize; }
+
+  /// Resolve the bar size at the scale of the window
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Save to stream
   virtual void save(FXStream& store) const override;
