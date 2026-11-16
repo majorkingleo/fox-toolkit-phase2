@@ -26,5 +26,4 @@ EXTRA_DIST = \
 $(man_MANS) \
 LICENSE \
 $(wildcard *.gif) \
-$(wildcard *.svg) \
 $(wildcard *.bmp)

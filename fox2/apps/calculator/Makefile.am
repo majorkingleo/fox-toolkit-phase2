@@ -31,7 +31,6 @@ help.cpp \
 main.cpp
 
 EXTRA_DIST = \
-$(wildcard *.svg) \
 $(man_MANS) \
 LICENSE \
 $(IMAGES)

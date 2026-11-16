@@ -23,7 +23,6 @@ ControlPanel.h \
 ControlPanel.cpp
 
 EXTRA_DIST = \
-$(wildcard *.svg) \
 $(man_MANS) \
 LICENSE \
 $(ICONS)
