@@ -186,6 +186,7 @@
 #include "FXStatusLine.h"
 #include "FXMessageBox.h"
 #include "FXSwitcher.h"
+#include "FXSpring.h"
 #include "FXTabBar.h"
 #include "FXTabBook.h"
 #include "FXTabItem.h"

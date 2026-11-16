@@ -111,6 +111,7 @@ FXStream.cpp \
 FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
+FXSpring.cpp \
 FXTabBar.cpp \
 FXTabBook.cpp \
 FXTabItem.cpp \

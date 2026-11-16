@@ -142,6 +142,7 @@ FXStream.h \
 FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
+FXSpring.h \
 FXSystem.h \
 FXTabBar.h \
 FXTabBook.h \
