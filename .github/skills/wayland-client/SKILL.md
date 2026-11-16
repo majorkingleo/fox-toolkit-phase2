@@ -217,6 +217,8 @@ which is what happens for the first window of an application.
 | --- | --- |
 | `fox2/lib/fxwaylandpriv.h` | connection, surfaces, buffers, event codes, private API |
 | `fox2/lib/fxwayland.cpp` | event queue, surfaces, buffers, backing store, commit, dump |
+| `fox2/lib/fxglwayland.cpp`, `fxglwayland.h` | EGL display and the `wl_subsurface`/`wl_egl_window` of each GL canvas |
+| `fox2/lib/FXGLVisual_wayland.cpp` | EGL config selection for `FXGLVisual` |
 | `fox2/lib/fxseat_wayland.cpp` | seat, pointer, keyboard, xkb, focus events |
 | `fox2/lib/FXApp_wayland.cpp` | connect/close, registry, event loop, event dispatch |
 | `fox2/lib/fxplatformwindow_wayland.cpp` | window seam on the virtual window table |
@@ -267,6 +269,10 @@ which is what happens for the first window of an application.
   focus; checks on the wire that the text input is bound, enabled, given a caret
   rectangle and committed. A committed string needs an input method client, which
   a headless compositor does not have.
+- `scripts/gate-wayland-gl.sh` — headless sway with the **GL renderer**
+  (llvmpipe) and `tests/glcanvas`: an `FXGLCanvas` is an EGL window on a
+  `wl_subsurface`; the test clears red, reads the pixel back with `glReadPixels`
+  and exits 0 only for red. Needs a build with `--opengl`.
 - `scripts/gate-wayland-scale.sh` — the same application twice, with
   `output HEADLESS-1 ... scale 1` and `scale 2`; compares the theme scale it
   reports and the size of the dumped frame.

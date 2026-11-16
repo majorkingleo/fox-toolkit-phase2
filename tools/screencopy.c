@@ -110,7 +110,14 @@ int main(int argc,char** argv){
     for(int x=0; x<width; x++){
       unsigned char rgb[3];
       unsigned char* p=row+x*4;
-      rgb[0]=p[2]; rgb[1]=p[1]; rgb[2]=p[0];
+      // ARGB8888/XRGB8888 are stored B,G,R,X on little endian; the ABGR/RGBA
+      // formats a GL renderer may offer are stored R,G,B,X
+      if(format==WL_SHM_FORMAT_ARGB8888 || format==WL_SHM_FORMAT_XRGB8888){
+        rgb[0]=p[2]; rgb[1]=p[1]; rgb[2]=p[0];
+        }
+      else{
+        rgb[0]=p[0]; rgb[1]=p[1]; rgb[2]=p[2];
+        }
       fwrite(rgb,1,3,fp);
       }
     }

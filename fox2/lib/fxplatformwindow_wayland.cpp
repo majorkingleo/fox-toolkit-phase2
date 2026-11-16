@@ -30,6 +30,7 @@
 #include "fxplatformwindow.h"
 #include "fxwinmap.h"
 #include "fxwaylandpriv.h"
+#include "fxglwayland.h"
 #include "FXMetaClass.h"
 #include "FXWindow.h"
 
@@ -113,6 +114,7 @@ void fxplatformAttachWindow(const FXWindowCreateInfo& info,FXID window){
 void fxplatformDestroyWindow(void* display,FXID window,FXID shell,FXID colormap,FXID xdndaware){
   FXWaylandApp* app=fxwayland(display);
   if(!app) return;
+  fxglwaylandDestroyCanvas((FXApp*)app->foxapp,window);
   fxwaylandDestroySurface(app,window);
   app->childmap.destroy(window);
   }
@@ -138,6 +140,9 @@ void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXi
       fxwaylandExpose(app,parent);
       }
     }
+
+  // A GL canvas moves its subsurface along
+  fxglwaylandPlaceCanvas((FXApp*)app->foxapp,window);
   }
 
 
@@ -197,6 +202,9 @@ void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown
       }
     }
   app->childmap.setShown(window,shown);
+
+  // A GL canvas maps or unmaps its own subsurface
+  fxglwaylandShowCanvas((FXApp*)app->foxapp,window,shown);
 
   // A toplevel that appears asks for the focus; a window that is only mapped
   // inside the client has no surface of its own and nothing to ask for

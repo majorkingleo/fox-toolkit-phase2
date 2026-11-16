@@ -4,6 +4,31 @@ foxincludedir=$(includedir)/fox-1.7
 
 foxinclude_HEADERS = \
 fx.h \
+FXVec2f.h \
+FXVec2d.h \
+FXVec3f.h \
+FXVec3d.h \
+FXVec4f.h \
+FXVec4d.h \
+FXQuatf.h \
+FXQuatd.h \
+FXMat2f.h \
+FXMat2d.h \
+FXMat3f.h \
+FXMat3d.h \
+FXMat4f.h \
+FXMat4d.h \
+FXRangef.h \
+FXRanged.h \
+FXSpheref.h \
+FXSphered.h \
+FXExtentf.h \
+FXExtentd.h \
+FXComplexf.h \
+FXComplexd.h \
+fx3d.h \
+FXGLObject.h \
+FXGLViewer.h \
 FX88592Codec.h \
 FXCP1252Codec.h \
 FXAtomic.h \
@@ -80,6 +105,7 @@ FXDirVisitor.h \
 FXDir.h \
 FXDLL.h \
 FXDockBar.h \
+FXDockTitle.h \
 FXDockHandler.h \
 FXDragCorner.h \
 FXDrawable.h \

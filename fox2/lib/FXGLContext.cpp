@@ -44,6 +44,11 @@
 #include "FXWindow.h"
 #include "FXApp.h"
 #include "FXGLContext.h"
+#include "fxglwayland.h"
+
+#if defined(FOX_WAYLAND) && defined(HAVE_EGL_H)
+#include <EGL/egl.h>
+#endif
 
 
 /*
@@ -145,7 +150,7 @@ void FXGLContext::create(){
       DestroyWindow(hwnd);
 //#elif defined(GLX_VERSION_1_3)
 //      xid=(FXID)glXCreateNewContext((Display*)getApp()->getDisplay(),(GLXFBConfig)visual->id(),GLX_RGBA_TYPE,shared?(GLXContext)shared->id():nullptr,true);
-#else
+#elif defined(FOX_X11)
       XVisualInfo vi;
       vi.visual=(Visual*)visual->visual;
       vi.visualid=vi.visual->visualid;
@@ -158,6 +163,8 @@ void FXGLContext::create(){
       vi.colormap_size=vi.visual->map_entries;
       vi.bits_per_rgb=vi.visual->bits_per_rgb;
       xid=(FXID)glXCreateContext((Display*)getApp()->getDisplay(),&vi,shared?(GLXContext)shared->id():nullptr,true);
+#elif defined(FOX_WAYLAND)
+      xid=(FXID)eglCreateContext((EGLDisplay)fxglwaylandDisplay(getApp()),(EGLConfig)visual->id(),shared?(EGLContext)shared->id():EGL_NO_CONTEXT,nullptr);
 #endif
 #endif
       if(!xid){
@@ -430,10 +437,12 @@ void FXGLContext::destroy(){
   if(xid){
     if(getApp()->isInitialized()){
       FXTRACE(TOPIC_CREATION,"FXGLContext::destroy %p\n",this);
-#ifdef WIN32
+#if defined(WIN32)
       wglDeleteContext((HGLRC)xid);
-#else
+#elif defined(FOX_X11)
       glXDestroyContext((Display*)getApp()->getDisplay(),(GLXContext)xid);
+#elif defined(FOX_WAYLAND)
+      eglDestroyContext((EGLDisplay)fxglwaylandDisplay(getApp()),(EGLContext)xid);
 #endif
       }
     surface=nullptr;
@@ -477,11 +486,19 @@ FXbool FXGLContext::begin(FXDrawable *draw){
 //      surface=draw;
 //      return true;
 //      }
-#else
+#elif defined(FOX_X11)
     if(glXMakeCurrent((Display*)getApp()->getDisplay(),draw->id(),(GLXContext)xid)){
       surface=draw;
       return true;
       }
+#elif defined(FOX_WAYLAND)
+    {
+    EGLSurface es=(EGLSurface)fxglwaylandEglSurface(getApp(),draw->id(),draw->getWidth(),draw->getHeight(),(void*)(FXival)visual->id());
+    if(es!=EGL_NO_SURFACE && eglMakeCurrent((EGLDisplay)fxglwaylandDisplay(getApp()),es,es,(EGLContext)xid)){
+      surface=draw;
+      return true;
+      }
+    }
 #endif
     }
 #endif
@@ -505,8 +522,13 @@ FXbool FXGLContext::end(){
 //      surface=nullptr;
 //      return true;
 //      }
-#else
+#elif defined(FOX_X11)
     if(glXMakeCurrent((Display*)getApp()->getDisplay(),None,(GLXContext)nullptr)){
+      surface=nullptr;
+      return true;
+      }
+#elif defined(FOX_WAYLAND)
+    if(eglMakeCurrent((EGLDisplay)fxglwaylandDisplay(getApp()),EGL_NO_SURFACE,EGL_NO_SURFACE,EGL_NO_CONTEXT)){
       surface=nullptr;
       return true;
       }
@@ -526,8 +548,10 @@ void FXGLContext::swapBuffers(){
     if(wglSwapLayerBuffers(wglGetCurrentDC(),WGL_SWAP_MAIN_PLANE)==false){
       SwapBuffers(wglGetCurrentDC());
       }
-#else
+#elif defined(FOX_X11)
     glXSwapBuffers((Display*)getApp()->getDisplay(),glXGetCurrentDrawable());
+#elif defined(FOX_WAYLAND)
+    eglSwapBuffers((EGLDisplay)fxglwaylandDisplay(getApp()),eglGetCurrentSurface(EGL_DRAW));
 #endif
     }
 #endif
@@ -540,8 +564,10 @@ FXbool FXGLContext::isCurrent() const {
   if(xid){
 #ifdef WIN32
     return (FXID)wglGetCurrentContext()==xid;
-#else
+#elif defined(FOX_X11)
     return (FXID)glXGetCurrentContext()==xid;
+#elif defined(FOX_WAYLAND)
+    return (EGLContext)xid==eglGetCurrentContext();
 #endif
     }
 #endif
@@ -552,10 +578,12 @@ FXbool FXGLContext::isCurrent() const {
 // Return true if thread has ANY current context
 FXbool FXGLContext::hasCurrent(){
 #ifdef HAVE_GL_H
-#ifdef WIN32
+#if defined(WIN32)
   return wglGetCurrentContext()!=nullptr;
-#else
+#elif defined(FOX_X11)
   return glXGetCurrentContext()!=nullptr;
+#elif defined(FOX_WAYLAND)
+  return eglGetCurrentContext()!=EGL_NO_CONTEXT;
 #endif
 #else
   return false;
@@ -604,7 +632,7 @@ FXGLContext::~FXGLContext(){
 /*******************************************************************************/
 
 
-#if defined(HAVE_XFT_H) && defined(HAVE_GL_H)
+#if defined(FOX_X11) && defined(HAVE_XFT_H) && defined(HAVE_GL_H)
 
 // Xft version
 static FXbool glXUseXftFont(XftFont* font,int first,int count,int listBase){
@@ -712,7 +740,7 @@ FXbool glUseFXFont(FXFont* font,int first,int count,int list){
     result=wglUseFontBitmaps(hdc,first,count,list);
     SelectObject(hdc,oldfont);
     }
-#else
+#elif defined(FOX_X11)
   if(glXGetCurrentContext()){
 #ifdef HAVE_XFT_H                       // Using XFT
     result=glXUseXftFont((XftFont*)font->id(),first,count,list);

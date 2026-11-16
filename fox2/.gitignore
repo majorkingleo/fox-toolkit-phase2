@@ -31,6 +31,8 @@
 /apps/pathfinder/PathFinder
 /apps/adie/Makefile.in
 /apps/adie/adie
+/apps/glviewer/Makefile.in
+/apps/glviewer/glviewer
 /tests/Makefile.in
 *.lo
 *.la

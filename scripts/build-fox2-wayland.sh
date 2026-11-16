@@ -17,6 +17,8 @@
 #   --jobs=N   parallel jobs (default: all cores)
 #   --clean    delete the build directory first
 #   --run      run hello, button and the DPI test for 3 s after building
+#   --opengl   enable OpenGL: EGL canvases on wl_subsurfaces (needs libEGL,
+#              wayland-egl and libGL)
 #   -h|--help  show this help
 #
 # Environment:
@@ -36,9 +38,10 @@ jobs=$(nproc 2>/dev/null || echo 4)
 check_only=no
 clean=no
 run_test=no
+with_opengl=no
 
 usage(){
-  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -46,6 +49,7 @@ while [ $# -gt 0 ]; do
     --check)    check_only=yes ;;
     --clean)    clean=yes ;;
     --run)      run_test=yes ;;
+    --opengl)   with_opengl=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -76,6 +80,16 @@ else
 
 # Client libraries and tools used by the Wayland platform (phases 1 to 10)
 missing=0
+if [ "$with_opengl" = yes ]; then
+  for pc in egl wayland-egl gl; do
+    if pkg-config --exists "$pc" 2>/dev/null; then
+      echo "==> found $pc $(pkg-config --modversion "$pc")"
+    else
+      echo "warning: pkg-config module '$pc' not found (needed for --opengl)" >&2
+      missing=1
+      fi
+    done
+  fi
 for pc in wayland-client xkbcommon; do
   if pkg-config --exists "$pc" 2>/dev/null; then
     echo "==> found $pc $(pkg-config --modversion "$pc")"
@@ -149,7 +163,9 @@ run(){
   }
 
 echo "==> cmake configure"
-run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=OFF
+opengl=OFF
+[ "$with_opengl" = yes ] && opengl=ON
+run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=$opengl
 
 echo "==> build library, tools and tests"
 if [ -n "${FOX_WAYLAND_TARGET-}" ]; then

@@ -176,6 +176,7 @@ struct FXWaylandApp {
   wl_display*       display;            // Connection to the compositor
   wl_registry*      registry;           // Global registry
   wl_compositor*    compositor;         // Surfaces and regions
+  wl_subcompositor* subcompositor;      // Subsurfaces for GL canvases
   wl_shm*           shm;                // Shared memory buffers
   wl_seat*          seat;               // Input devices
   wl_pointer*       pointer;            // Pointer of the seat
@@ -196,6 +197,7 @@ struct FXWaylandApp {
   FXWaylandSurface* pointersurface;     // Surface the pointer is on
   FXWaylandSurface* keyboardsurface;    // Surface with the keyboard focus
   wl_output*        output;             // First output
+  void*             egldisplay;         // EGL display, when GL is in use
   xdg_wm_base*      wmbase;             // Shell
   zxdg_decoration_manager_v1* decomanager; // Title bars, when offered
   xdg_wm_dialog_v1*          dialogmanager; // Modal dialog relationships, when offered

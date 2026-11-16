@@ -49,6 +49,7 @@
 #include "fxplatformwindow.h"
 #include "fxpriv.h"
 #include "fxwaylandpriv.h"
+#include "fxglwayland.h"
 
 #if defined(FOX_WAYLAND)
 
@@ -88,6 +89,9 @@ static void registryGlobal(void* data,wl_registry* registry,uint32_t name,const 
     }
   else if(strcmp(interface,wl_shm_interface.name)==0){
     app->shm=(wl_shm*)wl_registry_bind(registry,name,&wl_shm_interface,1);
+    }
+  else if(strcmp(interface,wl_subcompositor_interface.name)==0){
+    app->subcompositor=(wl_subcompositor*)wl_registry_bind(registry,name,&wl_subcompositor_interface,1);
     }
   else if(strcmp(interface,wl_seat_interface.name)==0){
     if(!app->seat){
@@ -297,6 +301,8 @@ void FXApp::initPlatformMembers(){
   app->screenwidth=0;
   app->screenheight=0;
   app->rootwindow=0;
+  app->subcompositor=nullptr;
+  app->egldisplay=nullptr;
   app->foxapp=this;
   app->pointer=nullptr;
   app->keyboard=nullptr;
@@ -419,6 +425,9 @@ FXbool FXApp::closeDisplay(){
     destroy();
     initialized=false;
     }
+
+  // GL canvases and the EGL display go before the connection
+  fxglwaylandClose(this);
 
   // Anything left over goes now
   while(app->surfaces){
