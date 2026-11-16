@@ -201,6 +201,7 @@ long FXToolTip::onPaint(FXObject*,FXSelector,void* ptr){
     dc.setForeground(textColor);
     dc.drawRectangle(0,0,width-1,height-1);
     }
+  dc.setForeground(textColor);
   beg=label.text();
   if(beg){
     tx=1+tipHSPACE(this);
