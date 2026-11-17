@@ -338,7 +338,8 @@ void FXDCWindow::drawRoundRectangle(FXint x,FXint y,FXint w,FXint h,FXint ew,FXi
   HBRUSH hbrush=(HBRUSH)::SelectObject((HDC)ctx,(HBRUSH)GetStockObject(NULL_BRUSH));
   if(ew+ew>w) ew=w>>1;
   if(eh+eh>h) eh=h>>1;
-  ::RoundRect((HDC)ctx,x,y,x+w+1,y+h+1,ew,eh);
+  // RoundRect wants the size of the corner ellipse, while ew and eh are radii
+  ::RoundRect((HDC)ctx,x,y,x+w+1,y+h+1,ew<<1,eh<<1);
   ::SelectObject((HDC)ctx,hbrush);
   }
 
@@ -428,7 +429,8 @@ void FXDCWindow::fillRoundRectangle(FXint x,FXint y,FXint w,FXint h,FXint ew,FXi
   HPEN hpen=(HPEN)::SelectObject((HDC)ctx,GetStockObject(NULL_PEN));
   if(ew+ew>w) ew=w>>1;
   if(eh+eh>h) eh=h>>1;
-  ::RoundRect((HDC)ctx,x,y,x+w+1,y+h+1,ew,eh);
+  // RoundRect wants the size of the corner ellipse, while ew and eh are radii
+  ::RoundRect((HDC)ctx,x,y,x+w+1,y+h+1,ew<<1,eh<<1);
   ::SelectObject((HDC)ctx,hpen);
   }
 

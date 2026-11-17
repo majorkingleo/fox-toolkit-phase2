@@ -738,6 +738,21 @@ backslash as an escape, so `theme=C:\ProgramData\themes\Breeze` loses its
 separators.  Forward slashes work as they are, and the value the ControlPanel
 writes is quoted and escaped, so the round trip through the chooser is intact.
 
+**Progress: Win32 corners were half as round (2026-11-17).** The imported
+Breeze theme looked less rounded under Wine than on Linux, and the theme was
+not to blame: `FXDCWindow::drawRoundRectangle()` and `fillRoundRectangle()` hand
+`ew`/`eh` to GDI `RoundRect`, but FOX's `ew`/`eh` are radii while `RoundRect`
+wants the size of the corner ellipse, so every Win32 corner came out at half the
+requested radius (5 px drawn as 2.5 px).  Both calls now pass `ew<<1` and
+`eh<<1`, which makes the GDI path agree with the X11 and Wayland ones; a radius
+of 0 is unaffected, so classic output is unchanged.
+
+Measured on the Breeze popup at scale 1.0, the border curve of the top-left
+corner before the fix reached x=3 only at row 2, and after the fix at row 1,
+which is where the X11 shape puts it.  The remaining difference is
+antialiasing: X11 composites the corner through an XRender mask and Wayland
+through 4x4 coverage, while Win32 still draws a hard GDI edge.
+
 **R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
 rect, so it needs popup windows inflated by the shadow margin with their
 children offset. The rounded popup above is the consumer that work was waiting
