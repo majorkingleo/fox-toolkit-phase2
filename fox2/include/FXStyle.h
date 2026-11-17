@@ -88,6 +88,10 @@ protected:
 
   /// Draw an antialiased rounded rectangle; returns false if unsupported
   FXbool drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth);
+
+  /// Fill the outside of the rounded corners with hard edges; the fallback for
+  /// platforms whose cutRoundedCorners() has no antialiasing
+  void fillOutsideCorners(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor color);
 public:
 
   /// Construct style for the given theme
@@ -116,6 +120,11 @@ public:
 
   /// Draw a rounded rectangle with a solid face and border; returns true for the rounded path
   FXbool drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth=1);
+
+  /// Fill the part of the rectangle that lies outside its rounded corners with
+  /// the given color; a widget that paints its own content uses this to cut the
+  /// corners of a rounded viewport out of that content
+  virtual void cutRoundedCorners(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor color);
 
   /// Margin a popup needs around its surface for the drop shadow; zero when the
   /// platform cannot composite a translucent shadow, so no margin is wasted

@@ -363,6 +363,32 @@ FXbool FXStyle::drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXin
   }
 
 
+// How many pixels of a row lie outside the quarter disc that rounds a corner
+static FXint cornerSpan(FXint row,FXint radius){
+  FXdouble dy=(FXdouble)radius-(row+0.5);
+  FXdouble rr=(FXdouble)radius*(FXdouble)radius-dy*dy;
+  if(rr<=0.0) return radius;
+  return FXMAX(radius-(FXint)(sqrt(rr)+0.5),0);
+  }
+
+
+// Fill the outside of the rounded corners, hard edged
+void FXStyle::fillOutsideCorners(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor color){
+  FXint r=FXMIN(radius,FXMIN(w,h)/2);
+  FXint i,span;
+  if(r<=0 || w<=0 || h<=0) return;
+  dc.setForeground(color);
+  for(i=0; i<r; i++){
+    span=cornerSpan(i,r);
+    if(span<=0) continue;
+    dc.fillRectangle(x,y+i,span,1);
+    dc.fillRectangle(x+w-span,y+i,span,1);
+    dc.fillRectangle(x,y+h-1-i,span,1);
+    dc.fillRectangle(x+w-span,y+h-1-i,span,1);
+    }
+  }
+
+
 // Draw frame chrome for the given frame options
 void FXStyle::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXuint options){
   drawFrame(dc,x,y,w,h,options,theme->color(ROLE_SURFACE_HILITE),theme->color(ROLE_SURFACE_SHADOW),theme->color(ROLE_BORDER),theme->color(ROLE_SURFACE));

@@ -171,6 +171,36 @@ void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor co
   }
 
 
+// Fill the outside of the rounded corners, antialiased: the coverage of a pixel
+// by the quarter disc is the part of it that is inside, so the color goes down
+// with the rest of the coverage
+void FXStyle::cutRoundedCorners(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor color){
+  FXRaster *raster=(FXRaster*)dc.context();
+  FXint r,px,py,i;
+  FXint cx[4],cy[4],ox[4],oy[4];
+  if(!raster || w<=0 || h<=0) return;
+  r=FXMIN(radius,FXMIN(w,h)/2);
+  if(r<=0) return;
+  dc.setForeground(color);
+  cx[0]=cx[2]=x+r;
+  cx[1]=cx[3]=x+w-r;
+  cy[0]=cy[1]=y+r;
+  cy[2]=cy[3]=y+h-r;
+  ox[0]=ox[2]=x;
+  ox[1]=ox[3]=x+w-r;
+  oy[0]=oy[1]=y;
+  oy[2]=oy[3]=y+h-r;
+  for(i=0; i<4; i++){
+    for(py=0; py<r; py++){
+      for(px=0; px<r; px++){
+        FXuint cov=discCoverage(ox[i]+px,oy[i]+py,cx[i],cy[i],r);
+        if(cov<255) raster->blend(ox[i]+px,oy[i]+py,255-cov);
+        }
+      }
+    }
+  }
+
+
 // Margin a popup needs for its drop shadow; the Wayland surface is premultiplied
 // ARGB, so a translucent shadow is composited by the compositor
 FXint FXStyle::shadowMargin(FXdouble scale){

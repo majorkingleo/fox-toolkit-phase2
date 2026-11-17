@@ -835,7 +835,32 @@ Breeze popup still frames as 114x88 with corner alphas 0,0,80,191,255 at the
 surface and a transparent shadow ring, and that the tool tip and menu runs are
 unchanged.
 
-**Scroll area viewports are not rounded yet, and here is why.** Shaping the
+**Progress: rounded viewport corners in lists (2026-11-17).**
+`FXStyle::cutRoundedCorners(dc,x,y,w,h,radius,color)` fills the part of a
+rectangle that lies outside its rounded corners, which is the primitive a widget
+needs when it paints its own content into a rounded frame: the widget draws its
+items as usual and then cuts the corners back out.  Wayland fills it
+antialiased, blending the colour by the inverse of the corner coverage;
+`FXStyle::fillOutsideCorners()` is the hard edged version X11 and Win32 use,
+built from one span per row.  `FXList` and `FXTreeList` call it with the parent's
+background and then draw the viewport hairline in `ROLE_BORDER`, because they
+paint into the scroll area window themselves and would otherwise cover the
+chrome the scroll area drew.
+
+Verified at scale 1.0 with Breeze on the header test: on Wayland the corner of a
+list reads `#EFF0F1, #EFF0F1, #B7DBEE` along the first row — parent background,
+parent background, a 50/50 blend of the accent of the selected item and the
+parent background — with the hairline following the arc; on X11 the same corner
+is hard edged, `#EFF0F1, #EFF0F1, #EFF0F1` on the first row and the border at the
+arc.  The classic Wayland gates all still pass and the classic build draws no
+cut at all.
+
+Two things this turned up, both recorded in the checklist: `FXIconList` starts
+its content below its header and still needs the offset, and `FXHeader` draws its
+buttons with raised and sunken rectangles built from the theme's highlight and
+shadow colours, which is the last 3D chrome left in a themed dialog.
+
+**Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
 `setCornerRadius(radius,x,y,w,h)` would clip it.  The attempt failed on two
