@@ -252,9 +252,17 @@ FXuint FXConsole::styleOf(FXint line,FXint index,FXint p,FXint c) const {
 
 
 // Draw fragment of text in given style
-void FXConsole::drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint,FXint,const FXchar *text,FXint n,FXuint sty) const {
-  FXColor color=FXRGB(255,255,255);
-  dc.setForeground(color);
+void FXConsole::drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXchar *text,FXint n,FXuint sty) const {
+  if(sty&STYLE_SELECTED){
+    if(0<w && 0<h){
+      dc.setForeground(selbackColor);
+      dc.fillRectangle(x,y,w,h);
+      }
+    dc.setForeground(seltextColor);
+    }
+  else{
+    dc.setForeground(textColor);
+    }
   y+=font->getFontAscent();
   dc.drawText(x,y,text,n);
   }

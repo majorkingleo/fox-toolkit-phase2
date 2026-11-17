@@ -1044,10 +1044,16 @@ extends past them on both sides, and a classic run still paints the same
 **Progress: console, spinner and colour well (2026-11-17).** Three small ones in
 one pass, found while looking for the next open entry in the checklist.
 
-`FXConsole` kept the palette colours it was constructed with, and its `onPaint()`
-cleared every expose with a red fill before drawing the log over it, which is a
-debug fill the port brought along in commit 41ffbbb; it clears with the
-background colour now.  The page takes `ROLE_WINDOW_BG` unless the application set
+`FXConsole` kept the palette colours it was constructed with, its `onPaint()`
+cleared every expose with a red fill, and `drawTextFragment()` drew every glyph
+in white whatever the theme said.  The red fill and the white text are both in
+the 1.7.95 release, not in the port: the widget is unfinished there, with a
+hundred `blabla` placeholder lines in its constructor, an `onXXX` stub and the
+`fillBufferRect` calls commented out.  The expose is now cleared with the
+background colour and the text comes from `textColor`, or `seltextColor` over
+`selbackColor` for a selected fragment, so the page and the log have contrast in
+both palettes; the placeholder lines are left alone because they are what the
+release ships.  The page takes `ROLE_WINDOW_BG` unless the application set
 a background of its own and the theme rounds its corners, the text is
 `ROLE_TEXT`, the selection `ROLE_SELECTION_BG` over `ROLE_SELECTION_TEXT` and the
 caret `ROLE_TEXT`.  On the console test at scale 1.0 with Breeze the page is
