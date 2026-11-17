@@ -92,7 +92,11 @@ FXShutterItem::FXShutterItem(FXShutter* p,const FXString& text,FXIcon* icon,FXui
   button=new FXButton(this,text,icon,this,FXShutterItem::ID_SHUTTERITEM_BUTTON,FRAME_RAISED|FRAME_THICK|LAYOUT_FILL_X,0,0,0,0,0,0,0,0);
   scrollWindow=new FXScrollWindow(this,HSCROLLING_OFF|LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,0);
   content=new FXVerticalFrame(scrollWindow,LAYOUT_FILL_X|LAYOUT_FILL_Y|(opts&(PACK_UNIFORM_HEIGHT|PACK_UNIFORM_WIDTH)),0,0,0,0,pl,pr,pt,pb,hs,vs);
-  content->setBackColor(getApp()->getShadowColor());
+  // The classic shutter shades the content of its item; a rounded theme puts it
+  // on the window background instead, where a document view belongs
+  if(!(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS))){
+    content->setBackColor(getApp()->getShadowColor());
+    }
   }
 
 

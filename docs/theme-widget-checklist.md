@@ -77,7 +77,7 @@ Priority:
 | `FXProgressBar` | PARTIAL | Bar background, filled bar, number/text colors, radius and height. |
 | `FXDial`, `FXKnob`, `FX7Segment` | OPEN | Face, arc, pointer and segment colors. |
 | `FXMDIChild`, `FXMDIClient`, `FXMDIButton` | PARTIAL/OPEN | MDI title background/text, active/inactive states, border and button decoration. |
-| `FXSplitter`, `FX4Splitter`, `FXShutter` | PARTIAL | Divider/grip colors and spacing; the container frame follows `FXFrame`. `FXDragCorner` is themed: three flat grip lines in `ROLE_TEXT_DISABLED` instead of shaded ridges. |
+| `FXSplitter`, `FX4Splitter`, `FXShutter` | DONE | Neither splitter paints chrome of its own: the divider is the gap between the panes, which shows the surface the packer paints, and the only drawing they do is the inverted rubber band while a pane is dragged. Their container frame goes through the style like any packer, `FXDragCorner` draws three flat grip lines in `ROLE_TEXT_DISABLED`, and a themed shutter no longer shades the content of its item with `ROLE_SURFACE_SHADOW`: it leaves the item on the surface, which is what the surrounding frame uses. |
 | `FXToolBar`, `FXToolBarShell`, `FXToolBarTab`, `FXToolBarGrip`, `FXDockTitle` | OPEN/PARTIAL | Toolbar background/border, grip dots, tab chrome, drag handle, active/floating state. |
 | `FXSeparator` | DONE | A themed separator is one hairline in `ROLE_BORDER` whatever the 3D style asks for, and it takes one pixel instead of two; classic keeps its bevel. Spacing still comes from the widget options. |
 

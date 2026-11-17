@@ -1089,6 +1089,25 @@ font: the editor and the console both switch to an evenly spaced face while the
 window keeps the colors and the radius the file sets.  The Wayland hello, menu,
 popup, tool tip and repaint gates pass, and every build is clean.
 
+**Progress: splitters and shutters (2026-11-17).** Looking for the next entry of
+the checklist to close turned up a surprise: neither `FXSplitter` nor
+`FX4Splitter` paints chrome of its own.  The divider between two panes is the gap
+between them, which shows the surface the packer paints, and the only drawing the
+splitters do is the inverted rubber band they flash while a pane is dragged, with
+`BLT_NOT_DST`, so it inverts whatever is under it.
+
+What did look wrong was the shutter.  `FXShutterItem` gave the content of its item
+the application shadow colour so the item would stand out from the frame, which
+in a themed window is a block of `#A0A1A1` in the middle of a flat surface.  A
+themed shutter now leaves that content alone and it takes the surface like the
+frame around it; the classic shutter keeps its shade.
+
+Checked on the splitter test and the shutter test at scale 1.0 with Breeze: the
+splitter window holds no `#8E8B86` or `#E2E0DA` at all and its panes are separated
+by surface-coloured gaps, and the shutter lost 45554 pixels of `#A0A1A1`.  A
+classic run of the shutter still paints 49979 pixels of `#8E8B86` for the shaded
+content.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
