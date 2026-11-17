@@ -136,6 +136,13 @@ if [ "$use_cmake" = yes ]; then
   # The programs in bin/ must start without MSYS2 on the PATH: copy the MinGW
   # DLLs the library needs (codec libraries and what they need in turn)
   echo "==> copy runtime DLLs to bin"
+  copy_if_needed(){
+    local src="$1"
+    local dst="$2"
+    if [ ! -f "$dst" ] || ! cmp -s -- "$src" "$dst"; then
+      cp -f -- "$src" "$dst"
+      fi
+    }
   todo=("$BUILD/bin/libFOX-1.7.dll")
   seen=" "
   while [ "${#todo[@]}" -gt 0 ]; do
@@ -144,7 +151,7 @@ if [ "$use_cmake" = yes ]; then
       case "$seen" in *" $dll "*) continue ;; esac
       seen="$seen$dll "
       if [ -f "$MINGW_PREFIX/bin/$dll" ]; then
-        cp -u -- "$MINGW_PREFIX/bin/$dll" "$BUILD/bin/"
+        copy_if_needed "$MINGW_PREFIX/bin/$dll" "$BUILD/bin/$dll"
         todo+=("$MINGW_PREFIX/bin/$dll")
         fi
       done

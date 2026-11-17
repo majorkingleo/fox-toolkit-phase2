@@ -63,8 +63,10 @@ namespace FX {
 // Largest cache file we are willing to read
 #define FXTCSIZE    (64*1024)
 
-// Version of the importer; bump this whenever imported values change
-static const FXint fxtcdefaultversion=2;
+// Version of the importer; bump this whenever imported values change.
+// The next bump invalidates the stale theme cache that older importer builds
+// may otherwise keep reusing.
+static const FXint fxtcdefaultversion=3;
 
 // Cache counters
 FXint FXThemeCache::importerVersion=fxtcdefaultversion;

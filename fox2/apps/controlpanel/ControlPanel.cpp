@@ -1137,8 +1137,9 @@ long FXDesktopSetup::onColorTheme(FXObject*,FXSelector,void* ptr){
     return 1;
     }
 
-  // Installed GTK, KDE or FOX theme
-  if(loadTheme(entry->source,theme,summary)){
+  // Installed GTK, KDE or FOX theme.  Force a fresh import when the theme is
+  // being chosen explicitly so we do not reuse a stale cached result.
+  if(loadTheme(entry->source,theme,summary,true)){
     themesource=entry->source;
     applyThemeColors(theme);
     updateThemeStatus(summary);
@@ -1159,7 +1160,7 @@ long FXDesktopSetup::onCmdImportTheme(FXObject*,FXSelector,void*){
   if(!themesource.empty()) start=FXPath::directory(themesource);
   source=FXFileDialog::getOpenFilename(this,tr("Import Theme"),start,tr("Theme Files (*.css,gtkrc,*.colors,*.foxtheme)\nAll Files (*)"));
   if(source.empty()) return 1;
-  if(!loadTheme(source,theme,summary)){
+  if(!loadTheme(source,theme,summary,true)){
     FXMessageBox::error(this,MBOX_OK,tr("Import Theme"),tr("Cannot read theme:\n%s"),source.text());
     return 1;
     }
@@ -1178,7 +1179,7 @@ long FXDesktopSetup::onCmdImportTheme(FXObject*,FXSelector,void*){
 long FXDesktopSetup::onCmdRefreshThemes(FXObject*,FXSelector,void*){
   FXTheme theme;
   FXString summary;
-  if(!themesource.empty() && loadTheme(themesource,theme,summary)){
+  if(!themesource.empty() && loadTheme(themesource,theme,summary,true)){
     previewtheme=theme;
     themeColors(theme,theme_current);
     }
@@ -1342,18 +1343,20 @@ void FXDesktopSetup::discoverThemes(){
   }
 
 
-// Load a .foxtheme file or import a GTK/KDE source, using the cache when valid
-FXbool FXDesktopSetup::loadTheme(const FXString& source,FXTheme& theme,FXString& summary){
+// Load a .foxtheme file or import a GTK/KDE source, using the cache unless
+// a fresh import is explicitly requested by the UI.
+FXbool FXDesktopSetup::loadTheme(const FXString& source,FXTheme& theme,FXString& summary,FXbool refreshcache){
   FXCSS css;
   if(source.right(9)==".foxtheme"){
     if(!theme.load(source)) return false;
     summary=tr("Theme file: ")+source;
     return true;
     }
-  if(FXThemeCache::fetch(source,theme)){
+  if(!refreshcache && FXThemeCache::fetch(source,theme)){
     summary=tr("Imported from cache: ")+source;
     return true;
     }
+  if(refreshcache) FXThemeCache::discard(source);
   if(!css.load(source)) return false;
   theme.setClassic();
   css.apply(theme);

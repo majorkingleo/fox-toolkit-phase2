@@ -223,7 +223,7 @@ private:
   FXbool matchesThemeFilter(const ThemeEntry* entry) const;
   void discoverThemes();
   FXint findThemeEntry(const FXString& source) const;
-  FXbool loadTheme(const FXString& source,FXTheme& theme,FXString& summary);
+  FXbool loadTheme(const FXString& source,FXTheme& theme,FXString& summary,FXbool refreshcache=false);
   void applyThemeColors(const FXTheme& theme);
   void setPreviewThemeFromColors();
   void applyPreviewTheme();
