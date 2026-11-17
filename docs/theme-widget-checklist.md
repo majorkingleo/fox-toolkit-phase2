@@ -24,7 +24,8 @@ Priority:
 | Widget | State | Notes |
 | --- | --- | --- |
 | `FXWindow` | DONE | Base background follows `ROLE_SURFACE`. |
-| `FXFrame` | DONE | Base/hilite/shadow/border and theme padding. |
+| `FXFrame` | DONE | Base/hilite/shadow/border and theme padding. A themed frame draws a single hairline in `ROLE_BORDER` instead of a 3D bevel. |
+| `FXPacker`, `FXHorizontalFrame`, `FXVerticalFrame` | DONE | Packers go through the style as well, so `FRAME_SUNKEN`, `FRAME_RAISED`, `FRAME_THICK`, `FRAME_GROOVE` and `FRAME_RIDGE` draw the same hairline a themed frame draws; the classic bevel code is still there for a theme without a corner radius. |
 | `FXLabel` | DONE | Text role and UI font. |
 | `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height, focus handling and themed arrowless scrollbars. `FXList` and `FXTreeList` cut the corners of the viewport out of their own item background (`FXStyle::cutRoundedCorners()`) and draw its hairline, so a themed list fits a rounded frame; `FXIconList` still draws square corners because its content starts below the header. Hover rows and alternating rows remain. |
@@ -83,7 +84,7 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXTopWindow`, `FXMainWindow`, `FXDialogBox` | PARTIAL | Client background follows `FXWindow`; client-side title bar, title text, close/maximise/minimise buttons and shadow still depend on the platform/CSD implementation. |
+| `FXTopWindow`, `FXMainWindow`, `FXDialogBox` | PARTIAL | Client background follows `FXWindow`. The Wayland client-side title bar takes its background from the base color and separates itself from the client area with a hairline in `ROLE_BORDER` when the theme has a corner radius; the title text and the close/maximise/minimise glyphs still use the classic app colors, and the X11 and Win32 decorations are the window manager's. |
 | `FXMessageBox`, `FXInputDialog`, `FXChoiceBox` | PARTIAL | Composed from labels/buttons/text fields; verify dialog background, default button, button spacing and footer after the controls above are done. |
 | `FXFileDialog`, `FXDirDialog`, `FXColorDialog`, `FXFontDialog`, `FXPrintDialog` | PARTIAL | Same: tabs, lists, fields, trees and buttons must all follow the theme. |
 | `FXProgressDialog`, `FXWizard` | PARTIAL | Header image/background, labels, progress bar and navigation buttons. |

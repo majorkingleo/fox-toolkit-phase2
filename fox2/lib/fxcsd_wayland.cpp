@@ -126,7 +126,12 @@ void fxwaylandPaintBar(FXWaylandApp* app,FXWaylandSurface* surf){
   raster.setClipRectangle(0,0,w,h);
   raster.setForeground(foxapp->getBaseColor());
   raster.fillRectangle(0,0,w,h);
-  raster.setForeground(foxapp->getShadowColor());
+
+  // A themed bar is separated from the client area by a hairline in the border
+  // color; the classic one keeps the shadow line it always had
+  FXTheme* theme=foxapp->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,foxapp->getDisplayScale());
+  raster.setForeground(themed ? theme->color(ROLE_BORDER) : foxapp->getShadowColor());
   raster.drawLine(0,h-1,w-1,h-1);
 
   // The buttons, from the right edge inwards

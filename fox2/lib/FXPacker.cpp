@@ -228,15 +228,9 @@ void FXPacker::drawDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,
 
 // Draw border
 void FXPacker::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
-  switch(options&FRAME_MASK) {
-    case FRAME_LINE: drawBorderRectangle(dc,x,y,w,h); break;
-    case FRAME_SUNKEN: drawSunkenRectangle(dc,x,y,w,h); break;
-    case FRAME_RAISED: drawRaisedRectangle(dc,x,y,w,h); break;
-    case FRAME_GROOVE: drawGrooveRectangle(dc,x,y,w,h); break;
-    case FRAME_RIDGE: drawRidgeRectangle(dc,x,y,w,h); break;
-    case FRAME_SUNKEN|FRAME_THICK: drawDoubleSunkenRectangle(dc,x,y,w,h); break;
-    case FRAME_RAISED|FRAME_THICK: drawDoubleRaisedRectangle(dc,x,y,w,h); break;
-    }
+  // Packers go through the style as well, so a themed packer gets the same
+  // single hairline as a frame instead of a 3D bevel of its own
+  getApp()->getStyle()->drawFrame(dc,x,y,w,h,options,hiliteColor,shadowColor,borderColor,baseColor);
   }
 
 

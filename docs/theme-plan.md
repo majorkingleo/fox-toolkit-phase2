@@ -871,11 +871,32 @@ classic header keeps its bevels.
 Measured on the header test at scale 1.0 with Breeze: the header rows hold 68
 pixels of highlight or shadow colour instead of 3481 (the drawn separators take
 170 pixels of border colour, four hairlines times the header height plus its
-top edge).  The same screenshot still shows three thin lines of
-`ROLE_SURFACE_SHADOW` outside the header: the last row of the client side title
-bar, one full width line above the header and a one pixel column at the left
-edge.  They are the next thing to identify, and the Wayland hello, menu, popup
-and repaint gates pass with the header change in.
+top edge).
+
+The same screenshot still showed three thin lines of `ROLE_SURFACE_SHADOW`
+outside the header: the last row of the client side title bar, one full width
+line above the header and a one pixel column at the left edge.  Chasing them
+found the last two producers of old chrome in the toolkit:
+
+- `FXPacker::drawFrame()` had a switch of its own and called the packer's own
+  `drawSunkenRectangle()` and friends, so an `FXVerticalFrame` with
+  `FRAME_SUNKEN|FRAME_THICK` around the client area, and the `FXHorizontalFrame`
+  around the lists, drew a two pixel 3D border that no theme could reach.  It
+  now hands the options and its colors to `FXStyle::drawFrame()` exactly as
+  `FXFrame::drawFrame()` does, which is the same thing for a classic theme: the
+  style's classic fills are line for line the code the packer used to run.
+- the Wayland client side title bar drew its separator with the app shadow
+  color, which a theme maps to `ROLE_SURFACE_SHADOW`; it now uses
+  `ROLE_BORDER` when the theme has a corner radius, and the classic app keeps
+  the shadow line.
+
+With those in, the header test at scale 1.0 with Breeze holds no
+`ROLE_SURFACE_SHADOW` pixel at all (`#A0A1A1` went from 3428 to 0), the
+highlight colour is down to 35 pixels inside the title bar's own button glyphs
+(`#F4F5F6` from 2607), and the border colour carries the new hairlines
+(`#C6C8C9` from 9768 to 13148).  A classic run of the same test still shows the
+`#8E8B86` and `#E2E0DA` bevels and the black inner border of the double sunken
+frames.  The Wayland hello, menu, popup, tool tip and repaint gates pass.
 
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
