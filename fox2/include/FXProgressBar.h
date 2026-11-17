@@ -53,6 +53,9 @@ protected:
 protected:
   FXProgressBar(){}
   void drawInterior(FXDCWindow& dc);
+
+  /// Draw the themed bar, trough and percentage
+  void drawThemedInterior(FXDCWindow& dc,FXint radius);
 private:
   FXProgressBar(const FXProgressBar&);
   FXProgressBar &operator=(const FXProgressBar&);

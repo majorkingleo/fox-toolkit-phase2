@@ -115,6 +115,9 @@ public:
   /// Re-resolve the fonts for the monitor of the window
   virtual void applyTheme(FXTheme* theme) override;
 
+  /// Resolve the face, arc and tick colors from the theme
+  void themeColors(FXTheme* theme);
+
   /// Set the text for caption
   void setCaption(const FXString& text);
 

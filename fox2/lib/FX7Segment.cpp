@@ -400,8 +400,8 @@ long FX7Segment::onPaint(FXObject*,FXSelector,void *ptr){
       ty=border+padtop+(height-padbottom-padtop-(border<<1)-ch)/2;
       }
 
-    // Draw cells with shadow
-    if(options&SEVENSEGMENT_SHADOW){
+    // Draw cells with shadow; a flat theme leaves the segments unshaded
+    if((options&SEVENSEGMENT_SHADOW) && !(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS))){
       dc.setForeground(shadowColor);
       drawCells(dc,tx+1,ty+1,cw,ch);
       }
@@ -411,6 +411,13 @@ long FX7Segment::onPaint(FXObject*,FXSelector,void *ptr){
     drawCells(dc,tx,ty,cw,ch);
     }
   return 1;
+  }
+
+
+// Re-apply theme colors
+void FX7Segment::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
   }
 
 

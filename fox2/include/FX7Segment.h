@@ -59,6 +59,9 @@ private:
   void drawSegments(FXDCWindow &dc,FXint x,FXint y,FXint w,FXint h,FXuint segments);
 public:
   long onPaint(FXObject*,FXSelector,void*);
+
+  /// Re-apply theme colors
+  virtual void applyTheme(FXTheme* theme) override;
   long onCmdSetValue(FXObject*,FXSelector,void*);
   long onCmdSetIntValue(FXObject*,FXSelector,void*);
   long onCmdGetIntValue(FXObject*,FXSelector,void*);

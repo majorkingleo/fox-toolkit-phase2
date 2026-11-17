@@ -25,7 +25,7 @@ THEME=/usr/share/themes/Breeze
 # means a widget filled with it where a hairline belongs
 SHADOW=${SHADOW:-A0A1A1}
 SHADOW_LIMIT=${SHADOW_LIMIT:-5000}
-APPS=${APPS:-"header table splitter shutter ControlPanel button tabbook switcher dialog colordemo rulerdemo calendar"}
+APPS=${APPS:-"header table splitter shutter ControlPanel button tabbook switcher dialog colordemo rulerdemo calendar gaugedemo"}
 
 usage(){
   sed -n '2,18p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'

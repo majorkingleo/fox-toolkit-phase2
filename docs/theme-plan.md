@@ -1231,6 +1231,32 @@ includes the calendar and reports no classic palette at all; a classic run keeps
 `#D4D0C8`, 11453 pixels of `#8E8B86` for the title band and the disabled days,
 and 6683 of `#E2E0DA` for the bevels.
 
+**Progress: bars, gauges and seven segment displays (2026-11-17).**
+`FXProgressBar` drew its fill as a light and dark gradient bubble in royal blue
+over a trough of the window color, with a shaded dial and a bevelled rim;
+`FXGauge` filled its dial face with the highlight color and drew the arc in the
+shadow color with black ticks; `FX7Segment` drew its segments with the palette
+text color and a one pixel drop shadow.
+
+A themed bar is now a rounded trough in `ROLE_SURFACE_HILITE` with the filled
+part in `ROLE_ACCENT`, in all three shapes (horizontal, vertical and the dial
+pie), and the percentage is clipped so it reads in `ROLE_SELECTION_TEXT` over the
+fill and in `ROLE_TEXT` over the trough.  A themed gauge draws the face on
+`ROLE_SURFACE`, the arc in `ROLE_ACCENT` and the ticks in `ROLE_TEXT_DISABLED`.
+The seven segment display takes `ROLE_TEXT` in a new `applyTheme()` and drops its
+drop shadow, which in a flat theme is the one thing that still looked embossed.
+
+The trough started out as `ROLE_SURFACE_SHADOW`, and the palette gate caught it
+at once: 152413 pixels of the shadow color is exactly the "widget uses an edge
+color as a fill" case the gate looks for, so the trough moved to
+`ROLE_SURFACE_HILITE`.
+
+`tests/gaugedemo.cpp` is new: the bar in all three shapes, the gauge and the
+seven segment display, and it joined the default set of the palette gate.
+Measured at scale 1.0 with Breeze the themed window holds no classic palette and
+no shadow fill; a classic run keeps `#D4D0C8`, 7640 pixels of `#E2E0DA` and 4443
+of `#8E8B86` for the bevels and the royal blue bubble.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

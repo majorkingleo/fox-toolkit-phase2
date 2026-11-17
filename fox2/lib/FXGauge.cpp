@@ -179,6 +179,9 @@ innerRadius=0.5;
   minorTickSize=3;
   faceColor=hiliteColor;
   arcColor=shadowColor;
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS)){
+    themeColors(getApp()->getTheme());
+    }
   arcWeight=3;
   }
 
@@ -658,8 +661,20 @@ void FXGauge::setGaugeStyle(FXuint style){
 // Re-resolve the normal fonts for the window's monitor
 void FXGauge::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    themeColors(theme);
+    }
   setNumberFont(getApp()->retargetNormalFont(numberFont,getWindowDPI()));
   setCaptionFont(getApp()->retargetNormalFont(captionFont,getWindowDPI()));
+  }
+
+
+// Resolve the gauge colors from the theme
+void FXGauge::themeColors(FXTheme* theme){
+  faceColor=theme->color(ROLE_SURFACE);
+  arcColor=theme->color(ROLE_ACCENT);
+  majorTickColor=theme->color(ROLE_TEXT_DISABLED);
+  minorTickColor=theme->color(ROLE_TEXT_DISABLED);
   }
 
 

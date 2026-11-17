@@ -73,9 +73,10 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXGauge` | PARTIAL | Number/caption fonts are retargeted; tick, face and arc colors are not. |
-| `FXProgressBar` | PARTIAL | Bar background, filled bar, number/text colors, radius and height. |
-| `FXDial`, `FXKnob`, `FX7Segment` | OPEN | Face, arc, pointer and segment colors. |
+| `FXGauge` | DONE | A themed gauge draws its dial face on `ROLE_SURFACE` with the arc in `ROLE_ACCENT` and the major and minor ticks in `ROLE_TEXT_DISABLED`; the number and caption fonts were already retargeted. |
+| `FXProgressBar` | DONE | A themed bar is a rounded trough in `ROLE_SURFACE_HILITE` with the filled part in `ROLE_ACCENT`, no light and dark gradient bubble; the dial shape fills an accent pie on the trough and the percentage is drawn in `ROLE_TEXT` over the trough and `ROLE_SELECTION_TEXT` over the fill by clipping, as the classic bar does. |
+| `FXDial`, `FXKnob` | OPEN | The dial face, its shaded notch ring and the pointer are still the classic 3D drawing; only the fonts are retargeted. |
+| `FX7Segment` | DONE | Segments are drawn in `ROLE_TEXT` from `applyTheme()`, and a flat theme drops the one pixel drop shadow the segments carry. |
 | `FXMDIChild`, `FXMDIClient`, `FXMDIButton` | PARTIAL/OPEN | MDI title background/text, active/inactive states, border and button decoration. |
 | `FXSplitter`, `FX4Splitter`, `FXShutter` | DONE | Neither splitter paints chrome of its own: the divider is the gap between the panes, which shows the surface the packer paints, and the only drawing they do is the inverted rubber band while a pane is dragged. Their container frame goes through the style like any packer, `FXDragCorner` draws three flat grip lines in `ROLE_TEXT_DISABLED`, and a themed shutter no longer shades the content of its item with `ROLE_SURFACE_SHADOW`: it leaves the item on the surface, which is what the surrounding frame uses. |
 | `FXToolBar`, `FXToolBarShell`, `FXToolBarTab`, `FXToolBarGrip`, `FXDockTitle` | OPEN/PARTIAL | Toolbar background/border, grip dots, tab chrome, drag handle, active/floating state. |

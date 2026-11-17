@@ -95,6 +95,12 @@ FXProgressBar::FXProgressBar(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint 
   barColor=FXColors::RoyalBlue;
   textNumColor=FXColors::DarkBlue;
   textAltColor=FXColors::White;
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS)){
+    barColor=getApp()->getTheme()->color(ROLE_ACCENT);
+    barBGColor=getApp()->getTheme()->color(ROLE_SURFACE_HILITE);
+    textNumColor=getApp()->getTheme()->color(ROLE_TEXT);
+    textAltColor=getApp()->getTheme()->color(ROLE_SELECTION_TEXT);
+    }
   }
 
 
@@ -191,10 +197,112 @@ long FXProgressBar::onCmdGetIntRange(FXObject*,FXSelector,void* ptr){
 
 
 // Draw only the interior, i.e. the part that changes
+// Draw the themed bar: a rounded trough with the filled part in the accent
+void FXProgressBar::drawThemedInterior(FXDCWindow& dc,FXint radius){
+  FXdouble fraction=(total>0)?((FXdouble)progress/(FXdouble)total):1.0;
+  FXTheme *theme=getApp()->getTheme();
+  FXColor trough=theme->color(ROLE_SURFACE_HILITE);
+  FXColor fill=theme->color(ROLE_ACCENT);
+  FXint percent=(FXuint)(100.0*fraction);
+  FXint x=border+padleft;
+  FXint y=border+padtop;
+  FXint w=width-(border<<1)-padleft-padright;
+  FXint h=height-(border<<1)-padtop-padbottom;
+  FXchar numtext[10];
+  FXint n,tx,ty,tw,th;
+
+  // Round dial: trough arc with the filled part on top of it
+  if(options&PROGRESSBAR_DIAL){
+    FXint ds=FXMIN(w,h)-1;
+    FXint dx=x+(w-ds)/2;
+    FXint dy=y+(h-ds)/2;
+    FXint filled=(FXuint)(23040.0*fraction);
+    if(filled!=23040){
+      dc.setForeground(trough);
+      dc.fillArc(dx,dy,ds,ds,5760,23040-filled);
+      }
+    if(0<filled){
+      dc.setForeground(fill);
+      dc.fillArc(dx,dy,ds,ds,5760,-filled);
+      }
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawArc(dx,dy,ds,ds,0,360*64);
+    }
+  else{
+    // The trough is one rounded bar; the filled part is a rounded bar on it
+    if(options&PROGRESSBAR_VERTICAL){
+      FXint barfilled=(FXuint)(h*fraction);
+      getApp()->getStyle()->drawRoundedRectangle(dc,x,y,w,h,FXMIN(radius,FXMIN(w,h)/2),trough,trough,0);
+      if(0<barfilled){
+        getApp()->getStyle()->drawRoundedRectangle(dc,x,y+h-barfilled,w,barfilled,FXMIN(radius,FXMIN(w,barfilled)/2),fill,fill,0);
+        }
+      }
+    else{
+      FXint barfilled=(FXuint)(w*fraction);
+      getApp()->getStyle()->drawRoundedRectangle(dc,x,y,w,h,FXMIN(radius,FXMIN(w,h)/2),trough,trough,0);
+      if(0<barfilled){
+        getApp()->getStyle()->drawRoundedRectangle(dc,x,y,barfilled,h,FXMIN(radius,FXMIN(barfilled,h)/2),fill,fill,0);
+        }
+      }
+    }
+
+  // Percentage, in the text color over the trough and the selection text color
+  // over the fill
+  if(options&PROGRESSBAR_PERCENTAGE){
+    n=__snprintf(numtext,sizeof(numtext),"%d%%",percent);
+    th=font->getFontHeight();
+    tw=font->getTextWidth(numtext,n);
+    if(options&PROGRESSBAR_DIAL){
+      FXint ds=FXMIN(w,h)-1;
+      tx=x+(w-ds)/2+ds/2-tw/2;
+      ty=y+(h-ds)/2+ds/2+font->getFontAscent()+5;
+      dc.setFont(font);
+      dc.setForeground(theme->color(ROLE_TEXT));
+      dc.drawText(tx,ty,numtext,n);
+      return;
+      }
+    if(options&PROGRESSBAR_VERTICAL){
+      FXint barfilled=(FXuint)(h*fraction);
+      tx=x+(w-tw)/2;
+      ty=y+(h-th)/2+font->getFontAscent();
+      dc.setFont(font);
+      dc.setClipRectangle(x,y+h-barfilled,w,barfilled);
+      dc.setForeground(theme->color(ROLE_SELECTION_TEXT));
+      dc.drawText(tx,ty,numtext,n);
+      dc.setClipRectangle(x,y,w,h-barfilled);
+      dc.setForeground(theme->color(ROLE_TEXT));
+      dc.drawText(tx,ty,numtext,n);
+      dc.clearClipRectangle();
+      }
+    else{
+      FXint barfilled=(FXuint)(w*fraction);
+      tx=x+(w-tw)/2;
+      ty=y+(h-th)/2+font->getFontAscent();
+      dc.setFont(font);
+      dc.setClipRectangle(x,y,barfilled,h);
+      dc.setForeground(theme->color(ROLE_SELECTION_TEXT));
+      dc.drawText(tx,ty,numtext,n);
+      dc.setClipRectangle(x+barfilled,y,w-barfilled,h);
+      dc.setForeground(theme->color(ROLE_TEXT));
+      dc.drawText(tx,ty,numtext,n);
+      dc.clearClipRectangle();
+      }
+    }
+  }
+
+
 void FXProgressBar::drawInterior(FXDCWindow& dc){
   FXdouble fraction=(total>0)?((FXdouble)progress/(FXdouble)total):1.0;
   FXint percent,barlength,barwidth,barfilled,tx,ty,tw,th,dx,dy,ds,n;
   FXchar numtext[10];
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+
+  // A themed bar is a flat fill of the accent in a rounded trough
+  if(0<radius){
+    drawThemedInterior(dc,radius);
+    return;
+    }
 
   // Calculate percentage complete
   percent=(FXuint)(100.0*fraction);
@@ -482,6 +590,12 @@ void FXProgressBar::setBarSize(FXint size){
 // Re-resolve the normal font for the window's monitor
 void FXProgressBar::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    barColor=theme->color(ROLE_ACCENT);
+    barBGColor=theme->color(ROLE_SURFACE_HILITE);
+    textNumColor=theme->color(ROLE_TEXT);
+    textAltColor=theme->color(ROLE_SELECTION_TEXT);
+    }
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 
