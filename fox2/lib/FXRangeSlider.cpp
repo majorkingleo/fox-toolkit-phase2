@@ -780,6 +780,8 @@ long FXRangeSlider::onPaint(FXObject*,FXSelector,void* ptr){
   FXint tx,ty,hhs=headSize/2;
   FXint xx,yy,ww,hh;
   FXDCWindow dc(this,event);
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
 
   // Repaint background
   dc.setForeground(backColor);
@@ -787,6 +789,13 @@ long FXRangeSlider::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Repaint border
   drawFrame(dc,0,0,width,height);
+
+  // A themed slider is a thin rounded trough with the selected range filled and
+  // two round heads on it, not a sunken slot with bevelled heads
+  if(0<radius){
+    drawThemedRange(dc,radius);
+    return 1;
+    }
 
   // Slot placement
   xx=border+padleft;
@@ -855,6 +864,73 @@ long FXRangeSlider::onPaint(FXObject*,FXSelector,void* ptr){
       }
     }
   return 1;
+  }
+
+
+// Draw the themed slider: a rounded trough, the range between the two heads
+// filled with the accent, and two round heads on top
+void FXRangeSlider::drawThemedRange(FXDCWindow& dc,FXint radius){
+  FXTheme *theme=getApp()->getTheme();
+  FXint scale=getDisplayScale();
+  FXint track,siz,start,trav,head,a;
+  FXbool enabled=isEnabled();
+  FXColor accent=theme->color(ROLE_ACCENT);
+  FXColor trough=theme->color(ROLE_SURFACE_SHADOW,enabled?THEME_STATE_NORMAL:THEME_STATE_DISABLED);
+  FXColor face=theme->color(ROLE_BUTTON,enabled?THEME_STATE_NORMAL:THEME_STATE_DISABLED);
+  FXColor edge=theme->color(ROLE_BORDER);
+  if(hasFocus()) edge=theme->color(ROLE_FOCUS_RING);
+  else if(underCursor()) edge=theme->color(ROLE_HOVER_RING);
+
+  if(options&RANGESLIDER_INSIDE_BAR) track=headSize-4;
+  else track=FXMAX(4*scale,radius);
+
+  if(options&RANGESLIDER_VERTICAL){
+    siz=width-(border<<1)-padleft-padright;
+    track=FXMIN(track,siz);
+    trav=height-(border<<1)-padtop-padbottom-headSize-headSize-4;
+    start=height-border-padbottom-2-headSize;
+    head=FXMIN(headSize,height-(border<<1)-padtop-padbottom);
+    getApp()->getStyle()->drawRoundedRectangle(dc,(width-track)/2,border+padtop+headSize/2,track,height-(border<<1)-padtop-padbottom-headSize,track/2,trough,trough,0);
+    if(headPos[0]>headPos[1]){
+      getApp()->getStyle()->drawRoundedRectangle(dc,(width-track)/2,headPos[1]+head/2,track,headPos[0]-headPos[1],track/2,accent,accent,0);
+      }
+    }
+  else{
+    siz=height-(border<<1)-padtop-padbottom;
+    track=FXMIN(track,siz);
+    trav=width-(border<<1)-padleft-padright-headSize-headSize-4;
+    start=border+padleft+2;
+    head=FXMIN(headSize,width-(border<<1)-padleft-padright);
+    getApp()->getStyle()->drawRoundedRectangle(dc,border+padleft+headSize/2,(height-track)/2,width-(border<<1)-padleft-padright-headSize,track,track/2,trough,trough,0);
+    if(headPos[1]>headPos[0]){
+      getApp()->getStyle()->drawRoundedRectangle(dc,headPos[0]+head/2,(height-track)/2,headPos[1]-headPos[0],track,track/2,accent,accent,0);
+      }
+    }
+
+  // The heads are round buttons sitting on the trough
+  getApp()->getStyle()->drawRoundedRectangle(dc,(options&RANGESLIDER_VERTICAL)?(width-head)/2:headPos[0],(options&RANGESLIDER_VERTICAL)?headPos[0]:(height-head)/2,head,head,radius,face,edge,1);
+  getApp()->getStyle()->drawRoundedRectangle(dc,(options&RANGESLIDER_VERTICAL)?(width-head)/2:headPos[1],(options&RANGESLIDER_VERTICAL)?headPos[1]:(height-head)/2,head,head,radius,face,edge,1);
+
+  // Arrows are drawn inside the head when the slider asks for them
+  if(options&(RANGESLIDER_ARROW_LEFT|RANGESLIDER_ARROW_RIGHT|RANGESLIDER_ARROW_UP|RANGESLIDER_ARROW_DOWN)){
+    FXint cx,cy,d;
+    a=FXMAX(2,head/5);
+    dc.setForeground(theme->color(ROLE_TEXT,enabled?THEME_STATE_NORMAL:THEME_STATE_DISABLED));
+    if(options&RANGESLIDER_VERTICAL){ cx=width/2; cy=headPos[0]+head/2; }
+    else{ cx=headPos[0]+head/2; cy=height/2; }
+    if(options&(RANGESLIDER_ARROW_LEFT|RANGESLIDER_ARROW_RIGHT)){
+      d=(options&RANGESLIDER_ARROW_LEFT)?-1:1;
+      dc.drawLine(cx+d*a,cy-a,cx+d*a,cy+a);
+      dc.drawLine(cx+d*a,cy-a,cx-d*a,cy);
+      dc.drawLine(cx+d*a,cy+a,cx-d*a,cy);
+      }
+    else{
+      d=(options&RANGESLIDER_ARROW_UP)?-1:1;
+      dc.drawLine(cx-a,cy+d*a,cx+a,cy+d*a);
+      dc.drawLine(cx-a,cy+d*a,cx,cy-d*a);
+      dc.drawLine(cx+a,cy+d*a,cx,cy-d*a);
+      }
+    }
   }
 
 

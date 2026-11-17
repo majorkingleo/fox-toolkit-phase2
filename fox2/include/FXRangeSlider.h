@@ -68,6 +68,9 @@ protected:
 protected:
   FXRangeSlider();
   void drawSliderHead(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
+
+  /// Draw the themed slider: trough, selected range and two round heads
+  void drawThemedRange(FXDCWindow& dc,FXint radius);
 private:
   FXRangeSlider(const FXRangeSlider&);
   FXRangeSlider &operator=(const FXRangeSlider&);

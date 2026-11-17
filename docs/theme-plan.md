@@ -1033,8 +1033,13 @@ trough with an accent band up to a white round head and hairline ticks, and the
 vertical ones fill from the bottom; a classic run of the same window still shows
 the `#8E8B86` and `#E2E0DA` bevels with the black ticks and the stippled slot.
 
-`FXRangeSlider` has a painter of its own and still draws the classic slot and
-heads; it is the remaining piece of the slider family.
+`FXRangeSlider` has a painter of its own and got the same treatment in the same
+pass: the trough is the same thin rounded bar, the range between the two heads
+is filled with the accent and the heads are two round buttons sharing the
+edge colours.  Checked in the same window with a horizontal and a vertical range
+slider at scale 1.0: the accent band sits between the heads and the trough
+extends past them on both sides, and a classic run still paints the same
+`#D4D0C8` slot with the `#8E8B86` and `#E2E0DA` bevels.
 
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
