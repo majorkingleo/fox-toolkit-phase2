@@ -40,7 +40,7 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb at two-thirds track width, full-track travel, hover/drag shading and no stepper arrows or arrow hit zones in rounded themes; thickness still comes from the app setting rather than a theme metric. |
+| `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb at two-thirds track width, full-track travel, hover/drag shading and no stepper arrows or arrow hit zones in rounded themes. The thickness comes from `METRIC_SCROLLBAR_WIDTH`, which the CSS importer fills from the width of the theme's scroll bar buttons, falling back on its trough; an application that calls `setBarSize()` keeps the size it asked for and a theme without the metric leaves the toolkit default alone. |
 | `FXScrollArea` | PARTIAL | Viewport background follows `ROLE_WINDOW_BG` for rounded themes; border, viewport clipping/rounding and scrollbar spacing remain. |
 | `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell. The corners are rounded and transparent through `FXWindow::setCornerRadius()` on all three backends (X11 shape, Win32 window region, Wayland alpha mask). On Wayland the popup is inflated by `METRIC_SHADOW_SIZE` and carries a translucent drop shadow; X11 and Win32 windows have no alpha channel, so they reserve no margin and draw none. Pane padding from `METRIC_PADDING` remains. |
 | `FXToolTip` | PARTIAL | Rounded frame, theme padding, a transparent outside and the Wayland drop shadow are in: the tip shapes itself through `FXWindow::setCornerRadius()` and inflates by `METRIC_SHADOW_SIZE` like a popup. X11 and Win32 have no alpha surface, so no shadow there. |

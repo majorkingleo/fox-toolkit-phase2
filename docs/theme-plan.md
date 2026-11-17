@@ -934,6 +934,22 @@ three of padding and one of border twice.  A classic run of the menu gate still
 picks the same entries, and the Wayland hello, popup, tool tip and repaint gates
 pass.
 
+**Progress: scroll bar thickness (2026-11-17).** The thickness of a scroll bar
+was the last piece of a bar that a theme could not reach: `FXScrollBar` took it
+from the application setting, so a themed scroll area kept the toolkit's fifteen
+pixels whatever the theme drew inside them.  `FXScrollBar::barSize()` now asks
+`METRIC_SCROLLBAR_WIDTH` first and falls back on the application setting when the
+theme has nothing to say, and an application that calls `setBarSize()` still wins
+because the automatic size only applies while `barauto` is set.  The CSS
+importer fills the metric from the width the theme gives its scroll bar buttons,
+which is what the theme sizes its bar by, and from the trough when it has no
+steppers; the cache schema moved to seven.
+
+Measured on the icon list test at scale 1.0 with Breeze, whose scroll bar buttons
+are fourteen pixels wide: the vertical bar went from fifteen pixels to fourteen
+and the list gained a pixel of content, while a classic run of the same test
+still shows the fifteen pixel bevel sided bar.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

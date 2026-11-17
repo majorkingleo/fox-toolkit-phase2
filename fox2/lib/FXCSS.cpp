@@ -689,6 +689,7 @@ void FXCSS::apply(FXTheme& theme) const {
   FXColor hover=0;
   FXColor clr;
   FXint shadowsize=0;
+  FXint barwidth=0;
 
   // Base colors, in order of preference
   if((clr=color(surfaces[0]))==0 && (clr=color(surfaces[1]))==0) clr=color(surfaces[2]);
@@ -738,6 +739,12 @@ void FXCSS::apply(FXTheme& theme) const {
   // around the text, both smaller than what a button asks for
   theme.setMetric(METRIC_ROW_HEIGHT,length("menu menuitem","min-height",theme.metric(METRIC_ROW_HEIGHT)));
   theme.setMetric(METRIC_ROW_PADDING,length("menu menuitem","padding",theme.metric(METRIC_ROW_PADDING)));
+
+  // Scroll bar thickness: the stepper buttons set the width of the bar, and the
+  // trough carries it when the theme has no steppers
+  barwidth=length("scrollbar button","min-width",0);
+  if(!barwidth) barwidth=length("scrollbar trough","min-width",0);
+  if(barwidth) theme.setMetric(METRIC_SCROLLBAR_WIDTH,barwidth);
 
   // Popups and menus carry the drop shadow of the popover rule
   shadowsize=shadow("popover.background");

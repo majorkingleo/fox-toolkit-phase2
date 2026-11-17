@@ -212,6 +212,9 @@ public:
   FXint getBarSize() const { return barsize; }
 
   /// Resolve the bar size at the scale of the window
+  /// Thickness of the bar, from the theme when it asks for one
+  FXint barSize() const;
+
   virtual void applyTheme(FXTheme* theme) override;
 
   /// Save to stream

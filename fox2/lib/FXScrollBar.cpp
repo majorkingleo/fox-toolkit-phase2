@@ -163,12 +163,12 @@ FXScrollBar::FXScrollBar(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts
 
 // Get default size
 FXint FXScrollBar::getDefaultWidth(){
-  return (options&SCROLLBAR_HORIZONTAL) ? barsize+barsize+(barsize>>1) : barsize;
+  return (options&SCROLLBAR_HORIZONTAL) ? barsize+barsize+(barsize>>1) : barSize();
   }
 
 
 FXint FXScrollBar::getDefaultHeight(){
-  return (options&SCROLLBAR_HORIZONTAL) ? barsize : barsize+barsize+(barsize>>1);
+  return (options&SCROLLBAR_HORIZONTAL) ? barSize() : barsize+barsize+(barsize>>1);
   }
 
 
@@ -1106,6 +1106,19 @@ void FXScrollBar::setBarSize(FXint size){
   }
 
 
+// Thickness of the bar: the theme may ask for a thinner one than the toolkit
+// default, which is what a modern theme does when it draws a flat slider
+FXint FXScrollBar::barSize() const {
+  FXTheme* theme;
+  FXint width;
+  // An application that asked for a size of its own keeps it
+  if(!barauto) return barsize;
+  theme=getApp()->getTheme();
+  width=theme->metric(METRIC_SCROLLBAR_WIDTH,getDisplayScale());
+  return 0<width ? width : barsize;
+  }
+
+
 // Resolve the bar size at the scale of the window
 void FXScrollBar::applyTheme(FXTheme* theme){
   FXint size;
@@ -1115,7 +1128,7 @@ void FXScrollBar::applyTheme(FXTheme* theme){
   borderColor=theme->color(ROLE_BORDER);
   arrowColor=theme->color(ROLE_TEXT);
   if(barauto){
-    size=FXMAX(FXint(getApp()->getScrollBarSize()*getDisplayScale()+0.5),1);
+    size=barSize();
     if(barsize!=size){
       barsize=size;
       recalc();
