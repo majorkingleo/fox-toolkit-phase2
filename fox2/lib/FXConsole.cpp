@@ -97,7 +97,7 @@ FXConsole::FXConsole(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXi
   flags|=FLAG_ENABLED|FLAG_DROPTARGET;
   defaultCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
   dragCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
-  font=getApp()->getNormalFont();
+  font=getApp()->getRoleFont(FONT_MONO);
   textColor=getApp()->getForeColor();
   selbackColor=getApp()->getSelbackColor();
   seltextColor=getApp()->getSelforeColor();
@@ -470,7 +470,7 @@ void FXConsole::applyTheme(FXTheme* theme){
   selbackColor=theme->color(ROLE_SELECTION_BG);
   seltextColor=theme->color(ROLE_SELECTION_TEXT);
   cursorColor=theme->color(ROLE_TEXT);
-  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  setFont(getApp()->retargetRoleFont(font,FONT_MONO,getWindowDPI()));
   update();
   }
 

@@ -137,7 +137,8 @@ FXbool FXTheme::load(const FXString& path){
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
-    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size","shadow_size"
+    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size",
+    "row_padding","scrollbar_width","shadow_size"
     };
   static const FXchar *fontkeys[FONT_LAST]={
     "ui","small","mono","title"

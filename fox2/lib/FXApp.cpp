@@ -1563,6 +1563,14 @@ FXFont* FXApp::getNormalFont(FXint dpivalue){
   }
 
 
+// Retarget a widget font for the DPI of its monitor, following a theme font
+// role while the widget still uses the font the theme gave it
+FXFont* FXApp::retargetRoleFont(FXFont* font,FXint role,FXint dpivalue){
+  if(font==normalFont || font==getRoleFont(role)) return getRoleFont(role,dpivalue);
+  return retargetNormalFont(font,dpivalue);
+  }
+
+
 // Return the normal font for another DPI if font is a normal font of some DPI;
 // fonts the application chose are returned unchanged
 FXFont* FXApp::retargetNormalFont(FXFont* font,FXint dpivalue){

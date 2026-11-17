@@ -441,7 +441,7 @@ FXText::FXText(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,F
   tabcolumns=8;
   barwidth=0;
   barcolumns=0;
-  font=getApp()->getNormalFont();
+  font=getApp()->getRoleFont(FONT_MONO);
   hilitestyles=nullptr;
   blink=FLAG_CARET;
   defaultCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
@@ -6217,7 +6217,7 @@ void FXText::applyTheme(FXTheme* theme){
   hilitetextColor=theme->color(ROLE_SELECTION_TEXT);
   activebackColor=theme->color(ROLE_WINDOW_BG);
 
-  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  setFont(getApp()->retargetRoleFont(font,FONT_MONO,getWindowDPI()));
   update();
   }
 

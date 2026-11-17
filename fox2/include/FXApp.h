@@ -505,6 +505,10 @@ public:
   /// If font is the normal font of any DPI return the normal font for the given DPI, else return font
   FXFont* retargetNormalFont(FXFont* font,FXint dpivalue);
 
+  /// Retarget a widget font for the given DPI, following a theme font role
+  /// while the widget still uses the font the theme gave it
+  FXFont* retargetRoleFont(FXFont* font,FXint role,FXint dpivalue);
+
   /// Begin of wait-cursor block; wait-cursor blocks may be nested.
   void beginWaitCursor();
 

@@ -1067,6 +1067,28 @@ rounded field with two rounded steppers and their dark triangles in `ROLE_TEXT`.
 rectangle of its own; the swatch stays whatever value the application put in it,
 so only the frame and the ring are the theme's business.
 
+**Progress: font roles and the metric key table (2026-11-17).** The theme has
+carried four font roles since the core landed, `ui`, `small`, `mono` and
+`title`, and nothing read the last three.  `FXApp::retargetRoleFont()` now
+retargets a widget font for the monitor DPI and follows a role while the widget
+still uses the font the theme gave it, leaving an application's own choice alone,
+and four widgets ask for their role: the text editor and the console for
+`FONT_MONO`, the status line and the tool tip for `FONT_SMALL`.  A theme that
+leaves a role empty gets the interface font, which is why the classic palette and
+the default theme are unchanged.
+
+Writing the verification up turned up a real bug in `FXTheme::load()`: the key
+table that names the metrics in a `.foxtheme` file still had twelve entries after
+`METRIC_ROW_PADDING` and `METRIC_SCROLLBAR_WIDTH` were added, so `row_padding`
+was read from the `shadow_size` key and the last two metrics were read past the
+end of the array.  The table now has an entry per metric, in the order of the
+enum.
+
+Checked with a `.foxtheme` that asks for `Noto Sans Mono` and a smaller status
+font: the editor and the console both switch to an evenly spaced face while the
+window keeps the colors and the radius the file sets.  The Wayland hello, menu,
+popup, tool tip and repaint gates pass, and every build is clean.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

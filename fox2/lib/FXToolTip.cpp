@@ -110,7 +110,7 @@ FXToolTip::FXToolTip(){
 
 // Create a toplevel window
 FXToolTip::FXToolTip(FXApp* a,FXuint opts,FXint x,FXint y,FXint w,FXint h):FXShell(a,opts,x,y,w,h),label("Tooltip"){
-  font=getApp()->getNormalFont();
+  font=getApp()->getRoleFont(FONT_SMALL);
   textColor=getApp()->getTipforeColor();
   backColor=getApp()->getTipbackColor();
   popped=false;
@@ -367,7 +367,7 @@ void FXToolTip::applyTheme(FXTheme* theme){
   FXShell::applyTheme(theme);
   textColor=theme->color(ROLE_TOOLTIP_TEXT);
   backColor=theme->color(ROLE_TOOLTIP_BG);
-  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  setFont(getApp()->retargetRoleFont(font,FONT_SMALL,getWindowDPI()));
   }
 
 

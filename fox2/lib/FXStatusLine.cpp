@@ -82,7 +82,7 @@ FXStatusLine::FXStatusLine(){
 FXStatusLine::FXStatusLine(FXComposite* p,FXObject* tgt,FXSelector sel):FXFrame(p,FRAME_SUNKEN|LAYOUT_LEFT|LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 4,4,2,2){
   flags|=FLAG_SHOWN;
   status=normal=tr("Ready.");
-  font=getApp()->getNormalFont();
+  font=getApp()->getRoleFont(FONT_SMALL);
   textColor=getApp()->getForeColor();
   textHighlightColor=getApp()->getForeColor();
   target=tgt;
@@ -199,7 +199,7 @@ void FXStatusLine::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
   textColor=theme->color(ROLE_TEXT);
   textHighlightColor=theme->color(ROLE_TEXT);
-  setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  setFont(getApp()->retargetRoleFont(font,FONT_SMALL,getWindowDPI()));
   }
 
 
