@@ -1774,6 +1774,27 @@ long FXIconList::onPaint(FXObject*,FXSelector,void* ptr){
       }
     }
 
+  // A themed icon list paints into the scroll area window itself, so it has to
+  // round the viewport as well: cut the corners out of the item background and
+  // draw the hairline the scroll area would have drawn around them.
+  FXTheme* theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(0<radius){
+    FXint sv_w=(!(options&VSCROLLER_NEVER)) ? vertical->getWidth() : 0;
+    FXint sh_h=(!(options&HSCROLLER_NEVER)) ? horizontal->getHeight() : 0;
+    FXint view_w=FXMAX(0,width-sv_w);
+    FXint view_h=FXMAX(0,height-sh_h);
+    if(0<view_w && 0<view_h){
+      FXint rr=FXMIN(radius,FXMIN(view_w,view_h)/2);
+      // The column header of a detail list covers the top of the viewport, so
+      // the top corners are the header's, not the list's: a viewport that
+      // starts above the widget keeps their arcs outside the clip
+      FXint top=(options&(ICONLIST_BIG_ICONS|ICONLIST_MINI_ICONS)) ? 0 : -(rr<<1);
+      getApp()->getStyle()->cutRoundedCorners(dc,0,top,view_w,view_h-top,rr,getParent()->getBackColor());
+      dc.setForeground(theme->color(ROLE_BORDER));
+      dc.drawRoundRectangle(0,top,view_w-1,view_h-1-top,rr,rr);
+      }
+    }
   return 1;
   }
 

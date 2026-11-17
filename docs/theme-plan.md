@@ -898,6 +898,19 @@ highlight colour is down to 35 pixels inside the title bar's own button glyphs
 `#8E8B86` and `#E2E0DA` bevels and the black inner border of the double sunken
 frames.  The Wayland hello, menu, popup, tool tip and repaint gates pass.
 
+**Progress: icon lists (2026-11-17).** `FXIconList` now cuts its viewport corners
+the same way `FXList` and `FXTreeList` do.  In icon mode that is all four
+corners.  In detail mode the column header covers the top of the viewport and
+paints square corners of its own, so only the bottom two belong to the list: the
+cut is built from a viewport rectangle that starts above the widget, which keeps
+the top arcs outside the clip instead of needing a second primitive.
+
+Checked on the icon list test at scale 1.0 with Breeze, where the list is in
+detail mode and its item background is white: the bottom left corner reads
+`#FBFBFB` then `#F4F5F5` as the antialiased cut, with the border colour
+`#C6C8C9` on the arc, and the top of the viewport is square under the header as
+intended.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
