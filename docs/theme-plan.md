@@ -950,6 +950,27 @@ are fourteen pixels wide: the vertical bar went from fifteen pixels to fourteen
 and the list gained a pixel of content, while a classic run of the same test
 still shows the fifteen pixel bevel sided bar.
 
+**Progress: arrow buttons and switchers (2026-11-17).** `FXArrowButton` painted
+its own raised and sunken rectangles and coloured the triangle with the widget's
+arrow colour, so the arrow of a combo box, a spinner or a scroll bar stepper was
+the one piece of a themed dialog that still looked classic.  A themed arrow
+button now hands the same `FXButtonState` to `FXStyle::drawButton()` that a
+button hands it, so it gets the theme face, the hover ring, the pressed tint and
+the rounded shape, and the triangle is drawn in `ROLE_TEXT`, or
+`ROLE_TEXT_DISABLED` when the button is off.  A classic arrow button keeps its
+bevels and its own arrow colour.
+
+`FXSwitcher` needed nothing of its own: it fills its background with the theme
+surface and calls `drawFrame()`, and that call reaches the style now that
+packers go through it.  The checklist entry for it was left over from before
+that change and is now marked done.
+
+Checked in the control panel at scale 1.0 with Breeze: the combo box arrow is a
+dark triangle on the white field inside the field's hairline, with the raised
+arrow box gone, and the whole window holds no `#8E8B86` or `#E2E0DA` bevel.  A
+classic run of the same window still paints 9790 pixels of `#8E8B86` and 11700
+of `#E2E0DA`.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

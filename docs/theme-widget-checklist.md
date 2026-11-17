@@ -45,7 +45,7 @@ Priority:
 | `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell. The corners are rounded and transparent through `FXWindow::setCornerRadius()` on all three backends (X11 shape, Win32 window region, Wayland alpha mask). On Wayland the popup is inflated by `METRIC_SHADOW_SIZE` and carries a translucent drop shadow; X11 and Win32 windows have no alpha channel, so they reserve no margin and draw none. Pane padding from `METRIC_PADDING` remains. |
 | `FXToolTip` | PARTIAL | Rounded frame, theme padding, a transparent outside and the Wayland drop shadow are in: the tip shapes itself through `FXWindow::setCornerRadius()` and inflates by `METRIC_SHADOW_SIZE` like a popup. X11 and Win32 have no alpha surface, so no shadow there. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, accent edge, square page-side join and hairline themed frames; left/right/bottom orientations still need a visual pass. |
-| `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
+| `FXSwitcher` | DONE | The page background follows the theme surface and the frame is drawn through the style, so a themed switcher keeps a single hairline like every other packer; the pages themselves belong to their children. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
 | `FXMenuButton`, `FXOptionMenu` | DONE | Button chrome through `FXStyle::drawButton()`, themed text/arrow/disabled colors, and themed option rows in the popup; classic rendering is unchanged for radius-0 themes. |
 | `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | PARTIAL | Themed text, active/selected rounded fill, disabled text, antialiased check/radio marks and hairline separators, and menu rows sized from the theme: the content plus `METRIC_ROW_PADDING` and `METRIC_BORDER_WIDTH` on each side, never less than `METRIC_ROW_HEIGHT`, which the CSS importer fills from the `menu menuitem` rule. Explicit per-state colors remain. |
@@ -64,7 +64,7 @@ Priority:
 | `FXPathBox`, `FXTreeListBox` | PARTIAL | Their child text field/list controls need the same entry/list treatment. |
 | `FXSpinner`, `FXRealSpinner` | PARTIAL | Field colors come from the inner text field; arrow buttons and disabled/active states need theme colors and metrics. |
 | `FXSlider`, `FXRealSlider`, `FXRangeSlider` | PARTIAL | Frame colors follow `FXFrame`, but slot and thumb colors, thickness, hover/focus states do not. |
-| `FXArrowButton` | OPEN | Arrow color, background, hover/pressed/focus chrome. |
+| `FXArrowButton` | DONE | A themed arrow button draws the chrome a button draws (`FXStyle::drawButton()`), so the arrow of a combo box or a spinner sits on the theme surface with hover and pressed shading; the triangle itself is `ROLE_TEXT` and `ROLE_TEXT_DISABLED` when the button is disabled. Classic keeps its bevels and its own arrow colour. |
 | `FXColorWell` | PARTIAL | Frame colors follow `FXFrame`; focus ring and well border need theme roles, the swatch itself is the value. |
 | `FXColorBar`, `FXColorList`, `FXColorRing`, `FXColorSelector`, `FXColorWheel` | OPEN | Mostly composed controls, but their labels, frames, focus rings and selection decorations still use constructor-time colors. |
 

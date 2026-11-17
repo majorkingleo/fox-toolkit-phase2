@@ -395,10 +395,35 @@ long FXArrowButton::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,ev);
   FXPoint    points[3];
   FXint      xx,yy,ww,hh,q;
+  FXTheme   *theme=getApp()->getTheme();
+  FXint      radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
 
+  // A themed arrow button draws the same chrome a button draws, so the arrow of
+  // a combo box or a spinner belongs to the surface around it
+  if(0<radius){
+    FXButtonState st;
+    st.enabled=isEnabled();
+    st.hover=underCursor();
+    st.down=state!=0;
+    st.engaged=false;
+    st.focused=hasFocus();
+    st.defaulted=false;
+    st.toolbar=false;
+    st.border=border;
+    st.options=options;
+    st.back=backColor;
+    st.hilite=hiliteColor;
+    st.shadow=shadowColor;
+    st.edge=borderColor;
+    st.surface=baseColor;
+    st.text=theme->color(ROLE_TEXT);
+    st.parentBack=getParent()?getParent()->getBackColor():backColor;
+    st.scale=getDisplayScale();
+    getApp()->getStyle()->drawButton(dc,0,0,width,height,st);
+    }
 
   // With borders
-  if(options&(FRAME_RAISED|FRAME_SUNKEN)){
+  else if(options&(FRAME_RAISED|FRAME_SUNKEN)){
 
     // Toolbar style
     if(options&ARROW_TOOLBAR){
@@ -481,10 +506,15 @@ long FXArrowButton::onPaint(FXObject*,FXSelector,void* ptr){
 
   if(state){ ++xx; ++yy; }
 
-  if(isEnabled())
+  if(0<radius){
+    dc.setForeground(isEnabled() ? theme->color(ROLE_TEXT) : theme->color(ROLE_TEXT_DISABLED));
+    }
+  else if(isEnabled()){
     dc.setForeground(arrowColor);
-  else
+    }
+  else{
     dc.setForeground(shadowColor);
+    }
 
   // NB Size of arrow should stretch
   if(options&ARROW_UP){
