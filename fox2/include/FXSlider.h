@@ -72,6 +72,12 @@ protected:
   FXSlider();
   void drawSliderHead(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
   void drawArrowRightLower(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint m);
+  /// Draw the themed slider
+  void drawThemedSlider(FXDCWindow& dc,FXint radius);
+
+  /// Draw the ticks of a themed slider; side 0 is left or top, 1 right or bottom
+  void drawThemedTicks(FXDCWindow& dc,FXint side,FXColor color);
+
   void drawHorzTicks(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
   void drawVertTicks(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
 private:

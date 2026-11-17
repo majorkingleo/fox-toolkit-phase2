@@ -1015,6 +1015,27 @@ and the themed frame carries 9835 pixels of the border color for the header and
 cell hairlines.  A classic run of the same test is unchanged: the same 913x515
 window, the same 8E8B86 and E2E0DA bevels and the same black header borders.
 
+**Progress: sliders (2026-11-17).** `FXSlider` drew a sunken slot with a
+stippled fill and a bevelled head, which is the one control every themed dialog
+shows at least once and which still looked like the classic palette inside an
+otherwise flat window.  A themed slider now draws a thin rounded trough in
+`ROLE_SURFACE_SHADOW`, fills the travel before the head with `ROLE_ACCENT`, puts
+one pixel hairlines where the ticks go, and sets a round head on top in
+`ROLE_BUTTON` whose edge is `ROLE_BORDER`, `ROLE_HOVER_RING` while the cursor is
+over it or `ROLE_FOCUS_RING` when the slider has focus.  An inside-bar slider,
+whose head runs in the slot, uses its slot as the trough, and the arrow variants
+draw a small triangle in `ROLE_TEXT` inside the head.  The classic painter is
+untouched and still draws the stipple and the bevels.
+
+Checked with a four slider window at scale 1.0 on Wayland, because no test
+program leaves sliders up: with Breeze the horizontal slider reads as a grey
+trough with an accent band up to a white round head and hairline ticks, and the
+vertical ones fill from the bottom; a classic run of the same window still shows
+the `#8E8B86` and `#E2E0DA` bevels with the black ticks and the stippled slot.
+
+`FXRangeSlider` has a painter of its own and still draws the classic slot and
+heads; it is the remaining piece of the slider family.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

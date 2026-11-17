@@ -651,6 +651,121 @@ long FXSlider::onAutoSlide(FXObject*,FXSelector,void* ptr){
   }
 
 
+// Draw the themed slider: a rounded trough, the part before the head filled
+// with the accent, hairlines for the ticks and a round head on top
+void FXSlider::drawThemedSlider(FXDCWindow& dc,FXint radius){
+  FXTheme *theme=getApp()->getTheme();
+  FXint scale=getDisplayScale();
+  FXint interval=range[1]-range[0];
+  FXint track,siz,start,trav,pos,fill,head;
+  FXbool enabled=isEnabled();
+  FXColor accent=theme->color(ROLE_ACCENT);
+  FXColor trough=theme->color(ROLE_SURFACE_SHADOW,enabled?THEME_STATE_NORMAL:THEME_STATE_DISABLED);
+  FXColor face=theme->color(ROLE_BUTTON,enabled?THEME_STATE_NORMAL:THEME_STATE_DISABLED);
+  FXColor edge=theme->color(ROLE_BORDER);
+  if(hasFocus()) edge=theme->color(ROLE_FOCUS_RING);
+  else if(underCursor()) edge=theme->color(ROLE_HOVER_RING);
+
+  // Ticks first, so the trough and the head paint over their ends
+  if((options&SLIDER_TICKS_LEFT)||(options&SLIDER_TICKS_TOP)) drawThemedTicks(dc,0,trough);
+  if((options&SLIDER_TICKS_RIGHT)||(options&SLIDER_TICKS_BOTTOM)) drawThemedTicks(dc,1,trough);
+
+  // The trough is a thin rounded bar across the middle of the widget, or the
+  // whole slot when the head runs inside it
+  if(options&SLIDER_INSIDE_BAR){
+    track=headSize-4;
+    }
+  else{
+    track=FXMAX(4*scale,radius);
+    }
+  if(options&SLIDER_VERTICAL){
+    siz=width-(border<<1)-padleft-padright;
+    track=FXMIN(track,siz);
+    trav=height-(border<<1)-padtop-padbottom-headSize-4;
+    start=height-border-padbottom-2-headSize;
+    pos=headPos;
+    fill=start+trav+headSize/2-pos;
+    head=FXMIN(headSize,height-(border<<1)-padtop-padbottom);
+    getApp()->getStyle()->drawRoundedRectangle(dc,(width-track)/2,border+padtop+headSize/2,track,height-(border<<1)-padtop-padbottom-headSize,track/2,trough,trough,0);
+    if(0<interval && 0<fill){
+      getApp()->getStyle()->drawRoundedRectangle(dc,(width-track)/2,pos+head/2,track,FXMIN(fill,height-(border<<1)-padtop-padbottom-headSize),track/2,accent,accent,0);
+      }
+    }
+  else{
+    siz=height-(border<<1)-padtop-padbottom;
+    track=FXMIN(track,siz);
+    trav=width-(border<<1)-padleft-padright-headSize-4;
+    start=border+padleft+2;
+    pos=headPos;
+    fill=pos+headSize/2-start;
+    head=FXMIN(headSize,width-(border<<1)-padleft-padright);
+    getApp()->getStyle()->drawRoundedRectangle(dc,border+padleft+headSize/2,(height-track)/2,width-(border<<1)-padleft-padright-headSize,track,track/2,trough,trough,0);
+    if(0<interval && 0<fill){
+      getApp()->getStyle()->drawRoundedRectangle(dc,start,(height-track)/2,FXMIN(fill,width-(border<<1)-padleft-padright-headSize),track,track/2,accent,accent,0);
+      }
+    }
+
+  // The head is a round button sitting on the trough
+  if(options&SLIDER_VERTICAL){
+    getApp()->getStyle()->drawRoundedRectangle(dc,(width-head)/2,pos,head,head,radius,face,edge,0<radius?1:0);
+    }
+  else{
+    getApp()->getStyle()->drawRoundedRectangle(dc,pos,(height-head)/2,head,head,radius,face,edge,0<radius?1:0);
+    }
+
+  // Arrows are drawn inside the head when the slider asks for them
+  if(options&(SLIDER_ARROW_LEFT|SLIDER_ARROW_RIGHT|SLIDER_ARROW_UP|SLIDER_ARROW_DOWN)){
+    FXint cx,cy,a;
+    if(options&SLIDER_VERTICAL){ cx=(width-head)/2+head/2; cy=pos+head/2; }
+    else{ cx=pos+head/2; cy=(height-head)/2+head/2; }
+    a=FXMAX(2,head/5);
+    dc.setForeground(theme->color(ROLE_TEXT,enabled?THEME_STATE_NORMAL:THEME_STATE_DISABLED));
+    if(options&(SLIDER_ARROW_LEFT|SLIDER_ARROW_RIGHT)){
+      FXint d=(options&SLIDER_ARROW_LEFT)?-1:1;
+      dc.drawLine(cx+d*a,cy-a,cx+d*a,cy+a);
+      dc.drawLine(cx+d*a,cy-a,cx-d*a,cy);
+      dc.drawLine(cx+d*a,cy+a,cx-d*a,cy);
+      }
+    else{
+      FXint d=(options&SLIDER_ARROW_UP)?-1:1;
+      dc.drawLine(cx-a,cy+d*a,cx+a,cy+d*a);
+      dc.drawLine(cx-a,cy+d*a,cx,cy-d*a);
+      dc.drawLine(cx+a,cy+d*a,cx,cy-d*a);
+      }
+    }
+  }
+
+
+// Draw the ticks of a themed slider, on the first or the second side
+void FXSlider::drawThemedTicks(FXDCWindow& dc,FXint side,FXColor color){
+  FXint interval=range[1]-range[0];
+  FXint travel,offset,v,d,p;
+  if(0<interval){
+    d=delta;
+    if(d<=0) d=incr;
+    dc.setForeground(color);
+    if(options&SLIDER_VERTICAL){
+      travel=height-(border<<1)-padtop-padbottom-headSize-4;
+      offset=height-border-padbottom-2-headSize/2;
+      for(v=range[0]; v<=range[1]; v+=d){
+        p=offset-(travel*(v-range[0]))/interval;
+        if(side) dc.fillRectangle(width-border-padright-TICKSIZE,p,TICKSIZE,1);
+        else dc.fillRectangle(border+padleft,p,TICKSIZE,1);
+        }
+      }
+    else{
+      travel=width-(border<<1)-padleft-padright-headSize-4;
+      offset=border+padleft+2+headSize/2;
+      for(v=range[0]; v<=range[1]; v+=d){
+        p=offset+(travel*(v-range[0]))/interval;
+        if(side) dc.fillRectangle(p,height-border-padbottom-TICKSIZE,1,TICKSIZE);
+        else dc.fillRectangle(p,border+padtop,1,TICKSIZE);
+        }
+      }
+    }
+  }
+
+
 // Draw horizontal ticks
 void FXSlider::drawHorzTicks(FXDCWindow& dc,FXint,FXint y,FXint,FXint){
   FXint interval=range[1]-range[0];
@@ -771,6 +886,8 @@ long FXSlider::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,(FXEvent*)ptr);
   FXint tx,ty,hhs=headSize/2;
   FXint xx,yy,ww,hh;
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
 
   // Repaint background
   dc.setForeground(backColor);
@@ -778,6 +895,13 @@ long FXSlider::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Repaint border
   drawFrame(dc,0,0,width,height);
+
+  // A themed slider is a thin rounded trough with a round head on it, not a
+  // sunken slot with a bevelled head
+  if(0<radius){
+    drawThemedSlider(dc,radius);
+    return 1;
+    }
 
   // Slot placement
   xx=border+padleft;
