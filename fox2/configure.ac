@@ -402,11 +402,15 @@ AC_MSG_CHECKING(for OpenGL support)
 AC_ARG_WITH(opengl,[  --with-opengl           choices are yes, no])
 AC_MSG_RESULT([$with_opengl])
 if test "x$with_opengl" != "xno" ; then
-AC_CHECK_HEADER(GL/gl.h,CXXFLAGS="${CXXFLAGS} -DHAVE_GL_H=1"; LIBS="${LIBS} ${LIBGL}")
-AC_CHECK_HEADER(GL/glu.h,CXXFLAGS="${CXXFLAGS} -DHAVE_GLU_H=1";)
+AC_CHECK_HEADER(GL/gl.h,[CXXFLAGS="${CXXFLAGS} -DHAVE_GL_H=1"; LIBS="${LIBS} ${LIBGL}"; GL_LIBS="${LIBGL}"])
+AC_CHECK_HEADER(GL/glu.h,[CXXFLAGS="${CXXFLAGS} -DHAVE_GLU_H=1"; GLU_LIBS="${LIBGLU}"])
+if test "x$with_wayland" = "xyes" ; then
+dnl EGL draws the GL canvases into wl_subsurfaces; there is no GLX here
+AC_CHECK_HEADER(EGL/egl.h,[CXXFLAGS="${CXXFLAGS} -DHAVE_EGL_H=1"; LIBS="${LIBS} -lEGL"; GL_LIBS="${GL_LIBS} -lEGL"])
+AC_CHECK_HEADER(wayland-egl.h,[CXXFLAGS="${CXXFLAGS} -DHAVE_WAYLAND_EGL_H=1"; LIBS="${LIBS} -lwayland-egl"; GL_LIBS="${GL_LIBS} -lwayland-egl"])
+else
 AC_CHECK_HEADER(GL/glx.h,CXXFLAGS="${CXXFLAGS} -DHAVE_GLX_H=1")
-GL_LIBS="${LIBGL}"
-GLU_LIBS="${LIBGLU}"
+fi
 fi
 
 # Substitute variables in output files

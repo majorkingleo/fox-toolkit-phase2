@@ -1145,6 +1145,33 @@ the table test on the X11 build, themed with Breeze, closing the window with a
 `WM_DELETE_WINDOW` message: it crashed on every run before the change and exits
 normally now, twice in a row under gdb.
 
+**Gates for the theme work (2026-11-17).** The first three defects of this
+workstream were found by hand, and none of the existing gates looked at themed
+pixels, so three new ones now do:
+
+- `scripts/gate-wayland-theme-table.sh` opens the table test with a themed
+  registry, keeps the frame, drags the vertical scroll bar and requires the
+  column header band to be identical afterwards.  With the cell clip reverted it
+  fails with 69433 differing bytes.
+- `scripts/gate-x11-theme-close.sh` opens the same window, closes it with a
+  `WM_DELETE_WINDOW` message through `tools/xclose.c` and requires exit status
+  zero; with the close-time `style.invalidate()` removed it reports `exit 139`.
+- `scripts/gate-wayland-theme-palette.sh` runs a set of layouts with a themed
+  registry and fails when the classic palette appears in a frame (`#D4D0C8`,
+  `#8E8B86`, `#E2E0DA`) or when the theme's surface shadow covers more than a
+  given area, which is a widget using it as a fill.  With the shutter shade
+  restored it fails with 71888 pixels of `#A0A1A1`; with the fixes in place all
+  eight layouts report zero.
+
+Running the whole family then turned up two things outside the theming work: the
+two idle gates were not executable, and the Autotools Wayland build did not
+compile at all, because `configure` never looked for EGL while `FXGLContext.cpp`
+compiles its EGL path whenever `HAVE_GL_H` is set, and `fox2/configure.ac` now
+checks `EGL/egl.h` and `wayland-egl.h` and adds them to `GL_LIBS` where CMake
+already did.  With that, `gate-wayland-autotools.sh` passes for both platforms,
+`gate-wayland-gl.sh` still needs `--opengl`, and every other gate in
+`scripts/` passes.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
