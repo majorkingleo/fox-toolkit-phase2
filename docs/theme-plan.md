@@ -702,6 +702,23 @@ Two defects were found while verifying, both fixed:
   which covers a theme or size change.  Wine applies the region to its X window
   about 0.7 s after the popup appears, which is a Wine detail, not a FOX one.
 
+**A theme is only visible in the Wine prefix the program runs in.** A plain
+`wine .../ControlPanel.exe` uses `~/.wine`, while the build scripts pass
+`WINEPREFIX=$ROOT/tmp/wineprefix`; installing into one and looking at the other
+is why the chooser looked empty after a fresh prefix.  `ControlPanel` now takes
+`--list-themes`, which prints the discovered entries as `name<TAB>source` and
+exits, so the question is answered by one command:
+
+```
+$ WINEPREFIX=tmp/wineprefix wine tmp/build-fox2-cross-cmake/bin/ControlPanel.exe --list-themes
+Breeze      C:\ProgramData\themes\Breeze
+Breeze-Dark C:\ProgramData\themes\Breeze-Dark
+```
+
+`scripts/install-wine-gtk-themes.sh` now prints the prefix it writes to, and
+picks `$WINEPREFIX` first, then `~/.wine` (what a plain `wine` uses), then
+`tmp/wineprefix`, so the themes land in the prefix the next run will use.
+
 **The theme chooser did not see them, third defect fixed.** `ControlPanel`
 only searched `XDG_DATA_HOME`, `XDG_DATA_DIRS`, `~/.local/share` and
 `~/.themes`, so a theme installed in the prefix was invisible on Windows: there

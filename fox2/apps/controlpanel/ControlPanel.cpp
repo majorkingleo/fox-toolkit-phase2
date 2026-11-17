@@ -1824,7 +1824,11 @@ int main(int argc,char **argv){
 
   // Check for help option
   if(appnm=="-h" || appnm=="--help"){
-    fxmessage("Usage: Controlpanel [applicationname [vendorname]].\n");
+    fxmessage("Usage: Controlpanel [applicationname [vendorname]]\n"
+              "       Controlpanel --list-themes\n"
+              "\n"
+              "--list-themes prints the installed themes the chooser offers, one\n"
+              "name and source path per line, and exits.\n");
     return 1;
     }
 
@@ -1836,6 +1840,17 @@ int main(int argc,char **argv){
 
   // Set application and vendor names
   main->setApplicationAndVendor(appnm,vndnm);
+
+  // Option that lists the installed themes the chooser offers; the discovery
+  // is what a packager, or a test on another platform, needs to check without
+  // clicking through the dialog
+  if(appnm=="--list-themes"){
+    for(FXint i=0; i<main->getThemeCount(); i++){
+      if(main->getThemeSource(i).empty()) continue;
+      fxmessage("%s\t%s\n",main->getThemeName(i).text(),main->getThemeSource(i).text());
+      }
+    return 0;
+    }
 
   // Start
   return application.run();

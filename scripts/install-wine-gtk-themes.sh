@@ -23,18 +23,37 @@
 # ControlPanel is quoted and escaped that way already.
 #
 # Environment:
-#   WINEPREFIX        target prefix (default: tmp/wineprefix)
+#   WINEPREFIX        target prefix; when unset, ~/.wine (the prefix a plain
+#                     "wine" command uses) if it exists, otherwise
+#                     tmp/wineprefix
 #   THEME_SOURCE_DIR  system theme directory (default: /usr/share/themes)
+#
+# Check what the chooser sees with:
+#
+#   WINEPREFIX=<prefix> wine tmp/build-fox2-cross-cmake/bin/ControlPanel.exe --list-themes
 #
 set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-PFX=${WINEPREFIX:-$ROOT/tmp/wineprefix}
 SRC=${THEME_SOURCE_DIR:-/usr/share/themes}
+
+# The prefix matters: a program only sees the themes of the prefix it runs in,
+# and with WINEPREFIX unset Wine uses ~/.wine.  Prefer what the caller set, then
+# the user's default prefix, then the one this repository's scripts use.
+PFX=${WINEPREFIX:-}
+if [ -z "$PFX" ]; then
+  if [ -d "$HOME/.wine" ]; then
+    PFX="$HOME/.wine"
+  elif [ -d "$ROOT/tmp/wineprefix" ]; then
+    PFX="$ROOT/tmp/wineprefix"
+  else
+    PFX="$ROOT/tmp/wineprefix"
+    fi
+  fi
 DEST="$PFX/drive_c/ProgramData/themes"
 
 usage(){
-  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,34p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -49,9 +68,13 @@ while [ $# -gt 0 ]; do
 [ $# -gt 0 ] || set -- Breeze Breeze-Dark
 
 [ -d "$PFX" ] || {
-  echo "error: $PFX is not a Wine prefix; run wineboot --init first." >&2
+  echo "error: $PFX is not a Wine prefix; create it with" >&2
+  echo "       WINEPREFIX=$PFX wineboot --init" >&2
   exit 1
   }
+# Which prefix is used is the first thing to check when a program does not see
+# the themes, so say it
+echo "==> prefix: $PFX"
 [ -d "$SRC" ] || {
   echo "error: $SRC does not exist; set THEME_SOURCE_DIR." >&2
   exit 1

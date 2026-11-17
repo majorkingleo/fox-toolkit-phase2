@@ -299,6 +299,15 @@ public:
   // Return vendor name
   const FXString& getVendorName() const { return vendorname; }
 
+  // Number of entries the theme chooser offers
+  FXint getThemeCount() const { return (FXint)themeentries.no(); }
+
+  // Name of one entry; the built-in presets have no source
+  FXString getThemeName(FXint index) const { return (0<=index && index<themeentries.no())?themeentries[index]->name:FXString::null; }
+
+  // Source path of one entry, empty for the built-in presets
+  FXString getThemeSource(FXint index) const { return (0<=index && index<themeentries.no())?themeentries[index]->source:FXString::null; }
+
   // Set filename from vendor and application name
   FXbool setApplicationAndVendor(const FXString& an,const FXString& vn=FXString::null);
 
