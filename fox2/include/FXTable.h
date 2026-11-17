@@ -314,6 +314,10 @@ protected:
   FXColor       cellBorderColor;        // Cell border color
   FXint         cellBorderWidth;        // Cell border width
   FXColor       cellBackColor[2][2];    // Row/Column even/odd background color
+protected:
+  /// Resolve the cell, grid and selection colors from the theme
+  void themeColors(FXTheme* theme);
+protected:
   FXint         defColWidth;            // Default column width [if uniform columns]
   FXint         defRowHeight;           // Default row height [if uniform rows]
   FXdouble      dispscale;              // Display scale the row and column sizes are for

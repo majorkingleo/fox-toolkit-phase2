@@ -789,6 +789,14 @@ FXTable::FXTable(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x
   if(options&TABLE_NO_ROWSELECT) rowhs&=~HEADER_BUTTON;
   colHeader=new FXHeader(this,this,FXTable::ID_SELECT_COLUMN_INDEX,colhs,0,0,0,DEFAULTROWHEIGHT);
   rowHeader=new FXHeader(this,this,FXTable::ID_SELECT_ROW_INDEX,rowhs,0,0,DEFAULTCOLWIDTH,0);
+
+  // A header row shares its height with the rows of the grid, so a theme that
+  // pads its headers by more than the row height would clip the row labels
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS)){
+    themeColors(getApp()->getTheme());
+    rowHeader->setPadTop(0);
+    rowHeader->setPadBottom(0);
+    }
   cornerButton=new FXButton(this,FXString::null,nullptr,this,FXTable::ID_SELECT_ALL,FRAME_RAISED|FRAME_THICK);
   flags|=FLAG_ENABLED;
   target=tgt;
@@ -1152,6 +1160,20 @@ void FXTable::layout(){
 
   // Size up row header width
   roww=(rowHeader->getLayoutHints()&LAYOUT_FIX_WIDTH) ? rowHeader->getWidth() : rowHeader->getDefaultWidth();
+
+  // A theme pads the header items, and the headers of a table are created with a
+  // fixed size, so a fixed size that is smaller than what the items need clips
+  // their labels; grow it here, where it is computed for the current items
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    if(colh<colHeader->getDefaultHeight()){
+      colh=colHeader->getDefaultHeight();
+      colHeader->setHeight(colh);
+      }
+    if(roww<rowHeader->getDefaultWidth()){
+      roww=rowHeader->getDefaultWidth();
+      rowHeader->setWidth(roww);
+      }
+    }
 
   // Place headers
   colHeader->position(roww,0,width-roww,colh);
@@ -4189,11 +4211,43 @@ void FXTable::fitColumnsToContents(FXint col,FXint nc){
   }
 
 
+// Resolve the cell, grid and selection colors from the theme
+void FXTable::themeColors(FXTheme* theme){
+  textColor=theme->color(ROLE_TEXT);
+  baseColor=theme->color(ROLE_WINDOW_BG);
+  hiliteColor=theme->color(ROLE_SURFACE_HILITE);
+  shadowColor=theme->color(ROLE_SURFACE_SHADOW);
+  borderColor=theme->color(ROLE_BORDER);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
+  gridColor=theme->color(ROLE_BORDER);
+  stippleColor=theme->color(ROLE_ACCENT);
+  cellBorderColor=theme->color(ROLE_BORDER);
+  cellBackColor[0][0]=baseColor;
+  cellBackColor[0][1]=baseColor;
+  cellBackColor[1][0]=baseColor;
+  cellBackColor[1][1]=baseColor;
+  }
+
+
 // Re-resolve the normal font for the window's monitor; the default sizes are
 // given for a display scale of 1, so rescale them and the existing rows and
 // columns when the scale of the window differs
 void FXTable::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+
+  // Cell colors: the grid is a view onto a document like the text editor, so
+  // its cells sit on the window background and are separated by hairlines
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    themeColors(theme);
+
+    // A header row shares its height with the rows of the grid, so the theme
+    // padding around a header label must not use up the whole row
+    colHeader->setPadTop(0);
+    colHeader->setPadBottom(0);
+    rowHeader->setPadTop(0);
+    rowHeader->setPadBottom(0);
+    }
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   FXdouble ratio=getDisplayScale()/dispscale;
   if(ratio!=1.0){

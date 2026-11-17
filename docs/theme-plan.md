@@ -989,6 +989,32 @@ hairline border, where a classic run of the same window holds the same page,
 8568 pixels of `#0A246A` for the selection and the `#8E8B86` and `#E2E0DA`
 bevels.
 
+**Progress: tables (2026-11-17).** `FXTable` took its cell colors from the
+palette in its constructor, which the theme does set at startup, but kept them
+across a theme switch; and its headers were created with a fixed size of twenty
+pixels while the theme pads a header item by six on each side, so a themed table
+drew its column and row labels cut in half.
+
+The cell, grid and selection colors now come from a `themeColors()` helper that
+runs both at construction and from `applyTheme()`: `ROLE_TEXT` for the text,
+`ROLE_WINDOW_BG` for the cells, `ROLE_SELECTION_BG` over `ROLE_SELECTION_TEXT`
+for the selection, `ROLE_BORDER` for the grid and the cell border and
+`ROLE_ACCENT` for the stipple.
+
+The header clipping took two fixes, because the two headers have different
+freedoms.  The column header can grow — it is its own dimension — so `layout()`
+now grows a fixed header height to what its items need, which is eighteen pixels
+of text plus six of padding and two of border on each side.  The row header
+cannot: its rows are the rows of the grid, so a themed table drops its vertical
+padding and keeps the two pixels of border, which leaves the same room the
+classic header has.
+
+Measured on the table test at scale 1.0 with Breeze the header band went from
+twenty pixels with half-height labels to thirty four with the labels complete,
+and the themed frame carries 9835 pixels of the border color for the header and
+cell hairlines.  A classic run of the same test is unchanged: the same 913x515
+window, the same 8E8B86 and E2E0DA bevels and the same black header borders.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
