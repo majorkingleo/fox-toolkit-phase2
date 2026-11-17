@@ -230,12 +230,42 @@ long FXColorBar::onPaint(FXObject*,FXSelector,void* ptr){
   dc.fillRectangle(border+padleft,border,width-padleft-padright-(border<<1),padtop);
   dc.fillRectangle(border+padleft,height-padbottom-border,width-padleft-padright-(border<<1),padbottom);
   dc.drawImage(bar,padleft+border+2,padtop+border+2);
-  drawDoubleSunkenRectangle(dc,padleft+border,padtop+border,width-padright-padleft-(border<<1),height-padbottom-padtop-(border<<1));
+
+  // A themed bar is a ramp inside a hairline with a handle on it, not a sunken
+  // well with a raised marker
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXint mx=border+padleft;
+  FXint my=border+padtop;
+  FXint mw=width-padright-padleft-(border<<1);
+  FXint mh=height-padbottom-padtop-(border<<1);
+  if(0<radius){
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawRectangle(mx,my,mw-1,mh-1);
+    }
+  else{
+    drawDoubleSunkenRectangle(dc,mx,my,mw,mh);
+    }
   drawFrame(dc,0,0,width,height);
-  if(options&COLORBAR_VERTICAL)
-    drawDoubleRaisedRectangle(dc,border+padleft+2,border+padtop+2+(FXint)((1.0f-hsv[2])*(bar->getHeight()-4)),bar->getWidth(),4);
-  else
-    drawDoubleRaisedRectangle(dc,border+padleft+2+(FXint)(hsv[2]*(bar->getWidth()-4)),border+padtop+2,4,bar->getHeight());
+  if(options&COLORBAR_VERTICAL){
+    mx=border+padleft+2;
+    my=border+padtop+2+(FXint)((1.0f-hsv[2])*(bar->getHeight()-4));
+    mw=bar->getWidth();
+    mh=4;
+    }
+  else{
+    mx=border+padleft+2+(FXint)(hsv[2]*(bar->getWidth()-4));
+    my=border+padtop+2;
+    mw=4;
+    mh=bar->getHeight();
+    }
+  if(0<radius){
+    FXColor edge=hasFocus()?theme->color(ROLE_FOCUS_RING):theme->color(ROLE_BORDER);
+    getApp()->getStyle()->drawRoundedRectangle(dc,mx,my,mw,mh,FXMIN(radius,FXMIN(mw,mh)/2),theme->color(ROLE_WINDOW_BG),edge,1);
+    }
+  else{
+    drawDoubleRaisedRectangle(dc,mx,my,mw,mh);
+    }
   return 1;
   }
 

@@ -484,18 +484,27 @@ long FXColorRing::onPaint(FXObject*,FXSelector,void* ptr){
   // Draw dial
   dc.drawImage(dial,dialx,dialy);
 
-  dc.setForeground(borderColor);
-  dc.drawArc(dialx+1,dialy,ringouter+ringouter,ringouter+ringouter,90*64,45*64);
-  dc.drawArc(dialx,dialy+1,ringouter+ringouter,ringouter+ringouter,135*64,45*64);
-  dc.setForeground(baseColor);
-  dc.drawArc(dialx-1,dialy,ringouter+ringouter,ringouter+ringouter,270*64,45*64);
-  dc.drawArc(dialx,dialy-1,ringouter+ringouter,ringouter+ringouter,315*64,45*64);
-  dc.setForeground(shadowColor);
-  dc.drawArc(dialx,dialy,ringouter+ringouter,ringouter+ringouter,45*64,180*64);
-  dc.drawArc(dialx+ringwidth,dialy+ringwidth,ringinner+ringinner,ringinner+ringinner,225*64,180*64);
-  dc.setForeground(hiliteColor);
-  dc.drawArc(dialx,dialy,ringouter+ringouter,ringouter+ringouter,225*64,180*64);
-  dc.drawArc(dialx+ringwidth,dialy+ringwidth,ringinner+ringinner,ringinner+ringinner,45*64,180*64);
+  // A themed ring is one hairline circle instead of a bevel of four arcs
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawArc(dialx,dialy,ringouter+ringouter,ringouter+ringouter,0,360*64);
+    dc.drawArc(dialx+ringwidth,dialy+ringwidth,ringinner+ringinner,ringinner+ringinner,0,360*64);
+    }
+  else{
+    dc.setForeground(borderColor);
+    dc.drawArc(dialx+1,dialy,ringouter+ringouter,ringouter+ringouter,90*64,45*64);
+    dc.drawArc(dialx,dialy+1,ringouter+ringouter,ringouter+ringouter,135*64,45*64);
+    dc.setForeground(baseColor);
+    dc.drawArc(dialx-1,dialy,ringouter+ringouter,ringouter+ringouter,270*64,45*64);
+    dc.drawArc(dialx,dialy-1,ringouter+ringouter,ringouter+ringouter,315*64,45*64);
+    dc.setForeground(shadowColor);
+    dc.drawArc(dialx,dialy,ringouter+ringouter,ringouter+ringouter,45*64,180*64);
+    dc.drawArc(dialx+ringwidth,dialy+ringwidth,ringinner+ringinner,ringinner+ringinner,225*64,180*64);
+    dc.setForeground(hiliteColor);
+    dc.drawArc(dialx,dialy,ringouter+ringouter,ringouter+ringouter,225*64,180*64);
+    dc.drawArc(dialx+ringwidth,dialy+ringwidth,ringinner+ringinner,ringinner+ringinner,45*64,180*64);
+    }
 
   // Draw spots
   dc.setForeground(FXRGB(255,255,255));

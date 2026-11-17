@@ -285,16 +285,24 @@ long FXColorWheel::onPaint(FXObject*,FXSelector,void* ptr){
   dc.fillRectangle(dialx,border,dial->getWidth(),dialy-border);
   dc.fillRectangle(dialx,dialy+dial->getHeight(),dial->getWidth(),height-border-dialy-dial->getHeight());
   dc.drawImage(dial,dialx,dialy);
-  dc.setForeground(borderColor);
-  dc.drawArc(dialx+1,dialy,d,d,90*64,45*64);
-  dc.drawArc(dialx,dialy+1,d,d,135*64,45*64);
-  dc.setForeground(baseColor);
-  dc.drawArc(dialx-1,dialy,d,d,270*64,45*64);
-  dc.drawArc(dialx,dialy-1,d,d,315*64,45*64);
-  dc.setForeground(shadowColor);
-  dc.drawArc(dialx,dialy,d,d,45*64,180*64);
-  dc.setForeground(hiliteColor);
-  dc.drawArc(dialx,dialy,d,d,225*64,180*64);
+  // A themed wheel is one hairline circle instead of a bevel of four arcs
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawArc(dialx,dialy,d,d,0,360*64);
+    }
+  else{
+    dc.setForeground(borderColor);
+    dc.drawArc(dialx+1,dialy,d,d,90*64,45*64);
+    dc.drawArc(dialx,dialy+1,d,d,135*64,45*64);
+    dc.setForeground(baseColor);
+    dc.drawArc(dialx-1,dialy,d,d,270*64,45*64);
+    dc.drawArc(dialx,dialy-1,d,d,315*64,45*64);
+    dc.setForeground(shadowColor);
+    dc.drawArc(dialx,dialy,d,d,45*64,180*64);
+    dc.setForeground(hiliteColor);
+    dc.drawArc(dialx,dialy,d,d,225*64,180*64);
+    }
   dc.setForeground(FXRGB(255,255,255));
   dc.fillArc(dialx+spotx-3,dialy+spoty-3,7,7,0,360*64);
   dc.setForeground(FXRGB(0,0,0));

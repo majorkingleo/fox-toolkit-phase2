@@ -73,6 +73,8 @@ FXIMPLEMENT(FXColorItem,FXListItem,nullptr,0)
 // Draw item
 void FXColorItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FXint hh) const {
   FXFont *font=list->getFont();
+  FXTheme *theme=list->getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   FXint th=0;
   if(!label.empty()) th=font->getFontHeight();
   if(isSelected())
@@ -81,12 +83,13 @@ void FXColorItem::draw(const FXList* list,FXDC& dc,FXint xx,FXint yy,FXint ww,FX
     dc.setForeground(list->getBackColor());
   dc.fillRectangle(xx,yy,ww,hh);
   if(hasFocus()){
+    if(themed) dc.setForeground(theme->color(ROLE_FOCUS_RING));
     dc.drawFocusRectangle(xx+1,yy+1,ww-2,hh-2);
     }
   xx+=SIDE_SPACING/2;
   dc.setForeground(color);
   dc.fillRectangle(xx,yy+(hh-SWATCH_HEIGHT)/2,SWATCH_WIDTH,SWATCH_HEIGHT);
-  dc.setForeground(FXRGB(0,0,0));
+  dc.setForeground(themed ? theme->color(ROLE_BORDER) : FXRGB(0,0,0));
   dc.drawRectangle(xx,yy+(hh-SWATCH_HEIGHT)/2,SWATCH_WIDTH,SWATCH_HEIGHT);
   xx+=ICON_SPACING+SWATCH_WIDTH;
   if(!label.empty()){

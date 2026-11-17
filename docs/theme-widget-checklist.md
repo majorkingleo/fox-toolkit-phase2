@@ -67,7 +67,7 @@ Priority:
 | `FXRangeSlider` | DONE | A themed range slider draws the same trough as a slider, fills the range between its two heads with `ROLE_ACCENT` and puts two round heads on it; the heads share the slider's edge colours and the arrow variants draw their triangle in `ROLE_TEXT`. |
 | `FXArrowButton` | DONE | A themed arrow button draws the chrome a button draws (`FXStyle::drawButton()`), so the arrow of a combo box or a spinner sits on the theme surface with hover and pressed shading; the triangle itself is `ROLE_TEXT` and `ROLE_TEXT_DISABLED` when the button is disabled. Classic keeps its bevels and its own arrow colour. |
 | `FXColorWell` | PARTIAL | The frame follows `FXFrame` and the focus ring is the shared themed ring instead of a dashed rectangle; the swatch itself is the value the application set, so only its frame and ring are themeable. |
-| `FXColorBar`, `FXColorList`, `FXColorRing`, `FXColorSelector`, `FXColorWheel` | OPEN | Mostly composed controls, but their labels, frames, focus rings and selection decorations still use constructor-time colors. |
+| `FXColorBar`, `FXColorList`, `FXColorRing`, `FXColorSelector`, `FXColorWheel` | DONE | A themed color bar is the ramp inside a hairline with a rounded handle on it, drawn in `ROLE_WINDOW_BG` over `ROLE_BORDER`, or `ROLE_FOCUS_RING` when the bar has focus; the wheel and the ring replace their four-arc bevel with one hairline circle in `ROLE_BORDER`; the color list draws its swatches with a `ROLE_BORDER` frame and its focus rectangle in `ROLE_FOCUS_RING` on top of the themed list rows. The selector is composed of these, so it follows. |
 
 ## P1/P2: specialised and display widgets
 

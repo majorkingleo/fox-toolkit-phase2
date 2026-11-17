@@ -1172,6 +1172,28 @@ already did.  With that, `gate-wayland-autotools.sh` passes for both platforms,
 `gate-wayland-gl.sh` still needs `--opengl`, and every other gate in
 `scripts/` passes.
 
+**Progress: the color widgets (2026-11-17).** `FXColorBar`, `FXColorList`,
+`FXColorRing`, `FXColorWheel` and the selector they compose were the last
+controls that painted a bevel of their own: the bar put a sunken well around its
+ramp with a raised marker, the wheel and the ring drew their rim from four arcs
+in the border, shadow, highlight and surface colors, and the list framed its
+swatches in black.
+
+A themed bar is now the ramp inside a single hairline with a rounded handle on
+it, drawn in the window background over the border color and in the focus ring
+when the bar has focus; the wheel and the ring draw one hairline circle instead
+of the bevel; the color list frames its swatches in `ROLE_BORDER` and draws its
+focus rectangle in `ROLE_FOCUS_RING`.  The selector is composed of these, so it
+follows without a line of its own.
+
+The color widgets had no test program that stayed up, so the gate could not see
+them: `tests/colordemo.cpp` is new and shows the bar, the wheel, the ring and the
+list in one window, and it joined the default set of
+`scripts/gate-wayland-theme-palette.sh`.  On the themed run the four layouts
+report no classic palette at all and the color demo reports five pixels of the
+theme's surface shadow, from the handle's edge; a classic run of the same window
+still paints 4003 pixels of `#8E8B86` and 3494 of `#E2E0DA` for the bevels.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
