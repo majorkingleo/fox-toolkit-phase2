@@ -5,7 +5,7 @@
 It is a personal test project that takes the [FOX toolkit](https://fox-toolkit.org/)
 (release 1.7.95) and tries to teach it to follow the look of the modern desktop:
 the same flat surfaces, hairline borders, rounded corners and accent colours that
-GTK, KDE and Qt applications have had for years.  FOX itself is by
+GTK and Qt applications have had for years.  FOX itself is by
 Jeroen van der Zijp, it lives at **[fox-toolkit.org](https://fox-toolkit.org/)**,
 and nothing here is official, endorsed or supported by him.
 
@@ -25,12 +25,12 @@ like it belongs, without losing what makes FOX nice?**
 ## Goals
 
 * **Take the theme from the desktop.**  Instead of inventing a look, read the
-  theme that is already installed — a GTK theme, a KDE colour scheme, or a small
-  text theme file — and use its colours, fonts, spacing and corner radius.
+  theme that is already installed — a GTK theme, or a small text theme file — and
+  use its colours, fonts, spacing and corner radius.
 * **Change nothing when no theme is chosen.**  The classic FOX palette must stay
   pixel for pixel the way it was.  Themed mode is something you switch on.
-* **All three platforms.**  The same code has to work on X11, on Wayland and on
-  Windows, with the same result.
+* **Three platforms, one code base.**  Native X11, native Win32, and Wayland
+  without going through XWayland.
 * **No heavy new dependency.**  If it cannot be done with what FOX already links
   against, it is not done.
 
@@ -40,10 +40,16 @@ like it belongs, without losing what makes FOX nice?**
   menus, tabs, scroll bars, sliders, gauges, calendars, colour pickers, rulers,
   dialogs, tool tips, popups and the client side title bar.  The classic palette
   is still exactly there when no theme is selected.
+* **Light and dark.**  A dark theme is imported like any other and the whole
+  application follows, including menus and tool tips.
 * **You can pick an installed theme.**  The control panel lists every GTK theme
-  and KDE colour scheme it finds, applies it live, and remembers the choice.
-* **It scales.**  The theme drives the sizes as well as the colours, so a scaled
-  display gets scaled controls, not stretched ones.
+  it finds, applies it live, and remembers the choice.
+* **It scales.**  High DPI is handled on all three platforms: Windows runs
+  per-monitor DPI aware and realises fonts for the monitor a window is on, and a
+  scaled theme produces scaled controls, not stretched ones.
+* **OpenGL still works on Wayland.**  GL canvases are drawn into Wayland
+  subsurfaces, so a 3D application keeps its own fast native surface instead of
+  falling back to something slower.
 * **It is checked, not just eyeballed.**  A set of automatic checks drives the
   programs, compares frames and fails the build when a piece of old chrome
   sneaks back in — including checks that no classic bevel colour appears in a
@@ -57,12 +63,37 @@ like it belongs, without losing what makes FOX nice?**
 |---|---|
 | ![Classic header test](screenshots/readme/classic-header.png) | ![Themed header test](screenshots/readme/themed-header.png) |
 
-### A few controls up close
+### Applications
+
+| | |
+|---|---|
+| ![The adie editor](screenshots/readme/themed-adie.png) | ![The calculator](screenshots/readme/themed-calculator.png) |
+| `adie`, the FOX editor, with its tool bar, editor page, scroll bars and status line | the calculator, every button rounded and flat |
+
+### Dark themes
+
+The theme is imported, not approximated, so a dark theme changes the surfaces,
+the text, the menus and the tool tips together.
+
+| | |
+|---|---|
+| ![Dark desktop setup panel](screenshots/readme/dark-controlpanel.png) | ![Dark adie](screenshots/readme/dark-adie.png) |
+
+### More controls
 
 | | |
 |---|---|
 | ![Desktop setup panel](screenshots/readme/themed-controlpanel.png) | ![Color widgets](screenshots/readme/themed-colors.png) |
 | ![Sliders](screenshots/readme/themed-sliders.png) | ![Gauges](screenshots/readme/themed-gauges.png) |
+
+### OpenGL on Wayland
+
+![The OpenGL test on Wayland](screenshots/readme/gltest-wayland.png)
+
+The OpenGL test application running on a Wayland compositor: the 3D scene lives
+in its own EGL surface on a subsurface, while the window around it — menus,
+buttons, spinners, radios — is themed like everything else.  This is a capture of
+the real composited screen, not a client side dump.
 
 ## Try it
 
@@ -93,9 +124,9 @@ theme=/usr/share/themes/Breeze
 EOF
 ```
 
-`theme=` takes a GTK theme directory, a KDE colour scheme, a small text theme
-file, `classic` for the old palette, `dark` for a dark interpretation of it, or
-`auto` to follow the desktop's light/dark preference.
+`theme=` takes a GTK theme directory, a small text theme file, `classic` for the
+old palette, `dark` for a dark interpretation of it, or `auto` to follow the
+desktop's light/dark preference.
 
 ## Where it stands
 
@@ -112,5 +143,5 @@ are harder than they look, are in [docs/](docs/).
 * FOX is © Jeroen van der Zijp and lives at <https://fox-toolkit.org/>.  This tree
   is his release 1.7.95 with changes applied, and keeps its licence
   ([LGPL 3](LICENSE)).
-* Theme import leans on the work of the GTK, KDE and Qt designers whose themes
-  are being read — the colours in the screenshots are Breeze's.
+* Theme import leans on the work of the GTK and Qt designers whose themes are
+  being read — the colours in the screenshots are Breeze's.
