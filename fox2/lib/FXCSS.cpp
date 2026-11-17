@@ -734,6 +734,11 @@ void FXCSS::apply(FXTheme& theme) const {
   theme.setMetric(METRIC_FOCUS_WIDTH,length("button","outline-width",theme.metric(METRIC_FOCUS_WIDTH)));
   theme.setMetric(METRIC_CHECK_SIZE,length("check","min-width",theme.metric(METRIC_CHECK_SIZE)));
 
+  // Menu rows have metrics of their own: a minimum height and the padding
+  // around the text, both smaller than what a button asks for
+  theme.setMetric(METRIC_ROW_HEIGHT,length("menu menuitem","min-height",theme.metric(METRIC_ROW_HEIGHT)));
+  theme.setMetric(METRIC_ROW_PADDING,length("menu menuitem","padding",theme.metric(METRIC_ROW_PADDING)));
+
   // Popups and menus carry the drop shadow of the popover rule
   shadowsize=shadow("popover.background");
   if(!shadowsize) shadowsize=shadow("popover");

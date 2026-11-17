@@ -911,6 +911,29 @@ detail mode and its item background is white: the bottom left corner reads
 `#C6C8C9` on the arc, and the top of the viewport is square under the header as
 intended.
 
+**Progress: menu rows from the theme (2026-11-17).** Menu items were the last
+row-shaped controls with a hard coded height: every `FXMenuCaption` and its
+subclasses added five pixels around the text (four for a menu bar title, and a
+floor of twenty for a check or radio row), so a themed menu kept the height of
+the classic palette whatever the theme asked for.
+
+`FXMenuCaption::menuRowHeight()` now owns that arithmetic for the whole family.
+A themed row is the text or the icon, plus `METRIC_ROW_PADDING` and
+`METRIC_BORDER_WIDTH` on each side, and never less than `METRIC_ROW_HEIGHT`;
+the classic case keeps the old numbers exactly, which is why the class still
+takes the classic padding as an argument.  The CSS importer fills the two new
+metrics from the `menu menuitem` rule, so Breeze's `min-height: 4.5mm` and
+`padding: 0.75mm 2mm` land as seventeen and three, while `METRIC_ROW_PADDING`
+defaults to two for the importers that do not set it; the cache schema moved to
+six because the metric table grew.
+
+Measured on the menu test under sway at scale 1.0 with Breeze: the File menu
+surface went from 99x144 to 99x120 and the row pitch from thirty pixels to
+twenty four, which is what GTK draws for the same theme: eighteen for the text,
+three of padding and one of border twice.  A classic run of the menu gate still
+picks the same entries, and the Wayland hello, popup, tool tip and repaint gates
+pass.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

@@ -106,6 +106,14 @@ public:
   /// Return default height
   virtual FXint getDefaultHeight() override;
 
+  /// True if the theme wants menu rows laid out from its metrics
+  FXbool isMenuRowThemed() const;
+
+  /// Height of a menu row holding text and an icon; the themed case pads the
+  /// content and never goes below the theme's row height, while the classic
+  /// case keeps the given breathing room around the content
+  FXint menuRowHeight(FXint text,FXint icon,FXint classicPad=5) const;
+
   /// Change text and hotkey for this menu
   void setTextAndHotKey(const FXString& hotkeytext);
 

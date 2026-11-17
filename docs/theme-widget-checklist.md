@@ -48,7 +48,7 @@ Priority:
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
 | `FXMenuButton`, `FXOptionMenu` | DONE | Button chrome through `FXStyle::drawButton()`, themed text/arrow/disabled colors, and themed option rows in the popup; classic rendering is unchanged for radius-0 themes. |
-| `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | PARTIAL | Themed text, active/selected rounded fill, disabled text, antialiased check/radio marks and hairline separators; menu row height/padding and explicit per-state colors remain. |
+| `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | PARTIAL | Themed text, active/selected rounded fill, disabled text, antialiased check/radio marks and hairline separators, and menu rows sized from the theme: the content plus `METRIC_ROW_PADDING` and `METRIC_BORDER_WIDTH` on each side, never less than `METRIC_ROW_HEIGHT`, which the CSS importer fills from the `menu menuitem` rule. Explicit per-state colors remain. |
 
 ## P1: common input and data widgets
 

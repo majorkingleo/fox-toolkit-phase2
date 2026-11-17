@@ -175,11 +175,32 @@ FXint FXMenuCaption::getDefaultWidth(){
 
 // Get default height
 FXint FXMenuCaption::getDefaultHeight(){
-  FXint th,ih;
-  th=ih=0;
-  if(!label.empty()) th=font->getFontHeight()+5;
-  if(icon) ih=getScaledIcon(icon)->getHeight()+5;
-  return FXMAX(th,ih);
+  return menuRowHeight(label.empty() ? 0 : font->getFontHeight(), icon ? getScaledIcon(icon)->getHeight() : 0);
+  }
+
+
+// True if the theme wants menu rows laid out from its metrics
+FXbool FXMenuCaption::isMenuRowThemed() const {
+  return 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  }
+
+
+// Height of a menu row holding text and an icon
+FXint FXMenuCaption::menuRowHeight(FXint text,FXint icon,FXint classicPad) const {
+  FXint scale=getDisplayScale();
+  if(isMenuRowThemed()){
+    FXTheme* theme=getApp()->getTheme();
+    FXint pad=theme->metric(METRIC_ROW_PADDING,scale);
+    FXint border=theme->metric(METRIC_BORDER_WIDTH,scale);
+    FXint h=0;
+    if(0<text) h=text+((pad+border)<<1);
+    if(0<icon) h=FXMAX(h,icon+((pad+border)<<1));
+    return FXMAX(h,theme->metric(METRIC_ROW_HEIGHT,scale));
+    }
+  FXint h=0;
+  if(0<text) h=text+classicPad;
+  if(0<icon) h=FXMAX(h,icon+classicPad);
+  return h;
   }
 
 

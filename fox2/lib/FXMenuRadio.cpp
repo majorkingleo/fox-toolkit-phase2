@@ -127,9 +127,8 @@ FXint FXMenuRadio::getDefaultWidth(){
 
 // Get default height
 FXint FXMenuRadio::getDefaultHeight(){
-  FXint th=0;
-  if(!label.empty() || !accel.empty()) th=font->getFontHeight()+5;
-  return FXMAX(th,20);
+  FXint h=menuRowHeight((label.empty() && accel.empty()) ? 0 : font->getFontHeight(),0);
+  return isMenuRowThemed() ? h : FXMAX(h,20);
   }
 
 

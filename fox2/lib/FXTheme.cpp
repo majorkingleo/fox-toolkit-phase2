@@ -94,6 +94,7 @@ void FXTheme::setClassic(){
   metrics[METRIC_CORNER_RADIUS]=0;
   metrics[METRIC_ANIMATION_TIME]=0;
   metrics[METRIC_CHECK_SIZE]=13;
+  metrics[METRIC_ROW_PADDING]=2;
   metrics[METRIC_SHADOW_SIZE]=0;
   scale=1.0;
 

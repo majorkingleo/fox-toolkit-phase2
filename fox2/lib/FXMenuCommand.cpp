@@ -148,11 +148,7 @@ FXint FXMenuCommand::getDefaultWidth(){
 
 // Get default height
 FXint FXMenuCommand::getDefaultHeight(){
-  FXint th,ih;
-  th=ih=0;
-  if(!label.empty() || !accel.empty()) th=font->getFontHeight()+5;
-  if(icon) ih=getScaledIcon(icon)->getHeight()+5;
-  return FXMAX(th,ih);
+  return menuRowHeight((label.empty() && accel.empty()) ? 0 : font->getFontHeight(), icon ? getScaledIcon(icon)->getHeight() : 0);
   }
 
 
