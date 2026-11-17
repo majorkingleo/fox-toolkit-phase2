@@ -193,7 +193,7 @@ long FXColorWell::onPaint(FXObject*,FXSelector,void* ptr){
   points[2].y=padtop+border;
   dc.fillPolygon(points,3);
   if(hasFocus()){
-    dc.drawFocusRectangle(padleft+border+1,padtop+border+1,width-padright-padleft-(border<<1)-2,height-padbottom-padtop-(border<<1)-2);
+    getApp()->getStyle()->drawFocusRing(dc,padleft+border+1,padtop+border+1,width-padright-padleft-(border<<1)-2,height-padbottom-padtop-(border<<1)-2,getDisplayScale());
     }
   return 1;
   }

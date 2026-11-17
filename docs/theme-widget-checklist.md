@@ -60,13 +60,13 @@ Priority:
 | `FXHeader` | PARTIAL | Text color and header height are themed, and a themed header drops the raised and sunken buttons: the items are flat and separated by a one pixel hairline in `ROLE_BORDER`, drawn after the items because an item background covers its whole rectangle. Hover and pressed decoration and the sort arrow colors remain. |
 | `FXRuler`, `FXRulerView` | PARTIAL | Tick/number text role and tick colors; font is already retargeted. |
 | `FXCalendarView`, `FXCalendar` | PARTIAL | Today/title/day/other-day/weekend colors and header/selection states; only the font is currently retargeted. |
-| `FXConsole` | OPEN | Text, selection and cursor roles; background; frame/scrollbars. |
+| `FXConsole` | DONE | The page takes `ROLE_WINDOW_BG` unless the application set a background and the theme rounds corners, with `ROLE_TEXT` text, `ROLE_SELECTION_BG`/`ROLE_SELECTION_TEXT` selection and a `ROLE_TEXT` caret. The paint also stops clearing every expose with the red debug fill it was ported with; it clears with the background colour. Scroll bars are the themed ones. |
 | `FXPathBox`, `FXTreeListBox` | PARTIAL | Their child text field/list controls need the same entry/list treatment. |
-| `FXSpinner`, `FXRealSpinner` | PARTIAL | Field colors come from the inner text field; arrow buttons and disabled/active states need theme colors and metrics. |
+| `FXSpinner`, `FXRealSpinner` | DONE | Composed of a themed text field and two themed arrow buttons, so the field, the arrows, their hover and pressed shading and the disabled colours all follow the theme. |
 | `FXSlider`, `FXRealSlider` | DONE | A themed slider is a thin rounded trough in `ROLE_SURFACE_SHADOW` with the travel before the head filled with `ROLE_ACCENT`, hairlines for the ticks, and a round head on `ROLE_BUTTON` whose edge is `ROLE_BORDER`, `ROLE_HOVER_RING` under the cursor or `ROLE_FOCUS_RING` with focus. An inside-bar slider uses its slot as the trough, and the arrow variants draw their triangle in `ROLE_TEXT` inside the head. The frame comes from `FXFrame`. |
 | `FXRangeSlider` | DONE | A themed range slider draws the same trough as a slider, fills the range between its two heads with `ROLE_ACCENT` and puts two round heads on it; the heads share the slider's edge colours and the arrow variants draw their triangle in `ROLE_TEXT`. |
 | `FXArrowButton` | DONE | A themed arrow button draws the chrome a button draws (`FXStyle::drawButton()`), so the arrow of a combo box or a spinner sits on the theme surface with hover and pressed shading; the triangle itself is `ROLE_TEXT` and `ROLE_TEXT_DISABLED` when the button is disabled. Classic keeps its bevels and its own arrow colour. |
-| `FXColorWell` | PARTIAL | Frame colors follow `FXFrame`; focus ring and well border need theme roles, the swatch itself is the value. |
+| `FXColorWell` | PARTIAL | The frame follows `FXFrame` and the focus ring is the shared themed ring instead of a dashed rectangle; the swatch itself is the value the application set, so only its frame and ring are themeable. |
 | `FXColorBar`, `FXColorList`, `FXColorRing`, `FXColorSelector`, `FXColorWheel` | OPEN | Mostly composed controls, but their labels, frames, focus rings and selection decorations still use constructor-time colors. |
 
 ## P1/P2: specialised and display widgets

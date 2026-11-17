@@ -1041,6 +1041,26 @@ slider at scale 1.0: the accent band sits between the heads and the trough
 extends past them on both sides, and a classic run still paints the same
 `#D4D0C8` slot with the `#8E8B86` and `#E2E0DA` bevels.
 
+**Progress: console, spinner and colour well (2026-11-17).** Three small ones in
+one pass, found while looking for the next open entry in the checklist.
+
+`FXConsole` kept the palette colours it was constructed with, and its `onPaint()`
+cleared every expose with a red fill before drawing the log over it, which is a
+debug fill the port brought along in commit 41ffbbb; it clears with the
+background colour now.  The page takes `ROLE_WINDOW_BG` unless the application set
+a background of its own and the theme rounds its corners, the text is
+`ROLE_TEXT`, the selection `ROLE_SELECTION_BG` over `ROLE_SELECTION_TEXT` and the
+caret `ROLE_TEXT`.  On the console test at scale 1.0 with Breeze the page is
+588240 pixels of `#FFFFFF` inside a hairline frame with a themed scroll bar.
+
+`FXSpinner` turned out to need nothing: it is a text field with two arrow
+buttons, and both were already themed, so a spinner in a test window draws a
+rounded field with two rounded steppers and their dark triangles in `ROLE_TEXT`.
+
+`FXColorWell` now asks for the shared focus ring instead of drawing a dashed
+rectangle of its own; the swatch stays whatever value the application put in it,
+so only the frame and the ring are the theme's business.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

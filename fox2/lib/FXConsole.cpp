@@ -333,8 +333,9 @@ long FXConsole::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,event);
   dc.setFont(font);
 
-dc.setForeground(FXRGB(255,0,0));
-dc.fillRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
+  // Clear the whole exposed area; the margins below cover only their strips
+  dc.setForeground(backColor);
+  dc.fillRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
 
   // Viewport
   FXint vw=getVisibleWidth();
@@ -452,7 +453,17 @@ void FXConsole::setVisibleColumns(FXint cols){
 // Re-resolve the normal font for the window's monitor
 void FXConsole::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+
+  // The console is a view onto a log, so its page takes the window background
+  if(!backColorOverride && 0<theme->metric(METRIC_CORNER_RADIUS)){
+    backColor=theme->color(ROLE_WINDOW_BG);
+    }
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
+  cursorColor=theme->color(ROLE_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  update();
   }
 
 
