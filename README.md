@@ -88,12 +88,15 @@ the text, the menus and the tool tips together.
 
 ### OpenGL on Wayland
 
-![The OpenGL test on Wayland](screenshots/readme/gltest-wayland.png)
+| | |
+|---|---|
+| ![glviewer on Wayland](screenshots/readme/glviewer-wayland.png) | ![The OpenGL test on Wayland](screenshots/readme/gltest-wayland.png) |
+| `glviewer` showing a model, with its own menu, tool bars and a control panel | the OpenGL test scene with its buttons, spinner and radios |
 
-The OpenGL test application running on a Wayland compositor: the 3D scene lives
-in its own EGL surface on a subsurface, while the window around it — menus,
-buttons, spinners, radios — is themed like everything else.  This is a capture of
-the real composited screen, not a client side dump.
+Both are FOX applications running on a Wayland compositor: the 3D scene lives in
+its own EGL surface on a subsurface, while the window around it — menus, tool
+bars, tabs, sliders, spinners, radios — is themed like everything else, and the
+title bar is FOX's own.
 
 ## Try it
 
