@@ -5,7 +5,8 @@
 # This is the fast compile check for the Win32 backend on the build host;
 # the resulting DLL and test programs can be smoke-tested with Wine.  The
 # build is out-of-tree in tmp/build-fox2-cross, or in
-# tmp/build-fox2-cross-cmake with --cmake.
+# tmp/build-fox2-cross-cmake with --cmake.  The MinGW runtime DLLs are copied
+# next to the programs, so the folder runs without WINEPATH.
 #
 #   ./scripts/build-fox2-mingw-cross.sh
 #
@@ -40,7 +41,7 @@ use_cmake=no
 run_seconds=5
 
 usage(){
-  sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -71,6 +72,11 @@ if [ -n "${MSYSTEM-}" ]; then
 command -v "$HOST-g++" >/dev/null 2>&1 || {
   echo "error: $HOST-g++ not found." >&2
   echo "       run ./scripts/install-cachyos-mingw.sh first." >&2
+  exit 1
+  }
+command -v "$HOST-objdump" >/dev/null 2>&1 || {
+  echo "error: $HOST-objdump not found; the MinGW binutils are needed to find" >&2
+  echo "       the runtime DLLs of the build." >&2
   exit 1
   }
 if [ "$use_cmake" = yes ]; then
@@ -163,6 +169,35 @@ run(){
   "$@" 2>&1 | tee -a "$LOG"
   }
 
+# The programs need the MinGW runtime DLLs (libstdc++-6, libgcc_s_seh-1,
+# libwinpthread-1), which live in the sysroot and not in the build tree.  Copy
+# every DLL that objdump reports and the sysroot provides next to the programs,
+# so the folder runs under Wine without WINEPATH and can be copied to a Windows
+# machine as it is.  Three passes catch the DLLs that a copied DLL needs.
+copy_runtime_dlls(){
+  local dir f name pass n
+  [ -d "$SYSROOT/bin" ] || return 0
+  for pass in 1 2 3; do
+    n=0
+    for dir in "$@"; do
+      [ -d "$dir" ] || continue
+      for f in "$dir"/*.exe "$dir"/*.dll; do
+        [ -f "$f" ] || continue
+        while read -r name; do
+          [ -n "$name" ] || continue
+          [ -f "$dir/$name" ] && continue
+          [ -f "$SYSROOT/bin/$name" ] || continue
+          cp -- "$SYSROOT/bin/$name" "$dir/" || return 1
+          echo "==> copied $name"
+          n=$((n+1))
+        done < <("$HOST-objdump" -p "$f" 2>/dev/null | sed -n 's/^[[:space:]]*DLL Name: //p')
+      done
+    done
+    [ "$n" -eq 0 ] && break
+  done
+  return 0
+  }
+
 # The generated configure is stale when its autotools inputs are newer
 needs_autoreconf(){
   [ -x "$SRC/configure" ] || return 0
@@ -240,6 +275,9 @@ if [ -f apps/Makefile ]; then
 echo "==> build utilities"
 run make -j"$jobs" -C utils
 
+echo "==> runtime DLLs"
+copy_runtime_dlls "$BUILD/lib/.libs" "$BUILD/tests/.libs" "$BUILD/apps/calculator/.libs" "$BUILD/utils/.libs" "$BUILD/utils"
+
 echo
 echo "==> artifacts"
 ls -l lib/.libs/*.dll lib/.libs/*.dll.a 2>/dev/null || true
@@ -270,6 +308,9 @@ else
 
 echo "==> build library, tests, applications and tools"
 run cmake --build "$BUILD" -j "$jobs"
+
+echo "==> runtime DLLs"
+copy_runtime_dlls "$BUILD/bin"
 
 echo
 echo "==> artifacts"

@@ -1376,7 +1376,9 @@ and system includes per platform and stays. The Wayland module is planned in
   Wine can start `hello`, `button` and `dpi` from it, but it does not replace
   the native Windows run for DPI behavior. `--cmake` builds the same tree with
   CMake and Ninja into `tmp/build-fox2-cross-cmake` instead of Autotools; all
-  programs land in its `bin/` next to the DLL, and `--run` finds them there.
+  programs land in its `bin/` next to the DLL, the MinGW runtime DLLs are copied
+  there as well so the folder runs without `WINEPATH`, and `--run` finds them
+  there.
 - On a Windows host the X11 backend is built in WSL (Ubuntu with `g++`, `cmake`,
   `ninja`, `libx11-dev`; WSLg provides the display):
 
