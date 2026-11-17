@@ -278,6 +278,7 @@ void FXRuler::detach(){
 // Apply theme; keep the number font matched to the window's DPI
 void FXRuler::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  textColor=theme->color(ROLE_TEXT);
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
   }
 
@@ -445,6 +446,15 @@ void FXRuler::drawLeftMarker(FXDCWindow& dc,FXint x,FXint y){
   points[4].y=y+MARKERLENGTH;
   points[5].x=x;
   points[5].y=y;
+  // A themed marker is a page colored arrow inside a hairline, without bevels
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_WINDOW_BG));
+    dc.fillPolygon(points,5);
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawLines(points,6);
+    return;
+    }
   dc.setForeground(baseColor);
   dc.fillPolygon(points,5);
   dc.setForeground(textColor);
@@ -485,6 +495,15 @@ void FXRuler::drawRightMarker(FXDCWindow& dc,FXint x,FXint y){
   points[4].y=y+MARKERLENGTH;
   points[5].x=x;
   points[5].y=y;
+  // A themed marker is a page colored arrow inside a hairline, without bevels
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_WINDOW_BG));
+    dc.fillPolygon(points,5);
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawLines(points,6);
+    return;
+    }
   dc.setForeground(baseColor);
   dc.fillPolygon(points,5);
   dc.setForeground(textColor);
@@ -525,6 +544,15 @@ void FXRuler::drawUpMarker(FXDCWindow& dc,FXint x,FXint y){
   points[4].y=y+MARKERLENGTH;
   points[5].x=x;
   points[5].y=y;
+  // A themed marker is a page colored arrow inside a hairline, without bevels
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_WINDOW_BG));
+    dc.fillPolygon(points,5);
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawLines(points,6);
+    return;
+    }
   dc.setForeground(baseColor);
   dc.fillPolygon(points,5);
   dc.setForeground(textColor);
@@ -565,6 +593,15 @@ void FXRuler::drawDownMarker(FXDCWindow& dc,FXint x,FXint y){
   points[4].y=y-MARKERLENGTH;
   points[5].x=x;
   points[5].y=y;
+  // A themed marker is a page colored arrow inside a hairline, without bevels
+  FXTheme *theme=getApp()->getTheme();
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_WINDOW_BG));
+    dc.fillPolygon(points,5);
+    dc.setForeground(theme->color(ROLE_BORDER));
+    dc.drawLines(points,6);
+    return;
+    }
   dc.setForeground(baseColor);
   dc.fillPolygon(points,5);
   dc.setForeground(textColor);
@@ -614,23 +651,33 @@ long FXRuler::onPaint(FXObject*,FXSelector,void* ptr){
     boxw=width-padleft-padright-border-border;
     boxh=documentSize-marginUpper-marginLower;
 
-    // Draw cartouche
-    drawGrooveRectangle(dc,boxx,boxy-marginLower-1,boxw,documentSize+2);
+    // A themed ruler draws the document well as a page inside a hairline
+    FXTheme *theme=getApp()->getTheme();
+    if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+      dc.setForeground(theme->color(ROLE_WINDOW_BG));
+      dc.fillRectangle(boxx+1,boxy,boxw-1,boxh);
+      dc.setForeground(theme->color(ROLE_BORDER));
+      dc.drawRectangle(boxx,boxy,boxw-1,boxh-1);
+      }
+    else{
+      // Draw cartouche
+      drawGrooveRectangle(dc,boxx,boxy-marginLower-1,boxw,documentSize+2);
 
-    // Draw document well
-    dc.setForeground(backColor);
-    dc.fillRectangle(boxx+2,boxy+1,boxw-4,boxh);
+      // Draw document well
+      dc.setForeground(backColor);
+      dc.fillRectangle(boxx+2,boxy+1,boxw-4,boxh);
 
-    dc.setForeground(shadowColor);
-    dc.fillRectangle(boxx,boxy-1,boxw-2,1);
-    dc.fillRectangle(boxx,boxy+boxh-1,boxw-2,1);
+      dc.setForeground(shadowColor);
+      dc.fillRectangle(boxx,boxy-1,boxw-2,1);
+      dc.fillRectangle(boxx,boxy+boxh-1,boxw-2,1);
 
-    dc.setForeground(borderColor);
-    dc.fillRectangle(boxx+1,boxy,boxw-3,1);
-    dc.fillRectangle(boxx+1,boxy,1,boxh);
+      dc.setForeground(borderColor);
+      dc.fillRectangle(boxx+1,boxy,boxw-3,1);
+      dc.fillRectangle(boxx+1,boxy,1,boxh);
 
-    dc.setForeground(baseColor);
-    dc.fillRectangle(boxx+2,boxy+boxh-1,boxw-4,1);
+      dc.setForeground(baseColor);
+      dc.fillRectangle(boxx+2,boxy+boxh-1,boxw-4,1);
+      }
 
     // Draw ticks or numbers
     if(options&(RULER_TICKS_TOP|RULER_TICKS_BOTTOM|RULER_NUMBERS)){
@@ -737,20 +784,30 @@ long FXRuler::onPaint(FXObject*,FXSelector,void* ptr){
     boxw=documentSize-marginUpper-marginLower;
     boxh=height-padtop-padbottom-border-border;
 
-    // Draw cartouche
-    drawGrooveRectangle(dc,boxx-marginLower-1,boxy,documentSize+2,boxh);
+    // A themed ruler draws the document well as a page inside a hairline
+    FXTheme *theme=getApp()->getTheme();
+    if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+      dc.setForeground(theme->color(ROLE_WINDOW_BG));
+      dc.fillRectangle(boxx,boxy+1,boxw,boxh-1);
+      dc.setForeground(theme->color(ROLE_BORDER));
+      dc.drawRectangle(boxx,boxy,boxw-1,boxh-1);
+      }
+    else{
+      // Draw cartouche
+      drawGrooveRectangle(dc,boxx-marginLower-1,boxy,documentSize+2,boxh);
 
-    // Draw document well
-    dc.setForeground(backColor);
-    dc.fillRectangle(boxx+1,boxy+2,boxw,boxh-4);
-    dc.setForeground(shadowColor);
-    dc.fillRectangle(boxx-1,boxy,1,boxh-2);
-    dc.fillRectangle(boxx+boxw-1,boxy+1,1,boxh-2);
-    dc.setForeground(borderColor);
-    dc.fillRectangle(boxx,boxy+1,boxw-1,1);
-    dc.fillRectangle(boxx,boxy+1,1,boxh-2);
-    dc.setForeground(baseColor);
-    dc.fillRectangle(boxx+1,boxy+boxh-2,boxw-2,1);
+      // Draw document well
+      dc.setForeground(backColor);
+      dc.fillRectangle(boxx+1,boxy+2,boxw,boxh-4);
+      dc.setForeground(shadowColor);
+      dc.fillRectangle(boxx-1,boxy,1,boxh-2);
+      dc.fillRectangle(boxx+boxw-1,boxy+1,1,boxh-2);
+      dc.setForeground(borderColor);
+      dc.fillRectangle(boxx,boxy+1,boxw-1,1);
+      dc.fillRectangle(boxx,boxy+1,1,boxh-2);
+      dc.setForeground(baseColor);
+      dc.fillRectangle(boxx+1,boxy+boxh-2,boxw-2,1);
+      }
 
     // Draw ticks or numbers
     if(options&(RULER_TICKS_TOP|RULER_TICKS_BOTTOM|RULER_NUMBERS)){

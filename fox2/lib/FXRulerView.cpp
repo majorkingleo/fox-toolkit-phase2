@@ -97,7 +97,12 @@ FXRulerView::FXRulerView(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts
   hruler=new FXRuler(this,this,ID_HRULER,RULER_HORIZONTAL|RULER_NUMBERS|RULER_ARROW|RULER_TICKS_CENTER|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_COLUMN);
   vruler=new FXRuler(this,this,ID_VRULER,RULER_VERTICAL|RULER_NUMBERS|RULER_ARROW|RULER_TICKS_CENTER|LAYOUT_SIDE_LEFT|LAYOUT_FILL_Y|LAYOUT_FILL_ROW);
   filler=new FXFrame(this,FRAME_NONE);
+  // The classic view shows the page on a gray shade; a themed view puts it on
+  // the surface its frame uses and keeps the page itself on the window color
   backColor=getApp()->getShadowColor();
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS)){
+    backColor=getApp()->getTheme()->color(ROLE_SURFACE);
+    }
   docColor=getApp()->getBackColor();
   flags|=FLAG_ENABLED;
   target=tgt;

@@ -1194,6 +1194,24 @@ report no classic palette at all and the color demo reports five pixels of the
 theme's surface shadow, from the handle's edge; a classic run of the same window
 still paints 4003 pixels of `#8E8B86` and 3494 of `#E2E0DA` for the bevels.
 
+**Progress: rulers (2026-11-17).** `FXRuler` drew its document well with a
+grooved cartouche, a shaded recess and a bevel, its four markers as bevelled
+arrows, and `FXRulerView` put the page on the application shadow color, which in
+a themed window is a gray block behind a white page.
+
+A themed ruler now draws the document well as a page in `ROLE_WINDOW_BG` inside a
+single `ROLE_BORDER` hairline, and the markers are page-colored arrows outlined in
+the border color; the numbers take `ROLE_TEXT` in `applyTheme()`, which they did
+not before, so they follow a theme switch as well.  A themed ruler view puts the
+page on `ROLE_SURFACE`, the color its frame uses.
+
+`tests/rulerdemo.cpp` is new and shows a horizontal ruler, a vertical ruler and
+the view that composes them, and it joined the default set of the themed palette
+gate.  Measured at scale 1.0 with Breeze: the view background went from
+`#A0A1A1` to `#EFF0F1` while the page stayed `#FFFFFF`, and the themed run reports
+no classic palette; a classic run of the same window still paints 33006 pixels of
+`#8E8B86` for the shaded well and the marker bevels.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
