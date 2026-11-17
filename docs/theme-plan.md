@@ -971,6 +971,24 @@ arrow box gone, and the whole window holds no `#8E8B86` or `#E2E0DA` bevel.  A
 classic run of the same window still paints 9790 pixels of `#8E8B86` and 11700
 of `#E2E0DA`.
 
+**Progress: the text editor (2026-11-17).** `FXText` only retargeted its font
+when the theme changed, so a themed editor kept the palette colours it collected
+in its constructor: black text, the navy selection and the application's
+background.  Its `applyTheme()` now sets the document view to `ROLE_WINDOW_BG`,
+unless the application set a background of its own, and only when the theme
+rounds its corners, the same rule the lists follow.  Text and the caret are
+`ROLE_TEXT`, the selection is `ROLE_SELECTION_BG` over `ROLE_SELECTION_TEXT`, the
+line number gutter is `ROLE_SURFACE` with `ROLE_TEXT_DISABLED` numbers, and the
+active and highlighted spans use `ROLE_WINDOW_BG`, `ROLE_ACCENT` and
+`ROLE_SELECTION_TEXT`.
+
+Checked with a small editor window on Wayland at scale 1.0, since none of the
+test programs put text in a view and then stay up: with Breeze the window holds
+98630 pixels of `#FFFFFF` for the page, 8568 of `#3DAEE9` for the selection and a
+hairline border, where a classic run of the same window holds the same page,
+8568 pixels of `#0A246A` for the selection and the `#8E8B86` and `#E2E0DA`
+bevels.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

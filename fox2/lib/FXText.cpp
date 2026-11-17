@@ -6200,7 +6200,25 @@ FXuint FXText::getTextStyle() const {
 // Re-resolve the normal font for the window's monitor
 void FXText::applyTheme(FXTheme* theme){
   FXScrollArea::applyTheme(theme);
+
+  // The editor is a view onto a document, so it takes the window background
+  // rather than the surface the frames and packers paint; a document view only
+  // goes this way when the theme rounds its corners, as the lists do
+  if(!backColorOverride && 0<theme->metric(METRIC_CORNER_RADIUS)){
+    backColor=theme->color(ROLE_WINDOW_BG);
+    }
+  textColor=theme->color(ROLE_TEXT);
+  selbackColor=theme->color(ROLE_SELECTION_BG);
+  seltextColor=theme->color(ROLE_SELECTION_TEXT);
+  cursorColor=theme->color(ROLE_TEXT);
+  numberColor=theme->color(ROLE_TEXT_DISABLED);
+  barColor=theme->color(ROLE_SURFACE);
+  hilitebackColor=theme->color(ROLE_ACCENT);
+  hilitetextColor=theme->color(ROLE_SELECTION_TEXT);
+  activebackColor=theme->color(ROLE_WINDOW_BG);
+
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  update();
   }
 
 

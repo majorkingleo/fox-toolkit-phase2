@@ -54,7 +54,7 @@ Priority:
 
 | Widget | State | Needed |
 | --- | --- | --- |
-| `FXText` | OPEN | Normal, selected, highlighted and active text/background roles; margins; focus frame; scrollbars. |
+| `FXText` | DONE | The document view takes `ROLE_WINDOW_BG` unless the application set a background of its own and the theme rounds its corners, text is `ROLE_TEXT` and the cursor `ROLE_TEXT`, selection is `ROLE_SELECTION_BG` over `ROLE_SELECTION_TEXT`, the line number gutter is `ROLE_SURFACE` with `ROLE_TEXT_DISABLED` numbers, and the active and highlighted spans come from `ROLE_WINDOW_BG`, `ROLE_ACCENT` and `ROLE_SELECTION_TEXT`. Scroll bars are the themed ones. |
 | `FXTable` | OPEN | Text/base/hilite/shadow/border/selection/grid/stipple/cell-border and alternating cell background colors; row/column metrics. |
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height and themed scrollbars are wired; still need alternating rows, hover decoration, tree expander/focus styling. Header text color is now themed. |
 | `FXHeader` | PARTIAL | Text color and header height are themed, and a themed header drops the raised and sunken buttons: the items are flat and separated by a one pixel hairline in `ROLE_BORDER`, drawn after the items because an item background covers its whole rectangle. Hover and pressed decoration and the sort arrow colors remain. |
