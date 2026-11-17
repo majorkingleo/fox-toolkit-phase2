@@ -76,15 +76,22 @@ FXSeparator::FXSeparator(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXin
   }
 
 
+// A themed separator is one hairline in the border color, whatever 3D style its
+// options ask for; the classic styles keep their two pixel bevel
+static FXbool themedSeparator(FXWindow* win){
+  return 0<win->getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,win->getDisplayScale());
+  }
+
+
 // Get default size
 FXint FXSeparator::getDefaultWidth(){
-  FXint w=(options&(SEPARATOR_GROOVE|SEPARATOR_RIDGE)) ? 2 : 1;
+  FXint w=((options&(SEPARATOR_GROOVE|SEPARATOR_RIDGE)) && !themedSeparator(this)) ? 2 : 1;
   return w+padleft+padright+(border<<1);
   }
 
 
 FXint FXSeparator::getDefaultHeight(){
-  FXint h=(options&(SEPARATOR_GROOVE|SEPARATOR_RIDGE)) ? 2 : 1;
+  FXint h=((options&(SEPARATOR_GROOVE|SEPARATOR_RIDGE)) && !themedSeparator(this)) ? 2 : 1;
   return h+padtop+padbottom+(border<<1);
   }
 
@@ -101,6 +108,21 @@ long FXSeparator::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Draw frame
   drawFrame(dc,0,0,width,height);
+
+  // Themed separators are a single hairline, so a groove or a ridge looks the
+  // same and a dialog does not keep a 3D line in the middle of a flat surface
+  if(themedSeparator(this)){
+    dc.setForeground(getApp()->getTheme()->color(ROLE_BORDER));
+    if((height-padbottom-padtop) < (width-padleft-padright)){
+      kk=border+padtop+(height-padbottom-padtop-(border<<1)-1)/2;
+      dc.fillRectangle(border+padleft,kk,width-padright-padleft-(border<<1),1);
+      }
+    else{
+      kk=border+padleft+(width-padleft-padright-(border<<1)-1)/2;
+      dc.fillRectangle(kk,padtop+border,1,height-padtop-padbottom-(border<<1));
+      }
+    return 1;
+    }
 
   // Horizonal orientation
   if((height-padbottom-padtop) < (width-padleft-padright)){

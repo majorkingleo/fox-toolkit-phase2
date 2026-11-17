@@ -114,8 +114,20 @@ FXint FXDragCorner::getDefaultHeight(){
 long FXDragCorner::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
+  FXTheme *theme=getApp()->getTheme();
   dc.setForeground(backColor);
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+
+  // A themed grip is three flat diagonal lines in the disabled text color; the
+  // classic corner keeps its shaded ridges
+  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(theme->color(ROLE_TEXT_DISABLED));
+    dc.drawLine(width-2,height-1,width,height-3);
+    dc.drawLine(width-6,height-1,width,height-7);
+    dc.drawLine(width-10,height-1,width,height-11);
+    return 1;
+    }
+
   dc.setForeground(shadowColor);
   dc.drawLine(width-2,height-1,width,height-3);
   dc.drawLine(width-8,height-1,width,height-9);

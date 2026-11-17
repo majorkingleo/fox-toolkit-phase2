@@ -31,7 +31,7 @@ Priority:
 | `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline and disabled colors; the widget has no placeholder API. |
 | `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; popup shadow remains. |
 | `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. |
-| `FXGroupBox` | PARTIAL | Text color/font and frame colors; no themed group-box border. |
+| `FXGroupBox` | DONE | Text color and font follow the theme, and the frame is a rounded hairline in `ROLE_BORDER` with the label cutting it open, the way GTK draws it; classic keeps the 3D frame. |
 | `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; Wayland check mark is antialiased. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
 
@@ -75,9 +75,9 @@ Priority:
 | `FXProgressBar` | PARTIAL | Bar background, filled bar, number/text colors, radius and height. |
 | `FXDial`, `FXKnob`, `FX7Segment` | OPEN | Face, arc, pointer and segment colors. |
 | `FXMDIChild`, `FXMDIClient`, `FXMDIButton` | PARTIAL/OPEN | MDI title background/text, active/inactive states, border and button decoration. |
-| `FXSplitter`, `FX4Splitter`, `FXShutter` | PARTIAL | Divider/grip colors and spacing; the container frame follows `FXFrame`. |
+| `FXSplitter`, `FX4Splitter`, `FXShutter` | PARTIAL | Divider/grip colors and spacing; the container frame follows `FXFrame`. `FXDragCorner` is themed: three flat grip lines in `ROLE_TEXT_DISABLED` instead of shaded ridges. |
 | `FXToolBar`, `FXToolBarShell`, `FXToolBarTab`, `FXToolBarGrip`, `FXDockTitle` | OPEN/PARTIAL | Toolbar background/border, grip dots, tab chrome, drag handle, active/floating state. |
-| `FXSeparator` | PARTIAL | Frame colors follow `FXFrame`; line thickness/spacing should come from border metrics. |
+| `FXSeparator` | DONE | A themed separator is one hairline in `ROLE_BORDER` whatever the 3D style asks for, and it takes one pixel instead of two; classic keeps its bevel. Spacing still comes from the widget options. |
 
 ## P2: dialogs and window chrome
 

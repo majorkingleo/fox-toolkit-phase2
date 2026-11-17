@@ -199,6 +199,7 @@ long FXGroupBox::onCmdGetStringValue(FXObject*,FXSelector,void* ptr){
 long FXGroupBox::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *event=(FXEvent*)ptr;
   FXDCWindow dc(this,event);
+  FXTheme *theme=getApp()->getTheme();
   FXint tw,th,yy,xx;
 
   xx=0;
@@ -213,15 +214,25 @@ long FXGroupBox::onPaint(FXObject*,FXSelector,void* ptr){
     yy=2+font->getFontAscent()/2;
     }
 
-  // We should really just draw what's exposed!
-  switch(options&FRAME_MASK) {
-    case FRAME_LINE: drawBorderRectangle(dc,0,yy,width,height-yy); break;
-    case FRAME_SUNKEN: drawSunkenRectangle(dc,0,yy,width,height-yy); break;
-    case FRAME_RAISED: drawRaisedRectangle(dc,0,yy,width,height-yy); break;
-    case FRAME_GROOVE: drawGrooveRectangle(dc,0,yy,width,height-yy); break;
-    case FRAME_RIDGE: drawRidgeRectangle(dc,0,yy,width,height-yy); break;
-    case FRAME_SUNKEN|FRAME_THICK: drawDoubleSunkenRectangle(dc,0,yy,width,height-yy); break;
-    case FRAME_RAISED|FRAME_THICK: drawDoubleRaisedRectangle(dc,0,yy,width,height-yy); break;
+  // A themed frame is a rounded hairline in the border color; the label below
+  // cuts it open, the way GTK draws a frame around a group of widgets
+  if((options&FRAME_MASK)!=0){
+    FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+    if(0<radius){
+      getApp()->getStyle()->drawRoundedRectangle(dc,0,yy,width,height-yy,radius,backColor,theme->color(ROLE_BORDER),1);
+      }
+    else{
+      // We should really just draw what's exposed!
+      switch(options&FRAME_MASK) {
+        case FRAME_LINE: drawBorderRectangle(dc,0,yy,width,height-yy); break;
+        case FRAME_SUNKEN: drawSunkenRectangle(dc,0,yy,width,height-yy); break;
+        case FRAME_RAISED: drawRaisedRectangle(dc,0,yy,width,height-yy); break;
+        case FRAME_GROOVE: drawGrooveRectangle(dc,0,yy,width,height-yy); break;
+        case FRAME_RIDGE: drawRidgeRectangle(dc,0,yy,width,height-yy); break;
+        case FRAME_SUNKEN|FRAME_THICK: drawDoubleSunkenRectangle(dc,0,yy,width,height-yy); break;
+        case FRAME_RAISED|FRAME_THICK: drawDoubleRaisedRectangle(dc,0,yy,width,height-yy); break;
+        }
+      }
     }
 
   // Draw label

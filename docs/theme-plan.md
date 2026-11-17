@@ -802,6 +802,28 @@ rounded surface at (8,8).  X11 keeps 98x72 (`bounding_shaped=1`) and Win32 83x62
 (`bounding_shaped=1`), and classic stays at 90x56 unshaped on X11 with the
 Wayland popup, menu, tool tip and hello gates unchanged.
 
+**Progress: the last 3D bevels out of a themed dialog (2026-11-17).** A
+themed `button` still carried classic bevels after the widget migration, and the
+histogram of a Breeze screenshot showed them: 2856 pixels of
+`ROLE_SURFACE_SHADOW` plus as many of `ROLE_SURFACE_HILITE`, in a one pixel
+column and a box outline.  They came from three widgets that draw their own
+3D chrome instead of going through `FXStyle`:
+
+- `FXSeparator` drew a groove or ridge as two pixels of shadow and highlight.  A
+  themed separator is now a single hairline in `ROLE_BORDER`, and its default
+  size drops from two pixels to one so a dialog's layout tightens to match.
+- `FXGroupBox` drew a classic raised, sunken, groove or ridge frame.  A themed
+  group box now draws a rounded hairline in `ROLE_BORDER` with the label cutting
+  it open, the way GTK draws a frame.
+- `FXDragCorner` drew shaded ridges into the corner; a themed corner draws three
+  flat diagonal lines in `ROLE_TEXT_DISABLED`.
+
+Measured on the same 800x748 `button` window at scale 1.0 with Breeze: the
+shadow and highlight colors are gone from the screenshot, the border color grows
+from 3036 to 4769 pixels, and the classic build still shows its 4210/4194
+pixels of highlight and shadow, so the classic path is untouched.  The Wayland
+hello, menu, popup and tool tip gates still pass.
+
 **R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
 rect, so it needs popup windows inflated by the shadow margin with their
 children offset. The rounded popup above is the consumer that work was waiting
