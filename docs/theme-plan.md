@@ -676,6 +676,37 @@ opaque. The classic frames stay pixel-identical (`hello` 0 differing pixels,
 popup frames unchanged) and the Wayland popup, menu, tool tip, hello and
 repaint gates all pass.
 
+**Progress: Win32 theme import with an installed GTK theme (2026-11-17).**
+`scripts/install-wine-gtk-themes.sh` copies the named themes from
+`/usr/share/themes` into `<prefix>/drive_c/ProgramData/themes`, which is where a
+GTK installation on Windows keeps them, and prints the value to put in
+`SETTINGS/theme`.  With Breeze and Breeze-Dark installed there, the Win32 build
+imports the same CSS the Linux build does and the rounded popup appears with
+83x62 pixels and the Breeze face; `Breeze-Dark` imports as well and caches
+separately.
+
+Two defects were found while verifying, both fixed:
+
+- **The theme cache never worked on Windows.** `FXThemeCache::directory()`
+  appended `"/.cache/fox/themes"` to the home directory, which on Windows is
+  `C:\users\<name>`; the mixed separators made `FXDir::createDirectories()`
+  fail and the cache stayed unwritten, so every start re-imported the CSS.
+  The path is now built with `PATHSEPSTRING`, and `location()` takes the source
+  name after the last `/` or `\`, so a Windows path names its cache file
+  correctly.  The cache file now lands in
+  `<prefix>/drive_c/users/<name>/.cache/fox/themes/` and the second start reuses
+  it.
+- **The popup was shaped only when it painted.** `FXPopup::shapePopup()` now
+  runs from `show()` as well, so the X11 shape is in place before the window is
+  mapped and the corners are never square on screen; `onPaint()` still calls it,
+  which covers a theme or size change.  Wine applies the region to its X window
+  about 0.7 s after the popup appears, which is a Wine detail, not a FOX one.
+
+A settings value written by hand needs care on Windows: `FXSettings` treats a
+backslash as an escape, so `theme=C:\ProgramData\themes\Breeze` loses its
+separators.  Forward slashes work as they are, and the value the ControlPanel
+writes is quoted and escaped, so the round trip through the chooser is intact.
+
 **R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
 rect, so it needs popup windows inflated by the shadow margin with their
 children offset. The rounded popup above is the consumer that work was waiting

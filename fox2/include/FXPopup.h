@@ -74,6 +74,7 @@ protected:
   void drawDoubleRaisedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
   void drawDoubleSunkenRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
   void drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h);
+  void shapePopup();
 private:
   FXPopup(const FXPopup&);
   FXPopup &operator=(const FXPopup&);

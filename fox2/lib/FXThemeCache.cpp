@@ -74,24 +74,28 @@ FXint FXThemeCache::hits=0;
 FXint FXThemeCache::misses=0;
 
 
-// Directory holding the cache files
+// Directory holding the cache files; the separator is the platform's, because
+// the home directory comes back with its own separators and a mixed path
+// cannot be created on Windows
 FXString FXThemeCache::directory(){
   FXString base=FXSystem::getEnvironment("XDG_CACHE_HOME");
-  if(base.empty()) base=FXSystem::getHomeDirectory()+"/.cache";
-  return base+"/fox/themes";
+  if(base.empty()) base=FXSystem::getHomeDirectory()+PATHSEPSTRING+".cache";
+  return base+PATHSEPSTRING+"fox"+PATHSEPSTRING+"themes";
   }
 
 
 // Cache file belonging to the given source
 FXString FXThemeCache::location(const FXString& source){
-  FXString name=source.rafter('/');
+  FXString name=source;
   FXString cleaned;
+  FXint slash=FXMAX(source.rfind('/'),source.rfind('\\'));
   FXint i;
+  if(0<=slash) name=source.mid(slash+1,source.length()-slash-1);
   for(i=0; i<name.length(); i++){
     FXchar ch=name[i];
     cleaned.append(isalnum((FXuchar)ch)?ch:'_');
     }
-  return directory()+"/"+cleaned+"-"+FXString::value(source.hash(),16)+".fxtc";
+  return directory()+PATHSEPSTRING+cleaned+"-"+FXString::value(source.hash(),16)+".fxtc";
   }
 
 

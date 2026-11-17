@@ -473,6 +473,30 @@ void FXPopup::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
   }
 
 
+// Shape the window to the theme's rounded corners; a themed popup shows what
+// lies under its corners instead of its own background, and the shape clips the
+// children.  The shape is rebuilt only when the radius or the size changed.
+void FXPopup::shapePopup(){
+  FXTheme* theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(radius<=0){
+    if(0<shapeRadius){
+      shapeRadius=0;
+      shapeWidth=0;
+      shapeHeight=0;
+      clearShape();
+      }
+    return;
+    }
+  if(shapeRadius!=radius || shapeWidth!=width || shapeHeight!=height){
+    shapeRadius=radius;
+    shapeWidth=width;
+    shapeHeight=height;
+    setCornerRadius(radius);
+    }
+  }
+
+
 // Handle repaint
 long FXPopup::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
@@ -480,17 +504,10 @@ long FXPopup::onPaint(FXObject*,FXSelector,void* ptr){
   FXTheme* theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
 
-  // Themed popups are a rounded surface with a hairline border.  The window is
-  // shaped to the same outline, so what lies under the corners shows through
-  // instead of the popup background, and the children stay inside the outline
+  // Themed popups are a rounded surface with a hairline border
   if(0<radius){
     FXint borderWidth=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
-    if(shapeRadius!=radius || shapeWidth!=width || shapeHeight!=height){
-      shapeRadius=radius;
-      shapeWidth=width;
-      shapeHeight=height;
-      setCornerRadius(radius);
-      }
+    shapePopup();
     // The face fills the whole rectangle first: the style blends the rounded
     // edge with what it finds, so it must not find the empty corner of a fresh
     // frame, and the mask then cuts the outline away again
@@ -501,12 +518,7 @@ long FXPopup::onPaint(FXObject*,FXSelector,void* ptr){
     }
 
   // Back to a square window when the theme asks for no rounding
-  if(0<shapeRadius){
-    shapeRadius=0;
-    shapeWidth=0;
-    shapeHeight=0;
-    clearShape();
-    }
+  shapePopup();
   dc.setForeground(backColor);
   dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));
   drawFrame(dc,0,0,width,height);
@@ -713,6 +725,8 @@ long FXPopup::onCmdUnpost(FXObject*,FXSelector,void* ptr){
 // Show popup and add to popup stack
 void FXPopup::show(){
   if(!(flags&FLAG_SHOWN)){
+    // Shape before the popup is mapped, so it never shows square corners first
+    shapePopup();
     FXShell::show();
     prevActive=getApp()->popupWindow;
     if(prevActive) prevActive->nextActive=this;

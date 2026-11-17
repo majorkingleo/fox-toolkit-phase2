@@ -1378,7 +1378,9 @@ and system includes per platform and stays. The Wayland module is planned in
   CMake and Ninja into `tmp/build-fox2-cross-cmake` instead of Autotools; all
   programs land in its `bin/` next to the DLL, the MinGW runtime DLLs are copied
   there as well so the folder runs without `WINEPATH`, and `--run` finds them
-  there.
+  there. `scripts/install-wine-gtk-themes.sh` installs GTK themes into the
+  prefix under `drive_c/ProgramData/themes`, so the Win32 build imports and
+  caches the same theme files the Linux desktop has.
 - On a Windows host the X11 backend is built in WSL (Ubuntu with `g++`, `cmake`,
   `ninja`, `libx11-dev`; WSLg provides the display):
 
