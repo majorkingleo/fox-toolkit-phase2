@@ -1195,6 +1195,9 @@ long FXDesktopSetup::onCmdRefreshThemes(FXObject*,FXSelector,void*){
 
 // Show only one family or scope of themes
 long FXDesktopSetup::onCmdThemeFilter(FXObject*,FXSelector,void*){
+  if(themefilter){
+    desktopsettings.writeIntEntry("SETTINGS","themefilter",themefilter->getCurrentItem());
+    }
   initColors();
   setupColors();
   return 1;
@@ -1594,6 +1597,11 @@ FXbool FXDesktopSetup::readSettingsFile(const FXString& file){
       themesource=selected;
       }
 
+    // Restore the last theme-family filter chosen in the second drop box.
+    FXint filter=desktopsettings.readIntEntry("SETTINGS","themefilter",0);
+    if(filter<0 || filter>5) filter=0;
+    if(themefilter) themefilter->setCurrentItem(filter);
+
     // General Settings
     typingSpeed=desktopsettings.readLongEntry("SETTINGS","typingspeed",getApp()->getTypingSpeed())/milliseconds;
     clickSpeed=desktopsettings.readLongEntry("SETTINGS","clickspeed",getApp()->getClickSpeed())/milliseconds;
@@ -1686,6 +1694,9 @@ FXbool FXDesktopSetup::writeSettingsFile(const FXString& file){
   // and custom colors so FXApp::init() does not re-import an older theme
   if(thememodified){
     desktopsettings.writeStringEntry("SETTINGS","theme",themesource.empty()?"classic":themesource.text());
+    }
+  if(themefilter){
+    desktopsettings.writeIntEntry("SETTINGS","themefilter",themefilter->getCurrentItem());
     }
 
   // Save General Settings
