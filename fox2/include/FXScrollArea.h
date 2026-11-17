@@ -136,6 +136,9 @@ public:
   /// Return default height
   virtual FXint getDefaultHeight() override;
 
+  /// Handle repaint
+  long onPaint(FXObject*,FXSelector,void*);
+
   /// Perform layout
   virtual void layout() override;
 

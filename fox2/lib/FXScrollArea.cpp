@@ -97,6 +97,7 @@ using namespace FX;
 namespace FX {
 
 FXDEFMAP(FXScrollArea) FXScrollAreaMap[]={
+  FXMAPFUNC(SEL_PAINT,0,FXScrollArea::onPaint),
   FXMAPFUNC(SEL_MOUSEWHEEL,0,FXScrollArea::onMouseWheel),
   FXMAPFUNC(SEL_TIMEOUT,FXScrollArea::ID_AUTOSCROLL,FXScrollArea::onAutoScroll),
   FXMAPFUNC(SEL_COMMAND,FXScrollArea::ID_HSCROLLED,FXScrollArea::onHScrollerChanged),
@@ -114,6 +115,42 @@ FXIMPLEMENT(FXScrollArea,FXComposite,FXScrollAreaMap,ARRAYNUMBER(FXScrollAreaMap
 void FXScrollArea::applyTheme(FXTheme* theme){
   FXComposite::applyTheme(theme);
   if(0<theme->metric(METRIC_CORNER_RADIUS)) backColor=theme->color(ROLE_WINDOW_BG);
+  }
+
+
+// Handle repaint
+long FXScrollArea::onPaint(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  FXDCWindow dc(this,event);
+  FXTheme* theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXint sv_w=(!(options&VSCROLLER_NEVER)) ? vertical->getWidth() : 0;
+  FXint sh_h=(!(options&HSCROLLER_NEVER)) ? horizontal->getHeight() : 0;
+  FXint view_w=FXMAX(0,width-sv_w);
+  FXint view_h=FXMAX(0,height-sh_h);
+
+  // Rounded themes keep the viewport on the theme background and draw a subtle
+  // hairline around the visible area while leaving the gutter under the scrollbars
+  // to their own themed paint path.
+  if(0<radius){
+    FXint rr=FXMIN(radius,FXMAX(0,FXMIN(view_w,view_h)-1)/2);
+    dc.setForeground(backColor);
+    dc.fillRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
+    if(0<view_w && 0<view_h){
+      dc.setClipRectangle(0,0,view_w,view_h);
+      dc.setForeground(backColor);
+      dc.fillRectangle(0,0,view_w,view_h);
+      dc.setForeground(theme->color(ROLE_BORDER));
+      dc.drawRoundRectangle(0,0,FXMAX(0,view_w-1),FXMAX(0,view_h-1),rr,rr);
+      dc.clearClipRectangle();
+      }
+    return 1;
+    }
+
+  // Classic scroll area; leave the base window paint behavior in place.
+  dc.setForeground(backColor);
+  dc.fillRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
+  return 1;
   }
 
 
