@@ -111,6 +111,12 @@ void FXStyle::invalidate(){
     }
 #endif
   checkmasks=nullptr;
+
+  // The pictures belonged to the display that was open when they were made, and
+  // a closed display must not be asked to free anything; probe again next time
+  dpy=nullptr;
+  xrender=false;
+  xrenderChecked=false;
   }
 
 

@@ -699,6 +699,10 @@ FXbool FXApp::closeDisplay(){
     // Close input devices
     closeInputDevices();
 
+    // Release the pictures the style cached for this display while the
+    // connection is still open; after this the display is gone
+    style.invalidate();
+
     // Free standard stipples
     XFreePixmap((Display*)display,stipples[STIPPLE_0]);
     XFreePixmap((Display*)display,stipples[STIPPLE_1]);

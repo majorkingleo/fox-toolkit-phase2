@@ -1134,6 +1134,17 @@ Checked by dragging the vertical scroll bar of the table test under sway at scal
 1.0 with Breeze: the column header stays in place and the columns stay aligned
 after the grid scrolled to row 24.
 
+**Fixed: crash on exit on X11 (2026-11-17).** Closing a themed window on X11
+aborted in `_XAllocID` through `XRenderFreePicture`: `FXApp::exit()` closes the
+display and calls `stop()`, and the destructor then asked `FXStyle::invalidate()`
+to free the XRender pictures it had cached, with a `Display*` that had already
+been closed.  The style now forgets its display and its probe result when it
+invalidates, and `closeDisplay()` releases the cached pictures *before* it closes
+the X connection, so the destructor has nothing left to free.  Reproduced with
+the table test on the X11 build, themed with Breeze, closing the window with a
+`WM_DELETE_WINDOW` message: it crashed on every run before the change and exits
+normally now, twice in a row under gdb.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing
