@@ -101,15 +101,43 @@ title bar is FOX's own.
 
 ## Try it
 
+### Linux — X11 or Wayland
+
 ```sh
-# build for your desktop (X11 or Wayland)
-./scripts/build-fox2-linux.sh --cmake
-./scripts/build-fox2-wayland.sh
+./scripts/build-fox2-linux.sh --cmake     # X11     -> tmp/build-fox2-linux-cmake/bin
+./scripts/build-fox2-wayland.sh           # Wayland -> tmp/build-fox2-wayland/bin
 
 # run any of the small test programs
 tmp/build-fox2-linux-cmake/bin/table
 tmp/build-fox2-wayland/bin/header
 ```
+
+### Windows
+
+Two ways, both with MinGW-w64.  The toolchain itself comes from
+`scripts/install-cachyos-mingw.sh` on Linux (it installs Wine too, for smoke
+tests) or from `scripts/install-msys2-deps.sh` inside MSYS2.
+
+**Cross-compiled on Linux** — the quick way to check the Windows backend, and
+the result runs under Wine:
+
+```sh
+./scripts/build-fox2-mingw-cross.sh --cmake          # -> tmp/build-fox2-cross-cmake/bin
+./scripts/build-fox2-mingw-cross.sh --cmake --run    # build, then run under Wine
+```
+
+**Built natively on Windows with MSYS2** — start the **MINGW64** shell, the one
+from `C:\msys64\mingw64.exe`, not the plain MSYS shell, because the build needs
+the mingw-w64 compiler:
+
+```sh
+./scripts/install-msys2-deps.sh                      # once: compilers and libraries
+./scripts/build-fox2-mingw.sh --cmake --run          # -> tmp/build-fox2-win-cmake/bin
+```
+
+Both scripts take `--fast` to skip the configure step when nothing changed,
+`--clean`, `--opengl`, `--debug`/`--release` and `--jobs=N`, and print the same
+help with `--help`.
 
 Then pick a theme — the easy way is the control panel, which shows what is
 installed and applies it immediately:
