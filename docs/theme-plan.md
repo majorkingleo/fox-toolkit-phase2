@@ -702,6 +702,20 @@ Two defects were found while verifying, both fixed:
   which covers a theme or size change.  Wine applies the region to its X window
   about 0.7 s after the popup appears, which is a Wine detail, not a FOX one.
 
+**The theme chooser did not see them, third defect fixed.** `ControlPanel`
+only searched `XDG_DATA_HOME`, `XDG_DATA_DIRS`, `~/.local/share` and
+`~/.themes`, so a theme installed in the prefix was invisible on Windows: there
+are no XDG variables there, and the POSIX default list points at directories
+that do not exist.  `discoverThemes()` now adds `%ProgramData%`,
+`%APPDATA%` and `%LOCALAPPDATA%` on Windows, where the program data folder takes
+the place of `/usr/share`, and skips the POSIX default list there.  Verified by
+running the Win32 `ControlPanel` under Wine: it searches
+`C:\users\<name>\.local\share\themes`, `C:\ProgramData\themes`,
+`C:\users\<name>\AppData\Roaming\themes`,
+`C:\users\<name>\AppData\Local\themes` and `C:\users\<name>\.themes`,
+finds `Breeze` and `Breeze-Dark` in `C:\ProgramData\themes`, and selects them
+like any other installed theme.
+
 A settings value written by hand needs care on Windows: `FXSettings` treats a
 backslash as an escape, so `theme=C:\ProgramData\themes\Breeze` loses its
 separators.  Forward slashes work as they are, and the value the ControlPanel

@@ -5,8 +5,9 @@
 #
 # The themes are copied from the system theme directory into
 # <prefix>/drive_c/ProgramData/themes, which is where a GTK installation on
-# Windows keeps them.  The FOX importer reads gtk-3.0/gtk.css, gtk-4.0/gtk.css
-# or gtk-2.0/gtkrc from there and caches the resolved theme in the prefix.
+# Windows keeps them.  The ControlPanel lists that folder, and the FOX importer
+# reads gtk-3.0/gtk.css, gtk-4.0/gtk.css or gtk-2.0/gtkrc from there and caches
+# the resolved theme in the prefix.
 #
 #   ./scripts/install-wine-gtk-themes.sh [theme ...]
 #

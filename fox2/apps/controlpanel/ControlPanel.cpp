@@ -1306,9 +1306,21 @@ void FXDesktopSetup::discoverThemes(){
   FXDir dir;
 
   if(datahome.empty()) datahome=home+PATHSEPSTRING+".local"+PATHSEPSTRING+"share";
+#if !defined(WIN32)
+  // The POSIX system data directories do not exist on Windows, where the
+  // program data folder below takes their place
   if(datalist.empty()) datalist="/usr/local/share:/usr/share";
+#endif
   appendSearchPaths(datadirs,datahome);
   appendSearchPaths(datadirs,datalist);
+#if defined(WIN32)
+  // Windows has no XDG variables; a GTK installation keeps its themes in the
+  // machine-wide program data and in the per-user application data.  The
+  // ProgramData folder takes the place of /usr/share, which does not exist.
+  appendSearchPaths(datadirs,FXSystem::getEnvironment("ProgramData"));
+  appendSearchPaths(datadirs,FXSystem::getEnvironment("APPDATA"));
+  appendSearchPaths(datadirs,FXSystem::getEnvironment("LOCALAPPDATA"));
+#endif
 
   for(FXival i=0; i<datadirs.no(); ++i){
     roots.append(datadirs[i]+PATHSEPSTRING+"themes");
