@@ -4,7 +4,8 @@
 #
 # This is the fast compile check for the Win32 backend on the build host;
 # the resulting DLL and test programs can be smoke-tested with Wine.  The
-# build is out-of-tree in tmp/build-fox2-cross.
+# build is out-of-tree in tmp/build-fox2-cross, or in
+# tmp/build-fox2-cross-cmake with --cmake.
 #
 #   ./scripts/build-fox2-mingw-cross.sh
 #
@@ -17,14 +18,14 @@
 #   --fast     skip autoreconf/configure when their inputs did not change
 #   --trace    keep FXTRACE statements compiled in (no NDEBUG)
 #   --run      run hello, button and dpi under Wine after building
+#   --cmake    use CMake + Ninja instead of Autotools: no autoreconf and no
+#              configure run, and every test program is built into bin/
 #   -h|--help  show this help
 #
 set -euo pipefail
 
 ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 SRC="$ROOT/fox2"
-BUILD="$ROOT/tmp/build-fox2-cross"
-LOG="$BUILD/build.log"
 HOST=x86_64-w64-mingw32
 SYSROOT=${MINGW_SYSROOT:-/usr/x86_64-w64-mingw32}
 
@@ -35,10 +36,11 @@ clean=no
 fast=no
 trace=no
 run_test=no
+use_cmake=no
 run_seconds=5
 
 usage(){
-  sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -50,6 +52,7 @@ while [ $# -gt 0 ]; do
     --fast)     fast=yes ;;
     --trace)    trace=yes ;;
     --run)      run_test=yes ;;
+    --cmake)    use_cmake=yes ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     --run-seconds) shift; run_seconds=$1 ;;
@@ -70,10 +73,19 @@ command -v "$HOST-g++" >/dev/null 2>&1 || {
   echo "       run ./scripts/install-cachyos-mingw.sh first." >&2
   exit 1
   }
-command -v make >/dev/null 2>&1 || {
-  echo "error: make not found." >&2
-  exit 1
-  }
+if [ "$use_cmake" = yes ]; then
+  for tool in cmake ninja "$HOST-windres"; do
+    command -v "$tool" >/dev/null 2>&1 || {
+      echo "error: $tool not found." >&2
+      exit 1
+      }
+    done
+else
+  command -v make >/dev/null 2>&1 || {
+    echo "error: make not found." >&2
+    exit 1
+    }
+  fi
 [ -f "$SRC/configure.ac" ] || {
   echo "error: $SRC/configure.ac not found." >&2
   exit 1
@@ -83,6 +95,15 @@ if [ "$run_test" = yes ] && ! command -v wine >/dev/null 2>&1; then
   exit 1
   fi
 
+# The two build systems keep their output apart, so either can be used without
+# disturbing the other
+if [ "$use_cmake" = yes ]; then
+  BUILD="$ROOT/tmp/build-fox2-cross-cmake"
+else
+  BUILD="$ROOT/tmp/build-fox2-cross"
+  fi
+LOG="$BUILD/build.log"
+
 if [ "$clean" = yes ]; then
   echo "==> removing $BUILD"
   rm -rf -- "$BUILD"
@@ -90,7 +111,8 @@ if [ "$clean" = yes ]; then
 mkdir -p -- "$BUILD"
 
 # WIN32 selects the Win32 backend; lib/Makefile.am adds it for the library
-# only, so expose it through CPPFLAGS to the tests and tools as well.
+# only, so expose it through CPPFLAGS to the tests and tools as well.  CMake
+# puts the define on the library and its users itself.
 export CPPFLAGS="-DWIN32 ${CPPFLAGS-}"
 
 opts=("--host=$HOST" --without-x)
@@ -110,6 +132,28 @@ if [ "$trace" = yes ]; then
     exit 2
     fi
   opts+=(--enable-foxtrace)
+  fi
+
+# CMake has no configure script; the target platform and the compilers are on
+# the command line, and the options follow the configure switches
+copts=(-S "$SRC" -B "$BUILD" -G Ninja
+       -DCMAKE_SYSTEM_NAME=Windows
+       -DCMAKE_CXX_COMPILER=$HOST-g++
+       -DCMAKE_C_COMPILER=$HOST-gcc
+       -DCMAKE_RC_COMPILER=$HOST-windres
+       -DFOX_PLATFORM=win32
+       -DFOX_WITH_CUPS=OFF)
+if [ "$with_opengl" = yes ]; then
+  copts+=(-DFOX_WITH_OPENGL=ON)
+else
+  copts+=(-DFOX_WITH_OPENGL=OFF)
+  fi
+case "$build_type" in
+  debug)   copts+=(-DCMAKE_BUILD_TYPE=Debug) ;;
+  release) copts+=(-DCMAKE_BUILD_TYPE=Release) ;;
+esac
+if [ "$trace" = yes ]; then
+  copts+=(-DFOX_FOXTRACE=ON)
   fi
 
 : >"$LOG"
@@ -137,6 +181,8 @@ needs_configure(){
   [ -n "$(find "$SRC" -name 'Makefile.in' -newer "$BUILD/Makefile" -print -quit)" ] && return 0
   return 1
   }
+
+if [ "$use_cmake" = no ]; then
 
 if [ "$fast" = yes ] && ! needs_autoreconf; then
   echo "==> autoreconf skipped (configure is up to date)"
@@ -201,6 +247,38 @@ ls -l tests/.libs/hello.exe tests/.libs/button.exe tests/.libs/dpi.exe tests/.li
 ls -l apps/calculator/.libs/calculator.exe 2>/dev/null || true
 ls -l utils/.libs/reswrap.exe utils/reswrap.exe 2>/dev/null || true
 
+else
+
+# The build directory is stale when the options or the CMake inputs changed
+needs_cmake_configure(){
+  [ -f "$BUILD/CMakeCache.txt" ] || return 0
+  [ -f "$BUILD/.cmake-options" ] || return 0
+  [ "$(cat "$BUILD/.cmake-options")" != "${copts[*]}" ] && return 0
+  [ -n "$(find "$SRC" -name 'CMakeLists.txt' -o -name '*.cmake' -newer "$BUILD/CMakeCache.txt" -print -quit)" ] && return 0
+  return 1
+  }
+
+cd -- "$BUILD"
+
+if [ "$fast" = yes ] && ! needs_cmake_configure; then
+  echo "==> cmake configure skipped (build directory is up to date)"
+else
+  echo "==> cmake configure: FOX_PLATFORM=win32 $HOST-g++"
+  run cmake "${copts[@]}"
+  printf '%s\n' "${copts[*]}" >"$BUILD/.cmake-options"
+  fi
+
+echo "==> build library, tests, applications and tools"
+run cmake --build "$BUILD" -j "$jobs"
+
+echo
+echo "==> artifacts"
+ls -l "$BUILD"/bin/*.dll "$BUILD"/lib/*.dll.a 2>/dev/null || true
+ls -l "$BUILD"/bin/hello.exe "$BUILD"/bin/button.exe "$BUILD"/bin/dpi.exe "$BUILD"/bin/popup.exe 2>/dev/null || true
+ls -l "$BUILD"/bin/calculator.exe "$BUILD"/bin/reswrap.exe 2>/dev/null || true
+
+fi
+
 if [ "$run_test" = yes ]; then
   # A dedicated prefix keeps the user's Wine setup untouched; the first run
   # creates it, which takes a while.
@@ -212,15 +290,28 @@ if [ "$run_test" = yes ]; then
   # to find next to our own DLL.
   export WINEDEBUG="${WINEDEBUG:--all}"
   export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-mscoree,mshtml=}"
-  export WINEPATH="$BUILD/lib/.libs;$SYSROOT/bin"
+  export WINEPATH="$BUILD/bin;$BUILD/lib/.libs;$SYSROOT/bin"
   if [ ! -d "$WINEPREFIX" ]; then
     echo
     echo "==> initializing the Wine prefix in $WINEPREFIX"
     timeout 180 wineboot --init >/dev/null 2>&1 || true
     fi
+  # Autotools writes the programs to tests/.libs and apps/*/.libs, CMake puts
+  # them all in bin/ next to the DLL
+  find_exe(){
+    local prog=$1 p
+    for p in "$BUILD/bin/$prog.exe" "$BUILD/tests/.libs/$prog.exe" "$BUILD/tests/$prog.exe" \
+             "$BUILD/apps/$prog/.libs/$prog.exe" "$BUILD/apps/$prog/$prog.exe" \
+             "$BUILD/utils/.libs/$prog.exe" "$BUILD/utils/$prog.exe"; do
+      if [ -f "$p" ]; then
+        printf '%s\n' "$p"
+        return 0
+        fi
+      done
+    return 1
+    }
   for prog in hello button dpi; do
-    exe="tests/.libs/$prog.exe"
-    [ -f "$exe" ] || exe="tests/$prog.exe"
+    exe=$(find_exe "$prog") || true
     echo
     echo "==> running $prog under Wine for ${run_seconds} seconds"
     rc=0
@@ -243,29 +334,25 @@ if [ "$run_test" = yes ]; then
     done
   echo
   echo "==> rasterizer scene under Wine (headless)"
-  exe="tests/.libs/raster.exe"
-  [ -f "$exe" ] || exe="tests/raster.exe"
+  exe=$(find_exe raster) || true
   rc=0
   timeout "$run_seconds" wine "$exe" --raster-only || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: raster exited with status $rc" >&2
   echo
   echo "==> rectangle region test under Wine"
-  exe="tests/.libs/region.exe"
-  [ -f "$exe" ] || exe="tests/region.exe"
+  exe=$(find_exe region) || true
   rc=0
   timeout "$run_seconds" wine "$exe" || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: region exited with status $rc" >&2
   echo
   echo "==> glyph cache test under Wine"
-  exe="tests/.libs/glyphs.exe"
-  [ -f "$exe" ] || exe="tests/glyphs.exe"
+  exe=$(find_exe glyphs) || true
   rc=0
   timeout "$run_seconds" wine "$exe" || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: glyphs exited with status $rc" >&2
   echo
   echo "==> virtual window map test under Wine"
-  exe="tests/.libs/winmap.exe"
-  [ -f "$exe" ] || exe="tests/winmap.exe"
+  exe=$(find_exe winmap) || true
   rc=0
   timeout "$run_seconds" wine "$exe" || rc=$?
   [ "$rc" -eq 0 ] || echo "warning: winmap exited with status $rc" >&2
@@ -274,10 +361,9 @@ if [ "$run_test" = yes ]; then
   echo "==> reswrap under Wine"
   mkdir -p reswrap-smoke
   cp "$SRC/apps/calculator/bigcalc.gif" reswrap-smoke/
-  exe="utils/reswrap.exe"
-  [ -f "$exe" ] || exe="utils/.libs/reswrap.exe"
-  if [ -f "$exe" ] &&
-     ( cd reswrap-smoke && wine "../$exe" -o icon.cpp bigcalc.gif ) >/dev/null 2>&1 &&
+  exe=$(find_exe reswrap) || true
+  if [ -n "$exe" ] &&
+     ( cd reswrap-smoke && wine "$exe" -o icon.cpp bigcalc.gif ) >/dev/null 2>&1 &&
      grep -q 'const unsigned char bigcalc\[\]=' reswrap-smoke/icon.cpp; then
     echo "reswrap generated the bigcalc array"
   else
@@ -286,9 +372,8 @@ if [ "$run_test" = yes ]; then
 
   echo
   echo "==> calculator under Wine for ${run_seconds} seconds"
-  exe="apps/calculator/.libs/calculator.exe"
-  [ -f "$exe" ] || exe="apps/calculator/calculator.exe"
-  if [ -f "$exe" ]; then
+  exe=$(find_exe calculator) || true
+  if [ -n "$exe" ]; then
     rc=0
     timeout "$run_seconds" wine "$exe" >"$BUILD/calculator.wine.log" 2>&1 || rc=$?
     tail -n 5 "$BUILD/calculator.wine.log"
@@ -307,5 +392,5 @@ echo "done. Build log: $LOG"
 if [ "$trace" = yes ]; then
   echo
   echo "trace build: FXTRACE is compiled in; run with -tracelevel N or FOX_TRACE_LEVEL=N"
-  echo "and redirect stderr, e.g. wine tests/.libs/dpi.exe -tracelevel 1023 2> trace.log"
+  echo "and redirect stderr, e.g. wine $BUILD/bin/dpi.exe -tracelevel 1023 2> trace.log"
   fi
