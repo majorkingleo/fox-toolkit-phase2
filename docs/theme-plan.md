@@ -1212,6 +1212,25 @@ gate.  Measured at scale 1.0 with Breeze: the view background went from
 no classic palette; a classic run of the same window still paints 33006 pixels of
 `#8E8B86` for the shaded well and the marker bevels.
 
+**Progress: the calendar (2026-11-17).** `FXCalendarView` collected its colors
+from the palette in its constructor and only retargeted its font in
+`applyTheme()`: a green today, a red weekend, the title in the window color on
+the application shadow color and the days of the other months in the shadow
+color.  A themed calendar now follows the theme through a `themeColors()` helper
+that runs at construction and on a theme switch: the days sit on `ROLE_SURFACE`
+in `ROLE_TEXT`, the days of the other months are `ROLE_TEXT_DISABLED`, today is
+`ROLE_ACCENT`, the weekend keeps the color of the other days like a modern
+calendar does, the week number separator is a `ROLE_BORDER` hairline and the
+focus rectangle is drawn in `ROLE_FOCUS_RING`.  `FXCalendar` is the view inside a
+spinner shell and follows it.
+
+Checked on the calendar test at scale 1.0 with Breeze: the color swatches in the
+test's own panel read back `#232629` for the title, the day and the weekend,
+`#A5A8A9` for the disabled days and `#3DAEE9` for today, and the palette gate now
+includes the calendar and reports no classic palette at all; a classic run keeps
+`#D4D0C8`, 11453 pixels of `#8E8B86` for the title band and the disabled days,
+and 6683 of `#E2E0DA` for the bevels.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

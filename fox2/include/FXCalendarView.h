@@ -204,6 +204,9 @@ public:
   /// Set the text font
   void setFont(FXFont *fnt);
 
+  /// Resolve the calendar colors from the theme
+  void themeColors(FXTheme* theme);
+
   /// Get the text font
   FXFont* getFont() const { return font; }
 

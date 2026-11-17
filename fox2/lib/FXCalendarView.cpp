@@ -109,6 +109,12 @@ FXCalendarView::FXCalendarView(FXComposite *p,FXObject* tgt,FXSelector sel,FXuin
   otherDayColor=getApp()->getShadowColor();
   weekendColor=FXRGB(180,0,0);
   otherWeekendColor=makeHiliteColor(FXRGB(200,100,100));
+
+  // A themed calendar puts its days on the surface, marks today with the accent
+  // and leaves the weekend the color of the other days
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS)){
+    themeColors(getApp()->getTheme());
+    }
   backColor=getApp()->getBackColor();
 
   // Update for date
@@ -372,7 +378,8 @@ long FXCalendarView::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Paint separator between week numbers and days
   if(options&CALENDAR_WEEKNUMBERS) {
-    dc.setForeground(getApp()->getForeColor());
+    FXTheme *theme=getApp()->getTheme();
+    dc.setForeground(0<theme->metric(METRIC_CORNER_RADIUS) ? theme->color(ROLE_BORDER) : getApp()->getForeColor());
     dc.fillRectangle(columnwidth[0]-1,0,1,height);
     }
 
@@ -462,6 +469,8 @@ long FXCalendarView::onPaint(FXObject*,FXSelector,void* ptr){
       dc.drawText(xx+columnwidth[c]-font->getTextWidth(text)-columnoffset[c],yy+(rowheight[r]-fontheight)/2+font->getFontAscent(),text);
 
       if(hasFocus() && current==pd){
+        FXTheme *theme=getApp()->getTheme();
+        if(0<theme->metric(METRIC_CORNER_RADIUS)) dc.setForeground(theme->color(ROLE_FOCUS_RING));
         dc.drawFocusRectangle(xx,yy,columnwidth[c],rowheight[r]);
         }
 
@@ -860,7 +869,24 @@ void FXCalendarView::setFirstDay(FXint d){
 // Re-resolve the normal font for the window's monitor
 void FXCalendarView::applyTheme(FXTheme* theme){
   FXWindow::applyTheme(theme);
+  if(0<theme->metric(METRIC_CORNER_RADIUS)){
+    themeColors(theme);
+    }
   setFont(getApp()->retargetNormalFont(font,getWindowDPI()));
+  update();
+  }
+
+
+// Resolve the calendar colors from the theme
+void FXCalendarView::themeColors(FXTheme* theme){
+  backColor=theme->color(ROLE_SURFACE);
+  titleBackColor=theme->color(ROLE_SURFACE);
+  titleColor=theme->color(ROLE_TEXT);
+  dayColor=theme->color(ROLE_TEXT);
+  otherDayColor=theme->color(ROLE_TEXT_DISABLED);
+  weekendColor=theme->color(ROLE_TEXT);
+  otherWeekendColor=theme->color(ROLE_TEXT_DISABLED);
+  todayColor=theme->color(ROLE_ACCENT);
   }
 
 
