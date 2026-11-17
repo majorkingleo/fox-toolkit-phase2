@@ -341,13 +341,15 @@ void FXStyle::drawGrooveRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h
 // as a button without its shadow and state machinery.
 FXbool FXStyle::drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
   if(0<radius){
-    if(drawRoundRect(dc,x,y,w,h,radius,face,border,borderWidth)) return true;
-    FXint rr=FXMIN(radius,FXMIN(w,h)/2);
+    FXint rw=FXMAX(0,w-1);
+    FXint rh=FXMAX(0,h-1);
+    if(drawRoundRect(dc,x,y,rw,rh,radius,face,border,borderWidth)) return true;
+    FXint rr=FXMIN(radius,FXMIN(rw,rh)/2);
     dc.setForeground(face);
-    dc.fillRoundRectangle(x,y,w,h,rr,rr);
+    dc.fillRoundRectangle(x,y,rw,rh,rr,rr);
     if(0<borderWidth){
       dc.setForeground(border);
-      dc.drawRoundRectangle(x,y,w,h,rr,rr);
+      dc.drawRoundRectangle(x,y,rw,rh,rr,rr);
       }
     return true;
     }
@@ -436,22 +438,26 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
       FXColor shade=blendColor(state.parentBack,FXRGB(0,0,0),12);
       FXint sr=FXMIN(radius,FXMIN(w,h-1)/2);
       faceh=h-1;
-      if(!drawRoundRect(dc,x,y+1,w,faceh,radius,shade,shade,0)){
+      FXint shw=FXMAX(0,w-1);
+      FXint shh=FXMAX(0,faceh-1);
+      if(!drawRoundRect(dc,x,y+1,shw,shh,radius,shade,shade,0)){
         dc.setForeground(shade);
-        dc.fillRoundRectangle(x,y+1,w,faceh,sr,sr);
+        dc.fillRoundRectangle(x,y+1,shw,shh,sr,sr);
         }
       }
 
-    if(drawRoundRect(dc,x,y,w,faceh,radius,face,edge,borderWidth)){
+    FXint draww=FXMAX(0,w-1);
+    FXint drawh=FXMAX(0,faceh-1);
+    if(drawRoundRect(dc,x,y,draww,drawh,radius,face,edge,borderWidth)){
       return FXRectangle(x,y,w,h);
       }
     // Fallback: hard-edged rounded shape, corners stay transparent
-    FXint rr=FXMIN(radius,FXMIN(w,faceh)/2);
+    FXint rr=FXMIN(radius,FXMIN(draww,drawh)/2);
     dc.setForeground(face);
-    dc.fillRoundRectangle(x,y,w,faceh,rr,rr);
+    dc.fillRoundRectangle(x,y,draww,drawh,rr,rr);
     if(0<borderWidth){
       dc.setForeground(edge);
-      dc.drawRoundRectangle(x,y,w,faceh,rr,rr);
+      dc.drawRoundRectangle(x,y,draww,drawh,rr,rr);
       }
     return FXRectangle(x,y,w,h);
     }
