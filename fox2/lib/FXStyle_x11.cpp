@@ -334,6 +334,19 @@ void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor co
 
 
 // Draw an antialiased rounded rectangle
+// Margin a popup needs for its drop shadow.  Only a surface with an alpha
+// channel can carry a translucent shadow, which the X11 window does not have,
+// so no margin is reserved and the popups keep their size
+FXint FXStyle::shadowMargin(FXdouble){
+  return 0;
+  }
+
+
+// Draw the drop shadow of a popup; nothing to draw without an alpha surface
+void FXStyle::drawShadow(FXDCWindow&,FXint,FXint,FXint,FXint,FXint){
+  }
+
+
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
 #if defined(HAVE_XRENDER_H)
   if(!hasXRender(dc)) return false;

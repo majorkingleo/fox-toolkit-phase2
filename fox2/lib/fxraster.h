@@ -138,6 +138,10 @@ public:
   /// Blend the foreground color with a coverage value over the target pixel
   void blend(FXint x,FXint y,FXuint cov);
 
+  /// Write a pixel with the given alpha, premultiplied; a translucent surface
+  /// (a drop shadow) needs the alpha to survive into the compositor
+  void plotAlpha(FXint x,FXint y,FXColor color,FXuint alpha);
+
   /// Draw points
   void drawPoint(FXint x,FXint y);
   void drawPoints(const FXPoint* points,FXuint npoints);

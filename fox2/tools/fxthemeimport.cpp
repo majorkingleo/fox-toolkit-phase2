@@ -106,6 +106,7 @@ int main(int argc,char* argv[]){
   std::printf("  %-20s %d\n","focus_width",theme.metric(METRIC_FOCUS_WIDTH));
   std::printf("  %-20s %d\n","corner_radius",theme.metric(METRIC_CORNER_RADIUS));
   std::printf("  %-20s %d\n","check_size",theme.metric(METRIC_CHECK_SIZE));
+  std::printf("  %-20s %d\n","shadow_size",theme.metric(METRIC_SHADOW_SIZE));
   std::printf("  %-20s %s\n","font_ui",theme.font(FONT_UI).getFont().text());
   // Write the theme file when asked
   if(output){

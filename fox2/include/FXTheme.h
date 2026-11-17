@@ -86,6 +86,7 @@ enum {
   METRIC_CORNER_RADIUS,   /// Corner radius
   METRIC_ANIMATION_TIME,  /// State transition time in milliseconds
   METRIC_CHECK_SIZE,      /// Check/radio indicator size
+  METRIC_SHADOW_SIZE,     /// Drop shadow size around popups, 0 for none
   METRIC_LAST
   };
 

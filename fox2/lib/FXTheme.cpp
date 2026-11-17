@@ -94,6 +94,7 @@ void FXTheme::setClassic(){
   metrics[METRIC_CORNER_RADIUS]=0;
   metrics[METRIC_ANIMATION_TIME]=0;
   metrics[METRIC_CHECK_SIZE]=13;
+  metrics[METRIC_SHADOW_SIZE]=0;
   scale=1.0;
 
   // Font roles start out as the application font; an empty description
@@ -134,7 +135,7 @@ FXbool FXTheme::load(const FXString& path){
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
-    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size"
+    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size","shadow_size"
     };
   static const FXchar *fontkeys[FONT_LAST]={
     "ui","small","mono","title"
@@ -249,7 +250,7 @@ FXString FXTheme::describe(const FXString& name,const FXString& source) const {
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
-    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size"
+    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size","shadow_size"
     };
   FXString text;
   FXint i;

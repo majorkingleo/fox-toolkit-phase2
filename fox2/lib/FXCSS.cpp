@@ -625,6 +625,53 @@ void FXCSS::applyKde(FXTheme& theme) const {
   }
 
 
+// Blur radius of the box-shadow of a rule, in pixels; the value is a list of
+// lengths (offset-x, offset-y, blur, spread) followed by a color, and only the
+// blur is imported, bounded so a theme cannot ask for a pathological shadow
+FXint FXCSS::shadow(const FXString& match) const {
+  FXival pos;
+  FXint pass;
+  for(pass=0; pass<2; pass++){
+    for(pos=0; pos<rules.no(); pos++){
+      FXString body;
+      FXint start=0;
+      if(rules.empty(pos)) continue;
+      if(pass==0 && rules.key(pos)!=match) continue;
+      if(pass==1 && rules.key(pos).find(match)<0) continue;
+      body=rules.data(pos);
+      while(start<body.length()){
+        FXint stop=body.find(';',start);
+        FXString decl,value;
+        FXint colon;
+        FXint lengths[4];
+        FXint i=0,n=0;
+        if(stop<0) stop=body.length();
+        decl=body.mid(start,stop-start);
+        start=stop+1;
+        colon=decl.find(':');
+        if(colon<=0) continue;
+        if(FXString::comparecase(decl.left(colon).trim(),"box-shadow")!=0) continue;
+        value=decl.mid(colon+1,decl.length()-colon-1).trim();
+
+        // Color functions carry spaces, and a token that is not a length is
+        // the color, so collect the length tokens and stop at the third pair
+        while(i<value.length() && n<4){
+          while(i<value.length() && (value[i]==' ' || value[i]=='\t')) i++;
+          FXint tokenstart=i;
+          FXint length;
+          while(i<value.length() && value[i]!=' ' && value[i]!='\t') i++;
+          if(tokenstart<i && parseLength(value.mid(tokenstart,i-tokenstart),length)) lengths[n++]=length;
+          }
+        if(3<=n) return FXMIN(FXMAX(lengths[2],0),12);
+        if(2==n) return FXMIN(FXMAX(lengths[1],0),12);
+        return 0;
+        }
+      }
+    }
+  return 0;
+  }
+
+
 // Map the GTK colors and metrics onto the theme
 void FXCSS::apply(FXTheme& theme) const {
   static const FXchar* surfaces[]={ "theme_bg_color","bg_color","theme_bg" };
@@ -641,6 +688,7 @@ void FXCSS::apply(FXTheme& theme) const {
   static const FXchar* hovers[]={ "theme_button_decoration_hover_breeze","theme_button_decoration_hover","theme_hover_color","hover_color" };
   FXColor hover=0;
   FXColor clr;
+  FXint shadowsize=0;
 
   // Base colors, in order of preference
   if((clr=color(surfaces[0]))==0 && (clr=color(surfaces[1]))==0) clr=color(surfaces[2]);
@@ -685,6 +733,11 @@ void FXCSS::apply(FXTheme& theme) const {
   theme.setMetric(METRIC_PADDING,length("button","padding",theme.metric(METRIC_PADDING)));
   theme.setMetric(METRIC_FOCUS_WIDTH,length("button","outline-width",theme.metric(METRIC_FOCUS_WIDTH)));
   theme.setMetric(METRIC_CHECK_SIZE,length("check","min-width",theme.metric(METRIC_CHECK_SIZE)));
+
+  // Popups and menus carry the drop shadow of the popover rule
+  shadowsize=shadow("popover.background");
+  if(!shadowsize) shadowsize=shadow("popover");
+  theme.setMetric(METRIC_SHADOW_SIZE,shadowsize);
 
   // Raised and sunken edges follow the imported surface
   theme.setColor(ROLE_SURFACE_HILITE,makeHiliteColor(theme.color(ROLE_SURFACE)));

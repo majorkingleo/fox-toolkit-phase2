@@ -56,6 +56,7 @@ protected:
   void place(FXint x,FXint y);
   void autoplace();
   void shapeTip();
+  FXint shadowMargin() const;
 private:
   FXToolTip(const FXToolTip&);
   FXToolTip& operator=(const FXToolTip&);

@@ -89,6 +89,9 @@ public:
   /// Return a length declaration converted to pixels, or def if it is missing
   FXint length(const FXString& match,const FXString& prop,FXint def) const;
 
+  /// Return the blur radius of the rule's box-shadow in pixels, 0 when none
+  FXint shadow(const FXString& match) const;
+
   /// Map the GTK colors and metrics onto the given theme
   void apply(FXTheme& theme) const;
 

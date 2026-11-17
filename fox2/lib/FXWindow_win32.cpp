@@ -247,18 +247,24 @@ void FXWindow::clearShape(){
 // child windows, so a menu item can fill its whole row without covering the
 // corner, and the corner pixels show what is behind the popup
 void FXWindow::setCornerRadius(FXint radius){
+  setCornerRadius(radius,0,0,width,height);
+  }
+
+
+// Round the corners of an inner rectangle of the window
+void FXWindow::setCornerRadius(FXint radius,FXint x,FXint y,FXint w,FXint h){
   if(xid){
     if(radius<=0){
       SetWindowRgn((HWND)xid,nullptr,false);
       return;
       }
-    FXint r=FXMIN(radius,FXMIN(width,height)/2);
+    FXint r=FXMIN(radius,FXMIN(w,h)/2);
     if(r<=0){
       SetWindowRgn((HWND)xid,nullptr,false);
       return;
       }
     // SetWindowRgn takes ownership of the region
-    SetWindowRgn((HWND)xid,CreateRoundRectRgn(0,0,width+1,height+1,r<<1,r<<1),false);
+    SetWindowRgn((HWND)xid,CreateRoundRectRgn(x,y,x+w+1,y+h+1,r<<1,r<<1),false);
     }
   }
 

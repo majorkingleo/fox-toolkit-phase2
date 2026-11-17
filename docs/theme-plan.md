@@ -110,7 +110,8 @@ A theme may override any state explicitly; otherwise the role is derived
 Also in `FXTheme`, in logical units (see the DPI workstream):
 
 `padding`, `margin`, `borderWidth`, `focusWidth`, `spacing`, `iconSize`,
-`smallIconSize`, `rowHeight`, `cornerRadius` (advisory; FOX draws rectangles).
+`smallIconSize`, `rowHeight`, `cornerRadius` (advisory; FOX draws rectangles),
+`shadowSize` (the margin a popup carries for its drop shadow, 0 for none).
 
 ### Fonts, assets, and surface style
 
@@ -766,6 +767,40 @@ tip frame is 50x26 with corner alphas `0, 0, 0x50, 0xbf, 0xff` down the
 diagonal, the X11 tip reports `bounding_shaped=1`, and the Win32 tip under Wine
 reports `bounding_shaped=1` at 42x21 (the Wine font is smaller).  The classic
 gates are unaffected.
+
+**Progress: drop shadows under popups and tool tips (2026-11-17).** The theme
+gained `METRIC_SHADOW_SIZE` (`[metrics] shadow_size`), filled from the GTK
+`box-shadow` of the `popover.background` rule: the blur radius is imported and
+bounded to 12 px, which turns Breeze's `0px 0px 2mm` into 8 px.  KDE schemes and
+the classic preset leave it 0, and the cache schema moved to 5 so older cache
+files are rebuilt.
+
+`FXStyle` asks the platform whether it can carry a translucent shadow
+(`shadowMargin()`), draws one (`drawShadow()`), and only Wayland answers yes: its
+window surfaces are premultiplied ARGB, so a translucent ring is composited by
+the compositor with what is behind the popup.  X11 and Win32 windows have no
+alpha channel, so they report a margin of 0 and their popups keep today's size
+instead of reserving a margin nobody can see.  On Wayland the popup is inflated
+by the margin, its children are laid out inside it, the surface is drawn at the
+offset and shaped to the rounded outline through the new
+`FXWindow::setCornerRadius(radius,x,y,w,h)`, so the mask rounds the surface and
+not the window, and the margin keeps the shadow.
+
+The shadow itself is a closed-form ring: the distance from the pixel centre to
+the rounded rectangle gives a squared falloff to 3/8 black over the margin, and
+the ring is written with `FXRaster::plotAlpha()` so the alpha survives into the
+buffer.  That is a few thousand pixels per paint and no allocation, which meets
+the no-per-paint-allocation rule; a cached 9-slice tile is only worth it if the
+profile ever gets expensive.  The ring is written even where it fades to nothing,
+because the tool tip paints its background over the whole expose before the
+shadow goes down.
+
+Verified at scale 1.0 with Breeze: the Wayland popup grows from 98x72 to 114x88
+and its screen-edge profile reads alpha 0,3,9,18,30,45,63,84 with the surface at
+114-16; the tool tip grows from 50x26 to 66x42 with the same profile and a
+rounded surface at (8,8).  X11 keeps 98x72 (`bounding_shaped=1`) and Win32 83x62
+(`bounding_shaped=1`), and classic stays at 90x56 unshaped on X11 with the
+Wayland popup, menu, tool tip and hello gates unchanged.
 
 **R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
 rect, so it needs popup windows inflated by the shadow margin with their

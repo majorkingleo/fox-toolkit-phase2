@@ -639,8 +639,12 @@ public:
   /// Clear window shape
   virtual void clearShape();
 
-  /// Round outer corners to the given radius; zero makes them square
+  /// Round the outer corners to the given radius; zero makes them square
   virtual void setCornerRadius(FXint radius);
+
+  /// Round the corners of an inner rectangle, leaving the rest of the window
+  /// alone; a popup keeps the margin of its drop shadow outside of it
+  virtual void setCornerRadius(FXint radius,FXint x,FXint y,FXint w,FXint h);
 
   /// Raise this window to the top of the stacking order
   virtual void raise();

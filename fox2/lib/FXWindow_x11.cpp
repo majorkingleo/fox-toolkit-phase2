@@ -387,6 +387,12 @@ static FXint cornerInset(FXint y,FXint r,FXint h){
 // background.  The shape also clips the child windows that draw into it, which
 // is why a menu item can fill its whole row without covering the corner.
 void FXWindow::setCornerRadius(FXint radius){
+  setCornerRadius(radius,0,0,width,height);
+  }
+
+
+// Round the corners of an inner rectangle of the window
+void FXWindow::setCornerRadius(FXint radius,FXint x,FXint y,FXint w,FXint h){
   if(xid){
     if(radius<=0){
       clearShape();
@@ -394,9 +400,7 @@ void FXWindow::setCornerRadius(FXint radius){
       }
 #if defined(HAVE_XSHAPE_H)
     FXRegion region;
-    FXint y,y1,inset,r,w,h;
-    w=width;
-    h=height;
+    FXint cy,cy1,inset,r;
     r=FXMIN(radius,FXMIN(w,h)/2);
     if(r<=0){
       clearShape();
@@ -405,11 +409,11 @@ void FXWindow::setCornerRadius(FXint radius){
 
     // Rows with the same inset form one rectangle, so the region needs at most
     // 2r+1 of them instead of one per row
-    for(y=0; y<h; ){
-      inset=cornerInset(y,r,h);
-      for(y1=y+1; y1<h && cornerInset(y1,r,h)==inset; y1++){}
-      if((inset<<1)<w) region+=FXRegion(inset,y,w-(inset<<1),y1-y);
-      y=y1;
+    for(cy=0; cy<h; ){
+      inset=cornerInset(cy,r,h);
+      for(cy1=cy+1; cy1<h && cornerInset(cy1,r,h)==inset; cy1++){}
+      if((inset<<1)<w) region+=FXRegion(x+inset,y+cy,w-(inset<<1),cy1-cy);
+      cy=cy1;
       }
     setShape(region);
 #endif

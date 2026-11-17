@@ -41,8 +41,8 @@ Priority:
 | --- | --- | --- |
 | `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb at two-thirds track width, full-track travel, hover/drag shading and no stepper arrows or arrow hit zones in rounded themes; thickness still comes from the app setting rather than a theme metric. |
 | `FXScrollArea` | PARTIAL | Viewport background follows `ROLE_WINDOW_BG` for rounded themes; border, viewport clipping/rounding and scrollbar spacing remain. |
-| `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell. The corners are rounded and transparent through `FXWindow::setCornerRadius()` on all three backends (X11 shape, Win32 window region, Wayland alpha mask). Pane padding from `METRIC_PADDING` and the cached 9-slice shadow remain. |
-| `FXToolTip` | PARTIAL | Rounded frame, theme padding and a transparent outside are in: the tip shapes itself through `FXWindow::setCornerRadius()` like a popup. The cached drop shadow remains. |
+| `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell. The corners are rounded and transparent through `FXWindow::setCornerRadius()` on all three backends (X11 shape, Win32 window region, Wayland alpha mask). On Wayland the popup is inflated by `METRIC_SHADOW_SIZE` and carries a translucent drop shadow; X11 and Win32 windows have no alpha channel, so they reserve no margin and draw none. Pane padding from `METRIC_PADDING` remains. |
+| `FXToolTip` | PARTIAL | Rounded frame, theme padding, a transparent outside and the Wayland drop shadow are in: the tip shapes itself through `FXWindow::setCornerRadius()` and inflates by `METRIC_SHADOW_SIZE` like a popup. X11 and Win32 have no alpha surface, so no shadow there. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, accent edge, square page-side join and hairline themed frames; left/right/bottom orientations still need a visual pass. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
@@ -110,7 +110,9 @@ use the seam.
 - Titlebar/CSD background/text/button roles.
 - Link, negative, warning and success roles if imported GTK states are to be
   represented faithfully.
-- Shadow color/offset/blur/alpha and popup shadow budget.
+- Shadow color, offset and alpha: only the blur of the GTK `box-shadow` is
+  imported (`shadow_size`, bounded to 12), and the drawn shadow is 3/8 black
+  without an offset.
 
 ### Missing metrics
 
@@ -145,7 +147,7 @@ use the seam.
 | Wayland check marks | DONE | 4x4 supersampled segment coverage through `FXStyle::drawCheckMark()`. |
 | X11 check marks | DONE | Cached A8 coverage pixmap composited through XRender. |
 | Win32 check marks | PARTIAL | Still uses the GDI line primitives; no GDI+ antialiasing yet. |
-| Wayland shadows | OPEN | No 9-slice cached shadow; buttons use only a 1 px bottom shade. |
+| Wayland shadows | PARTIAL | Popups and tool tips carry a translucent shadow: a closed-form ring written with the surface alpha, no per-paint allocation. Buttons still use only the 1 px bottom shade, and X11/Win32 cannot composite a translucent shadow without an alpha window, so they reserve no margin. |
 | X11 rounded corners | DONE with XRender | Bitmap/mask fallback is still hard-edged. |
 | Win32 rounded corners | PARTIAL | Radii now match the other backends: the DC round-rect calls passed radii to GDI `RoundRect`, which wants the corner ellipse size, so every Win32 corner was half as round. `FXStyle_win32.cpp` still returns false from `drawRoundRect`, so the corners are hard-edged; no antialiasing. |
 | Win32 shadows | OPEN | Same as Wayland/X11. |

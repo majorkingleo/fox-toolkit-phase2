@@ -217,7 +217,7 @@ FXint FXPopup::getDefaultWidth(){
       }
     }
   if(!(options&POPUP_HORIZONTAL)) wcum=wmax;
-  return wcum+(border<<1);
+  return wcum+(border<<1)+(shadowMargin()<<1);
   }
 
 
@@ -245,7 +245,7 @@ FXint FXPopup::getDefaultHeight(){
       }
     }
   if(options&POPUP_HORIZONTAL) hcum=hmax;
-  return hcum+(border<<1);
+  return hcum+(border<<1)+(shadowMargin()<<1);
   }
 
 
@@ -259,6 +259,10 @@ void FXPopup::layout(){
   FXint mw=0;
   FXint mh=0;
   FXint e=0;
+  FXint inset=0;
+
+  // Children sit inside the border and inside the margin the shadow needs
+  inset=shadowMargin()+border;
 
   // Horizontal
   if(options&POPUP_HORIZONTAL){
@@ -267,7 +271,7 @@ void FXPopup::layout(){
     if(options&PACK_UNIFORM_WIDTH) mw=maxChildWidth();
 
     // Space available
-    remain=width-(border<<1);
+    remain=width-(inset<<1);
 
     // Find number of paddable children and total space remaining
     for(child=getFirst(); child; child=child->getNext()){
@@ -288,7 +292,7 @@ void FXPopup::layout(){
       }
 
     // Do the layout
-    for(child=getFirst(),x=border; child; child=child->getNext()){
+    for(child=getFirst(),x=inset; child; child=child->getNext()){
       if(child->shown()){
         hints=child->getLayoutHints();
         if(hints&LAYOUT_FIX_WIDTH) w=child->getWidth();
@@ -309,7 +313,7 @@ void FXPopup::layout(){
             if(e>=numexpand){w++;e-=numexpand;}
             }
           }
-        child->position(x,border,w,height-(border<<1));
+        child->position(x,inset,w,height-(inset<<1));
         x+=w;
         }
       }
@@ -322,7 +326,7 @@ void FXPopup::layout(){
     if(options&PACK_UNIFORM_HEIGHT) mh=maxChildHeight();
 
     // Space available
-    remain=height-(border<<1);
+    remain=height-(inset<<1);
 
     // Find number of paddable children and total space remaining
     for(child=getFirst(); child; child=child->getNext()){
@@ -343,7 +347,7 @@ void FXPopup::layout(){
       }
 
     // Do the layout
-    for(child=getFirst(),y=border; child; child=child->getNext()){
+    for(child=getFirst(),y=inset; child; child=child->getNext()){
       if(child->shown()){
         hints=child->getLayoutHints();
         if(hints&LAYOUT_FIX_HEIGHT) h=child->getHeight();
@@ -364,7 +368,7 @@ void FXPopup::layout(){
             if(e>=numexpand){h++;e-=numexpand;}
             }
           }
-        child->position(border,y,width-(border<<1),h);
+        child->position(inset,y,width-(inset<<1),h);
         y+=h;
         }
       }
@@ -473,12 +477,22 @@ void FXPopup::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
   }
 
 
-// Shape the window to the theme's rounded corners; a themed popup shows what
-// lies under its corners instead of its own background, and the shape clips the
-// children.  The shape is rebuilt only when the radius or the size changed.
+// Margin the popup carries for its drop shadow; zero when the style cannot
+// draw one, which keeps the classic chrome exactly as it was
+FXint FXPopup::shadowMargin() const {
+  return getApp()->getStyle()->shadowMargin(getDisplayScale());
+  }
+
+
+// Shape the surface of the popup to the theme's rounded corners.  The window is
+// larger than the surface when it carries a shadow, so only the surface is
+// shaped: the shadow margin has to stay, and the shape clips the children, so a
+// menu item cannot paint over a corner.  The shape is rebuilt only when the
+// radius or the surface size changed.
 void FXPopup::shapePopup(){
   FXTheme* theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXint margin=shadowMargin();
   if(radius<=0){
     if(0<shapeRadius){
       shapeRadius=0;
@@ -488,11 +502,11 @@ void FXPopup::shapePopup(){
       }
     return;
     }
-  if(shapeRadius!=radius || shapeWidth!=width || shapeHeight!=height){
+  if(shapeRadius!=radius || shapeWidth!=width-(margin<<1) || shapeHeight!=height-(margin<<1)){
     shapeRadius=radius;
-    shapeWidth=width;
-    shapeHeight=height;
-    setCornerRadius(radius);
+    shapeWidth=width-(margin<<1);
+    shapeHeight=height-(margin<<1);
+    setCornerRadius(radius,margin,margin,shapeWidth,shapeHeight);
     }
   }
 
@@ -502,26 +516,35 @@ long FXPopup::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
   FXTheme* theme=getApp()->getTheme();
+  FXStyle* style=getApp()->getStyle();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXint margin=shadowMargin();
+  FXint x=margin;
+  FXint y=margin;
+  FXint w=width-(margin<<1);
+  FXint h=height-(margin<<1);
 
-  // Themed popups are a rounded surface with a hairline border
+  // The themed surface is a rounded rectangle with a hairline border, and the
+  // window carries the margin its drop shadow needs around it
   if(0<radius){
     FXint borderWidth=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
     shapePopup();
-    // The face fills the whole rectangle first: the style blends the rounded
-    // edge with what it finds, so it must not find the empty corner of a fresh
+    style->drawShadow(dc,x,y,w,h,radius);
+    // The face fills the whole surface first: the style blends the rounded edge
+    // with what it finds, so it must not find the empty corner of a fresh
     // frame, and the mask then cuts the outline away again
     dc.setForeground(theme->color(ROLE_SURFACE));
-    dc.fillRectangle(0,0,width,height);
-    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,theme->color(ROLE_SURFACE),theme->color(ROLE_BORDER),borderWidth);
+    dc.fillRectangle(x,y,w,h);
+    style->drawRoundedRectangle(dc,x,y,w,h,radius,theme->color(ROLE_SURFACE),theme->color(ROLE_BORDER),borderWidth);
     return 1;
     }
 
-  // Back to a square window when the theme asks for no rounding
+  // The classic frame, inside the shadow margin when the theme asks for one
   shapePopup();
+  style->drawShadow(dc,x,y,w,h,0);
   dc.setForeground(backColor);
-  dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));
-  drawFrame(dc,0,0,width,height);
+  dc.fillRectangle(x+border,y+border,w-(border<<1),h-(border<<1));
+  drawFrame(dc,x,y,w,h);
   return 1;
   }
 

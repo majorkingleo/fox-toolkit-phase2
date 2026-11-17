@@ -139,8 +139,14 @@ void FXWindow::clearShape(){
 // the surface and makes the corner pixels transparent when it hands the frame
 // to the compositor; the shape also clips the children that paint into it.
 void FXWindow::setCornerRadius(FXint radius){
+  setCornerRadius(radius,0,0,width,height);
+  }
+
+
+// Round the corners of an inner rectangle of the window
+void FXWindow::setCornerRadius(FXint radius,FXint x,FXint y,FXint w,FXint h){
   if(xid){
-    fxwaylandSetRadius(fxwayland(getApp()->getDisplay()),xid,radius);
+    fxwaylandSetRadius(fxwayland(getApp()->getDisplay()),xid,radius,x,y,w,h);
     }
   }
 

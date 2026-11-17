@@ -250,6 +250,10 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->btitle.clear();
   s->barh=0;
   s->radius=0;
+  s->shadowrect.x=0;
+  s->shadowrect.y=0;
+  s->shadowrect.w=0;
+  s->shadowrect.h=0;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -402,6 +406,10 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->btitle.clear();
   s->barh=0;
   s->radius=0;
+  s->shadowrect.x=0;
+  s->shadowrect.y=0;
+  s->shadowrect.w=0;
+  s->shadowrect.h=0;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -617,16 +625,22 @@ static FXuint cornerCoverage(FXint px,FXint py,FXint cx,FXint cy,FXint radius){
 // store per shell, so this runs on the finished frame: a menu item that fills
 // its whole row cannot paint over the corner.
 static void maskCorners(FXWaylandSurface* s){
-  FXint r=FXMIN(s->radius,FXMIN(s->storew,s->storeh)/2);
-  FXint cx[4]={r,s->storew-r,r,s->storew-r};
-  FXint cy[4]={r,r,s->storeh-r,s->storeh-r};
-  FXint ox[4]={0,s->storew-r,0,s->storew-r};
-  FXint oy[4]={0,0,s->storeh-r,s->storeh-r};
+  FXRectangle area=s->shadowrect;
+  FXint r=FXMIN(s->radius,FXMIN(area.w,area.h)/2);
+  FXint cx[4],cy[4],ox[4],oy[4];
   FXColor* p;
   FXColor c;
   FXuint cov,red,green,blue;
   FXint i,px,py;
-  if(r<=0) return;
+  if(r<=0 || area.w<=0 || area.h<=0) return;
+  cx[0]=cx[2]=area.x+r;
+  cx[1]=cx[3]=area.x+area.w-r;
+  cy[0]=cy[1]=area.y+r;
+  cy[2]=cy[3]=area.y+area.h-r;
+  ox[0]=ox[2]=area.x;
+  ox[1]=ox[3]=area.x+area.w-r;
+  oy[0]=oy[1]=area.y;
+  oy[2]=oy[3]=area.y+area.h-r;
   for(i=0; i<4; i++){
     for(py=0; py<r; py++){
       p=s->store+(FXival)(oy[i]+py)*s->storew+ox[i];
@@ -644,8 +658,8 @@ static void maskCorners(FXWaylandSurface* s){
   }
 
 
-// Round the corners of a shell surface
-void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius){
+// Round the corners of a rectangle of a shell surface
+void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius,FXint x,FXint y,FXint w,FXint h){
   FXWaylandSurface* s;
   if(!app) return;
   if((s=fxwaylandFindSurface(app,window))==nullptr){
@@ -653,6 +667,10 @@ void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius){
     }
   if(s){
     s->radius=FXMAX(radius,0);
+    s->shadowrect.x=x;
+    s->shadowrect.y=y;
+    s->shadowrect.w=w;
+    s->shadowrect.h=h;
     s->dirty=true;
     }
   }

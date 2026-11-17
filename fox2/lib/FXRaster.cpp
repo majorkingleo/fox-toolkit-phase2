@@ -1099,6 +1099,27 @@ void FXRaster::blend(FXint x,FXint y,FXuint cov){
   }
 
 
+// Write a premultiplied pixel with an explicit alpha; the target starts out
+// opaque black, so a shadow writes the pixel instead of blending it
+void FXRaster::plotAlpha(FXint x,FXint y,FXColor color,FXuint alpha){
+  FXColor* p;
+  if(!inClip(x,y)) return;
+  p=target+y*tstride+x;
+  if(alpha>=255){
+    *p=color|0xff000000u;
+    return;
+    }
+  if(alpha==0){
+    *p=0;
+    return;
+    }
+  *p=(alpha<<24)|
+     (((FXREDVAL(color)*alpha+127)/255)<<16)|
+     (((FXGREENVAL(color)*alpha+127)/255)<<8)|
+     ((FXBLUEVAL(color)*alpha+127)/255);
+  }
+
+
 #if defined(FOX_GLYPHS_AVAILABLE)
 
 // Draw UTF-8 text with the baseline at x,y

@@ -126,6 +126,7 @@ FXToolTip::FXToolTip(FXApp* a,FXuint opts,FXint x,FXint y,FXint w,FXint h):FXShe
 void FXToolTip::shapeTip(){
   FXTheme *theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXint margin=shadowMargin();
   if(radius<=0){
     if(0<shapeRadius){
       shapeRadius=0;
@@ -135,12 +136,18 @@ void FXToolTip::shapeTip(){
       }
     return;
     }
-  if(shapeRadius!=radius || shapeWidth!=width || shapeHeight!=height){
+  if(shapeRadius!=radius || shapeWidth!=width-(margin<<1) || shapeHeight!=height-(margin<<1)){
     shapeRadius=radius;
-    shapeWidth=width;
-    shapeHeight=height;
-    setCornerRadius(radius);
+    shapeWidth=width-(margin<<1);
+    shapeHeight=height-(margin<<1);
+    setCornerRadius(radius,margin,margin,shapeWidth,shapeHeight);
     }
+  }
+
+
+// Margin the tip carries for its drop shadow; zero where no shadow is drawn
+FXint FXToolTip::shadowMargin() const {
+  return getApp()->getStyle()->shadowMargin(getDisplayScale());
   }
 
 
@@ -194,7 +201,7 @@ FXint FXToolTip::getDefaultWidth(){
       }
     while(*end!='\0');
     }
-  return tw+tipHSPACE(this)*2+2;
+  return tw+tipHSPACE(this)*2+2+(shadowMargin()<<1);
   }
 
 
@@ -212,7 +219,7 @@ FXint FXToolTip::getDefaultHeight(){
       }
     while(*end!='\0');
     }
-  return th+tipVSPACE(this)*2+2;
+  return th+tipVSPACE(this)*2+2+(shadowMargin()<<1);
   }
 
 
@@ -222,25 +229,33 @@ long FXToolTip::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,ev);
   const FXchar *beg,*end;
   FXint tx,ty;
+  FXTheme *theme=getApp()->getTheme();
+  FXStyle *style=getApp()->getStyle();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  FXint margin=shadowMargin();
+  FXint x=margin;
+  FXint y=margin;
+  FXint w=width-(margin<<1);
+  FXint h=height-(margin<<1);
   dc.setForeground(backColor);
   dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
   dc.setFont(font);
-  FXTheme *theme=getApp()->getTheme();
-  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
   if(0<radius){
     shapeTip();
-    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,backColor,theme->color(ROLE_BORDER),1);
+    style->drawShadow(dc,x,y,w,h,radius);
+    style->drawRoundedRectangle(dc,x,y,w,h,radius,backColor,theme->color(ROLE_BORDER),1);
     }
   else{
     shapeTip();
+    style->drawShadow(dc,x,y,w,h,0);
     dc.setForeground(textColor);
-    dc.drawRectangle(0,0,width-1,height-1);
+    dc.drawRectangle(x,y,w-1,h-1);
     }
   dc.setForeground(textColor);
   beg=label.text();
   if(beg){
-    tx=1+tipHSPACE(this);
-    ty=1+tipVSPACE(this)+font->getFontAscent();
+    tx=x+1+tipHSPACE(this);
+    ty=y+1+tipVSPACE(this)+font->getFontAscent();
     do{
       end=beg;
       while(*end!='\0' && *end!='\n') end++;

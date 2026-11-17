@@ -171,6 +171,53 @@ void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor co
   }
 
 
+// Margin a popup needs for its drop shadow; the Wayland surface is premultiplied
+// ARGB, so a translucent shadow is composited by the compositor
+FXint FXStyle::shadowMargin(FXdouble scale){
+  return FXMAX(theme->metric(METRIC_SHADOW_SIZE,scale),0);
+  }
+
+
+// Distance from a point to a rounded rectangle, negative inside it
+static FXdouble roundRectDistance(FXdouble px,FXdouble py,FXdouble x,FXdouble y,FXdouble w,FXdouble h,FXdouble r){
+  FXdouble cx=x+w*0.5;
+  FXdouble cy=y+h*0.5;
+  FXdouble dx=FXABS(px-cx)-(w*0.5-r);
+  FXdouble dy=FXABS(py-cy)-(h*0.5-r);
+  if(dx<0.0) dx=0.0;
+  if(dy<0.0) dy=0.0;
+  return sqrt(dx*dx+dy*dy)-r;
+  }
+
+
+// Draw the drop shadow around the surface of a popup: a black ring that fades
+// out over the margin, written with the alpha of the surface so the window
+// behind the popup shows through.  The area is the perimeter times the margin,
+// which is a few thousand pixels, and cost is flat in the popup size.
+void FXStyle::drawShadow(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius){
+  FXRaster *raster=(FXRaster*)dc.context();
+  FXint margin,px,py,r;
+  if(!raster || w<=0 || h<=0) return;
+  margin=shadowMargin(0.0);
+  if(margin<=0) return;
+  r=(radius>0)?FXMIN(radius,FXMIN(w,h)/2):0;
+  for(py=y-margin; py<y+h+margin; py++){
+    for(px=x-margin; px<x+w+margin; px++){
+      FXdouble d=roundRectDistance(px+0.5,py+0.5,x,y,w,h,r);
+      FXuint a=0;
+      // The surface covers the inside; the ring is written even where the
+      // shadow is fully faded, because it may hold the widget's own fill
+      if(d<=0.0) continue;
+      if(d<(FXdouble)margin){
+        d=1.0-d/(FXdouble)margin;
+        a=(FXuint)(d*d*96.0+0.5);
+        }
+      raster->plotAlpha(px,py,FXRGB(0,0,0),a);
+      }
+    }
+  }
+
+
 // Draw an antialiased rounded rectangle with a solid face and border
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
   FXRaster *raster=(FXRaster*)dc.context();

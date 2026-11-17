@@ -117,6 +117,13 @@ public:
   /// Draw a rounded rectangle with a solid face and border; returns true for the rounded path
   FXbool drawRoundedRectangle(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth=1);
 
+  /// Margin a popup needs around its surface for the drop shadow; zero when the
+  /// platform cannot composite a translucent shadow, so no margin is wasted
+  virtual FXint shadowMargin(FXdouble scale=0.0);
+
+  /// Draw the drop shadow around the surface rectangle (x,y,w,h) of a popup
+  virtual void drawShadow(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius);
+
   /// Draw an antialiased check mark in the given square
   virtual void drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor color);
 

@@ -132,6 +132,7 @@ struct FXWaylandSurface {
   FXString                   btitle;     // Title shown in the client side bar
   FXint                      barh;       // Height of that bar, 0 when the compositor draws it
   FXint                      radius;     // Radius the corners are rounded to, 0 for square
+  FXRectangle               shadowrect; // Rectangle whose corners are rounded
   FXWaylandBuffer*           buffers;    // Buffer pool
   FXColor*                   store;      // Content of the shell window tree
   FXint                      storew;     // Size of the backing store
@@ -339,9 +340,10 @@ void fxwaylandHideSurface(FXWaylandSurface* surf);
 /// Post an expose for a window and every visible window below it
 void fxwaylandExpose(FXWaylandApp* app,FXID window);
 
-/// Round the corners of a shell surface; the corners become transparent, so a
-/// popup shows the window behind it instead of its own background
-void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius);
+/// Round the corners of a rectangle of a shell surface; the corners become
+/// transparent, so a popup shows the window behind it instead of its own
+/// background, while the margin of its drop shadow stays outside
+void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius,FXint x,FXint y,FXint w,FXint h);
 
 /// Return an idle buffer of the given size, creating the pool when needed
 FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);
