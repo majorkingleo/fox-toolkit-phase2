@@ -860,6 +860,23 @@ its content below its header and still needs the offset, and `FXHeader` draws it
 buttons with raised and sunken rectangles built from the theme's highlight and
 shadow colours, which is the last 3D chrome left in a themed dialog.
 
+**Progress: a flat header (2026-11-17).** `FXHeader` was the last widget that
+drew its header buttons with raised and sunken rectangles built from the theme's
+highlight and shadow colours, which is why a themed dialog still had a 3D strip
+under the toolbar.  A themed header now skips those rectangles and separates its
+items with a one pixel hairline in `ROLE_BORDER`, drawn after the items because
+each item paints its whole rectangle and would cover a line drawn before it; the
+classic header keeps its bevels.
+
+Measured on the header test at scale 1.0 with Breeze: the header rows hold 68
+pixels of highlight or shadow colour instead of 3481 (the drawn separators take
+170 pixels of border colour, four hairlines times the header height plus its
+top edge).  The same screenshot still shows three thin lines of
+`ROLE_SURFACE_SHADOW` outside the header: the last row of the client side title
+bar, one full width line above the header and a one pixel column at the left
+edge.  They are the next thing to identify, and the Wayland hello, menu, popup
+and repaint gates pass with the header change in.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

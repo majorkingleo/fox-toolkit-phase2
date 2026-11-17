@@ -56,7 +56,7 @@ Priority:
 | `FXText` | OPEN | Normal, selected, highlighted and active text/background roles; margins; focus frame; scrollbars. |
 | `FXTable` | OPEN | Text/base/hilite/shadow/border/selection/grid/stipple/cell-border and alternating cell background colors; row/column metrics. |
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Row height and themed scrollbars are wired; still need alternating rows, hover decoration, tree expander/focus styling. Header text color is now themed. |
-| `FXHeader` | PARTIAL | Text color and header height are themed, but the header buttons still draw raised and sunken rectangles with the theme highlight and shadow colors, so a themed dialog keeps a 3D header. Header button background/hover/pressed and arrow colors remain. |
+| `FXHeader` | PARTIAL | Text color and header height are themed, and a themed header drops the raised and sunken buttons: the items are flat and separated by a one pixel hairline in `ROLE_BORDER`, drawn after the items because an item background covers its whole rectangle. Hover and pressed decoration and the sort arrow colors remain. |
 | `FXRuler`, `FXRulerView` | PARTIAL | Tick/number text role and tick colors; font is already retargeted. |
 | `FXCalendarView`, `FXCalendar` | PARTIAL | Today/title/day/other-day/weekend colors and header/selection states; only the font is currently retargeted. |
 | `FXConsole` | OPEN | Text, selection and cursor roles; background; frame/scrollbars. |

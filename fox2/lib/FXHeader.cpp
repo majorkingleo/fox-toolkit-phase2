@@ -985,6 +985,8 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
   FXint x,y,w,h,i,ilo,ihi;
+  FXTheme *theme=getApp()->getTheme();
+  FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
 
   // Set font
   dc.setFont(font);
@@ -1006,7 +1008,7 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
       if(0<items.no()){
         y=pos+items[0]->getPos();
         }
-      if(0<y){
+      if(0<y && !themed){
         if(options&FRAME_THICK)
           drawDoubleRaisedRectangle(dc,0,0,width,y);
         else if(options&FRAME_RAISED)
@@ -1021,7 +1023,7 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
       if(0<items.no()){
         y=pos+items[items.no()-1]->getPos()+items[items.no()-1]->getSize();
         }
-      if(y<height){
+      if(y<height && !themed){
         if(options&FRAME_THICK)
           drawDoubleRaisedRectangle(dc,0,y,width,height-y);
         else if(options&FRAME_RAISED)
@@ -1034,19 +1036,30 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
     for(i=ilo; i<=ihi; i++){
       y=pos+items[i]->getPos();
       h=items[i]->getSize();
-      if(items[i]->isPressed()){
-        if(options&FRAME_THICK)
-          drawDoubleSunkenRectangle(dc,0,y,width,h);
-        else if(options&FRAME_RAISED)
-          drawSunkenRectangle(dc,0,y,width,h);
-        }
-      else{
-        if(options&FRAME_THICK)
-          drawDoubleRaisedRectangle(dc,0,y,width,h);
-        else if(options&FRAME_RAISED)
-          drawRaisedRectangle(dc,0,y,width,h);
+      if(!themed){
+        if(items[i]->isPressed()){
+          if(options&FRAME_THICK)
+            drawDoubleSunkenRectangle(dc,0,y,width,h);
+          else if(options&FRAME_RAISED)
+            drawSunkenRectangle(dc,0,y,width,h);
+          }
+        else{
+          if(options&FRAME_THICK)
+            drawDoubleRaisedRectangle(dc,0,y,width,h);
+          else if(options&FRAME_RAISED)
+            drawRaisedRectangle(dc,0,y,width,h);
+          }
         }
       items[i]->draw(this,dc,0,y,width,h);
+      }
+
+    // A themed header separates its items with a hairline; it goes down after
+    // the items, because an item's own background covers its whole rectangle
+    if(themed){
+      dc.setForeground(theme->color(ROLE_BORDER));
+      for(i=ilo; i<=ihi; i++){
+        dc.fillRectangle(0,pos+items[i]->getPos()+items[i]->getSize()-1,width,1);
+        }
       }
     }
 
@@ -1063,7 +1076,7 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
       if(0<items.no()){
         x=pos+items[0]->getPos();
         }
-      if(0<x){
+      if(0<x && !themed){
         if(options&FRAME_THICK)
           drawDoubleRaisedRectangle(dc,0,0,x,height);
         else if(options&FRAME_RAISED)
@@ -1078,7 +1091,7 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
       if(0<items.no()){
         x=pos+items[items.no()-1]->getPos()+items[items.no()-1]->getSize();
         }
-      if(x<width){
+      if(x<width && !themed){
         if(options&FRAME_THICK)
           drawDoubleRaisedRectangle(dc,x,0,width-x,height);
         else if(options&FRAME_RAISED)
@@ -1091,19 +1104,30 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
     for(i=ilo; i<=ihi; i++){
       x=pos+items[i]->getPos();
       w=items[i]->getSize();
-      if(items[i]->isPressed()){
-        if(options&FRAME_THICK)
-          drawDoubleSunkenRectangle(dc,x,0,w,height);
-        else if(options&FRAME_RAISED)
-          drawSunkenRectangle(dc,x,0,w,height);
-        }
-      else{
-        if(options&FRAME_THICK)
-          drawDoubleRaisedRectangle(dc,x,0,w,height);
-        else if(options&FRAME_RAISED)
-          drawRaisedRectangle(dc,x,0,w,height);
+      if(!themed){
+        if(items[i]->isPressed()){
+          if(options&FRAME_THICK)
+            drawDoubleSunkenRectangle(dc,x,0,w,height);
+          else if(options&FRAME_RAISED)
+            drawSunkenRectangle(dc,x,0,w,height);
+          }
+        else{
+          if(options&FRAME_THICK)
+            drawDoubleRaisedRectangle(dc,x,0,w,height);
+          else if(options&FRAME_RAISED)
+            drawRaisedRectangle(dc,x,0,w,height);
+          }
         }
       items[i]->draw(this,dc,x,0,w,height);
+      }
+
+    // A themed header separates its items with a hairline; it goes down after
+    // the items, because an item's own background covers its whole rectangle
+    if(themed){
+      dc.setForeground(theme->color(ROLE_BORDER));
+      for(i=ilo; i<=ihi; i++){
+        dc.fillRectangle(pos+items[i]->getPos()+items[i]->getSize()-1,0,1,height);
+        }
       }
     }
   return 1;
