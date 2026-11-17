@@ -41,6 +41,7 @@
 #include "FXDCWindow.h"
 #include "FXApp.h"
 #include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXPopup.h"
 #include "fxpriv.h"
 
@@ -123,6 +124,9 @@ void FXPopup::applyTheme(FXTheme* theme){
 
 // Deserialization
 FXPopup::FXPopup():prevActive(nullptr),nextActive(nullptr){
+  shapeRadius=0;
+  shapeWidth=0;
+  shapeHeight=0;
   }
 
 
@@ -137,6 +141,9 @@ FXPopup::FXPopup(FXWindow* own,FXuint opts,FXint x,FXint y,FXint w,FXint h):FXSh
   shadowColor=getApp()->getShadowColor();
   borderColor=getApp()->getBorderColor();
   border=(options&FRAME_THICK)?2:(options&(FRAME_SUNKEN|FRAME_RAISED))?1:0;
+  shapeRadius=0;
+  shapeWidth=0;
+  shapeHeight=0;
   }
 
 
@@ -471,12 +478,34 @@ long FXPopup::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
   FXTheme* theme=getApp()->getTheme();
-  if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+
+  // Themed popups are a rounded surface with a hairline border.  The window is
+  // shaped to the same outline, so what lies under the corners shows through
+  // instead of the popup background, and the children stay inside the outline
+  if(0<radius){
+    FXint borderWidth=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
+    if(shapeRadius!=radius || shapeWidth!=width || shapeHeight!=height){
+      shapeRadius=radius;
+      shapeWidth=width;
+      shapeHeight=height;
+      setCornerRadius(radius);
+      }
+    // The face fills the whole rectangle first: the style blends the rounded
+    // edge with what it finds, so it must not find the empty corner of a fresh
+    // frame, and the mask then cuts the outline away again
     dc.setForeground(theme->color(ROLE_SURFACE));
     dc.fillRectangle(0,0,width,height);
-    dc.setForeground(theme->color(ROLE_BORDER));
-    dc.drawRectangle(0,0,width,height);
+    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,theme->color(ROLE_SURFACE),theme->color(ROLE_BORDER),borderWidth);
     return 1;
+    }
+
+  // Back to a square window when the theme asks for no rounding
+  if(0<shapeRadius){
+    shapeRadius=0;
+    shapeWidth=0;
+    shapeHeight=0;
+    clearShape();
     }
   dc.setForeground(backColor);
   dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));

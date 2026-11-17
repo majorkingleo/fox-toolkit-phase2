@@ -361,6 +361,62 @@ void FXWindow::clearShape(){
   }
 
 
+// Inset of a row from the side of a rounded rectangle; rows between the top
+// and bottom corner squares are not inset at all
+#if defined(HAVE_XSHAPE_H)
+static FXint cornerInset(FXint y,FXint r,FXint h){
+  FXdouble dy,rr;
+  if(y<r){
+    dy=r-(y+0.5);
+    }
+  else if(y>=h-r){
+    dy=r-(h-y-0.5);
+    }
+  else{
+    return 0;
+    }
+  rr=(FXdouble)r*(FXdouble)r-dy*dy;
+  if(rr<=0.0) return r;
+  return FXMAX(r-(FXint)(sqrt(rr)+0.5),0);
+  }
+#endif
+
+
+// Round the outer corners of the window; the window is shaped to a rounded
+// rectangle, so the corner pixels show what is behind it instead of the window
+// background.  The shape also clips the child windows that draw into it, which
+// is why a menu item can fill its whole row without covering the corner.
+void FXWindow::setCornerRadius(FXint radius){
+  if(xid){
+    if(radius<=0){
+      clearShape();
+      return;
+      }
+#if defined(HAVE_XSHAPE_H)
+    FXRegion region;
+    FXint y,y1,inset,r,w,h;
+    w=width;
+    h=height;
+    r=FXMIN(radius,FXMIN(w,h)/2);
+    if(r<=0){
+      clearShape();
+      return;
+      }
+
+    // Rows with the same inset form one rectangle, so the region needs at most
+    // 2r+1 of them instead of one per row
+    for(y=0; y<h; ){
+      inset=cornerInset(y,r,h);
+      for(y1=y+1; y1<h && cornerInset(y1,r,h)==inset; y1++){}
+      if((inset<<1)<w) region+=FXRegion(inset,y,w-(inset<<1),y1-y);
+      y=y1;
+      }
+    setShape(region);
+#endif
+    }
+  }
+
+
 // Get pointer location (in window coordinates)
 FXbool FXWindow::getCursorPosition(FXint& x,FXint& y,FXuint& buttons) const {
   if(xid){

@@ -41,8 +41,8 @@ Priority:
 | --- | --- | --- |
 | `FXScrollBar` | PARTIAL | Themed trough, rounded pill thumb at two-thirds track width, full-track travel, hover/drag shading and no stepper arrows or arrow hit zones in rounded themes; thickness still comes from the app setting rather than a theme metric. |
 | `FXScrollArea` | PARTIAL | Viewport background follows `ROLE_WINDOW_BG` for rounded themes; border, viewport clipping/rounding and scrollbar spacing remain. |
-| `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell; rounded alpha corners, padding and the cached 9-slice popup shadow remain. |
-| `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need the popup/alpha work. |
+| `FXPopup`, `FXMenuPane` | PARTIAL | Flat themed surface and border in rounded themes, with `applyTheme()` on the popup shell. The corners are rounded and transparent through `FXWindow::setCornerRadius()` on all three backends (X11 shape, Win32 window region, Wayland alpha mask). Pane padding from `METRIC_PADDING` and the cached 9-slice shadow remain. |
+| `FXToolTip` | PARTIAL | Rounded frame/padding are in; the drop shadow and transparent outer corners still need `FXToolTip::onPaint()` to shape the tip the way `FXPopup` does. |
 | `FXTabItem`, `FXTabBar`, `FXTabBook` | PARTIAL | Themed tab face, accent edge, square page-side join and hairline themed frames; left/right/bottom orientations still need a visual pass. |
 | `FXSwitcher` | OPEN | Themed page background/border; the pages themselves inherit from the children but the switcher chrome does not. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. |
@@ -150,6 +150,7 @@ use the seam.
 | Win32 rounded corners | OPEN | `FXStyle_win32.cpp` returns false from `drawRoundRect`; no antialiasing. |
 | Win32 shadows | OPEN | Same as Wayland/X11. |
 | Popup inflation | OPEN | Needed before menus/tooltips can draw shadows outside their current window bounds. |
+| Popup rounded corners | DONE | `FXWindow::setCornerRadius()`: X11 bounding shape, Win32 window region, Wayland premultiplied corner mask, so the corners show what is behind the popup. |
 | Theme cache | DONE | Keyed by source path/size/mtime, importer version and schema; schema bumps invalidate old role layouts. |
 
 ## Suggested order

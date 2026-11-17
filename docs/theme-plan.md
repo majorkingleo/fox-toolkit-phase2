@@ -421,11 +421,13 @@ policy; T6 is independent once T3 exists; T7 makes T6 cheap at startup; T8 is
 independent of both. The KDE importer was picked up after T7 because the cache
 and the GTK path were stable by then; Qt QSS and Xresources stay left open.
 
-**Status summary (2026-11-11):** T1, T2, T3, T4, T5, T6, T7, T8, R1, R2
+**Status summary (2026-11-17):** T1, T2, T3, T4, T5, T6, T7, T8, R1, R2
 (focus ring only) and R3 are done and verified, as is the KDE `.colors`
-importer. Still open: the **Qt QSS** and **Xresources** importers, and the
-**R2 popup shadow**, which needs `FXPopup.cpp` in the `fox2` closure before it
-can be exercised. The order in which the remainder is taken up is fixed below.
+importer. The P0 popup chrome started: popups are rounded off and show what is
+behind their corners on X11, Win32 and Wayland. Still open: the **Qt QSS** and
+**Xresources** importers, the same rounding for `FXToolTip`, and the **R2 popup
+shadow**, which now has a consumer (`FXPopup` is in the `fox2` build). The order
+in which the remainder is taken up is fixed below.
 
 **Next steps after the core (agreed 2026-11-11).** The theme core is complete
 enough to stop migrating widgets for its own sake. The remaining work is
@@ -442,10 +444,10 @@ collide with the DPI workstream:
    checklist asks for, and a theme setting `[fonts] small=...` changes only the
    small text while `hello` stays pixel-identical under the classic theme.
 2. **Finish the seam by migrating the last chrome consumers** —
-   `FXTextField`, `FXScrollBar`, `FXToolTip`, `FXMenuPane`. Bringing
-   `FXPopup.cpp` into the `fox2` closure is what unblocks the deferred popup
-   shadow, so this step pays for itself twice. Acceptance: each widget draws
-   through `FXStyle`, and classic output stays pixel-identical.
+   `FXTextField`, `FXScrollBar`, `FXToolTip`, `FXMenuPane`. `FXPopup` already
+   draws through `FXStyle` and shapes its own corners; the tool tip needs the
+   same call, and the popup shadow needs the popup inflated first. Acceptance:
+   each widget draws through `FXStyle`, and classic output stays pixel-identical.
 3. **R2 popup shadow** — the cached 9-slice tile, now with a real consumer
    (`FXPopup`/`FXMenuPane` inflated by the shadow margin, children offset).
    Acceptance: no per-paint allocation, a shadow under menus and tooltips, and
@@ -640,13 +642,46 @@ parser is addressed.
 `drawFocusRectangle` at radius 0. Verified on a live window: focusing a rounded
 button changes 4.5% of its pixels and leaves ~1660 accent `#0A246A` pixels.
 
-**R2 shadow deferred, with reason.** A drop shadow must be drawn *outside* the
-widget rect, but a FOX popup/menu window is exactly widget-sized, so a shadow
-requires inflating every popup window by the shadow margin and offsetting its
-children. `FXPopup.cpp` is not in the `fox2` closure at all yet (only
-`FXMenuPane.h`, `FXToolTip`, and `FXStatusBar` are), so there is no consumer to
-validate against. The 9-slice shadow-tile cache will land together with popup
-support rather than as an unexercised code path.
+**Progress: rounded popups (2026-11-17).** The first P0 item is in: a popup is
+rounded off and shows what is behind its corners instead of its own background.
+`FXWindow` gained `setCornerRadius(radius)`, next to `setShape()`, and each
+platform implements it the way its window system allows:
+
+- X11 shapes the window to a rounded rectangle (`XShapeCombineRegion` with one
+  rectangle per group of rows that has the same inset), so the corner pixels
+  belong to no window and the children that draw inside it are clipped too.
+- Win32 calls `SetWindowRgn` with `CreateRoundRectRgn`; the region clips the
+  children exactly like the X11 shape.
+- Wayland has no window shape, and every window of a shell paints into one
+  shared buffer, so the corners are cut out of the finished frame instead: the
+  surface keeps the radius and `fxwaylandFlushFrames()` scales the alpha of the
+  four corner squares by a 4x4 supersampled quarter-disc coverage, un-premultiplying
+  as it goes. Because that pass runs on the frame the compositor receives, a
+  menu item that fills its whole row cannot paint over the corner.
+
+`FXPopup::onPaint()` draws the themed path through
+`FXStyle::drawRoundedRectangle()` (face `ROLE_SURFACE`, hairline
+`ROLE_BORDER`, radius and width from `METRIC_CORNER_RADIUS` and
+`METRIC_BORDER_WIDTH`), fills the face first so the style's antialiased edge
+blends with the popup and not with an empty frame, and shapes the window when
+the radius or the size changed. A theme that returns to radius 0 clears the
+shape again, so classic popups are untouched.
+
+Verified on all three backends with `tests/popup` and the Breeze import
+(radius 5): X11 reports `bounding_shaped=1` for the 98x72 popup and
+`bounding_shaped=0` for the classic 90x56 popup; under Wine the Win32 build
+reports the same pair with 83x62 and 75x46; on Wayland the dumped frame of the
+98x72 popup gives corner alphas `0, 0x50, 0x9f, 0xbf, 0xff` while the centre is
+opaque. The classic frames stay pixel-identical (`hello` 0 differing pixels,
+popup frames unchanged) and the Wayland popup, menu, tool tip, hello and
+repaint gates all pass.
+
+**R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
+rect, so it needs popup windows inflated by the shadow margin with their
+children offset. The rounded popup above is the consumer that work was waiting
+for, and with the shape in place the 9-slice shadow tile is the next step; the
+`FXPopup.cpp` closure remark that used to stand here was wrong (the file is in
+`lib/Makefile.am` and in the CMake build).
 
 **Progress:** R3 implemented and verified (2026-11-11). `FXTheme` gained
 `METRIC_ANIMATION_TIME` (classic default 0, parsed from `[metrics]`
@@ -762,11 +797,16 @@ Two constraints apply to the verification scripts in `tmp/`:
 
 1. Focus ring (done): rounded ring in `ROLE_FOCUS_RING` at `METRIC_FOCUS_WIDTH`
    when `corner_radius>0`; classic dashed rectangle otherwise.
-2. Shadow (deferred): cached 9-slice shadow tile under popups/menus. A shadow
+2. Popup corners (done, 2026-11-17): a themed popup is shaped to a rounded
+   rectangle (`FXWindow::setCornerRadius()`), so the corners show what is
+   behind the popup instead of its background, and the shape clips the menu
+   items that fill their rows. The Wayland backend masks the finished frame,
+   because its windows share one buffer and nothing clips a child.
+3. Shadow (deferred): cached 9-slice shadow tile under popups/menus. A shadow
    lies outside the widget rect, so popup windows must first be inflated by the
-   shadow margin and their children offset; that work belongs with the popup/
-   menu build-out, since `FXPopup.cpp` is not in the closure yet.
-3. Verify on `button` (frames, tooltip, status bar) with no per-paint
+   shadow margin and their children offset; the rounded popup above is the
+   consumer that work was waiting for.
+4. Verify on `button` (frames, tooltip, status bar) with no per-paint
    allocation.
 
 #### R3 — hover/pressed transitions

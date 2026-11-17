@@ -397,7 +397,9 @@ Done in this phase so far:
 - Wayland gate: `hello` opens, draws the button, closes. A debug option
   (`FOX_WAYLAND_DUMP=<dir>`) writes every committed buffer as PPM so tests do
   not depend on compositor screenshots (Wayland restricts capture, which the
-  existing plans already note).
+  existing plans already note). `FOX_WAYLAND_DUMP_ALPHA=1` writes a PAM with the
+  alpha channel instead, un-premultiplied, which is how a test tells a
+  transparent popup corner from an opaque one.
 - Acceptance: `hello` and `button` show on WSLg and on KDE, and the dumped
   buffer matches the X11 screenshot.
 

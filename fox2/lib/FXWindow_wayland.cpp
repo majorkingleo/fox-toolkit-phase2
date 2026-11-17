@@ -135,6 +135,16 @@ void FXWindow::clearShape(){
   }
 
 
+// Round the outer corners of the window.  The platform keeps the radius with
+// the surface and makes the corner pixels transparent when it hands the frame
+// to the compositor; the shape also clips the children that paint into it.
+void FXWindow::setCornerRadius(FXint radius){
+  if(xid){
+    fxwaylandSetRadius(fxwayland(getApp()->getDisplay()),xid,radius);
+    }
+  }
+
+
 // Get pointer location (in window coordinates).  Wayland has no query, so the
 // answer is the position the seat last reported, turned from the coordinates of
 // the surface it is over into the coordinates of this window.  The tool tip

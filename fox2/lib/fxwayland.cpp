@@ -249,6 +249,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->parent=nullptr;
   s->btitle.clear();
   s->barh=0;
+  s->radius=0;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -400,6 +401,7 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->parent=parent;
   s->btitle.clear();
   s->barh=0;
+  s->radius=0;
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -591,6 +593,71 @@ FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h){
   }
 
 
+// Coverage of a pixel by the disc that rounds a corner, sampled 4x4; the same
+// sampling the style uses, so the drawn corner and the mask agree
+static FXuint cornerCoverage(FXint px,FXint py,FXint cx,FXint cy,FXint radius){
+  const FXint samples=4;
+  FXdouble rr=(FXdouble)radius*(FXdouble)radius;
+  FXint inside=0;
+  FXint sx,sy;
+  for(sy=0; sy<samples; sy++){
+    FXdouble fy=py+(sy+0.5)/samples-cy;
+    for(sx=0; sx<samples; sx++){
+      FXdouble fx=px+(sx+0.5)/samples-cx;
+      if(fx*fx+fy*fy<=rr) inside++;
+      }
+    }
+  return (FXuint)((inside*255+samples*samples/2)/(samples*samples));
+  }
+
+
+// Take the corner pixels of a finished frame away.  The compositor blends them
+// with what is behind the surface, so a popup shows the window it covers
+// instead of its own background.  Every window of the tree paints into one
+// store per shell, so this runs on the finished frame: a menu item that fills
+// its whole row cannot paint over the corner.
+static void maskCorners(FXWaylandSurface* s){
+  FXint r=FXMIN(s->radius,FXMIN(s->storew,s->storeh)/2);
+  FXint cx[4]={r,s->storew-r,r,s->storew-r};
+  FXint cy[4]={r,r,s->storeh-r,s->storeh-r};
+  FXint ox[4]={0,s->storew-r,0,s->storew-r};
+  FXint oy[4]={0,0,s->storeh-r,s->storeh-r};
+  FXColor* p;
+  FXColor c;
+  FXuint cov,red,green,blue;
+  FXint i,px,py;
+  if(r<=0) return;
+  for(i=0; i<4; i++){
+    for(py=0; py<r; py++){
+      p=s->store+(FXival)(oy[i]+py)*s->storew+ox[i];
+      for(px=0; px<r; px++,p++){
+        cov=cornerCoverage(ox[i]+px,oy[i]+py,cx[i],cy[i],r);
+        if(cov>=255) continue;
+        c=*p;
+        red=(FXREDVAL(c)*cov+127)/255;
+        green=(FXGREENVAL(c)*cov+127)/255;
+        blue=(FXBLUEVAL(c)*cov+127)/255;
+        *p=(cov<<24)|(red<<16)|(green<<8)|blue;
+        }
+      }
+    }
+  }
+
+
+// Round the corners of a shell surface
+void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius){
+  FXWaylandSurface* s;
+  if(!app) return;
+  if((s=fxwaylandFindSurface(app,window))==nullptr){
+    s=fxwaylandShellSurface(app,window);
+    }
+  if(s){
+    s->radius=FXMAX(radius,0);
+    s->dirty=true;
+    }
+  }
+
+
 // Attach, damage and commit
 void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,FXint y,FXint w,FXint h){
   if(!surf || !buf) return;
@@ -639,26 +706,44 @@ void fxwaylandDestroyImageBuffer(FXWaylandBuffer* buf){
 
 
 // Write a committed buffer as PPM when FOX_WAYLAND_DUMP is set; a client side
-// title bar is part of the name, so a test knows where the client area starts
+// title bar is part of the name, so a test knows where the client area starts.
+// FOX_WAYLAND_DUMP_ALPHA writes a PAM with the alpha channel instead, which is
+// how a test tells a transparent corner from an opaque one; the RGB values are
+// un-premultiplied there, because PAM carries straight alpha.
 void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
   const FXchar* dir=getenv("FOX_WAYLAND_DUMP");
+  const FXchar* alpha=getenv("FOX_WAYLAND_DUMP_ALPHA");
   FXchar bar[32];
   FXchar path[512];
+  FXbool withalpha;
   FILE* fp;
   FXint x,y;
+  FXuint r,g,b,a;
   FXColor c;
   if(!dir || !dir[0] || !buf) return;
   if(surf->barh>0) snprintf(bar,sizeof(bar),"-bar%d",surf->barh);
   else bar[0]='\0';
-  snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s.ppm",dir,(unsigned int)surf->window,buf->width,buf->height,bar);
+  withalpha=(alpha && alpha[0])!=0;
+  snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s.%s",dir,(unsigned int)surf->window,buf->width,buf->height,bar,withalpha?"pam":"ppm");
   if((fp=fopen(path,"wb"))==nullptr) return;
-  fprintf(fp,"P6\n%d %d\n255\n",buf->width,buf->height);
+  if(withalpha) fprintf(fp,"P7\n%d %d\n255\n4\nRGB_ALPHA\n",buf->width,buf->height);
+  else fprintf(fp,"P6\n%d %d\n255\n",buf->width,buf->height);
   for(y=0; y<buf->height; y++){
     for(x=0; x<buf->width; x++){
       c=buf->pixels[y*buf->width+x];
-      fputc(FXREDVAL(c),fp);
-      fputc(FXGREENVAL(c),fp);
-      fputc(FXBLUEVAL(c),fp);
+      r=FXREDVAL(c);
+      g=FXGREENVAL(c);
+      b=FXBLUEVAL(c);
+      a=(FXuint)c>>24;
+      if(withalpha && 0<a && a<255){
+        r=FXMIN(255u,(r*255+a/2)/a);
+        g=FXMIN(255u,(g*255+a/2)/a);
+        b=FXMIN(255u,(b*255+a/2)/a);
+        }
+      fputc((FXuchar)r,fp);
+      fputc((FXuchar)g,fp);
+      fputc((FXuchar)b,fp);
+      if(withalpha) fputc((FXuchar)a,fp);
       }
     }
   fclose(fp);
@@ -772,6 +857,7 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
       // A recycled buffer starts blank, so the whole store goes into it; the
       // client side title bar is painted into the store right before that
       if(s->barh>0) fxwaylandPaintBar(app,s);
+      if(s->radius>0) maskCorners(s);
       if((b=fxwaylandAcquireBuffer(s,s->storew,s->storeh))!=nullptr){
         memcpy(b->pixels,s->store,(FXuval)s->storew*s->storeh*sizeof(FXColor));
         fxwaylandCommitBuffer(s,b,0,0,b->width,b->height);

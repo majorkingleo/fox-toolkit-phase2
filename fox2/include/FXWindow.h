@@ -639,6 +639,9 @@ public:
   /// Clear window shape
   virtual void clearShape();
 
+  /// Round outer corners to the given radius; zero makes them square
+  virtual void setCornerRadius(FXint radius);
+
   /// Raise this window to the top of the stacking order
   virtual void raise();
 

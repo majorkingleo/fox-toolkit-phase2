@@ -60,6 +60,9 @@ protected:
   FXColor   shadowColor;
   FXColor   borderColor;
   FXint     border;
+  FXint     shapeRadius;        // Radius the outer corners were last shaped to
+  FXint     shapeWidth;         // Width the shape was built for
+  FXint     shapeHeight;        // Height the shape was built for
 protected:
   FXPopup();
   virtual FXbool doesOverrideRedirect() const override;

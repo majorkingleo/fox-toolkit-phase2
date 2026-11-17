@@ -243,6 +243,26 @@ void FXWindow::clearShape(){
   }
 
 
+// Round the outer corners of the window; the window region also clips the
+// child windows, so a menu item can fill its whole row without covering the
+// corner, and the corner pixels show what is behind the popup
+void FXWindow::setCornerRadius(FXint radius){
+  if(xid){
+    if(radius<=0){
+      SetWindowRgn((HWND)xid,nullptr,false);
+      return;
+      }
+    FXint r=FXMIN(radius,FXMIN(width,height)/2);
+    if(r<=0){
+      SetWindowRgn((HWND)xid,nullptr,false);
+      return;
+      }
+    // SetWindowRgn takes ownership of the region
+    SetWindowRgn((HWND)xid,CreateRoundRectRgn(0,0,width+1,height+1,r<<1,r<<1),false);
+    }
+  }
+
+
 // Get pointer location (in window coordinates)
 FXbool FXWindow::getCursorPosition(FXint& x,FXint& y,FXuint& buttons) const {
   if(xid){
