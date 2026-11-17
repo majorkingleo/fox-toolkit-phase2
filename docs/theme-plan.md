@@ -824,6 +824,36 @@ from 3036 to 4769 pixels, and the classic build still shows its 4210/4194
 pixels of highlight and shadow, so the classic path is untouched.  The Wayland
 hello, menu, popup and tool tip gates still pass.
 
+**Progress: several rounded rectangles per Wayland shell (2026-11-17).** The
+Wayland surface kept one radius and one rectangle, which was enough for the
+popup surface plus its shadow margin but nothing that nests.  It now keeps up to
+eight, keyed by the window that asked for the rounding, with the rectangle
+translated into store coordinates the way a window binds to its store (including
+the client side title bar offset).  That is what a scroll area viewport inside a
+rounded frame needs, and it costs nothing for the popup: verified that the
+Breeze popup still frames as 114x88 with corner alphas 0,0,80,191,255 at the
+surface and a transparent shadow ring, and that the tool tip and menu runs are
+unchanged.
+
+**Scroll area viewports are not rounded yet, and here is why.** Shaping the
+content window of a scroll area works when the area has one: `FXScrollWindow`
+and the text/table widgets put their content in a child window, so the existing
+`setCornerRadius(radius,x,y,w,h)` would clip it.  The attempt failed on two
+points, both worth knowing before the next try:
+
+- The child list is not reliable: `FXIconList` creates its header before the
+  scroll area creates its scroll bars, so "the child that is not a scroll bar"
+  is the header.  A content child has to be identified by covering the viewport,
+  and the subclass sizes it *after* `placeScrollBars()`, so the shaping has to be
+  deferred to a chore; the chore then ran before the size settled and shaped
+  nothing.
+- `FXList`, `FXIconList` and `FXTreeList` have no content window at all: their
+  items paint into the scroll area window itself, over the chrome the area
+  painted.  They need the opposite primitive, a fill of the area *outside* a
+  rounded rectangle with the parent's background, so the item background is cut
+  at the corners; that is a small addition next to `drawRoundRect` in each
+  platform file.
+
 **R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
 rect, so it needs popup windows inflated by the shadow margin with their
 children offset. The rounded popup above is the consumer that work was waiting

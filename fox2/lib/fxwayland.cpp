@@ -249,11 +249,8 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->parent=nullptr;
   s->btitle.clear();
   s->barh=0;
-  s->radius=0;
-  s->shadowrect.x=0;
-  s->shadowrect.y=0;
-  s->shadowrect.w=0;
-  s->shadowrect.h=0;
+  s->nmasks=0;
+  clearElms(s->masks,FXMAX_MASKS);
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -405,11 +402,8 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->parent=parent;
   s->btitle.clear();
   s->barh=0;
-  s->radius=0;
-  s->shadowrect.x=0;
-  s->shadowrect.y=0;
-  s->shadowrect.w=0;
-  s->shadowrect.h=0;
+  s->nmasks=0;
+  clearElms(s->masks,FXMAX_MASKS);
   s->buffers=nullptr;
   s->store=nullptr;
   s->storew=0;
@@ -624,9 +618,9 @@ static FXuint cornerCoverage(FXint px,FXint py,FXint cx,FXint cy,FXint radius){
 // instead of its own background.  Every window of the tree paints into one
 // store per shell, so this runs on the finished frame: a menu item that fills
 // its whole row cannot paint over the corner.
-static void maskCorners(FXWaylandSurface* s){
-  FXRectangle area=s->shadowrect;
-  FXint r=FXMIN(s->radius,FXMIN(area.w,area.h)/2);
+// Cut the corners of one rounded rectangle out of the store
+static void maskRectangle(FXWaylandSurface* s,const FXRectangle& area,FXint radius){
+  FXint r=FXMIN(radius,FXMIN(area.w,area.h)/2);
   FXint cx[4],cy[4],ox[4],oy[4];
   FXColor* p;
   FXColor c;
@@ -658,21 +652,67 @@ static void maskCorners(FXWaylandSurface* s){
   }
 
 
-// Round the corners of a rectangle of a shell surface
+// Cut the corners of every rounded rectangle a shell asked for: its own
+// surface, a popup and the shadow margin around it, a scroll area viewport
+static void maskCorners(FXWaylandSurface* s){
+  FXint i;
+  for(i=0; i<s->nmasks; i++) maskRectangle(s,s->masks[i].rect,s->masks[i].radius);
+  }
+
+
+// Round the corners of a rectangle of a window.  Any window of a shell can ask:
+// the rectangle is in window coordinates and is kept in store coordinates, so
+// the pass that finishes the frame can cut every one of them.
 void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius,FXint x,FXint y,FXint w,FXint h){
   FXWaylandSurface* s;
+  FXRectangle place;
+  FXRectangle here;
+  FXint i,slot=-1;
   if(!app) return;
-  if((s=fxwaylandFindSurface(app,window))==nullptr){
-    s=fxwaylandShellSurface(app,window);
+  if((s=fxwaylandShellSurface(app,window))==nullptr) return;
+
+  // Find the entry of this window, or room for a new one
+  for(i=0; i<s->nmasks; i++){
+    if(s->masks[i].window==window){ slot=i; break; }
     }
-  if(s){
-    s->radius=FXMAX(radius,0);
-    s->shadowrect.x=x;
-    s->shadowrect.y=y;
-    s->shadowrect.w=w;
-    s->shadowrect.h=h;
+  if(slot<0 && radius>0 && 0<w && 0<h){
+    if(s->nmasks<FXMAX_MASKS){
+      slot=s->nmasks++;
+      }
+    else{
+      slot=0;                                     // Reuse the oldest entry
+      }
+    s->masks[slot].window=window;
+    }
+
+  if(slot<0){
     s->dirty=true;
+    return;
     }
+
+  // A radius of zero drops the rounding again
+  if(radius<=0){
+    s->masks[slot].radius=0;
+    s->masks[slot].rect.x=0;
+    s->masks[slot].rect.y=0;
+    s->masks[slot].rect.w=0;
+    s->masks[slot].rect.h=0;
+    s->dirty=true;
+    return;
+    }
+
+  // Window coordinates inside the store of the shell; the bar pushes the tree
+  // down, exactly as it does when a window binds to its store
+  place=app->childmap.getGlobalGeometry(s->window);
+  here=app->childmap.getGlobalGeometry(window);
+  s->masks[slot].radius=radius;
+  s->masks[slot].rect.x=here.x-place.x+x;
+  s->masks[slot].rect.y=here.y-place.y+s->barh+y;
+  s->masks[slot].rect.w=w;
+  s->masks[slot].rect.h=h;
+  s->dirty=true;
+  fxwaylandTrace("round %ux%u at %+d%+d radius %d of window %u\n",(unsigned)w,(unsigned)h,
+                 (int)s->masks[slot].rect.x,(int)s->masks[slot].rect.y,radius,(unsigned)window);
   }
 
 
@@ -875,7 +915,7 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
       // A recycled buffer starts blank, so the whole store goes into it; the
       // client side title bar is painted into the store right before that
       if(s->barh>0) fxwaylandPaintBar(app,s);
-      if(s->radius>0) maskCorners(s);
+      if(0<s->nmasks) maskCorners(s);
       if((b=fxwaylandAcquireBuffer(s,s->storew,s->storeh))!=nullptr){
         memcpy(b->pixels,s->store,(FXuval)s->storew*s->storeh*sizeof(FXColor));
         fxwaylandCommitBuffer(s,b,0,0,b->width,b->height);

@@ -101,11 +101,23 @@ enum {
 /// A surface can be on a handful of outputs at once; more is a clone setup
 enum { FXMAX_OUTPUTS = 4 };
 
+/// A shell can have a handful of rounded rectangles at once: its own surface, a
+/// popup shadow, a scroll area viewport; more is a nesting nobody has asked for
+enum { FXMAX_MASKS = 8 };
+
 
 /// The surface of one shell, and the buffers it draws into
 struct FXWaylandApp;
 struct FXWaylandBuffer;
 struct FXWaylandOutput;
+
+/// One rounded rectangle of a shell, in store coordinates
+struct FXWaylandMask {
+  FXID        window;                   // Window the rounding was asked for
+  FXint       radius;                   // Corner radius
+  FXRectangle rect;                     // Rectangle whose corners are rounded
+  };
+
 
 struct FXWaylandSurface {
   FXWaylandApp*              app;        // The connection
@@ -131,8 +143,8 @@ struct FXWaylandSurface {
   FXWaylandSurface*          parent;     // Surface the popup hangs off
   FXString                   btitle;     // Title shown in the client side bar
   FXint                      barh;       // Height of that bar, 0 when the compositor draws it
-  FXint                      radius;     // Radius the corners are rounded to, 0 for square
-  FXRectangle               shadowrect; // Rectangle whose corners are rounded
+  FXWaylandMask              masks[FXMAX_MASKS]; // Rounded rectangles of this shell
+  FXint                      nmasks;    // Number of them
   FXWaylandBuffer*           buffers;    // Buffer pool
   FXColor*                   store;      // Content of the shell window tree
   FXint                      storew;     // Size of the backing store
