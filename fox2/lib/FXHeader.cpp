@@ -1058,7 +1058,7 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
     if(themed){
       dc.setForeground(theme->color(ROLE_BORDER));
       for(i=ilo; i<=ihi; i++){
-        dc.fillRectangle(0,pos+items[i]->getPos()+items[i]->getSize()-1,width,1);
+        dc.fillRectangle(0,pos+items[i]->getPos()+items[i]->getSize(),width,1);
         }
       }
     }
@@ -1126,7 +1126,7 @@ long FXHeader::onPaint(FXObject*,FXSelector,void* ptr){
     if(themed){
       dc.setForeground(theme->color(ROLE_BORDER));
       for(i=ilo; i<=ihi; i++){
-        dc.fillRectangle(pos+items[i]->getPos()+items[i]->getSize()-1,0,1,height);
+        dc.fillRectangle(pos+items[i]->getPos()+items[i]->getSize(),0,1,height);
         }
       }
     }

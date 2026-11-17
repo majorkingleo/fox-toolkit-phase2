@@ -1108,6 +1108,32 @@ by surface-coloured gaps, and the shutter lost 45554 pixels of `#A0A1A1`.  A
 classic run of the shutter still paints 49979 pixels of `#8E8B86` for the shaded
 content.
 
+**Progress: two table defects (2026-11-17).** The table test showed two problems
+that the themed chrome made obvious.
+
+The headers did not line up with the grid: the column separators sat one pixel
+left of the column grid lines, because a header item drew its separator on its
+last pixel while the grid line of the next column is drawn on its first pixel.
+The themed separator now goes on the boundary between two items, which is the
+same pixel the grid line uses, and the same holds for the row header.  Measured
+on the table test at scale 1.0 with Breeze: header separators at 206, 306, 406
+and grid lines at 206, 306, 406; the row separators and the horizontal grid lines
+line up the same way at 115, 135, 155.  Classic tables had the same one pixel
+offset, so they are aligned now too.
+
+The header vanished on Wayland as soon as the table scrolled.  All windows of a
+shell paint into one buffer there, so a window must keep its paint inside the
+area its children leave for it: `drawCell()` replaced the clip rectangle of the
+DC with the rectangle of the cell it was about to draw, and a cell that was
+partly scrolled out of the viewport has its top above the header, so the cell
+painted over it.  On X11 the server clips the parent's drawing against the child
+windows, which is why this only showed on Wayland.  The cell clip is now clamped
+to the viewport, and `FXTable::onPaint()` clips to the cell area as well.
+
+Checked by dragging the vertical scroll bar of the table test under sway at scale
+1.0 with Breeze: the column header stays in place and the columns stay aligned
+after the grid scrolled to row 24.
+
 **Scroll area viewports inside a content window are not rounded yet.** Shaping the
 content window of a scroll area works when the area has one: `FXScrollWindow`
 and the text/table widgets put their content in a child window, so the existing

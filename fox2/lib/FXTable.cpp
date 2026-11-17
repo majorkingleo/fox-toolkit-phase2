@@ -2441,9 +2441,13 @@ void FXTable::drawCell(FXDC& dc,FXint sr,FXint er,FXint sc,FXint ec){
   // Non-empty
   if(xl<xr && yt<yb){
 
-    // Drawing is clipped against cell rectangle AND the event
-    // rectangle; note, grid lines are included this rectangle!
-    dc.setClipRectangle(xl,yt,xr-xl+vgrid,yb-yt+hgrid);
+    // Drawing is clipped against cell rectangle AND the event rectangle; note,
+    // grid lines are included this rectangle.  A cell that is partly scrolled
+    // out of the viewport must not paint over the headers, which share the same
+    // buffer on a platform that draws all windows into one store
+    FXint cx=FXMAX(xl,colHeader->getX());
+    FXint cy=FXMAX(yt,rowHeader->getY());
+    dc.setClipRectangle(cx,cy,xr+vgrid-cx,yb+hgrid-cy);
 
     // Set background color
     if(isItemSelected(sr,sc)){
@@ -2588,6 +2592,12 @@ long FXTable::onPaint(FXObject*,FXSelector,void* ptr){
 
 //dc.setForeground(FXRGB(255,0,0));
 //dc.fillRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
+
+  // The column header, the row header and the corner button are children that
+  // lie over this window, so the cells are clipped to the area they leave; on a
+  // platform that shares one buffer between all windows a repaint would
+  // otherwise paint the grid over the headers
+  dc.setClipRectangle(colHeader->getX(),rowHeader->getY(),width-colHeader->getX(),height-rowHeader->getY());
 
   // Left/bottom part of table
   FXint tablew=colHeader->getX()+colHeader->getTotalSize();
