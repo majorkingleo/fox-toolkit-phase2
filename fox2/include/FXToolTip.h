@@ -47,11 +47,15 @@ protected:
   FXFont   *font;                       // Font of the tip
   FXColor   textColor;                  // Text color
   FXbool    popped;                     // Is currently popped up
+  FXint     shapeRadius;                // Radius the outer corners were last shaped to
+  FXint     shapeWidth;                 // Width the shape was built for
+  FXint     shapeHeight;                // Height the shape was built for
 protected:
   FXToolTip();
   virtual FXbool doesOverrideRedirect() const override;
   void place(FXint x,FXint y);
   void autoplace();
+  void shapeTip();
 private:
   FXToolTip(const FXToolTip&);
   FXToolTip& operator=(const FXToolTip&);

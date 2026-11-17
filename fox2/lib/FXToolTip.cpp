@@ -102,6 +102,9 @@ FXToolTip::FXToolTip(){
   font=nullptr;
   textColor=0;
   popped=false;
+  shapeRadius=0;
+  shapeWidth=0;
+  shapeHeight=0;
   }
 
 
@@ -111,6 +114,33 @@ FXToolTip::FXToolTip(FXApp* a,FXuint opts,FXint x,FXint y,FXint w,FXint h):FXShe
   textColor=getApp()->getTipforeColor();
   backColor=getApp()->getTipbackColor();
   popped=false;
+  shapeRadius=0;
+  shapeWidth=0;
+  shapeHeight=0;
+  }
+
+
+// Shape the tip to the theme's rounded corners, so what lies under the corners
+// shows through instead of the tool tip background; the shape is rebuilt only
+// when the radius or the size changed.
+void FXToolTip::shapeTip(){
+  FXTheme *theme=getApp()->getTheme();
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(radius<=0){
+    if(0<shapeRadius){
+      shapeRadius=0;
+      shapeWidth=0;
+      shapeHeight=0;
+      clearShape();
+      }
+    return;
+    }
+  if(shapeRadius!=radius || shapeWidth!=width || shapeHeight!=height){
+    shapeRadius=radius;
+    shapeWidth=width;
+    shapeHeight=height;
+    setCornerRadius(radius);
+    }
   }
 
 
@@ -143,6 +173,9 @@ void FXToolTip::detach(){
 // Show window
 void FXToolTip::show(){
   FXShell::show();
+  // Shape after the shell is shown: on Wayland the surface of a popup comes
+  // into being there, and shaping a window without a surface is a no-op
+  shapeTip();
   raise();
   }
 
@@ -195,9 +228,11 @@ long FXToolTip::onPaint(FXObject*,FXSelector,void* ptr){
   FXTheme *theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
   if(0<radius){
+    shapeTip();
     getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,backColor,theme->color(ROLE_BORDER),1);
     }
   else{
+    shapeTip();
     dc.setForeground(textColor);
     dc.drawRectangle(0,0,width-1,height-1);
     }

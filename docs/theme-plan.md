@@ -697,10 +697,13 @@ Two defects were found while verifying, both fixed:
   `<prefix>/drive_c/users/<name>/.cache/fox/themes/` and the second start reuses
   it.
 - **The popup was shaped only when it painted.** `FXPopup::shapePopup()` now
-  runs from `show()` as well, so the X11 shape is in place before the window is
-  mapped and the corners are never square on screen; `onPaint()` still calls it,
-  which covers a theme or size change.  Wine applies the region to its X window
-  about 0.7 s after the popup appears, which is a Wine detail, not a FOX one.
+  runs from `show()` as well, right after the shell is shown; `onPaint()` still
+  calls it, which covers a theme or size change.  It has to run *after*
+  `FXShell::show()`, not before it: on Wayland the surface of a popup comes into
+  being during the show, and shaping a window without a surface is a no-op,
+  which leaves a square-cornered popup with the cache believing it is shaped.
+  Wine applies the region to its X window about 0.7 s after the popup appears,
+  which is a Wine detail, not a FOX one.
 
 **A theme is only visible in the Wine prefix the program runs in.** A plain
 `wine .../ControlPanel.exe` uses `~/.wine`, while the build scripts pass
@@ -752,6 +755,17 @@ corner before the fix reached x=3 only at row 2, and after the fix at row 1,
 which is where the X11 shape puts it.  The remaining difference is
 antialiasing: X11 composites the corner through an XRender mask and Wayland
 through 4x4 coverage, while Win32 still draws a hard GDI edge.
+
+**Progress: rounded tool tips (2026-11-17).** `FXToolTip` draws its rounded
+frame through `FXStyle` when the theme has a radius, but the window stayed
+square, so the corner pixels were the tip background.  It now carries the same
+`shapeRadius`/`shapeWidth`/`shapeHeight` cache and calls a `shapeTip()` helper
+from `show()` and from `onPaint()`, which shapes it through
+`FXWindow::setCornerRadius()`.  Verified at scale 1.0 with Breeze: the Wayland
+tip frame is 50x26 with corner alphas `0, 0, 0x50, 0xbf, 0xff` down the
+diagonal, the X11 tip reports `bounding_shaped=1`, and the Win32 tip under Wine
+reports `bounding_shaped=1` at 42x21 (the Wine font is smaller).  The classic
+gates are unaffected.
 
 **R2 shadow still deferred.** A drop shadow must be drawn *outside* the widget
 rect, so it needs popup windows inflated by the shadow margin with their

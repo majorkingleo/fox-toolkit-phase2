@@ -725,9 +725,10 @@ long FXPopup::onCmdUnpost(FXObject*,FXSelector,void* ptr){
 // Show popup and add to popup stack
 void FXPopup::show(){
   if(!(flags&FLAG_SHOWN)){
-    // Shape before the popup is mapped, so it never shows square corners first
-    shapePopup();
     FXShell::show();
+    // Shape after the shell is shown: on Wayland the surface of a popup comes
+    // into being there, and shaping a window without a surface is a no-op
+    shapePopup();
     prevActive=getApp()->popupWindow;
     if(prevActive) prevActive->nextActive=this;
     getApp()->popupWindow=this;
