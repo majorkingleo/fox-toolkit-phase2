@@ -68,12 +68,13 @@ like it belongs, without losing what makes FOX nice?**
 | | |
 |---|---|
 | ![The adie editor](screenshots/readme/themed-adie.png) | ![The calculator](screenshots/readme/themed-calculator.png) |
-| `adie`, the FOX editor, with its tool bar, editor page, scroll bars and status line | the calculator, every button rounded and flat |
+| `adie`, the FOX editor: themed chrome, a monospace editor font and syntax colouring | the calculator, every button rounded and flat |
 
 ### Dark themes
 
 The theme is imported, not approximated, so a dark theme changes the surfaces,
-the text, the menus and the tool tips together.
+the text, the menus and the tool tips together.  The editor's syntax colours are
+still its own palette and do not follow yet, so they are left off here.
 
 | | |
 |---|---|
@@ -136,7 +137,8 @@ desktop's light/dark preference.
 This is a playground, not a release: expect rough edges, half-finished widgets
 and a few corners of the toolkit that still paint the old way — the specialised
 dial and knob controls, for instance.  The popup drop shadow exists on Wayland
-and still has to come for X11 and Windows.
+and still has to come for X11 and Windows.  The editor's syntax colours are a
+palette of their own and have to be chosen for a dark theme by hand.
 
 The technical notes, including which widget is how far along and why some things
 are harder than they look, are in [docs/](docs/).
