@@ -15,7 +15,7 @@ StopWatch::StopWatch(){
   }
 
 
-StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_NONE,0,0,260,180,0,0,0,0){
+StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_ALL,0,0,260,180,0,0,0,0){
   clockLabel=nullptr;
   dragging=false;
   dragx=0;
@@ -38,15 +38,18 @@ void StopWatch::create(){
   FXMainWindow::create();
   FXint x=getApp()->reg().readIntEntry("SETTINGS","x",-1000000);
   FXint y=getApp()->reg().readIntEntry("SETTINGS","y",-1000000);
-  if((x!=-1000000) && (y!=-1000000)){
-    x=FXCLAMP(0,x,getRoot()->getWidth()-FXMIN(getWidth(),32)-32);
-    y=FXCLAMP(0,y,getRoot()->getHeight()-FXMIN(getHeight(),32)-32);
+  FXbool validPosition=(x!=-1000000) && (y!=-1000000) &&
+                       (x>=-32) && (y>=-32) &&
+                       (x<getRoot()->getWidth()) && (y<getRoot()->getHeight());
+  if(validPosition){
     move(x,y);
+    show();
     }
   else{
-    place(PLACEMENT_SCREEN);
+    show(PLACEMENT_SCREEN);
     }
-  show();
+  raise();
+  setFocus();
   onTick(nullptr,0,nullptr);
   }
 
