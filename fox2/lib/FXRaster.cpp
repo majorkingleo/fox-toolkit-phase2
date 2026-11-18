@@ -1099,6 +1099,26 @@ void FXRaster::blend(FXint x,FXint y,FXuint cov){
   }
 
 
+// Blend an icon or image pixel with its own alpha over the target pixel;
+// antialiased edges from a rasterized SVG reach the screen this way
+void FXRaster::blendPixel(FXint x,FXint y,FXColor color,FXuint alpha){
+  FXColor* p;
+  FXColor d;
+  FXuint inv;
+  if(!inClip(x,y) || alpha==0) return;
+  p=target+y*tstride+x;
+  if(alpha>=255){
+    *p=color|0xff000000u;
+    return;
+    }
+  d=*p;
+  inv=255-alpha;
+  *p=0xff000000u|FXRGB((FXREDVAL(color)*alpha+FXREDVAL(d)*inv+127)/255,
+                       (FXGREENVAL(color)*alpha+FXGREENVAL(d)*inv+127)/255,
+                       (FXBLUEVAL(color)*alpha+FXBLUEVAL(d)*inv+127)/255);
+  }
+
+
 // Write a premultiplied pixel with an explicit alpha; the target starts out
 // opaque black, so a shadow writes the pixel instead of blending it
 void FXRaster::plotAlpha(FXint x,FXint y,FXColor color,FXuint alpha){
@@ -1332,7 +1352,7 @@ void FXRaster::drawIconSunken(const FXIcon* icon,FXint dx,FXint dy,FXColor hilit
   }
 
 
-// Draw icon; the alpha channel or alpha color acts as a shape mask
+// Draw icon; the alpha channel blends into the background, an alpha color acts as a shape mask
 void FXRaster::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
   const FXColor* src;
   FXuint options;
@@ -1353,7 +1373,17 @@ void FXRaster::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
     for(xx=x1; xx<x2; xx++){
       FXColor pixel=src[(yy-dy)*iw+(xx-dx)];
       if(!(options&IMAGE_OPAQUE)){
-        if(alphacolor ? (pixel==transp) : (FXALPHAVAL(pixel)==0)) continue;
+        if(alphacolor){
+          if(pixel==transp) continue;
+          }
+        else{
+          FXuint alpha=FXALPHAVAL(pixel);
+          if(alpha==0) continue;
+          if(alpha<255){
+            blendPixel(xx,yy,pixel,alpha);
+            continue;
+            }
+          }
         }
       plot(xx,yy,pixel);
       }

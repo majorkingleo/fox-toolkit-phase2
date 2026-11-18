@@ -271,6 +271,9 @@ is wired in (`docs/wayland-plan.md`).
   `FXIcon::getScaledIcon(scale)` keeps one copy per scale with the icon, and an
   `FXSVGIcon` rasterizes that copy again from its SVG document instead of
   filtering the authored pixels, so a vector icon stays sharp at 150% and 200%.
+  The software raster backend (`FXRaster::drawIcon`, Wayland) now blends the
+  icon's per-pixel alpha into the background, so the antialiased vector edges
+  survive to the screen; X11 and Win32 still draw through a 1-bit shape mask.
   Bitmaps have no cache users yet; when they appear, key them as `(image,scale)`
   and rebuild on scale change.
 

@@ -150,14 +150,14 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
 
   // Bottom: mode switch and the style toggle
   FXHorizontalFrame* bottom=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,scaledPixels(getApp(),40),4,4,4,4);
-  modeIcons[0]=new FXSVGIcon(getApp(),clock_svg,FXRGB(32,33,36),0,24,24);
-  modeIcons[1]=new FXSVGIcon(getApp(),stopwatch_svg,FXRGB(32,33,36),0,24,24);
-  modeIcons[2]=new FXSVGIcon(getApp(),timer_svg,FXRGB(32,33,36),0,24,24);
+  modeIcons[0]=new FXSVGIcon(getApp(),clock_svg,FXRGB(32,33,36),0,32,32);
+  modeIcons[1]=new FXSVGIcon(getApp(),stopwatch_svg,FXRGB(32,33,36),0,32,32);
+  modeIcons[2]=new FXSVGIcon(getApp(),timer_svg,FXRGB(32,33,36),0,32,32);
   modeButtons[0]=new FXButton(bottom,"",modeIcons[0],this,FXSEL(SEL_COMMAND,ID_MODE_CLOCK),BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modeButtons[1]=new FXButton(bottom,"",modeIcons[1],this,FXSEL(SEL_COMMAND,ID_MODE_STOPWATCH),BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modeButtons[2]=new FXButton(bottom,"",modeIcons[2],this,FXSEL(SEL_COMMAND,ID_MODE_TIMER),BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
-  styleIcons[0]=new FXSVGIcon(getApp(),digital_clock_svg,FXRGB(32,33,36),0,24,24);
-  styleIcons[1]=new FXSVGIcon(getApp(),analog_clock_svg,FXRGB(32,33,36),0,24,24);
+  styleIcons[0]=new FXSVGIcon(getApp(),digital_clock_svg,FXRGB(32,33,36),0,32,32);
+  styleIcons[1]=new FXSVGIcon(getApp(),analog_clock_svg,FXRGB(32,33,36),0,32,32);
   styleButton=new FXButton(bottom,"",styleIcons[0],this,ID_STYLE,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modeButtons[0]->setTipText("Show the clock");
   modeButtons[1]->setTipText("Show the stopwatch");

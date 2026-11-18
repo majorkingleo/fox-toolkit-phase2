@@ -138,6 +138,9 @@ public:
   /// Blend the foreground color with a coverage value over the target pixel
   void blend(FXint x,FXint y,FXuint cov);
 
+  /// Blend an icon or image pixel with its own alpha over the target pixel
+  void blendPixel(FXint x,FXint y,FXColor color,FXuint alpha);
+
   /// Write a pixel with the given alpha, premultiplied; a translucent surface
   /// (a drop shadow) needs the alpha to survive into the compositor
   void plotAlpha(FXint x,FXint y,FXColor color,FXuint alpha);
