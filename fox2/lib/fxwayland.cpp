@@ -356,7 +356,7 @@ static const xdg_toplevel_listener toplevelListener={
 // for, and a compositor that refuses leaves the client to draw nothing yet
 static void decorationConfigure(void* data,zxdg_toplevel_decoration_v1*,uint32_t mode){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
-  FXint barh=(mode==ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE)?0:fxwaylandBarHeight(s->app);
+  FXint barh=(s->borderless || mode==ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE)?0:fxwaylandBarHeight(s->app);
   fxwaylandTrace("decoration of window %u is %s\n",(unsigned int)s->window,
                  mode==ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE?"server side":"client side");
   if(s->barh!=barh){
@@ -389,6 +389,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->parent=nullptr;
   s->btitle.clear();
   s->barh=0;
+  s->borderless=false;
   s->nmasks=0;
   clearElms(s->masks,FXMAX_MASKS);
   s->buffers=nullptr;
@@ -542,6 +543,7 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->parent=parent;
   s->btitle.clear();
   s->barh=0;
+  s->borderless=false;
   s->nmasks=0;
   clearElms(s->masks,FXMAX_MASKS);
   s->buffers=nullptr;

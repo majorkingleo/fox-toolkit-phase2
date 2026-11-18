@@ -13,3 +13,4 @@ install(FILES
   pathfinder/PathFinder.1
   adie/adie.1
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+install(PROGRAMS adie/Adie.stx DESTINATION ${CMAKE_INSTALL_BINDIR})

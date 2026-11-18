@@ -150,6 +150,7 @@ struct FXWaylandSurface {
   FXWaylandSurface*          parent;     // Surface the popup hangs off
   FXString                   btitle;     // Title shown in the client side bar
   FXint                      barh;       // Height of that bar, 0 when the compositor draws it
+  FXbool                     borderless; // Window asked for no decorations
   FXWaylandMask              masks[FXMAX_MASKS]; // Rounded rectangles of this shell
   FXint                      nmasks;    // Number of them
   FXWaylandBuffer*           buffers;    // Buffer pool
