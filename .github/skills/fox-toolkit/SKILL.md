@@ -24,6 +24,9 @@ and utility/concurrency classes.
 - `doc/` contains conceptual guides, including `introduction.html`,
   `messages.html`, `layout.html`, `datatarget.html`, `window.html`,
   `guiupdate.html`, `timers.html`, and `serialization.html`.
+- `fox-1.7.95/doc/fox.html` is only the documentation frameset. Start from the
+  [origin documentation index](./references/origin-docs.md) for the standalone
+  guides by topic, and confirm behavior against the exact 1.7.95 declarations.
 - Build definitions are Autotools files (`configure.ac` and `Makefile.am`).
   The library target is `libFOX-1.7.la`; public headers install under
   `$(includedir)/fox-1.7`.
@@ -151,8 +154,10 @@ uses.
 - Suppress copying the classic way: declare the copy constructor and
   `operator=` `private` and leave them undefined (~444 / ~366 headers). The
   tree contains no `= delete`; match the file you edit.
-- Keep platform differences inside `#ifdef WIN32`, `HAVE_*`, and similar
-  conditionals, the way `FXApp.cpp`, `FXWindow.cpp`, and `xincs.h` do.
+- Keep platform differences inside `#if defined(...)` conditionals, as in
+  `#if defined(WIN32)`, `#if defined(X11)`, or an appropriate `HAVE_*` test.
+  Keep those blocks platform-independent where possible; split a file into
+  platform-named implementation files when platform code becomes substantial.
 - C-style casts still dominate (~2303), but newer headers use
   `static_cast`/`reinterpret_cast` (~84 / ~131). Match the surrounding file,
   prefer the named casts in new code, and never mass-convert.
@@ -286,6 +291,42 @@ For a change:
    or focused validation. Distinguish a compile check from runtime GUI
    verification.
 
+## Lifecycle and subsystem checklist
+
+Use this as a task-oriented supplement to the API docs. Load the linked
+[origin documentation index](./references/origin-docs.md) for the detailed
+version-specific procedures.
+
+- **Custom widget:** subclass the closest existing widget, preserve its option
+  bits and layout behavior, implement minimum dimensions and `create()` as
+  needed, and repaint from the supplied dirty rectangle. Do not replace a
+  manager with fixed coordinates merely to simplify an example.
+- **Resources:** `FXImage`, `FXIcon`, `FXFont`, and `FXCursor` follow FOX's
+  construct-then-create model. Populate client-side data first, then let the
+  widget or an explicit `create()` realize platform resources. Use `IMAGE_KEEP`
+  only when pixels must remain mutable, then call `render()` after changes.
+- **Timers and background work:** timers are one-shot nanosecond callbacks.
+  Re-arm a relative timer or use an absolute `addDeadline()` for periodic work.
+  Advance deadlines safely into the future; an overdue schedule can create a
+  starvation loop. Use chores for short idle work and remove callbacks in the
+  target destructor.
+- **Focus:** the window system focuses a shell; FOX maintains a separate chain
+  from shell through composites to a leaf. A custom focusable widget must
+  implement `canFocus()`, keyboard/focus handlers, and `SEL_FOCUSIN/OUT` state
+  as appropriate. Navigation may traverse ancestors before reaching a target.
+- **Clipboard and selection:** distinguish explicit clipboard ownership from
+  the live primary selection. Advertise registered drag types, serve data on
+  request, and release retained representations when ownership is lost.
+- **Drag and drop:** enable a target with `dropEnable()`, validate its advertised
+  types, handle enter/motion/drop/leave, and call `acceptDrop()` for feedback.
+  A source uses `beginDrag()`, `handleDrag()`, `didAccept()`, and `endDrag()` and
+  answers `SEL_DND_REQUEST` with the correct origin. Keep requested data and
+  temporary visual state owned for exactly the documented interval.
+- **Registry:** application and vendor names select a layered settings
+  namespace: desktop/vendor/application and system-wide/per-user. Confirm
+  platform-specific paths in the implementation rather than assuming Unix
+  paths, and validate typed reads (especially zero values in 1.7.95).
+
 ## Known glitches and gotchas
 
 Traps that cost real debugging time. All were reproduced in the `fox2/` port,
@@ -312,7 +353,12 @@ symptom, the cause with its source location, and the workaround.
   `SEL_TIMEOUT` handler does *not* repeat it, and a handler that forgets to
   re-arm produces exactly one step (a hover fade that never fades, for
   example). Workaround: call `getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,id),ns)`
-  again from inside the handler, and return 0 only when finished.
+  again from inside the handler, and return 0 only when finished. For periodic
+  work that must avoid accumulated relative jitter, use `addDeadline()` with an
+  absolute `FXTime`; ensure the next deadline remains ahead of the handler.
+- **Timer quantities are nanoseconds.** Do not treat timer arguments as
+  milliseconds or pass a relative duration to `addDeadline()`. Construct its
+  absolute deadline from `FXThread::time()` plus the desired interval.
 - **There is no `FXApp::getTick()`.** For elapsed-time math use
   `FXThread::time()`, which returns nanoseconds in `FXTime`.
 - **`update()` does not generate X `Expose` events.** `FXWindow::update()`
