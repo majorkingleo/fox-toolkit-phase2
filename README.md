@@ -107,6 +107,7 @@ title bar is FOX's own.
 ```sh
 ./scripts/build-fox2-linux.sh --cmake     # X11     -> tmp/build-fox2-linux-cmake/bin
 ./scripts/build-fox2-wayland.sh           # Wayland -> tmp/build-fox2-wayland/bin
+./scripts/build-fox2-linux.sh --cmake --install=/usr/local  # build and install
 
 # run any of the small test programs
 tmp/build-fox2-linux-cmake/bin/table
@@ -138,7 +139,9 @@ the mingw-w64 compiler:
 
 Both scripts take `--fast` to skip the configure step when nothing changed,
 `--clean`, `--opengl`, `--debug`/`--release` and `--jobs=N`, and print the same
-help with `--help`.
+help with `--help`.  Every build script also takes `--install[=DIR]`, or plain
+`--install` for `/usr/local`, to install after building; use a prefix you can
+write to, or run the script with `sudo`.
 
 Then pick a theme — the easy way is the control panel, which shows what is
 installed and applies it immediately:

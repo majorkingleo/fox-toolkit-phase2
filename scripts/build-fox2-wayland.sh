@@ -19,6 +19,7 @@
 #   --run      run hello, button and the DPI test for 3 s after building
 #   --opengl   enable OpenGL: EGL canvases on wl_subsurfaces (needs libEGL,
 #              wayland-egl and libGL)
+#   --install[=DIR] install after building (default prefix: /usr/local)
 #   -h|--help  show this help
 #
 # Environment:
@@ -39,9 +40,10 @@ check_only=no
 clean=no
 run_test=no
 with_opengl=no
+install_prefix=
 
 usage(){
-  sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -50,6 +52,13 @@ while [ $# -gt 0 ]; do
     --clean)    clean=yes ;;
     --run)      run_test=yes ;;
     --opengl)   with_opengl=yes ;;
+    --install)
+      if [ $# -ge 2 ] && [ "${2#-}" = "$2" ]; then
+        install_prefix=$2; shift
+      else
+        install_prefix=/usr/local
+        fi ;;
+    --install=*) install_prefix=${1#*=}; [ -n "$install_prefix" ] || install_prefix=/usr/local ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -57,6 +66,17 @@ while [ $# -gt 0 ]; do
     esac
   shift
   done
+
+if [ -n "$install_prefix" ]; then
+  case "$install_prefix" in
+    /*|[A-Za-z]:/*) ;;
+    *) echo "error: --install needs an absolute prefix: '$install_prefix'" >&2; exit 2 ;;
+  esac
+  fi
+cmake_install_prefix=$install_prefix
+if [ -n "$install_prefix" ] && [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
+  cmake_install_prefix=$(cygpath -m "$install_prefix")
+  fi
 
 if [ -n "${MSYSTEM-}" ]; then
   echo "error: Wayland needs Linux; in MSYS2 use ./scripts/build-fox2-mingw.sh" >&2
@@ -191,6 +211,12 @@ if [ "$run_test" = yes ]; then
       echo "warning: $prog exited with status $rc" >&2
       fi
     done
+  fi
+
+if [ -n "$install_prefix" ]; then
+  echo
+  echo "==> install to $install_prefix"
+  run cmake --install "$BUILD" --prefix "$cmake_install_prefix"
   fi
 
 echo

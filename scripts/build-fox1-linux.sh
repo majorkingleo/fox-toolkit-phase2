@@ -23,6 +23,7 @@
 #   --run       run hello and button for 3 s after building
 #   --cmake     use CMake + Ninja instead of Autotools
 #               (build dir: tmp/build-fox1-cmake)
+#   --install[=DIR] install after building (default prefix: /usr/local)
 #   -h|--help   show this help
 #
 # Environment:
@@ -45,9 +46,10 @@ clean=no
 fast=no
 run_test=no
 use_cmake=no
+install_prefix=
 
 usage(){
-  sed -n '2,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -62,6 +64,13 @@ while [ $# -gt 0 ]; do
     --fast)      fast=yes ;;
     --run)       run_test=yes ;;
     --cmake)     use_cmake=yes ;;
+    --install)
+      if [ $# -ge 2 ] && [ "${2#-}" = "$2" ]; then
+        install_prefix=$2; shift
+      else
+        install_prefix=/usr/local
+        fi ;;
+    --install=*) install_prefix=${1#*=}; [ -n "$install_prefix" ] || install_prefix=/usr/local ;;
     --jobs)      shift; jobs=$1 ;;
     --jobs=*)    jobs=${1#*=} ;;
     -h|--help)   usage; exit 0 ;;
@@ -69,6 +78,17 @@ while [ $# -gt 0 ]; do
     esac
   shift
   done
+
+if [ -n "$install_prefix" ]; then
+  case "$install_prefix" in
+    /*|[A-Za-z]:/*) ;;
+    *) echo "error: --install needs an absolute prefix: '$install_prefix'" >&2; exit 2 ;;
+  esac
+  fi
+cmake_install_prefix=$install_prefix
+if [ -n "$install_prefix" ] && [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
+  cmake_install_prefix=$(cygpath -m "$install_prefix")
+  fi
 
 if [ -n "${MSYSTEM-}" ]; then
   echo "error: this is the Linux build; in MSYS2 use ./scripts/build-fox1-mingw.sh" >&2
@@ -191,6 +211,12 @@ if [ "$use_cmake" = yes ]; then
       done
     fi
 
+  if [ -n "$install_prefix" ]; then
+    echo
+    echo "==> install to $install_prefix"
+    run cmake --install "$BUILD" --prefix "$cmake_install_prefix"
+    fi
+
   echo
   echo "done. Build log: $LOG"
   exit 0
@@ -212,6 +238,9 @@ if [ "$with_cups" = yes ]; then
   opts+=(--enable-cups)
 else
   opts+=(--disable-cups)
+  fi
+if [ -n "$install_prefix" ]; then
+  opts+=(--prefix="$install_prefix")
   fi
 if [ "$shared" = yes ]; then
   opts+=(--enable-shared --disable-static)
@@ -284,6 +313,12 @@ if [ "$run_test" = yes ]; then
       echo "warning: $prog exited with status $rc" >&2
       fi
     done
+  fi
+
+if [ -n "$install_prefix" ]; then
+  echo
+  echo "==> install to $install_prefix"
+  run make install
   fi
 
 echo
