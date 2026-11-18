@@ -47,7 +47,8 @@ FOX separates C++ object construction from creation of platform resources:
 Keep GUI work on the event-loop thread. Avoid long blocking work in message
 handlers; use FOX timers, chores, or its worker/thread facilities when work
 must happen asynchronously. Follow FOX's parent/tree ownership rules when
-destroying widgets.
+destroying widgets. A top-level window deletes itself when it is closed, so
+create it with `new` and let the toolkit destroy it; see the gotcha below.
 
 ## Event routing: targets, selectors, and message maps
 
@@ -347,6 +348,19 @@ symptom, the cause with its source location, and the workaround.
 
 ### Windows, drawing, resources
 
+- **A top-level window must live on the heap.** Closing a window (title bar
+  button, `close()`, `SEL_CLOSE`, `ID_CLOSE`) quits the application and then
+  runs `delete this` at the end of `FXTopWindow::close()`
+  (`lib/FXTopWindow.cpp`). A shell kept on the stack, `Demo demo(&app);`
+  instead of `new Demo(&app);`, is then passed to `operator delete` from its
+  deleting destructor, and the process dies inside `free()` with nothing but
+  `Demo::~Demo` in the backtrace (the frame below `free` is the demo's own
+  destructor line, not a library function). Every widget below the shell has
+  to be heap allocated as well, because the shell destroys its children;
+  upstream `tests/` always writes `new XxxWindow(&application)`. `FXDialogBox`
+  and its subclasses (`FXWizard`, `FXColorDialog`, `FXFontDialog`) are the
+  exception: they map `SEL_CLOSE` to `onCmdCancel`, which hides the dialog, so
+  only shells that run their own event loop can hit this.
 - **Every window is created with `background_pixel=0`.** Anything the toolkit
   does not paint stays black. Rounded or otherwise non-rectangular shapes must
   fill their own rect with the parent's background color before drawing, or
