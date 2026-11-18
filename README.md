@@ -86,6 +86,7 @@ still its own palette and do not follow yet, so they are left off here.
 |---|---|
 | ![Desktop setup panel](screenshots/readme/themed-controlpanel.png) | ![Color widgets](screenshots/readme/themed-colors.png) |
 | ![Sliders](screenshots/readme/themed-sliders.png) | ![Gauges](screenshots/readme/themed-gauges.png) |
+| ![Calendar](screenshots/readme/themed-calendar.png) | ![Table](screenshots/readme/themed-table.png) |
 
 ### OpenGL on Wayland
 
