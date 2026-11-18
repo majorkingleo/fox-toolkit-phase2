@@ -454,6 +454,7 @@ apps/chart/Makefile
 apps/pathfinder/Makefile
 apps/adie/Makefile
 apps/glviewer/Makefile
+apps/stopwatch/Makefile
 tests/Makefile
 fox-2.0.pc
 fox-config])

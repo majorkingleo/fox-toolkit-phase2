@@ -33,6 +33,8 @@
 /apps/adie/adie
 /apps/glviewer/Makefile.in
 /apps/glviewer/glviewer
+/apps/stopwatch/Makefile.in
+/apps/stopwatch/stopwatch
 /tests/Makefile.in
 *.lo
 *.la

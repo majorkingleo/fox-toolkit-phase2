@@ -4,8 +4,9 @@ add_subdirectory(chart)
 add_subdirectory(pathfinder)
 add_subdirectory(adie)
 add_subdirectory(glviewer)
+add_subdirectory(stopwatch)
 
-install(TARGETS calculator ControlPanel charttest PathFinder adie glviewer
+install(TARGETS calculator ControlPanel charttest PathFinder adie glviewer stopwatch
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES
   calculator/calculator.1
