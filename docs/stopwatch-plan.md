@@ -722,6 +722,11 @@ Two findings on the way:
   toggle are rasterized again per display scale.  The bottom row, the control
   row and the default window size follow the window scale, so the icons are not
   clipped at 150% and 200%.
+- **Antialiased analog face:** the raster backend plots lines and arcs one pixel
+  at a time, so `ClockView` draws the face into a 3x image and averages each 3x3
+  block down into the image it paints.  The circle, the ticks and the hands are
+  smooth on Wayland without a change to the drawing primitives; at 20 Hz in
+  analog stopwatch mode the extra work is two image passes per frame.
 - **Open defects:** the mode buttons do not show the running mark (`Stopwatch
   *`, `Timer!`) from R10/R5; the timer blink is computed but not drawn; the
   history popup in a decorated window is placed at the pointer, so it can run

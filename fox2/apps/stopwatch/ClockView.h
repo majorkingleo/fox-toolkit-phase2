@@ -16,6 +16,8 @@ private:
   FXint milli;
   FXuint clockmode;
   FXdouble progress;    // timer wedge, 0..1; negative = no wedge
+  FXImage* big;         // face drawn at SUPERSAMPLE times the widget size
+  FXImage* face;        // averaged face that is drawn to the widget
 private:
   ClockView();
   ClockView(const ClockView&);
@@ -26,7 +28,12 @@ public:
   virtual FXint getDefaultHeight() override;
   // Set the shown time; update() only when a value changed
   void setTime(FXint h,FXint m,FXint s,FXint ms,FXuint mode,FXdouble frac=-1.0);
+private:
+  FXImage* makeImage(FXint w,FXint h);
+  void drawFace(FXDCWindow& dc,FXint w,FXint h,FXint s);
+  void shrink(const FXColor* src,FXint sw,FXColor* dst,FXint w,FXint h,FXint s);
 public:
+  virtual ~ClockView() override;
   long onPaint(FXObject*,FXSelector,void*);
   };
 
