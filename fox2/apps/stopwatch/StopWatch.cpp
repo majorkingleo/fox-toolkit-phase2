@@ -13,6 +13,10 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,0,StopWatch::onMiddlePress),
   FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,0,StopWatch::onMiddleRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,0,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_CLOCK,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_STOPWATCH,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_TIMER,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightPress),
   FXMAPFUNC(SEL_MOTION,0,StopWatch::onMotion),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onShowTitlebar),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onUpdShowTitlebar),
@@ -49,9 +53,11 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   modePages[0]=new FXLabel(switcher,"",nullptr,LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modePages[1]=new FXLabel(switcher,"00:00.00",nullptr,LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modePages[2]=new FXLabel(switcher,"00:00:00",nullptr,LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
+  switcher->setTarget(this);
+  switcher->setSelector(ID_RIGHT_CLICK);
   for(FXint i=0;i<3;i++){
     modePages[i]->setTarget(this);
-    modePages[i]->setSelector(0);
+    modePages[i]->setSelector(ID_RIGHT_CLICK);
     }
   FXHorizontalFrame* bottom=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,40,4,4,4,4);
   modeIcons[0]=new FXSVGIcon(getApp(),clock_svg,FXRGB(32,33,36),0,24,24);
@@ -158,6 +164,7 @@ long StopWatch::onMiddleRelease(FXObject*,FXSelector,void*){
 
 long StopWatch::onRightPress(FXObject*,FXSelector,void* ptr){
   FXEvent* event=(FXEvent*)ptr;
+  if(!contextMenu->id()) contextMenu->create();
   if(titlebarCheck) titlebarCheck->setCheck(titlebar?true:false);
   contextMenu->popup(this,event->root_x,event->root_y);
   return 1;

@@ -50,6 +50,7 @@ public:
   long onRightPress(FXObject*,FXSelector,void*);
   long onShowTitlebar(FXObject*,FXSelector,void*);
   long onUpdShowTitlebar(FXObject*,FXSelector,void*);
+  void routeContextEvents();
   };
 
 #endif
