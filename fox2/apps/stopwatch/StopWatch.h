@@ -29,6 +29,7 @@ private:
   FXButton* timerResetButton;
   FXIcon* modeIcons[3];
   FXButton* modeButtons[3];
+  FXIcon* styleIcons[2];
   FXButton* styleButton;
   // Model, independent of the shown mode
   FXbool running;

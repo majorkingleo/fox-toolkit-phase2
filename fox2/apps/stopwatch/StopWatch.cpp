@@ -103,6 +103,8 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   timerStartButton=nullptr;
   timerResetButton=nullptr;
   styleButton=nullptr;
+  styleIcons[0]=nullptr;
+  styleIcons[1]=nullptr;
   contextMenu=nullptr;
   titlebarCheck=nullptr;
   historyPopup=nullptr;
@@ -148,7 +150,12 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   modeButtons[0]=new FXButton(bottom,"",modeIcons[0],this,FXSEL(SEL_COMMAND,ID_MODE_CLOCK),BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modeButtons[1]=new FXButton(bottom,"",modeIcons[1],this,FXSEL(SEL_COMMAND,ID_MODE_STOPWATCH),BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
   modeButtons[2]=new FXButton(bottom,"",modeIcons[2],this,FXSEL(SEL_COMMAND,ID_MODE_TIMER),BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
-  styleButton=new FXButton(bottom,"Digital",nullptr,this,ID_STYLE,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  styleIcons[0]=new FXSVGIcon(getApp(),digital_clock_svg,FXRGB(32,33,36),0,24,24);
+  styleIcons[1]=new FXSVGIcon(getApp(),analog_clock_svg,FXRGB(32,33,36),0,24,24);
+  styleButton=new FXButton(bottom,"",styleIcons[0],this,ID_STYLE,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y);
+  modeButtons[0]->setTipText("Show the clock");
+  modeButtons[1]->setTipText("Show the stopwatch");
+  modeButtons[2]->setTipText("Show the timer");
 
   // Context menu for the clock and timer modes
   contextMenu=new FXMenuPane(this);
@@ -175,6 +182,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
 StopWatch::~StopWatch(){
   getApp()->removeTimeout(this,ID_TICK);
   for(FXint i=0;i<3;i++) delete modeIcons[i];
+  for(FXint i=0;i<2;i++) delete styleIcons[i];
   }
 
 
@@ -195,6 +203,12 @@ void StopWatch::create(){
     if(modeIcons[i]){
       modeIcons[i]->create();
       modeIcons[i]->render();
+      }
+    }
+  for(FXint i=0;i<2;i++){
+    if(styleIcons[i]){
+      styleIcons[i]->create();
+      styleIcons[i]->render();
       }
     }
   history.load(getApp()->reg());
@@ -480,7 +494,8 @@ long StopWatch::onStyle(FXObject*,FXSelector,void*){
 
 long StopWatch::onUpdStyle(FXObject* sender,FXSelector,void*){
   FXButton* button=(FXButton*)sender;
-  button->setText(style==STYLE_DIGITAL?"Digital":"Round");
+  button->setIcon(styleIcons[style==STYLE_DIGITAL?0:1]);
+  button->setTipText(style==STYLE_DIGITAL?"Switch to the round clock":"Switch to the digital display");
   button->setState(style==STYLE_ANALOG?STATE_DOWN:STATE_UP);
   return 1;
   }
