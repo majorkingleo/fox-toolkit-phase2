@@ -1,10 +1,11 @@
 # Desktop clock / stopwatch / timer: implementation plan
 
 Plan for a low level agent. The application is new (there is no FOX 1.x
-original to port), lives in `fox2/apps/stopwatch/`, and for now is built and
-verified **on the Windows MSYS2 (MinGW-w64) target only**. X11 and Wayland are
-out of scope until asked for; the application code stays platform neutral (no
-`#if` blocks, see section 3) so those targets need no rework later. Read
+original to port), lives in `fox2/apps/stopwatch/`, and was first built and verified
+**on the Windows MSYS2 (MinGW-w64) target only**.  Wayland was added later, see
+section 13; X11 is still out of scope.  The application code stays platform
+neutral (no `#if` blocks, see section 3), so a new target needs only a build and
+a test run. Read
 `.github/copilot-instructions.md` and the
 `fox-toolkit` skill before writing any C++; the `app-port` skill describes the
 build wiring (section 3 and 4 of that skill apply here, the origin comparison
@@ -609,3 +610,111 @@ Do not push. Do not modify anything under `fox-1.7.95/`.
 | Timer drift | Compute from time stamps, never count ticks |
 | Position or title-bar state restores off screen | Persist client geometry, validate the point/size, and clamp against the desktop (5.7) |
 | Local time offset wrong | Cross-check with `Get-Date`; fall back to `localTime(...,"%H:%M:%S")` |
+
+## 13. Progress report: steps 5 to 9, Wayland and Wine
+
+Steps 5 to 9 of section 6 are implemented: the analog face (`ClockView`), the
+stopwatch with its history (`History`), the timer, and the right-click history
+popup with an `FXTable`.  `main.cpp` is unchanged; the window is still created
+on the heap and stays free of platform conditionals.
+
+### 13.1 What was built
+
+- `ClockView` draws the face from `setTime(hour,minute,second,millisecond,mode,
+  progress)`: ticks, hour/minute/second hands, and for the timer a pie wedge
+  for `remaining/duration`.  Colors come from `FXApp`, never from literals.
+- `History` keeps the last 50 stops, newest first, and saves them under
+  `[STOPWATCH]`; `formatElapsed()` prints `MM:SS.hh` and `HH:MM:SS.hh`.
+- The stopwatch appends to the history on every stop and saves `elapsed`
+  immediately, so a crash does not lose the value.
+- The timer counts down from three spinners, beeps and blinks at the end, and
+  keeps the model independent of the shown mode (R10).
+- One tick timer (`ID_TICK`) is re-armed by `rearm()` with the shortest delay
+  anything needs: 50 ms while a visible stopwatch or timer runs, 500 ms while
+  the finished timer blinks, otherwise the next full second.
+- The right-click popup in stopwatch mode shows `#`, `When`, `Elapsed` with
+  **Clear history**, **Quit** and **Close**; the row header is hidden with
+  `getRowHeader()->hide()` and `setRowHeaderWidth(0)`, the `#` column is 40 px
+  wide.
+- The analog face uses one readout label under the face; it is emptied in
+  clock mode instead of hidden, because hiding it needs an extra layout pass.
+
+### 13.2 Wayland
+
+Built with `./scripts/build-fox2-wayland.sh` and driven by the new gate
+`./scripts/gate-wayland-stopwatch.sh` on a headless sway (virtual pointer,
+`FOX_WAYLAND_DUMP` frames).  The gate passes:
+
+- 260x200 borderless window, digital clock, `Clock` button pressed;
+- mode switch to the stopwatch over the bottom row icons;
+- start, 2 s run, stop, value `00:03.xx`, one history row;
+- right click on the face opens the history popup (second surface committed);
+- style toggle to the analog face, in stopwatch mode and in clock mode;
+- R10: start, switch to the clock, wait, switch back, stop.  The second run
+  adds 7.6 s of wall clock time; the stopwatch was never paused.  (The gate
+  sleeps 1 s and 2 s and each virtual click costs about a second, so the value
+  is asserted to continue rather than to match the sleeps exactly.)
+- Frames are stored under `screenshots/tests/fox2/wayland/stopwatch-*.png`.
+
+### 13.3 MinGW-w64 and Wine
+
+Cross build: `./scripts/build-fox2-mingw-cross.sh --cmake`, then
+`tmp/build-fox2-cross-cmake/bin/stopwatch.exe` under Wine 10.  The driver is
+`tmp/stopwatch-win-test.c` (Win32 `PostMessage` clicks, drags, keys, `rect`)
+plus `tmp/run-stopwatch-wine.sh`, which keeps a private `WINEPREFIX`.  The run
+passes: clock, stopwatch start/stop (3.4 s), history popup with the stopped
+value, analog face, timer page, and after a restart the same position, size,
+mode and style.  Frames are stored under
+`screenshots/tests/fox2/win32/stopwatch-*.png`.
+
+Two findings on the way:
+
+- **The Win32 library was broken at HEAD.**  Commit `55ce6a4` (context menu)
+  replaced the 17-entry `stipple_patterns` table in `fox2/lib/FXApp_win32.cpp`
+  with a repeated table and swallowed about 280 lines of code, so the file did
+  not compile.  The table and the code are restored; only the intended
+  `WM_CONTEXTMENU` block remains.  Separate commit.
+- **Every FOX widget owns a real HWND on Win32**, and the window procedure
+  dispatches a mouse message to the window that owns the HWND.  A message
+  posted to the top level window therefore reaches the shell, not the control
+  under the point: a test helper must find the child with `WindowFromPoint()`
+  and translate the coordinates into its client area.  This is why the first
+  Wine runs showed a working right-click (the `WM_CONTEXTMENU` path uses
+  `findWindowAt()`) but dead buttons.
+- `PrintWindow` returns black for a Wine window, so the frames are grabbed
+  with `spectacle` and cut to the window rectangle.  The window has to be
+  raised (`SetWindowPos(HWND_TOPMOST)`) first, otherwise the terminal that
+  drives the test can cover the point and `WindowFromPoint()` finds it instead.
+- With Wine, `%APPDATA%` is redirected: the settings land in
+  `<prefix>/drive_c/users/<user>/AppData/Roaming/Stopwatch.ini`, not in the
+  directory given in the environment.
+
+### 13.4 Section 10 answers (filled in)
+
+- **Which widgets forwarded the middle and right button events:** `FXSwitcher`,
+  `FX7Segment`, `ClockView`, the readout label and `FXSwitcher` of the controls
+  are wired with `setTarget(this)` and selector `ID_RIGHT_CLICK`; the message
+  map accepts `SEL_MIDDLEBUTTONPRESS`, `SEL_MIDDLEBUTTONRELEASE`, `SEL_MOTION`
+  and `SEL_RIGHTBUTTONPRESS` both with id 0 and with `ID_RIGHT_CLICK`.
+  `FXButton` and `FXSpinner` are not wired: a middle or right click over a
+  control does nothing.
+- **Whether the native title-bar fallback was needed:** not for the drag.  The
+  middle-button drag works on Wayland through `startDrag()`; over the face
+  widgets the forwarded events reach `StopWatch`.  The **Show title bar** item
+  is implemented but only checked by hand, not in the automated gates.
+- **Where the settings file was created on Windows:** Wine,
+  `<prefix>/drive_c/users/<user>/AppData/Roaming/Stopwatch.ini`; native Windows
+  uses `%APPDATA%\Stopwatch.ini` (the FXRegistry Win32 default `%APPDATA%`).
+- **Sign/daylight handling for local time:** the hour, minute and second are
+  taken from `FXSystem::localTime(now,"%H %M %S")`, so no offset arithmetic is
+  repeated in the application and daylight saving is whatever the platform
+  reports.  The milliseconds come from `now%1000000000`.
+- **Popup vs dialog for the history table:** `FXPopup` with an `FXTable`; the
+  table scrolls and the buttons work on Wayland and under Wine.  No dialog
+  fallback was needed.
+- **Library fixes:** the `FXApp_win32.cpp` repair described above.
+- **Open defects:** the mode buttons do not show the running mark (`Stopwatch
+  *`, `Timer!`) from R10/R5; the timer blink is computed but not drawn; the
+  history popup in a decorated window is placed at the pointer, so it can run
+  off the bottom edge; the application still lacks the `Stopwatch`/`Timer`
+  labels required by the plan in 5.2 (icons only).

@@ -7,6 +7,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 bin_PROGRAMS = stopwatch
 
 stopwatch_SOURCES = \
+ClockView.h \
+ClockView.cpp \
+History.h \
+History.cpp \
 StopWatch.h \
 StopWatch.cpp \
 main.cpp
