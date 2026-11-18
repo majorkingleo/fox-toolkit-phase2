@@ -24,7 +24,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   dragy=0;
   FXVerticalFrame* frame=new FXVerticalFrame(this,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_LINE,0,0,0,0,12,12,12,12);
   frame->setBackColor(getApp()->getBaseColor());
-  clockLabel=new FXLabel(frame,"",nullptr,LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|ICON_BEFORE_TEXT|LABEL_NORMAL);
+  clockLabel=new ClockCanvas(frame,this,0,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_NONE);
   clockLabel->setBackColor(getApp()->getBaseColor());
   clockLabel->setTarget(this);
   clockLabel->setSelector(0);
@@ -122,5 +122,45 @@ long StopWatch::onConfigure(FXObject* sender,FXSelector sel,void* ptr){
   FXShell::onConfigure(sender,sel,ptr);
   layout();
   update();
+  return 1;
+  }
+
+
+FXDEFMAP(ClockCanvas) ClockCanvasMap[]={
+  FXMAPFUNC(SEL_PAINT,0,ClockCanvas::onPaint),
+  };
+
+FXIMPLEMENT(ClockCanvas,FXCanvas,ClockCanvasMap,ARRAYNUMBER(ClockCanvasMap))
+
+
+ClockCanvas::ClockCanvas(){
+  }
+
+
+ClockCanvas::ClockCanvas(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h):FXCanvas(p,tgt,sel,opts,x,y,w,h){
+  setBackColor(getApp()->getBaseColor());
+  }
+
+
+void ClockCanvas::setText(const FXString& value){
+  if(text!=value){
+    text=value;
+    update();
+    }
+  }
+
+
+long ClockCanvas::onPaint(FXObject*,FXSelector,void* ptr){
+  FXDCWindow dc(this,(FXEvent*)ptr);
+  dc.setForeground(getApp()->getBaseColor());
+  dc.fillRectangle(0,0,width,height);
+  dc.setFont(getApp()->getNormalFont());
+  dc.setForeground(getApp()->getForeColor());
+  if(!text.empty()){
+    FXFont* font=getApp()->getNormalFont();
+    FXint tw=font->getTextWidth(text);
+    FXint th=font->getFontHeight();
+    dc.drawText((width-tw)/2,(height+th)/2-th/4,text);
+    }
   return 1;
   }
