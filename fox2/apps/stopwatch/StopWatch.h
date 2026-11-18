@@ -7,6 +7,9 @@ class StopWatch : public FXMainWindow {
   FXDECLARE(StopWatch)
 private:
   FXLabel* clockLabel;
+  FXbool dragging;
+  FXint dragx;
+  FXint dragy;
 private:
   StopWatch();
   StopWatch(const StopWatch&);
@@ -25,7 +28,9 @@ public:
 public:
   long onTick(FXObject*,FXSelector,void*);
   long onQuit(FXObject*,FXSelector,void*);
-  long onKeyPress(FXObject*,FXSelector,void*);
+  long onMiddlePress(FXObject*,FXSelector,void*);
+  long onMiddleRelease(FXObject*,FXSelector,void*);
+  long onMotion(FXObject*,FXSelector,void*);
   };
 
 #endif
