@@ -17,7 +17,7 @@ StopWatch::StopWatch(){
   }
 
 
-StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_ALL|DECOR_RESIZE,0,0,260,180,0,0,0,0){
+StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_NONE,0,0,260,180,0,0,0,0){
   setBackColor(getApp()->getBaseColor());
   dragging=false;
   dragx=0;
