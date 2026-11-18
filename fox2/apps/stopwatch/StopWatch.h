@@ -31,6 +31,7 @@ public:
   long onMiddlePress(FXObject*,FXSelector,void*);
   long onMiddleRelease(FXObject*,FXSelector,void*);
   long onMotion(FXObject*,FXSelector,void*);
+  long onConfigure(FXObject*,FXSelector,void*);
   };
 
 #endif

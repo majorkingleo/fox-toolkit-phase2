@@ -6,6 +6,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,0,StopWatch::onMiddlePress),
   FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,0,StopWatch::onMiddleRelease),
   FXMAPFUNC(SEL_MOTION,0,StopWatch::onMotion),
+  FXMAPFUNC(SEL_CONFIGURE,0,StopWatch::onConfigure),
   };
 
 FXIMPLEMENT(StopWatch,FXMainWindow,StopWatchMap,ARRAYNUMBER(StopWatchMap))
@@ -15,13 +16,16 @@ StopWatch::StopWatch(){
   }
 
 
-StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_ALL,0,0,260,180,0,0,0,0){
+StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_ALL|DECOR_RESIZE,0,0,260,180,0,0,0,0){
   clockLabel=nullptr;
+  setBackColor(getApp()->getBaseColor());
   dragging=false;
   dragx=0;
   dragy=0;
   FXVerticalFrame* frame=new FXVerticalFrame(this,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_LINE,0,0,0,0,12,12,12,12);
+  frame->setBackColor(getApp()->getBaseColor());
   clockLabel=new FXLabel(frame,"",nullptr,LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|ICON_BEFORE_TEXT|LABEL_NORMAL);
+  clockLabel->setBackColor(getApp()->getBaseColor());
   clockLabel->setTarget(this);
   clockLabel->setSelector(0);
   getAccelTable()->addAccel(MKUINT(KEY_Escape,0),this,FXSEL(SEL_COMMAND,ID_QUIT));
@@ -111,4 +115,12 @@ long StopWatch::onMotion(FXObject*,FXSelector,void* ptr){
     return 1;
     }
   return 0;
+  }
+
+
+long StopWatch::onConfigure(FXObject* sender,FXSelector sel,void* ptr){
+  FXShell::onConfigure(sender,sel,ptr);
+  layout();
+  update();
+  return 1;
   }
