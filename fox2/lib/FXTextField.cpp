@@ -1223,7 +1223,8 @@ long FXTextField::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
 long FXTextField::onFocusSelf(FXObject* sender,FXSelector sel,void* ptr){
   if(FXFrame::onFocusSelf(sender,sel,ptr)){
     FXEvent *event=(FXEvent*)ptr;
-    if(event->type==SEL_KEYPRESS || event->type==SEL_KEYRELEASE){
+    // Focus traversal sends no event, so ptr may be null here
+    if(event && (event->type==SEL_KEYPRESS || event->type==SEL_KEYRELEASE)){
       handle(this,FXSEL(SEL_COMMAND,ID_SELECT_ALL),nullptr);
       }
     return 1;
