@@ -57,14 +57,16 @@ int main(int argc,char** argv){
     }
   freeElms(fonts);
 
-  FXMainWindow main(&application,"FontTest",nullptr,nullptr,DECOR_ALL);
+  // The main window, and every widget below it, deletes itself when the window
+  // is closed, so the whole tree lives on the heap
+  FXMainWindow *main=new FXMainWindow(&application,"FontTest",nullptr,nullptr,DECOR_ALL);
 
   // The dialog carries a font description in and out
-  FXFontDialog dialog(&main,"Font Dialog",DECOR_TITLE|DECOR_BORDER);
+  FXFontDialog *dialog=new FXFontDialog(main,"Font Dialog",DECOR_TITLE|DECOR_BORDER);
   FXFontDesc desc=first;
   desc.size=120;
-  dialog.setFontDesc(desc);
-  FXFontDesc got=dialog.getFontDesc();
+  dialog->setFontDesc(desc);
+  FXFontDesc got=dialog->getFontDesc();
   if(FXString(got.face)!=FXString(desc.face) || got.size!=desc.size){
     printf("font desc is %s-%d, expected %s-%d\n",got.face,got.size,desc.face,desc.size);
     errors++;
@@ -72,16 +74,16 @@ int main(int argc,char** argv){
   printf("dialog font %s-%d\n",got.face,got.size);
 
   application.create();
-  main.show();
+  main->show();
 
   // Open the dialog and close it again; the selector lists the faces
-  dialog.show(PLACEMENT_OWNER);
-  if(!dialog.shown()){
+  dialog->show(PLACEMENT_OWNER);
+  if(!dialog->shown()){
     printf("dialog did not show\n");
     errors++;
     }
-  dialog.hide();
-  if(dialog.shown()){
+  dialog->hide();
+  if(dialog->shown()){
     printf("dialog did not hide\n");
     errors++;
     }

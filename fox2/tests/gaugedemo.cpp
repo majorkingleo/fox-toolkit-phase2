@@ -60,8 +60,9 @@ FXIMPLEMENT(Demo,FXMainWindow,DemoMap,ARRAYNUMBER(DemoMap))
 int main(int argc,char**argv){
   FXApp app("GaugeTest","FoxTest");
   app.init(argc,argv);
-  Demo demo(&app);
+  // A main window deletes itself when it is closed, so it must live on the
+  // heap; a stack window would be deleted there and again when main returns
+  new Demo(&app);
   app.create();
-  app.run();
-  return 0;
+  return app.run();
   }

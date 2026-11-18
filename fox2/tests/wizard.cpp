@@ -458,11 +458,11 @@ int main(int argc,char *argv[]){
   // Make icon
   FXGIFImage image(&application,wizardimage,IMAGE_KEEP);
 
-  // Make wizard
-  FXWizard wizard(&application,"Name",&image,DECOR_TITLE|DECOR_BORDER);
+  // Make wizard; it deletes itself when it is closed, so it lives on the heap
+  FXWizard *wizard=new FXWizard(&application,"Name",&image,DECOR_TITLE|DECOR_BORDER);
 
   // Pane #1
-  FXVerticalFrame *pane1=new FXVerticalFrame(wizard.getContainer(),LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
+  FXVerticalFrame *pane1=new FXVerticalFrame(wizard->getContainer(),LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
   FXGroupBox *gp=new FXGroupBox(pane1,"Group Box",LAYOUT_FILL_Y|FRAME_GROOVE|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
   new FXRadioButton(gp,"Button &1",&radiotarget,FXDataTarget::ID_OPTION+0,ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP);
   new FXRadioButton(gp,"Button &2",&radiotarget,FXDataTarget::ID_OPTION+1,ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP);
@@ -470,14 +470,14 @@ int main(int argc,char *argv[]){
   new FXRadioButton(gp,"Button &4",&radiotarget,FXDataTarget::ID_OPTION+3,ICON_BEFORE_TEXT|LAYOUT_SIDE_TOP);
 
   // Pane #2
-  FXVerticalFrame *pane2=new FXVerticalFrame(wizard.getContainer(),LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
+  FXVerticalFrame *pane2=new FXVerticalFrame(wizard->getContainer(),LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
   new FXLabel(pane2,"Enter some text:");
   FXVerticalFrame *textbox=new FXVerticalFrame(pane2,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0, 0,0,0,0);
   FXText *text=new FXText(textbox,nullptr,0,TEXT_SHOWACTIVE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   text->setVisibleColumns(60);
 
   // Pane #3
-  FXVerticalFrame *pane3=new FXVerticalFrame(wizard.getContainer(),LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
+  FXVerticalFrame *pane3=new FXVerticalFrame(wizard->getContainer(),LAYOUT_FILL_Y|LAYOUT_FILL_X,0,0,0,0, 0,0,0,0);
   new FXLabel(pane3,"Pick a file:");
   FXVerticalFrame *filebox=new FXVerticalFrame(pane3,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0, 0,0,0,0);
   FXFileList *filelist=new FXFileList(filebox,nullptr,0,ICONLIST_MINI_ICONS|ICONLIST_AUTOSIZE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -486,8 +486,11 @@ int main(int argc,char *argv[]){
   // Create app
   application.create();
 
-  // Run
-  return wizard.execute(PLACEMENT_SCREEN);
+  // Run; the wizard lives on the heap, so it is destroyed here, before the
+  // image it was given, which is a stack object
+  FXuint result=wizard->execute(PLACEMENT_SCREEN);
+  delete wizard;
+  return result;
   }
 
 

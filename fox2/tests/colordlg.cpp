@@ -32,14 +32,16 @@ int main(int argc,char** argv){
   FXApp application("ColorTest","FoxTest");
   application.init(argc,argv);
 
-  FXMainWindow main(&application,"ColorTest",nullptr,nullptr,DECOR_ALL);
-  FXVerticalFrame frame(&main,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  // The main window, and every widget below it, deletes itself when the window
+  // is closed, so the whole tree lives on the heap
+  FXMainWindow *main=new FXMainWindow(&application,"ColorTest",nullptr,nullptr,DECOR_ALL);
+  FXVerticalFrame *frame=new FXVerticalFrame(main,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
-  FXColorWell *well=new FXColorWell(&frame,FXRGB(255,0,0),nullptr,0,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT,0,0,80,40);
-  FXColorDialog dialog(&main,"Color Dialog",DECOR_TITLE|DECOR_BORDER);
+  FXColorWell *well=new FXColorWell(frame,FXRGB(255,0,0),nullptr,0,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT,0,0,80,40);
+  FXColorDialog *dialog=new FXColorDialog(main,"Color Dialog",DECOR_TITLE|DECOR_BORDER);
 
   application.create();
-  main.show();
+  main->show();
 
   int errors=0;
 
@@ -55,30 +57,30 @@ int main(int argc,char** argv){
     }
 
   // The dialog starts on the ring panel and honors a color
-  dialog.setRGBA(FXRGB(0,128,255));
-  if(FXRGB(FXREDVAL(dialog.getRGBA()),FXGREENVAL(dialog.getRGBA()),FXBLUEVAL(dialog.getRGBA()))!=FXRGB(0,128,255)){
-    printf("dialog color %08x\n",dialog.getRGBA());
+  dialog->setRGBA(FXRGB(0,128,255));
+  if(FXRGB(FXREDVAL(dialog->getRGBA()),FXGREENVAL(dialog->getRGBA()),FXBLUEVAL(dialog->getRGBA()))!=FXRGB(0,128,255)){
+    printf("dialog color %08x\n",dialog->getRGBA());
     errors++;
     }
 
   // Every panel of the selector can be activated
   for(FXint panel=COLORTAB_COLOR_RING; panel<=COLORTAB_COLOR_LIST; panel++){
-    dialog.setActivePanel(panel);
-    if(dialog.getActivePanel()!=panel){
-      printf("dialog panel %d, expected %d\n",dialog.getActivePanel(),panel);
+    dialog->setActivePanel(panel);
+    if(dialog->getActivePanel()!=panel){
+      printf("dialog panel %d, expected %d\n",dialog->getActivePanel(),panel);
       errors++;
       }
     }
-  dialog.setActivePanel(COLORTAB_COLOR_RING);
+  dialog->setActivePanel(COLORTAB_COLOR_RING);
 
   // Open the dialog and close it again
-  dialog.show(PLACEMENT_OWNER);
-  if(!dialog.shown()){
+  dialog->show(PLACEMENT_OWNER);
+  if(!dialog->shown()){
     printf("dialog did not show\n");
     errors++;
     }
-  dialog.hide();
-  if(dialog.shown()){
+  dialog->hide();
+  if(dialog->shown()){
     printf("dialog did not hide\n");
     errors++;
     }

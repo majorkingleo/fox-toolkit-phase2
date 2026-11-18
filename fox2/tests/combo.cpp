@@ -31,25 +31,27 @@ int main(int argc,char** argv){
   FXApp application("ListCombo","FoxTest");
   application.init(argc,argv);
 
-  FXMainWindow main(&application,"ListCombo",nullptr,nullptr,DECOR_ALL);
-  FXVerticalFrame frame(&main,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  // The main window, and every widget below it, deletes itself when the window
+  // is closed, so the whole tree lives on the heap
+  FXMainWindow *main=new FXMainWindow(&application,"ListCombo",nullptr,nullptr,DECOR_ALL);
+  FXVerticalFrame *frame=new FXVerticalFrame(main,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
-  FXList *list=new FXList(&frame,nullptr,0,LIST_SINGLESELECT|LIST_BROWSESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  FXList *list=new FXList(frame,nullptr,0,LIST_SINGLESELECT|LIST_BROWSESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   list->appendItem("alpha");
   list->appendItem("beta");
 
-  FXComboBox *combo=new FXComboBox(&frame,10,nullptr,0,COMBOBOX_NORMAL|LAYOUT_FILL_X);
+  FXComboBox *combo=new FXComboBox(frame,10,nullptr,0,COMBOBOX_NORMAL|LAYOUT_FILL_X);
   combo->appendItem("alpha");
   combo->appendItem("beta");
   combo->appendItem("gamma");
 
-  FXMenuPane pane(&frame);
-  new FXMenuCommand(&pane,"One");
-  new FXMenuCommand(&pane,"Two");
-  FXMenuButton *button=new FXMenuButton(&frame,"Menu",nullptr,&pane,FRAME_RAISED|FRAME_THICK|MENUBUTTON_DOWN|MENUBUTTON_ATTACH_LEFT,0,0,0,0);
+  FXMenuPane *pane=new FXMenuPane(frame);
+  new FXMenuCommand(pane,"One");
+  new FXMenuCommand(pane,"Two");
+  FXMenuButton *button=new FXMenuButton(frame,"Menu",nullptr,pane,FRAME_RAISED|FRAME_THICK|MENUBUTTON_DOWN|MENUBUTTON_ATTACH_LEFT,0,0,0,0);
 
   application.create();
-  main.show();
+  main->show();
 
   int errors=0;
 
@@ -92,7 +94,7 @@ int main(int argc,char** argv){
     }
 
   // The menu button owns the pane and shows it on request
-  if(button->getMenu()!=&pane){
+  if(button->getMenu()!=pane){
     printf("menu button has the wrong pane\n");
     errors++;
     }
