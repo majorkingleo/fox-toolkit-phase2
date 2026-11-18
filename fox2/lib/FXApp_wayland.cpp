@@ -318,6 +318,12 @@ void FXApp::initPlatformMembers(){
   app->lost=false;
   app->inlayout=false;
   app->events=nullptr;
+  app->paints=nullptr;
+  app->numpaints=0;
+  app->allocedpaints=0;
+  app->covered=nullptr;
+  app->numcovered=0;
+  app->allocedcovered=0;
   app->eventcount=0;
   app->eventalloced=0;
   app->eventhead=0;
@@ -331,6 +337,8 @@ void FXApp::freePlatformMembers(){
   FXWaylandApp* app=fxwayland(display);
   if(app){
     freeElms(app->events);
+    freeElms(app->paints);
+    freeElms(app->covered);
     freeElms(app->typenames);
     delete app;
     display=nullptr;
@@ -462,9 +470,21 @@ FXbool FXApp::closeDisplay(){
 
 /*******************************************************************************/
 
+// Hand the part of the windows above a painted one back to them; the areas come
+// from fxwaylandCovered() below and are worked out when a frame is finished
+static void exposeAbove(FXWaylandApp* app,FXID window,const FXRectangle& area);
+
+
 // Get the next event for the shared event loop
 FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
   FXWaylandApp* app=fxwayland(display);
+  FXWaylandPaint* moved;
+  FXRectangle pieces[4];
+  FXRectangle here,there;
+  FXWindow* window;
+  FXWindow* parent;
+  FXuint numcovered,nummoved,i;
+  FXint n;
   FXTime now,interval;
   FXint nfds;
   fd_set readfds;
@@ -505,12 +525,60 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
       }
     }
 
-  // Everything painted has to reach the compositor before more input is read.
-  // The idle branch further down is the other place that flushes, but a
-  // continuous stream of events (a live resize, a pointer moving over the
-  // window) keeps the queue non-empty and the poll busy, so the idle branch is
-  // never reached and the compositor stays on an old frame
-  if(initialized && app && app->display && !app->lost && app->eventcount==app->eventhead && repaints==nullptr){
+  // What is waiting to be painted is painted, and the frame goes out, before
+  // more input is read.  The idle branch further down does the same, but a
+  // continuous stream of events (a live resize, a window dragged with the
+  // pointer) keeps the queue non-empty and the poll busy: the idle branch is
+  // never reached, and the window stops following the pointer until the stream
+  // ends.  One rectangle per call keeps the event loop responsive
+  if(initialized && app && app->display && !app->lost){
+    if(app->nummoved){
+      moved=fxwaylandMovedList(app,nummoved);
+      for(i=0; i<nummoved; i++){
+        window=findWindowWithId(moved[i].window);
+        if(window==nullptr) continue;
+        parent=window->getParent();
+        if(parent==nullptr) continue;
+
+        // What the window left behind is the places it was in, less the place
+        // it is in now; only that has to be painted again.  The window itself
+        // paints at the place it is in now
+        here=app->childmap.getGlobalGeometry(moved[i].window);
+        there=app->childmap.getGlobalGeometry(parent->id());
+        moved[i].rect.bite(pieces,FXRectangle(here.x,here.y,window->getWidth(),window->getHeight()));
+        for(n=0; n<4; n++){
+          if(pieces[n].w>0 && pieces[n].h>0){
+            fxwaylandExposeRect(app,parent->id(),FXRectangle(pieces[n].x-there.x,pieces[n].y-there.y,pieces[n].w,pieces[n].h));
+            }
+          }
+        fxwaylandExposeRect(app,moved[i].window,FXRectangle(0,0,window->getWidth(),window->getHeight()));
+        }
+      fxwaylandMovedDone(app);
+      return true;
+      }
+    if(app->numcovered){
+      FXWaylandPaint* covered=fxwaylandCoveredList(app,numcovered);
+      for(i=0; i<numcovered; i++){
+        exposeAbove(app,covered[i].window,covered[i].rect);
+        }
+      fxwaylandCoveredDone(app);
+      return true;
+      }
+    if(repaints){
+      FXRepaint* r=repaints;
+      ev.type=0;
+      ev.id=r->window;
+      ev.x=r->rect.x;
+      ev.y=r->rect.y;
+      ev.w=r->rect.w-r->rect.x;
+      ev.h=r->rect.h-r->rect.y;
+      ev.code=FXXWL_EXPOSE;
+      ev.state=r->synth;
+      repaints=r->next;
+      r->next=repaintrecs;
+      repaintrecs=r;
+      return true;
+      }
     fxwaylandFlushFrames(app);
     }
 
@@ -743,34 +811,61 @@ static FXWindow* widgetAt(FXApp* foxapp,FXWaylandApp* app,FXID shell,FXint x,FXi
   }
 
 
-// A window paints its background across the whole area it covers, its children
-// included.  X11 clips a parent against its children, but every window of a
-// shell writes into the same buffer here, so the pixels a child put there are
-// gone.  Hand the covered part of each child back to the child, which paints
-// after its parent and does the same for its own children; the paint of a
-// window therefore reaches the leaves of the tree it covers, in that order
-static void exposeChildren(FXWaylandApp* app,FXWindow* window,const FXRectangle& rect){
+// Post a paint for a window and for every window below it, clipped to the area
+// that the paint of another window took away from them.  The tree is posted
+// here in the order it has to paint, parents before children, so the paints
+// themselves hand nothing on: a paint that was posted this way only paints
+// what it was given
+static void exposeArea(FXWaylandApp* app,FXID window,const FXRectangle& area){
   FXWaylandEvent ev;
-  FXWindow *child;
-  FXint x,y,w,h;
-  if(!app || !window) return;
-  for(child=window->getFirst(); child; child=child->getNext()){
-    if(!child->id() || !child->shown()) continue;
-    x=FXMAX(rect.x,child->getX());
-    y=FXMAX(rect.y,child->getY());
-    w=FXMIN(rect.x+rect.w,child->getX()+child->getWidth())-x;
-    h=FXMIN(rect.y+rect.h,child->getY()+child->getHeight())-y;
-    if(w<=0 || h<=0) continue;
+  FXRectangle theirs;
+  FXRectangle part;
+  FXID child;
+  if(!app || !window || !app->childmap.isVisible(window)) return;
+  theirs=app->childmap.getGlobalGeometry(window);
+  part=theirs*area;
+  part.w=FXMAX(part.w,0);
+  part.h=FXMAX(part.h,0);
+  if(part.w>0 && part.h>0 && !fxwaylandPaintCovered(app,window,part)){
+    fxwaylandPaintQueued(app,window,part);
     clearElms(&ev,1);
     ev.type=0;
-    ev.id=child->id();
-    ev.x=x-child->getX();
-    ev.y=y-child->getY();
-    ev.w=w;
-    ev.h=h;
+    ev.id=window;
+    ev.x=part.x-theirs.x;
+    ev.y=part.y-theirs.y;
+    ev.w=part.w;
+    ev.h=part.h;
     ev.code=FXXWL_EXPOSE;
-    ev.state=1;                 // Painted to order, not by the compositor
+    ev.state=2;                 // Posted in tree order, hands nothing on
     fxwaylandPost(app,ev);
+    }
+  for(child=app->childmap.getFirst(window); child; child=app->childmap.getNext(child)){
+    exposeArea(app,child,area);
+    }
+  }
+
+
+// A window paints its background across the whole area it covers, and on X11
+// the server keeps that off the windows above it: its children, and at every
+// level up to the shell the siblings that follow the branch it belongs to.
+// Every window of a shell writes into the same buffer here, so the covered part
+// is handed back to those windows instead, whole trees at a time and in the
+// order they stack, so that the window on top paints last
+static void exposeAbove(FXWaylandApp* app,FXID window,const FXRectangle& area){
+  FXID branch;
+  FXID id;
+  FXID up;
+  FXbool below;
+  if(!app || !window || !app->childmap.hasWindow(window)) return;
+  for(branch=window,id=window; id; branch=id,id=app->childmap.getParent(id)){
+    below=(id!=window);
+    for(up=app->childmap.getFirst(id); up; up=app->childmap.getNext(up)){
+      if(below){
+        if(up==branch) below=false;
+        continue;
+        }
+      exposeArea(app,up,area);
+      }
     }
   }
 
@@ -794,6 +889,7 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
   FXWaylandSurface* shellsurface;
   FXWindow* window;
   FXWindow* ancestor;
+  FXRectangle here;
   FXint rx,ry;
   FXbool fresh;
   if(!app) return false;
@@ -818,9 +914,17 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           event.rect.h=ev.h;
           event.synthetic=(ev.state!=0);
           window->handle(this,FXSEL(SEL_PAINT,0),&event);
+          fxwaylandPaintDispatched(app,ev.id);
 
-          // The parent has just painted over the pixels of its children
-          exposeChildren(app,window,event.rect);
+          // The windows above this one have just been painted over.  The id
+          // is used rather than the window, which a paint handler may have
+          // hidden or deleted, and a paint that was posted as part of a wave
+          // only paints its own area.  The area is handed out when the frame
+          // is finished, so that a burst of paints covers them only once
+          if(ev.state<2 && app->childmap.hasWindow(ev.id)){
+            here=app->childmap.getGlobalGeometry(ev.id);
+            fxwaylandCovered(app,ev.id,FXRectangle(here.x+event.rect.x,here.y+event.rect.y,event.rect.w,event.rect.h));
+            }
           return true;
           }
         }
@@ -1053,8 +1157,9 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           return true;
           }
         while(window){
+          FXWindow *parent=window->getParent();
           if(window->handle(this,FXSEL(SEL_MOUSEWHEEL,0),&event)){ refresh(); break; }
-          window=window->getParent();
+          window=parent;
           }
         return true;
         }
@@ -1112,9 +1217,13 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         }
 
       // A press grabs the pointer and a release gives it back, which changes
-      // which cursor the window wants
-      fxwaylandSetCursor(app,window,mouseGrabWindow);
-      fxwaylandTrace("button %u %s to %s at %+d%+d\n",ev.button,ev.data[1]?"down":"up",(mouseGrabWindow?mouseGrabWindow:window)->getClassName(),event.win_x,event.win_y);
+      // which cursor the window wants.  A handler may have thrown the window
+      // away: closing an MDI child or a dialog deletes it, and the pointer
+      // would be handed on to code that still uses the freed object
+      if((window=findWindowWithId(ev.id))!=nullptr){
+        fxwaylandSetCursor(app,window,mouseGrabWindow);
+        fxwaylandTrace("button %u %s to %s at %+d%+d\n",ev.button,ev.data[1]?"down":"up",(mouseGrabWindow?mouseGrabWindow:window)->getClassName(),event.win_x,event.win_y);
+        }
       event.last_x=event.win_x;
       event.last_y=event.win_y;
       return true;
@@ -1161,8 +1270,11 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         event.state=ev.state;
         if(ev.button) event.text=fxwaylandKeyText(app,(FXuint)ev.data[0]);
         if(window==keyboardGrabWindow || modalAllows(this,window)){
+          FXID id=window->id();
           if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
-          fxwaylandTrace("key %s to %s code %x text \"%s\"\n",ev.button?"press":"release",window->getClassName(),event.code,event.text.text());
+          if((window=findWindowWithId(id))!=nullptr){
+            fxwaylandTrace("key %s to %s code %x text \"%s\"\n",ev.button?"press":"release",window->getClassName(),event.code,event.text.text());
+            }
           return true;
           }
         if(ev.button) beep();
@@ -1182,14 +1294,17 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         }
       if(window){
         if(window==keyboardGrabWindow || modalAllows(this,window)){
+          FXID id=window->id();
           event.code=0;
           event.state=0;
           event.text=ev.text;
           event.type=SEL_KEYPRESS;
           if(window->handle(this,FXSEL(SEL_KEYPRESS,0),&event)) refresh();
-          event.type=SEL_KEYRELEASE;
-          if(window->handle(this,FXSEL(SEL_KEYRELEASE,0),&event)) refresh();
-          fxwaylandTrace("ime \"%s\" to %s\n",ev.text,window->getClassName());
+          if((window=findWindowWithId(id))!=nullptr){
+            event.type=SEL_KEYRELEASE;
+            if(window->handle(this,FXSEL(SEL_KEYRELEASE,0),&event)) refresh();
+            fxwaylandTrace("ime \"%s\" to %s\n",ev.text,window->getClassName());
+            }
           return true;
           }
         }

@@ -101,6 +101,131 @@ void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event){
   }
 
 
+// Is a paint of this part of the window already queued?  A queued paint that
+// covers the area paints it just as well, and without the question the expose
+// cascade below hands the same window to the event loop over and over
+FXbool fxwaylandPaintCovered(FXWaylandApp* app,FXID window,const FXRectangle& rect){
+  FXuint i;
+  if(app){
+    for(i=0; i<app->numpaints; i++){
+      if(app->paints[i].window==window){
+        const FXRectangle& r=app->paints[i].rect;
+        if(r.x<=rect.x && r.y<=rect.y && rect.x+rect.w<=r.x+r.w && rect.y+rect.h<=r.y+r.h) return true;
+        }
+      }
+    }
+  return false;
+  }
+
+
+// Remember the part of a window that a queued paint covers
+void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect){
+  FXWaylandPaint* grown;
+  FXuint i,cap;
+  if(!app) return;
+  for(i=0; i<app->numpaints; i++){
+    if(app->paints[i].window==window){
+      app->paints[i].rect+=rect;
+      return;
+      }
+    }
+  if(app->numpaints>=app->allocedpaints){
+    cap=app->allocedpaints?app->allocedpaints*2:32;
+    if(!resizeElms(app->paints,cap)) return;
+    app->allocedpaints=cap;
+    }
+  app->paints[app->numpaints].window=window;
+  app->paints[app->numpaints].rect=rect;
+  app->numpaints++;
+  }
+
+
+// The paint of a window was dispatched; it stays on the list until the frame
+// goes out, so the same window is not painted twice for one frame
+void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window){
+  }
+
+
+// A frame went out, so no paint is queued any more
+void fxwaylandPaintFlushed(FXWaylandApp* app){
+  if(app) app->numpaints=0;
+  }
+
+
+// Remember that a paint covered part of the windows above it; the areas are
+// worked out when the frame is finished, so that a burst of paints that cover
+// the same windows only hands them back once
+void fxwaylandCovered(FXWaylandApp* app,FXID window,const FXRectangle& area){
+  FXWaylandPaint* grown;
+  FXuint i,cap;
+  if(!app) return;
+  for(i=0; i<app->numcovered; i++){
+    if(app->covered[i].window==window){
+      app->covered[i].rect+=area;
+      return;
+      }
+    }
+  if(app->numcovered>=app->allocedcovered){
+    cap=app->allocedcovered?app->allocedcovered*2:32;
+    if(!resizeElms(app->covered,cap)) return;
+    app->allocedcovered=cap;
+    }
+  app->covered[app->numcovered].window=window;
+  app->covered[app->numcovered].rect=area;
+  app->numcovered++;
+  }
+
+
+// The areas that a paint covered, one for each window that painted
+FXWaylandPaint* fxwaylandCoveredList(FXWaylandApp* app,FXuint& count){
+  count=app?app->numcovered:0;
+  return app?app->covered:nullptr;
+  }
+
+
+// The areas have been handed out for painting
+void fxwaylandCoveredDone(FXWaylandApp* app){
+  if(app) app->numcovered=0;
+  }
+
+
+// Remember a window that moved away from a rectangle; a drag moves the same
+// window many times per painted frame, and only the places it left have to be
+// painted again
+void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was){
+  FXWaylandPaint* grown;
+  FXuint i,cap;
+  if(!app) return;
+  for(i=0; i<app->nummoved; i++){
+    if(app->moved[i].window==window){
+      app->moved[i].rect+=was;
+      return;
+      }
+    }
+  if(app->nummoved>=app->allocedmoved){
+    cap=app->allocedmoved?app->allocedmoved*2:32;
+    if(!resizeElms(app->moved,cap)) return;
+    app->allocedmoved=cap;
+    }
+  app->moved[app->nummoved].window=window;
+  app->moved[app->nummoved].rect=was;
+  app->nummoved++;
+  }
+
+
+// The windows that moved, with the rectangle each of them left
+FXWaylandPaint* fxwaylandMovedList(FXWaylandApp* app,FXuint& count){
+  count=app?app->nummoved:0;
+  return app?app->moved:nullptr;
+  }
+
+
+// The moves have been handed out for painting
+void fxwaylandMovedDone(FXWaylandApp* app){
+  if(app) app->nummoved=0;
+  }
+
+
 // Find the surface of a shell
 FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window){
   FXWaylandSurface* s;
@@ -126,27 +251,42 @@ FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window){
 // Post an expose for a window and every visible window below it; mapping a
 // window makes the server expose it on X11, and this is the same thing
 void fxwaylandExpose(FXWaylandApp* app,FXID window){
-  FXWaylandEvent ev;
   FXRectangle r;
   FXID child;
   if(!app || !window) return;
   r=app->childmap.getGeometry(window);
-  if(app->childmap.isVisible(window) && r.w>0 && r.h>0){
-    clearElms(&ev,1);
-    ev.type=0;
-    ev.id=window;
-    ev.x=0;
-    ev.y=0;
-    ev.w=r.w;
-    ev.h=r.h;
-    ev.code=FXXWL_EXPOSE;
-    ev.state=1;                 // Painted to order, not by the compositor
-    fxwaylandPost(app,ev);
-    }
+  fxwaylandExposeRect(app,window,FXRectangle(0,0,r.w,r.h));
   fxwaylandTrace("expose window %u %dx%d\n",(unsigned int)window,r.w,r.h);
   for(child=app->childmap.getFirst(window); child; child=app->childmap.getNext(child)){
     fxwaylandExpose(app,child);
     }
+  }
+
+
+// Post a paint for a rectangle of a window, in its own coordinates; what the
+// paint covers of the windows above it goes back to them from the paint itself
+void fxwaylandExposeRect(FXWaylandApp* app,FXID window,const FXRectangle& rect){
+  FXWaylandEvent ev;
+  FXRectangle there;
+  FXRectangle part;
+  if(!app || !window || !app->childmap.isVisible(window)) return;
+  there=app->childmap.getGeometry(window);
+  part=rect*FXRectangle(0,0,there.w,there.h);
+  part.w=FXMAX(part.w,0);
+  part.h=FXMAX(part.h,0);
+  if(part.w<=0 || part.h<=0) return;
+  if(fxwaylandPaintCovered(app,window,part)) return;
+  fxwaylandPaintQueued(app,window,part);
+  clearElms(&ev,1);
+  ev.type=0;
+  ev.id=window;
+  ev.x=part.x;
+  ev.y=part.y;
+  ev.w=part.w;
+  ev.h=part.h;
+  ev.code=FXXWL_EXPOSE;
+  ev.state=1;                   // Painted to order, not by the compositor
+  fxwaylandPost(app,ev);
   }
 
 
@@ -858,11 +998,13 @@ FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window){
 
 
 // Bind a window to the backing store of its shell
-FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride){
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXRectangle& visible){
   FXWaylandSurface* s;
   FXRectangle shell;
   FXRectangle place;
   FXRectangle here;
+  FXRectangle above;
+  FXID up;
   FXint ox,oy;
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
 
@@ -882,21 +1024,38 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   pixels=s->store+(FXival)oy*s->storew+ox;
   stride=s->storew;
 
+  // The part of the window that is inside the windows above it.  X11 never
+  // lets a child draw outside its parent, but here every window of a shell
+  // writes into the same buffer, and a scrolled child is larger than the
+  // window that scrolls it
+  visible=FXRectangle(0,0,w,h);
+  if(0<=ox && 0<=oy){
+    for(up=app->childmap.getParent(window); up && up!=s->window; up=app->childmap.getParent(up)){
+      above=app->childmap.getGlobalGeometry(up);
+      above.x-=here.x;
+      above.y-=here.y;
+      visible*=above;
+      visible.w=FXMAX(visible.w,0);
+      visible.h=FXMAX(visible.h,0);
+      }
+    }
+
   // Whatever the geometry says, the rasterizer writes straight into the store,
   // so a window that hangs out of it is clipped here instead of running past
-  // the end of the buffer
-  if(ox<0){ pixels-=ox; w+=ox; ox=0; }
-  if(oy<0){ pixels-=(FXival)oy*s->storew; h+=oy; oy=0; }
+  // the end of the buffer.  A window that starts above or left of the store is
+  // cut down to it and painted from the corner, as it always was
+  if(ox<0){ pixels-=ox; w+=ox; ox=0; visible=FXRectangle(0,0,w,h); }
+  if(oy<0){ pixels-=(FXival)oy*s->storew; h+=oy; oy=0; visible=FXRectangle(0,0,w,h); }
   w=FXMIN(w,FXMAX(s->storew-ox,0));
   h=FXMIN(h,FXMAX(s->storeh-oy,0));
   s->dirty=true;
 
   // A window entirely outside the store has nothing to paint into
-  if(w<=0 || h<=0){
+  if(w<=0 || h<=0 || visible.w<=0 || visible.h<=0){
     pixels=nullptr;
     return false;
     }
-  fxwaylandTrace("bind window %u store %dx%d at %+d%+d size %dx%d pixels %p\n",(unsigned int)window,s->storew,s->storeh,ox,oy,w,h,pixels);
+  fxwaylandTrace("bind window %u store %dx%d at %+d%+d size %dx%d pixels %p visible %dx%d at %+d%+d\n",(unsigned int)window,s->storew,s->storeh,ox,oy,w,h,pixels,visible.w,visible.h,visible.x,visible.y);
   return true;
   }
 
@@ -925,6 +1084,10 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
         }
       }
     }
+  // Nothing is queued once the frame is on its way; a paint that was dropped
+  // because its window hid or went away would otherwise stay on the list
+  fxwaylandPaintFlushed(app);
+
   // The requests sit in the client buffer until we push them out
   if(app->display) wl_display_flush(app->display);
   }

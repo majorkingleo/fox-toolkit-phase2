@@ -124,21 +124,17 @@ void fxplatformDestroyWindow(void* display,FXID window,FXID shell,FXID colormap,
 void fxplatformPlaceWindow(void* display,FXID window,FXint x,FXint y,FXint w,FXint h,FXint oldw,FXint oldh,FXbool shown,FXuint placement){
   FXWaylandApp* app=fxwayland(display);
   FXRectangle was;
-  FXID parent;
   if(!app) return;
-  parent=app->childmap.getParent(window);
-  was=app->childmap.getGeometry(window);
+  was=app->childmap.getGlobalGeometry(window);
   app->childmap.setPlacement(window,x,y,w,h,placement);
 
   // A child that moves or resizes leaves the pixels it painted behind in the
   // parent.  On X11 the server exposes the uncovered area, here nobody does:
-  // everything shares one buffer.  Repaint the parent and the whole tree below
-  // it, parents before children, so the parent's background fills the hole and
-  // the widgets that are still in place paint over it again
-  if((was.x!=x || was.y!=y || was.w!=w || was.h!=h) && shown && !app->inlayout && app->childmap.isVisible(window)){
-    if(parent && app->childmap.isVisible(parent)){
-      fxwaylandExpose(app,parent);
-      }
+  // everything shares one buffer.  The places the window left are remembered
+  // and painted when the frame is finished, so that a drag, which moves the
+  // same window many times, pays for them once
+  if(shown && !app->inlayout && app->childmap.isVisible(window)){
+    fxwaylandMoved(app,window,was);
     }
 
   // A GL canvas moves its subsurface along

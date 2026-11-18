@@ -119,6 +119,13 @@ struct FXWaylandMask {
   };
 
 
+/// A paint that is queued for a window, and the area it covers
+struct FXWaylandPaint {
+  FXID        window;                   // Window that is going to paint
+  FXRectangle rect;                     // Part of it the paint covers
+  };
+
+
 struct FXWaylandSurface {
   FXWaylandApp*              app;        // The connection
   FXID                       window;     // Virtual window id of the shell
@@ -276,6 +283,15 @@ struct FXWaylandApp {
   FXuint            eventcount;         // Number of queued events
   FXuint            eventalloced;       // Allocated events
   FXuint            eventhead;          // Index of the first queued event
+  FXWaylandPaint*   paints;             // Paints that are queued
+  FXuint            numpaints;          // Number of queued paints
+  FXuint            allocedpaints;      // Allocated entries
+  FXWaylandPaint*   covered;            // Areas painted over other windows
+  FXuint            numcovered;         // Number of areas
+  FXuint            allocedcovered;     // Allocated entries
+  FXWaylandPaint*   moved;              // Windows that moved, with the rect they left
+  FXuint            nummoved;           // Number of moves
+  FXuint            allocedmoved;       // Allocated entries
   FXWinMap          childmap;           // Virtual child windows
   FXWaylandSurface* surfaces;           // Surfaces of the shells
   };
@@ -303,6 +319,36 @@ FXString fxwaylandKeyText(FXWaylandApp* app,FXuint key);
 
 /// Append an event to the queue
 void fxwaylandPost(FXWaylandApp* app,const FXWaylandEvent& event);
+
+/// True when a queued paint already covers that part of the window
+FXbool fxwaylandPaintCovered(FXWaylandApp* app,FXID window,const FXRectangle& rect);
+
+/// Remember the part of a window that a queued paint covers
+void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect);
+
+/// The paint of a window was dispatched
+void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window);
+
+/// A frame went out, so no paint is queued any more
+void fxwaylandPaintFlushed(FXWaylandApp* app);
+
+/// Remember that a paint covered that area of a window, in shell coordinates
+void fxwaylandCovered(FXWaylandApp* app,FXID window,const FXRectangle& area);
+
+/// Areas painted over other windows, one per window, in shell coordinates
+FXWaylandPaint* fxwaylandCoveredList(FXWaylandApp* app,FXuint& count);
+
+/// Forget the areas, once they have been handed out for painting
+void fxwaylandCoveredDone(FXWaylandApp* app);
+
+/// Remember that a window moved away from that rectangle, in shell coordinates
+void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was);
+
+/// Windows that moved, with the rectangle each of them left, one per window
+FXWaylandPaint* fxwaylandMovedList(FXWaylandApp* app,FXuint& count);
+
+/// Forget the moves, once they have been handed out for painting
+void fxwaylandMovedDone(FXWaylandApp* app);
 
 /// Find the surface of a shell
 FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window);
@@ -340,8 +386,10 @@ void fxwaylandDestroySurface(FXWaylandApp* app,FXID window);
 /// Return the surface of the shell that a window belongs to, or nullptr
 FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window);
 
-/// Bind a window to the frame buffer of its shell; false when it has none
-FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride);
+/// Bind a window to the frame buffer of its shell; false when it has none;
+/// visible is the part of the window inside the windows above it, in the
+/// coordinates of the window itself
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXRectangle& visible);
 
 /// Commit the frames that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app);
@@ -351,6 +399,9 @@ void fxwaylandHideSurface(FXWaylandSurface* surf);
 
 /// Post an expose for a window and every visible window below it
 void fxwaylandExpose(FXWaylandApp* app,FXID window);
+
+/// Post a paint for a rectangle of a window, in its own coordinates
+void fxwaylandExposeRect(FXWaylandApp* app,FXID window,const FXRectangle& rect);
 
 /// Round the corners of a rectangle of a shell surface; the corners become
 /// transparent, so a popup shows the window behind it instead of its own

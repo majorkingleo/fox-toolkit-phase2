@@ -83,8 +83,9 @@ static inline FXRaster* raster(void* ctx){
 
 
 // Return the pixel buffer of a drawable; an image owns its pixels, a window
-// draws into the frame buffer of the shell it belongs to, at its place there
-static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXint& stride){
+// draws into the frame buffer of the shell it belongs to, at its place there;
+// visible is the part of the drawable that can be painted, in its coordinates
+static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXRectangle& visible){
   FXImage* image=dynamic_cast<FXImage*>(draw);
   FXWindow* window;
   if(image){
@@ -92,14 +93,16 @@ static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXi
     w=image->getWidth();
     h=image->getHeight();
     stride=w;
+    visible=FXRectangle(0,0,w,h);
     return pixels!=nullptr;
     }
   w=draw->getWidth();
   h=draw->getHeight();
   stride=w;
   pixels=nullptr;
+  visible=FXRectangle(0,0,w,h);
   if((window=dynamic_cast<FXWindow*>(draw))!=nullptr && window->id()){
-    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,w,h,stride);
+    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,w,h,stride,visible);
     }
   return false;
   }
@@ -153,6 +156,7 @@ FXDCWindow::~FXDCWindow(){
 // Begin drawing
 void FXDCWindow::begin(FXDrawable* draw){
   FXColor* pixels;
+  FXRectangle visible;
   FXint w,h,stride;
   if(draw && !surface){
     surface=draw;
@@ -160,16 +164,15 @@ void FXDCWindow::begin(FXDrawable* draw){
     devfg=surface->visual->getPixel(fg);
     devbg=surface->visual->getPixel(bg);
 
+    // Nothing to draw into: the window has no shell or no frame yet
+    if(!getSurface(draw,pixels,w,h,stride,visible)) return;
+
     // The clip rectangle of the DC follows the drawable, as on X11 and Win32;
     // code that draws with getClipX()/getClipWidth() reads this one, not the
-    // rasterizer clip set below
-    rect.x=clip.x=0;
-    rect.y=clip.y=0;
-    rect.w=clip.w=draw->getWidth();
-    rect.h=clip.h=draw->getHeight();
-
-    // Nothing to draw into: the window has no shell or no frame yet
-    if(!getSurface(draw,pixels,w,h,stride)) return;
+    // rasterizer clip set below.  It is the part of the window the windows
+    // above it leave uncovered, which is what the server clips to on X11 and
+    // what every clip set below is measured against
+    rect=clip=visible;
     ctx=new FXRaster(pixels,w,h,stride);
     raster(ctx)->setForeground(fg);
     raster(ctx)->setBackground(bg);
@@ -188,7 +191,7 @@ void FXDCWindow::begin(FXDrawable* draw){
     if(font){ raster(ctx)->setGlyphs((FXGlyphs*)font->getGlyphCache()); raster(ctx)->setAngle(font->getAngle()); }
 
     // A window never draws outside of itself, even though its frame is shared
-    raster(ctx)->setClipRectangle(0,0,w,h);
+    raster(ctx)->setClipRectangle(visible);
     }
   }
 
@@ -544,10 +547,15 @@ void FXDCWindow::setClipRegion(const FXRegion& region){
   }
 
 
-// Set clip rectangle
+// Set clip rectangle; the clip can never reach outside the part of the window
+// that is visible, just as a server side clip can not on X11
 void FXDCWindow::setClipRectangle(FXint x,FXint y,FXint w,FXint h){
-  clip=FXRectangle(x,y,w,h);
-  if(ctx) raster(ctx)->setClipRectangle(x,y,w,h);
+  FXint x1=FXMAX(x,rect.x);
+  FXint y1=FXMAX(y,rect.y);
+  FXint x2=FXMIN(x+w,rect.x+rect.w);
+  FXint y2=FXMIN(y+h,rect.y+rect.h);
+  clip=FXRectangle(x1,y1,FXMAX(x2-x1,0),FXMAX(y2-y1,0));
+  if(ctx) raster(ctx)->setClipRectangle(clip);
   }
 
 void FXDCWindow::setClipRectangle(const FXRectangle& rectangle){
@@ -555,10 +563,14 @@ void FXDCWindow::setClipRectangle(const FXRectangle& rectangle){
   }
 
 
-// Clear clipping
+// Clear clipping; drawing is then clipped to the visible part only, which is
+// what a cleared clip means on X11
 void FXDCWindow::clearClipRectangle(){
-  clip=FXRectangle(0,0,surface?surface->getWidth():0,surface?surface->getHeight():0);
-  if(ctx) raster(ctx)->clearClipRectangle();
+  clip=rect;
+  if(ctx){
+    raster(ctx)->clearClipRectangle();
+    raster(ctx)->setClipRectangle(rect);
+    }
   }
 
 
