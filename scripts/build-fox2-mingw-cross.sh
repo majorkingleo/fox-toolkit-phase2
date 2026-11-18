@@ -21,6 +21,7 @@
 #   --run      run hello, button and dpi under Wine after building
 #   --cmake    use CMake + Ninja instead of Autotools: no autoreconf and no
 #              configure run, and every test program is built into bin/
+#   --install[=DIR] install after building (default prefix: /usr/local)
 #   -h|--help  show this help
 #
 set -euo pipefail
@@ -39,9 +40,10 @@ trace=no
 run_test=no
 use_cmake=no
 run_seconds=5
+install_prefix=
 
 usage(){
-  sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,26p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -54,6 +56,13 @@ while [ $# -gt 0 ]; do
     --trace)    trace=yes ;;
     --run)      run_test=yes ;;
     --cmake)    use_cmake=yes ;;
+    --install)
+      if [ $# -ge 2 ] && [ "${2#-}" = "$2" ]; then
+        install_prefix=$2; shift
+      else
+        install_prefix=/usr/local
+        fi ;;
+    --install=*) install_prefix=${1#*=}; [ -n "$install_prefix" ] || install_prefix=/usr/local ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     --run-seconds) shift; run_seconds=$1 ;;
@@ -63,6 +72,17 @@ while [ $# -gt 0 ]; do
     esac
   shift
   done
+
+if [ -n "$install_prefix" ]; then
+  case "$install_prefix" in
+    /*|[A-Za-z]:/*) ;;
+    *) echo "error: --install needs an absolute prefix: '$install_prefix'" >&2; exit 2 ;;
+  esac
+  fi
+cmake_install_prefix=$install_prefix
+if [ -n "$install_prefix" ] && [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
+  cmake_install_prefix=$(cygpath -m "$install_prefix")
+  fi
 
 if [ -n "${MSYSTEM-}" ]; then
   echo "error: this is the cross build; in MSYS2 use ./scripts/build-fox2-mingw.sh" >&2
@@ -128,6 +148,9 @@ else
   opts+=(--with-opengl=no)
   fi
 opts+=(--disable-cups)
+if [ -n "$install_prefix" ]; then
+  opts+=(--prefix="$install_prefix")
+  fi
 case "$build_type" in
   debug)   opts+=(--enable-debug) ;;
   release) opts+=(--enable-release) ;;
@@ -425,6 +448,16 @@ if [ "$run_test" = yes ]; then
       fi
   else
     echo "note: no calculator binary was built"
+    fi
+  fi
+
+if [ -n "$install_prefix" ]; then
+  echo
+  echo "==> install to $install_prefix"
+  if [ "$use_cmake" = yes ]; then
+    run cmake --install "$BUILD" --prefix "$cmake_install_prefix"
+  else
+    run make install
     fi
   fi
 
