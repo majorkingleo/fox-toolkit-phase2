@@ -32,23 +32,25 @@ int main(int argc,char** argv){
   FXApp application("TextSpin","FoxTest");
   application.init(argc,argv);
 
-  FXMainWindow main(&application,"TextSpin",nullptr,nullptr,DECOR_ALL);
-  FXVerticalFrame frame(&main,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  // The main window, and every widget below it, deletes itself when the window
+  // is closed, so the whole tree lives on the heap
+  FXMainWindow *main=new FXMainWindow(&application,"TextSpin",nullptr,nullptr,DECOR_ALL);
+  FXVerticalFrame *frame=new FXVerticalFrame(main,LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
-  FXText *text=new FXText(&frame,nullptr,0,TEXT_WORDWRAP|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  FXText *text=new FXText(frame,nullptr,0,TEXT_WORDWRAP|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   text->setVisibleRows(20);
   text->setVisibleColumns(60);
   text->setText("one\ttwo\nthree");
 
-  FXTextField *field=new FXTextField(&frame,20,nullptr,0,TEXTFIELD_NORMAL|LAYOUT_FILL_X);
+  FXTextField *field=new FXTextField(frame,20,nullptr,0,TEXTFIELD_NORMAL|LAYOUT_FILL_X);
   field->setText("calculator");
 
-  FXSpinner *spinner=new FXSpinner(&frame,2,nullptr,0,JUSTIFY_RIGHT);
+  FXSpinner *spinner=new FXSpinner(frame,2,nullptr,0,JUSTIFY_RIGHT);
   spinner->setRange(1,30);
   spinner->setValue(7);
 
   application.create();
-  main.show();
+  main->show();
 
   int errors=0;
 

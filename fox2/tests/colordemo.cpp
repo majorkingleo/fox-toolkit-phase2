@@ -87,8 +87,8 @@ void ColorWindow::create(){
 int main(int argc,char**argv){
   FXApp application("ColorTest","FoxTest");
   application.init(argc,argv);
-  ColorWindow window(&application);
+  // The main window deletes itself when it is closed, so it lives on the heap
+  new ColorWindow(&application);
   application.create();
-  application.run();
-  return 0;
+  return application.run();
   }

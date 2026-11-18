@@ -743,6 +743,38 @@ static FXWindow* widgetAt(FXApp* foxapp,FXWaylandApp* app,FXID shell,FXint x,FXi
   }
 
 
+// A window paints its background across the whole area it covers, its children
+// included.  X11 clips a parent against its children, but every window of a
+// shell writes into the same buffer here, so the pixels a child put there are
+// gone.  Hand the covered part of each child back to the child, which paints
+// after its parent and does the same for its own children; the paint of a
+// window therefore reaches the leaves of the tree it covers, in that order
+static void exposeChildren(FXWaylandApp* app,FXWindow* window,const FXRectangle& rect){
+  FXWaylandEvent ev;
+  FXWindow *child;
+  FXint x,y,w,h;
+  if(!app || !window) return;
+  for(child=window->getFirst(); child; child=child->getNext()){
+    if(!child->id() || !child->shown()) continue;
+    x=FXMAX(rect.x,child->getX());
+    y=FXMAX(rect.y,child->getY());
+    w=FXMIN(rect.x+rect.w,child->getX()+child->getWidth())-x;
+    h=FXMIN(rect.y+rect.h,child->getY()+child->getHeight())-y;
+    if(w<=0 || h<=0) continue;
+    clearElms(&ev,1);
+    ev.type=0;
+    ev.id=child->id();
+    ev.x=x-child->getX();
+    ev.y=y-child->getY();
+    ev.w=w;
+    ev.h=h;
+    ev.code=FXXWL_EXPOSE;
+    ev.state=1;                 // Painted to order, not by the compositor
+    fxwaylandPost(app,ev);
+    }
+  }
+
+
 // A modal invocation only gets events for its own windows; the compositor
 // hands the pointer to whichever surface is under it, so the filter has to be
 // here, just as the X11 and Win32 backends filter their dispatch
@@ -786,6 +818,9 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           event.rect.h=ev.h;
           event.synthetic=(ev.state!=0);
           window->handle(this,FXSEL(SEL_PAINT,0),&event);
+
+          // The parent has just painted over the pixels of its children
+          exposeChildren(app,window,event.rect);
           return true;
           }
         }
