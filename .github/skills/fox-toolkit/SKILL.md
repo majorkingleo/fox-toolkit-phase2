@@ -129,8 +129,10 @@ FOX also provides `FXStream` and file/memory stream classes for
 machine-independent serialization.  Vector SVG images are supported by
 `FXSVGImage`/`FXSVGIcon`, which rasterize through the vendored NanoSVG at load
 time; `FXIconSource` recognises `.svg` by suffix and content.  Rasterise at the
-target size (the constructor's `w`/`h`) for a sharp result, since a built icon
-is then scaled as pixels. For a subclass that must serialize its
+target size (the constructor's `w`/`h`) for a sharp result.  Widgets ask an icon
+for its copy at the window display scale: a pixel icon is filtered from its
+authored pixels, while an `FXSVGIcon` keeps its document and rasterizes a fresh
+copy per scale, so a vector icon stays sharp when the theme scale changes. For a subclass that must serialize its
 state, follow the `FXObject::save()`/`load()` conventions and inspect the
 streaming operators and examples before changing the serialized format.
 

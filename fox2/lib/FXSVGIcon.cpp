@@ -61,8 +61,9 @@ const FXbool FXSVGIcon::supported=true;
 
 
 // Initialize
-FXSVGIcon::FXSVGIcon(FXApp* a,const FXuchar *pix,FXColor clr,FXuint opts,FXint w,FXint h):FXIcon(a,nullptr,clr,opts,w,h){
+FXSVGIcon::FXSVGIcon(FXApp* a,const FXuchar *pix,FXColor clr,FXuint opts,FXint w,FXint h):FXIcon(a,nullptr,clr,opts,w,h),document(){
   if(pix){
+    document.assign(reinterpret_cast<const FXchar*>(pix));
     FXMemoryStream ms(FXStreamLoad,const_cast<FXuchar*>(pix),strlen((const FXchar*)pix)+1);
     loadPixels(ms);
     }
@@ -85,6 +86,36 @@ FXbool FXSVGIcon::loadPixels(FXStream& store){
     return true;
     }
   return false;
+  }
+
+
+// Return the icon for this display scale, rasterized again at its real size
+FXIcon* FXSVGIcon::getScaledIcon(FXdouble scale){
+  FXint pct=(FXint)(scale*100.0+0.5);
+  if(percent!=0 || document.empty() || pct<=0 || pct==100) return this;
+
+  // Already made for this scale
+  for(FXSVGIcon* icn=static_cast<FXSVGIcon*>(scaled); icn; icn=static_cast<FXSVGIcon*>(icn->sibling)){
+    if(icn->percent==pct) return icn;
+    }
+
+  // Size of the copy
+  FXint w=FXMAX((width*pct+50)/100,1);
+  FXint h=FXMAX((height*pct+50)/100,1);
+  if(w==width && h==height) return this;
+
+  // Rasterize the document at the scaled size; no pixel filtering is involved
+  FXSVGIcon* icn=new FXSVGIcon(getApp(),reinterpret_cast<const FXuchar*>(document.text()),transp,options,w,h);
+  if(icn->getData()==nullptr){
+    delete icn;
+    return this;
+    }
+  icn->percent=pct;
+  icn->thresh=thresh;
+  icn->create();
+  icn->sibling=scaled;
+  scaled=icn;
+  return icn;
   }
 
 

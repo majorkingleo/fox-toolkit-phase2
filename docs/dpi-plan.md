@@ -267,9 +267,12 @@ is wired in (`docs/wayland-plan.md`).
 - Per-window metrics (step 5) remove the cancellation: the font point size is
   divided by `dpi/96` and the layout metrics use the window scale, so a window
   on a 150% monitor really is 1.5 times larger than one on a 100% monitor.
-- Still open: keying icons/bitmaps by DPI. The current subset has no icon or
-  bitmap cache users, so nothing is reused across monitors yet; when icons are
-  wired in, cache them as `(image,dpi)` and rebuild on DPI change.
+- Still open: keying bitmaps by DPI.  Icons are keyed by display scale:
+  `FXIcon::getScaledIcon(scale)` keeps one copy per scale with the icon, and an
+  `FXSVGIcon` rasterizes that copy again from its SVG document instead of
+  filtering the authored pixels, so a vector icon stays sharp at 150% and 200%.
+  Bitmaps have no cache users yet; when they appear, key them as `(image,scale)`
+  and rebuild on scale change.
 
 ### 6. Validation
 
@@ -358,7 +361,9 @@ build is required:
    Remaining: hard-coded pixel sizes in sliders, icons and `FXPacker` spacing,
    and Wayland window DPI.
 2. **DPI-keyed icon/bitmap caches.** Icons: done, `FXIcon::getScaledIcon()` keeps one
-   scaled copy per display scale with the icon (a single-size source is scaled, no multi-size icon yet); bitmaps are still open.
+   scaled copy per display scale with the icon (a single-size source is scaled, no multi-size icon yet);
+   an `FXSVGIcon` rasterizes its copy again from the document, so vector icons stay sharp.
+   Bitmaps are still open.
 3. **Real monitor validation.** Repeat the `tests/dpi` checks on a 150% and a
    200% monitor, then move a live window between monitors of different scale
    and confirm size, fonts, metrics, hit targets, and pointer alignment.

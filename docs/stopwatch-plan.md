@@ -712,7 +712,16 @@ Two findings on the way:
 - **Popup vs dialog for the history table:** `FXPopup` with an `FXTable`; the
   table scrolls and the buttons work on Wayland and under Wine.  No dialog
   fallback was needed.
-- **Library fixes:** the `FXApp_win32.cpp` repair described above.
+- **Library fixes:** the `FXApp_win32.cpp` repair described above, and
+  `FXIcon::getScaledIcon()` is virtual so `FXSVGIcon` re-rasterizes its document
+  at the display scale instead of filtering the authored pixels.
+- **Icon set and scaling:** `clock.svg`, `stopwatch.svg`, `timer.svg`,
+  `analog-clock.svg` and `digital-clock.svg` sit next to the sources and are
+  embedded through `icons.h`.  They are drawn on a 24x24 grid with 2 px strokes
+  so they read at button size, and the mode icons and the icon-only style
+  toggle are rasterized again per display scale.  The bottom row, the control
+  row and the default window size follow the window scale, so the icons are not
+  clipped at 150% and 200%.
 - **Open defects:** the mode buttons do not show the running mark (`Stopwatch
   *`, `Timer!`) from R10/R5; the timer blink is computed but not drawn; the
   history popup in a decorated window is placed at the pointer, so it can run

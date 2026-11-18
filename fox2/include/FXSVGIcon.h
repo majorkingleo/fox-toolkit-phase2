@@ -25,6 +25,10 @@
 #include "FXIcon.h"
 #endif
 
+#ifndef FXSTRING_H
+#include "FXString.h"
+#endif
+
 namespace FX {
 
 
@@ -34,6 +38,7 @@ class FXAPI FXSVGIcon : public FXIcon {
 protected:
   FXSVGIcon(){}
 private:
+  FXString document;            // SVG source, kept so a scaled copy is rasterized again
   FXSVGIcon(const FXSVGIcon&);
   FXSVGIcon &operator=(const FXSVGIcon&);
 public:
@@ -52,6 +57,13 @@ public:
 
   /// Load pixels from stream in SVG format
   virtual FXbool loadPixels(FXStream& store) override;
+
+  /**
+  * Return the icon to draw at the given display scale.  Unlike a pixel icon,
+  * whose scaled copies are filtered from the authored pixels, an SVG icon keeps
+  * its document and rasterizes a fresh, sharp copy at every scale.
+  */
+  virtual FXIcon* getScaledIcon(FXdouble scale) override;
 
   /// Destroy
   virtual ~FXSVGIcon();

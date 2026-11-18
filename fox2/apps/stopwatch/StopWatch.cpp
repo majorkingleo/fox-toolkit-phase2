@@ -65,13 +65,19 @@ static FXString formatDuration(FXTime ns){
   }
 
 
+// Design pixels to the display scale of this machine
+static FXint scaledPixels(FXApp* app,FXint value){
+  return FXMAX((FXint)(value*app->getWindowScale(0)+0.5),1);
+  }
+
+
 StopWatch::StopWatch(){
   mode=MODE_CLOCK;
   style=STYLE_DIGITAL;
   }
 
 
-StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_NONE,0,0,260,200,0,0,0,0){
+StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_NONE,0,0,scaledPixels(a,260),scaledPixels(a,200),0,0,0,0){
   setBackColor(getApp()->getBaseColor());
   mode=MODE_CLOCK;
   style=STYLE_DIGITAL;
@@ -85,8 +91,8 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   timerDone=false;
   blinkOn=false;
   titlebar=false;
-  clientWidth=260;
-  clientHeight=200;
+  clientWidth=scaledPixels(a,260);
+  clientHeight=scaledPixels(a,200);
   dragging=false;
   dragx=0;
   dragy=0;
@@ -127,7 +133,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   readout=new FXLabel(analogFrame,"",nullptr,LAYOUT_FILL_X|JUSTIFY_CENTER_X);
 
   // Controls: one page per mode, all of the same height
-  controlSwitcher=new FXSwitcher(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,36);
+  controlSwitcher=new FXSwitcher(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,scaledPixels(getApp(),36));
   new FXFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y);
   FXHorizontalFrame* stopwatchPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
   startStopButton=new FXButton(stopwatchPage,"Start",nullptr,this,ID_STARTSTOP,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -143,7 +149,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   timerResetButton=new FXButton(timerPage,"Reset",nullptr,this,ID_TIMER_RESET,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
   // Bottom: mode switch and the style toggle
-  FXHorizontalFrame* bottom=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,40,4,4,4,4);
+  FXHorizontalFrame* bottom=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,scaledPixels(getApp(),40),4,4,4,4);
   modeIcons[0]=new FXSVGIcon(getApp(),clock_svg,FXRGB(32,33,36),0,24,24);
   modeIcons[1]=new FXSVGIcon(getApp(),stopwatch_svg,FXRGB(32,33,36),0,24,24);
   modeIcons[2]=new FXSVGIcon(getApp(),timer_svg,FXRGB(32,33,36),0,24,24);
@@ -245,8 +251,8 @@ void StopWatch::loadSettings(){
   writeSpinners();
   if(titlebarCheck) titlebarCheck->setCheck(titlebar);
   setDecorations(titlebar?(DECOR_ALL|DECOR_RESIZE):DECOR_NONE);
-  clientWidth=FXCLAMP(180,reg.readIntEntry("SETTINGS","w",260),2000);
-  clientHeight=FXCLAMP(120,reg.readIntEntry("SETTINGS","h",200),2000);
+  clientWidth=FXCLAMP(scaledPixels(getApp(),180),reg.readIntEntry("SETTINGS","w",scaledPixels(getApp(),260)),2000);
+  clientHeight=FXCLAMP(scaledPixels(getApp(),120),reg.readIntEntry("SETTINGS","h",scaledPixels(getApp(),200)),2000);
   resize(clientWidth,clientHeight);
   FXbool validPosition=(x!=-1000000) && (y!=-1000000) &&
                        (x>=-32) && (y>=-32) &&

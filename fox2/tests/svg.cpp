@@ -29,6 +29,14 @@ static const char document[]=
   "</svg>";
 
 
+// A half pixel wide bar on the left edge of a 24x24 canvas; rasterized at 2x it
+// covers a whole device pixel, filtered up from 24 pixels it stays half covered
+static const char hairline[]=
+  "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\">"
+  "<rect x=\"0\" y=\"0\" width=\"0.5\" height=\"24\" fill=\"#202124\"/>"
+  "</svg>";
+
+
 static int failures=0;
 
 static void check(FXbool ok,const char* what){
@@ -79,6 +87,19 @@ int main(int argc,char* argv[]){
   FXImage* image=source.loadImageData(&app,(const FXuchar*)document,FXString::null);
   check(image!=nullptr && image->getWidth()==32 && image->getHeight()==32,"FXIconSource data array finds SVG by content");
   delete image;
+  }
+
+  {
+  FXSVGIcon icon(&app,(const FXuchar*)hairline,0,0,24,24);
+  icon.create();
+  check(icon.getWidth()==24 && icon.getHeight()==24,"hairline icon is 24x24");
+  FXIcon* twice=icon.getScaledIcon(2.0);
+  check(twice->getWidth()==48 && twice->getHeight()==48,"scaled SVG icon is rasterized at 48x48");
+  check(icon.getScaledIcon(2.0)==twice,"the scaled SVG icon is cached per scale");
+  FXColor c=twice->getData()?twice->getData()[12*48+0]:0;
+  check(FXALPHAVAL(c)>240,"the scaled SVG icon is rasterized, not filtered (vector edge is sharp)");
+  FXColor d=icon.getData()?icon.getData()[12*24+0]:0;
+  check(FXALPHAVAL(d)>0 && FXALPHAVAL(d)<200,"the authored size keeps the antialiased edge");
   }
 
   printf("%s\n",failures==0?"PASS: SVG image and icon load":"FAIL: some SVG checks failed");

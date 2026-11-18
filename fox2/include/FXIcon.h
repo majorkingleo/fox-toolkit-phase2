@@ -125,7 +125,7 @@ public:
   * is 1.0, when no original pixels are known (the icon was not created yet), or
   * when it is already a scaled copy.
   */
-  FXIcon* getScaledIcon(FXdouble scale);
+  virtual FXIcon* getScaledIcon(FXdouble scale);
 
   /// Get transparency color
   FXColor getTransparentColor() const { return transp; }

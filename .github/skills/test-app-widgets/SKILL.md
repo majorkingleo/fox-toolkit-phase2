@@ -164,8 +164,10 @@ fill flags. Do not implement a separate geometry routine.
 SVG buttons: embed source bytes or bundle/install SVG files deterministically.
 Load with `FXSVGIcon` when dimensions are required at rasterization time. Create
 and render owned icons after `FXMainWindow::create()`; render into the requested
-size and delete owned icons in the destructor. See `FXSVGIcon.h/.cpp` and the
-SVG test.
+size and delete owned icons in the destructor. Give the widget room for the
+scaled icon: size the row that holds it from the window scale, not a constant,
+or the icon is clipped at 150% and above. See `FXSVGIcon.h/.cpp`, the SVG test
+and `fox2/apps/stopwatch/StopWatch.cpp`.
 
 ## Lists, headers, trees and tables
 
