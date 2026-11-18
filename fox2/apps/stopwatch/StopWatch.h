@@ -6,6 +6,12 @@
 class StopWatch : public FXMainWindow {
   FXDECLARE(StopWatch)
 private:
+  enum{MODE_CLOCK,MODE_STOPWATCH,MODE_TIMER};
+  FXuint mode;
+  FXSwitcher* switcher;
+  FXLabel* modePages[3];
+  FXIcon* modeIcons[3];
+  FXButton* modeButtons[3];
   FXbool dragging;
   FXint dragx;
   FXint dragy;
@@ -16,6 +22,9 @@ private:
 public:
   enum{
     ID_TICK=FXMainWindow::ID_LAST,
+    ID_MODE_CLOCK,
+    ID_MODE_STOPWATCH,
+    ID_MODE_TIMER,
     ID_QUIT,
     ID_LAST
     };
@@ -26,6 +35,10 @@ public:
   virtual FXbool close(FXbool notify=true) override;
 public:
   long onTick(FXObject*,FXSelector,void*);
+  long onModeClock(FXObject*,FXSelector,void*);
+  long onModeStopwatch(FXObject*,FXSelector,void*);
+  long onModeTimer(FXObject*,FXSelector,void*);
+  long onUpdMode(FXObject*,FXSelector,void*);
   long onQuit(FXObject*,FXSelector,void*);
   long onMiddlePress(FXObject*,FXSelector,void*);
   long onMiddleRelease(FXObject*,FXSelector,void*);
