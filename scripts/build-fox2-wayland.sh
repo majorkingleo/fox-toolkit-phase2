@@ -22,7 +22,9 @@
 #   --debug    build with debug information and no optimization (Debug)
 #   --relwithdebinfo  optimized build that still carries debug information
 #   --release  optimized build without debug information
-#   --install[=DIR] install after building (default prefix: /usr/local)
+#   --prefix=DIR   install prefix (default: /usr/local)
+#   --destdir=DIR  stage the install under DIR (e.g. /stow/fox2)
+#   --install      install after building
 #   -h|--help  show this help
 #
 # Environment:
@@ -47,10 +49,12 @@ clean=no
 run_test=no
 with_opengl=no
 build_type=${FOX_BUILD_TYPE-}
-install_prefix=
+prefix=/usr/local
+destdir=
+do_install=no
 
 usage(){
-  sed -n '2,35p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -62,13 +66,16 @@ while [ $# -gt 0 ]; do
     --debug)    build_type=Debug ;;
     --relwithdebinfo) build_type=RelWithDebInfo ;;
     --release)  build_type=Release ;;
-    --install)
-      if [ $# -ge 2 ] && [ "${2#-}" = "$2" ]; then
-        install_prefix=$2; shift
-      else
-        install_prefix=/usr/local
-        fi ;;
-    --install=*) install_prefix=${1#*=}; [ -n "$install_prefix" ] || install_prefix=/usr/local ;;
+    --prefix)
+      [ $# -ge 2 ] || { echo "error: --prefix needs a directory" >&2; exit 2; }
+      prefix=$2; shift ;;
+    --prefix=*) prefix=${1#*=} ;;
+    --destdir)
+      [ $# -ge 2 ] || { echo "error: --destdir needs a directory" >&2; exit 2; }
+      destdir=$2; shift ;;
+    --destdir=*) destdir=${1#*=} ;;
+    --install)  do_install=yes ;;
+    --install=*) do_install=yes; prefix=${1#*=}; [ -n "$prefix" ] || prefix=/usr/local ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -77,15 +84,21 @@ while [ $# -gt 0 ]; do
   shift
   done
 
-if [ -n "$install_prefix" ]; then
-  case "$install_prefix" in
+case "$prefix" in
+  /*|[A-Za-z]:/*) ;;
+  *) echo "error: --prefix needs an absolute path: '$prefix'" >&2; exit 2 ;;
+  esac
+if [ -n "$destdir" ]; then
+  case "$destdir" in
     /*|[A-Za-z]:/*) ;;
-    *) echo "error: --install needs an absolute prefix: '$install_prefix'" >&2; exit 2 ;;
+    *) echo "error: --destdir needs an absolute path: '$destdir'" >&2; exit 2 ;;
   esac
   fi
-cmake_install_prefix=$install_prefix
-if [ -n "$install_prefix" ] && [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
-  cmake_install_prefix=$(cygpath -m "$install_prefix")
+cmake_prefix=$prefix
+cmake_destdir=$destdir
+if [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
+  cmake_prefix=$(cygpath -m "$prefix")
+  [ -n "$destdir" ] && cmake_destdir=$(cygpath -m "$destdir")
   fi
 
 if [ -n "${MSYSTEM-}" ]; then
@@ -197,7 +210,8 @@ opengl=OFF
 [ "$with_opengl" = yes ] && opengl=ON
 [ -n "$build_type" ] && echo "==> build type: $build_type"
 run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF \
-  -DFOX_WITH_OPENGL=$opengl ${build_type:+-DCMAKE_BUILD_TYPE=$build_type}
+  -DFOX_WITH_OPENGL=$opengl -DCMAKE_INSTALL_PREFIX="$cmake_prefix" \
+  ${build_type:+-DCMAKE_BUILD_TYPE=$build_type}
 
 echo "==> build library, tools and tests"
 if [ -n "${FOX_WAYLAND_TARGET-}" ]; then
@@ -225,10 +239,14 @@ if [ "$run_test" = yes ]; then
     done
   fi
 
-if [ -n "$install_prefix" ]; then
+if [ "$do_install" = yes ]; then
   echo
-  echo "==> install to $install_prefix"
-  run cmake --install "$BUILD" --prefix "$cmake_install_prefix"
+  echo "==> install to ${destdir}${prefix}"
+  if [ -n "$destdir" ]; then
+    run env DESTDIR="$cmake_destdir" cmake --install "$BUILD" --prefix "$cmake_prefix"
+  else
+    run cmake --install "$BUILD" --prefix "$cmake_prefix"
+    fi
   fi
 
 echo

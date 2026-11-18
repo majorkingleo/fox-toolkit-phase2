@@ -20,7 +20,9 @@
 #   --run      run hello and the DPI diagnostic after building
 #   --cmake    use CMake + Ninja instead of Autotools: no autoreconf and no
 #              configure run (build dir: tmp/build-fox2-win-cmake)
-#   --install[=DIR] install after building (default prefix: /usr/local)
+#   --prefix=DIR   install prefix (default: /usr/local)
+#   --destdir=DIR  stage the install under DIR (e.g. /stow/fox2)
+#   --install      install after building
 #   -h|--help  show this help
 #
 set -euo pipefail
@@ -38,10 +40,12 @@ fast=no
 trace=no
 run_test=no
 use_cmake=no
-install_prefix=
+prefix=/usr/local
+destdir=
+do_install=no
 
 usage(){
-  sed -n '2,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -54,13 +58,16 @@ while [ $# -gt 0 ]; do
     --trace)    trace=yes ;;
     --run)      run_test=yes ;;
     --cmake)    use_cmake=yes ;;
-    --install)
-      if [ $# -ge 2 ] && [ "${2#-}" = "$2" ]; then
-        install_prefix=$2; shift
-      else
-        install_prefix=/usr/local
-        fi ;;
-    --install=*) install_prefix=${1#*=}; [ -n "$install_prefix" ] || install_prefix=/usr/local ;;
+    --prefix)
+      [ $# -ge 2 ] || { echo "error: --prefix needs a directory" >&2; exit 2; }
+      prefix=$2; shift ;;
+    --prefix=*) prefix=${1#*=} ;;
+    --destdir)
+      [ $# -ge 2 ] || { echo "error: --destdir needs a directory" >&2; exit 2; }
+      destdir=$2; shift ;;
+    --destdir=*) destdir=${1#*=} ;;
+    --install)  do_install=yes ;;
+    --install=*) do_install=yes; prefix=${1#*=}; [ -n "$prefix" ] || prefix=/usr/local ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -69,15 +76,21 @@ while [ $# -gt 0 ]; do
   shift
   done
 
-if [ -n "$install_prefix" ]; then
-  case "$install_prefix" in
+case "$prefix" in
+  /*|[A-Za-z]:/*) ;;
+  *) echo "error: --prefix needs an absolute path: '$prefix'" >&2; exit 2 ;;
+  esac
+if [ -n "$destdir" ]; then
+  case "$destdir" in
     /*|[A-Za-z]:/*) ;;
-    *) echo "error: --install needs an absolute prefix: '$install_prefix'" >&2; exit 2 ;;
+    *) echo "error: --destdir needs an absolute path: '$destdir'" >&2; exit 2 ;;
   esac
   fi
-cmake_install_prefix=$install_prefix
-if [ -n "$install_prefix" ] && [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
-  cmake_install_prefix=$(cygpath -m "$install_prefix")
+cmake_prefix=$prefix
+cmake_destdir=$destdir
+if [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
+  cmake_prefix=$(cygpath -m "$prefix")
+  [ -n "$destdir" ] && cmake_destdir=$(cygpath -m "$destdir")
   fi
 
 if [ "${MSYSTEM-}" != "MINGW64" ]; then
@@ -120,7 +133,7 @@ if [ "$use_cmake" = yes ]; then
 
   # CMake writes nothing into the source tree. The build type is always
   # passed so that it is reset when no option is given.
-  copts=(-G Ninja -DFOX_WITH_CUPS=OFF)
+  copts=(-G Ninja -DFOX_WITH_CUPS=OFF -DCMAKE_INSTALL_PREFIX="$cmake_prefix")
   if [ "$with_opengl" = yes ]; then
     copts+=(-DFOX_WITH_OPENGL=ON)
   else
@@ -160,7 +173,7 @@ if [ "$use_cmake" = yes ]; then
       cp -f -- "$src" "$dst"
       fi
     }
-  todo=("$BUILD/bin/libFOX-1.7.dll")
+  todo=("$BUILD/bin/libFOX-2.0.dll")
   seen=" "
   while [ "${#todo[@]}" -gt 0 ]; do
     cur="${todo[0]}"; todo=("${todo[@]:1}")
@@ -193,10 +206,14 @@ if [ "$use_cmake" = yes ]; then
     timeout 10 "$BUILD/bin/dpi.exe" simulate || true
     fi
 
-  if [ -n "$install_prefix" ]; then
+  if [ "$do_install" = yes ]; then
     echo
-    echo "==> install to $install_prefix"
-    run cmake --install "$BUILD" --prefix "$cmake_install_prefix"
+    echo "==> install to ${destdir}${prefix}"
+    if [ -n "$destdir" ]; then
+      run env DESTDIR="$cmake_destdir" cmake --install "$BUILD" --prefix "$cmake_prefix"
+    else
+      run cmake --install "$BUILD" --prefix "$cmake_prefix"
+      fi
     fi
 
   echo
@@ -230,10 +247,7 @@ if [ "$with_opengl" = yes ]; then
 else
   opts+=(--with-opengl=no)
   fi
-opts+=(--disable-cups)
-if [ -n "$install_prefix" ]; then
-  opts+=(--prefix="$install_prefix")
-  fi
+opts+=(--disable-cups --prefix="$prefix")
 case "$build_type" in
   debug)   opts+=(--enable-debug) ;;
   release) opts+=(--enable-release) ;;
@@ -329,10 +343,14 @@ if [ "$run_test" = yes ]; then
   ( cd tests && PATH="$BUILD/lib/.libs:$PATH" timeout 10 ./dpi.exe simulate ) || true
   fi
 
-if [ -n "$install_prefix" ]; then
+if [ "$do_install" = yes ]; then
   echo
-  echo "==> install to $install_prefix"
-  run make install
+  echo "==> install to ${destdir}${prefix}"
+  if [ -n "$destdir" ]; then
+    run make install DESTDIR="$destdir"
+  else
+    run make install
+    fi
   fi
 
 echo

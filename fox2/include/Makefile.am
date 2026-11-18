@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-foxincludedir=$(includedir)/fox-1.7
+foxincludedir=$(includedir)/fox-2.0
 
 foxinclude_HEADERS = \
 fx.h \

@@ -81,8 +81,8 @@ echo "==> make -C lib"
 echo "==> make -C tests hello"
 ( cd "$BUILD" && make -C tests hello ) >"$BUILD/make-hello.log" 2>&1 || failed "the test program did not build" make-hello.log
 
-[ -f "$BUILD/lib/.libs/libFOX-1.7.a" ] || failed "no library was made" make-lib.log
-grep -q "FOX-1.7" "$BUILD/tests/hello" 2>/dev/null || true
+[ -f "$BUILD/lib/.libs/libFOX-2.0.a" ] || failed "no library was made" make-lib.log
+grep -q "FOX-2.0" "$BUILD/tests/hello" 2>/dev/null || true
 
 echo "==> fox-config --libs"
 libs=$(sh "$BUILD/fox-config" --libs)

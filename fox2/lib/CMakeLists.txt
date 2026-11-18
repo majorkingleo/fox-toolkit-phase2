@@ -1,4 +1,4 @@
-# libFOX-1.7. The source list is read from Makefile.am, so the Autotools and
+# libFOX-2.0. The source list is read from Makefile.am, so the Autotools and
 # the CMake build always compile the same files.
 
 fox_read_makefile_sources("${CMAKE_CURRENT_SOURCE_DIR}/Makefile.am" FOX_LIB_SOURCES)
@@ -63,14 +63,14 @@ endif()
 add_library(FOX::FOX ALIAS FOX)
 
 set_target_properties(FOX PROPERTIES
-  OUTPUT_NAME FOX-1.7
+  OUTPUT_NAME FOX-2.0
   VERSION ${PROJECT_VERSION}
   SOVERSION 0)
 
 target_include_directories(FOX PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fox-1.7>)
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/fox-2.0>)
 if(FOX_PLATFORM STREQUAL "wayland")
   # Generated protocol headers are private to the library
   target_include_directories(FOX PRIVATE "${_fox_gen}")

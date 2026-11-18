@@ -7,7 +7,7 @@
 #   .\scripts\build-fox2-mingw.ps1 -Fast            # skip autotools when unchanged
 #   .\scripts\build-fox2-mingw.ps1 -Trace -Clean    # FXTRACE build for logging
 #   .\scripts\build-fox2-mingw.ps1 -CMake           # CMake + Ninja, no configure
-#   .\scripts\build-fox2-mingw.ps1 -Install /usr/local  # install after building
+#   .\scripts\build-fox2-mingw.ps1 -Install -Prefix /usr/local -Destdir /stow/fox2
 #
 # If script execution is blocked by the PowerShell policy, run:
 #   powershell -ExecutionPolicy Bypass -File .\scripts\build-fox2-mingw.ps1
@@ -22,7 +22,9 @@ param(
   [switch]$Trace,
   [switch]$Run,
   [switch]$CMake,
-  [string]$Install,
+  [switch]$Install,
+  [string]$Prefix,
+  [string]$Destdir,
   [string]$Jobs
 )
 
@@ -60,7 +62,9 @@ if ($Fast) { $buildArgs += '--fast' }
 if ($Trace) { $buildArgs += '--trace' }
 if ($Run) { $buildArgs += '--run' }
 if ($CMake) { $buildArgs += '--cmake' }
-if ($Install) { $buildArgs += "--install=$Install" }
+if ($Prefix) { $buildArgs += "--prefix=$Prefix" }
+if ($Destdir) { $buildArgs += "--destdir=$Destdir" }
+if ($Install) { $buildArgs += '--install' }
 if ($Jobs) { $buildArgs += "--jobs=$Jobs" }
 
 if ($InstallDeps) {

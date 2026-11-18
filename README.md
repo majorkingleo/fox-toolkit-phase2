@@ -7,7 +7,8 @@ It is a personal test project that takes the [FOX toolkit](https://fox-toolkit.o
 the same flat surfaces, hairline borders, rounded corners and accent colours that
 GTK and Qt applications have had for years.  FOX itself is by
 Jeroen van der Zijp, it lives at **[fox-toolkit.org](https://fox-toolkit.org/)**,
-and nothing here is official, endorsed or supported by him.
+and nothing here is official, endorsed or supported by him.  The library in
+`fox2/` is version 2.0; the unchanged baseline stays 1.7.95.
 
 ![Screenshots of themed FOX applications](screenshots/readme/hero.png)
 
@@ -107,7 +108,7 @@ title bar is FOX's own.
 ```sh
 ./scripts/build-fox2-linux.sh --cmake     # X11     -> tmp/build-fox2-linux-cmake/bin
 ./scripts/build-fox2-wayland.sh           # Wayland -> tmp/build-fox2-wayland/bin
-./scripts/build-fox2-linux.sh --cmake --install=/usr/local  # build and install
+./scripts/build-fox2-linux.sh --cmake --install --prefix=/usr/local --destdir=/stow/fox2
 
 # run any of the small test programs
 tmp/build-fox2-linux-cmake/bin/table
@@ -139,9 +140,11 @@ the mingw-w64 compiler:
 
 Both scripts take `--fast` to skip the configure step when nothing changed,
 `--clean`, `--opengl`, `--debug`/`--release` and `--jobs=N`, and print the same
-help with `--help`.  Every build script also takes `--install[=DIR]`, or plain
-`--install` for `/usr/local`, to install after building; use a prefix you can
-write to, or run the script with `sudo`.
+help with `--help`.  Every build script also takes `--install`, `--prefix=DIR`
+(the default is `/usr/local`) and `--destdir=DIR` for a staged install, such as
+`--destdir=/stow/fox2`; without a destdir, use a prefix you can write to or run
+the script with `sudo`.  On 64-bit Unix builds the library installs into
+`lib64` by default.
 
 Then pick a theme — the easy way is the control panel, which shows what is
 installed and applies it immediately:

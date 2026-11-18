@@ -82,7 +82,7 @@ independent backends:
 - Platform code is selected with compile-time conditionals such as `WIN32`.
   For example, `FXApp.cpp`, `FXWindow.cpp`, and `FXDCWindow.cpp` contain
   platform-specific paths. `include/xincs.h` also chooses platform headers.
-- `lib/Makefile.am` builds one `libFOX-1.7` target from the shared source list.
+- `lib/Makefile.am` builds one `libFOX-2.0` target from the shared source list.
   Windows has separate Visual Studio project files in `windows/`. This
   compile-time approach is compatible with FOX's small-library and
   cross-compilation goals.

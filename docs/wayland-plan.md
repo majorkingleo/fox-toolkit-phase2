@@ -975,7 +975,7 @@ Done in this phase so far (the build wiring, the metadata and the screenshots):
   X11 at all, and the libraries configure finds (freetype, fontconfig, the image
   codecs) are gathered in `PLATFORM_LIBS` so that both the link line and the
   metadata are right.
-- `fox2/fox-1.7.pc.in` and `fox2/fox-config.in` are installed and report the
+- `fox2/fox-2.0.pc.in` and `fox2/fox-config.in` are installed and report the
   platform: on Wayland `fox-config --libs` prints `-lwayland-client -lxkbcommon`
   where X11 prints `-lX11 -lXext`, and nothing else changed about them.
 - `docs/platform-seam-plan.md` has the Wayland module table: which module fills

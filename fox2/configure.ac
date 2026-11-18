@@ -1,7 +1,7 @@
 # Version of the code
-m4_define([fox_major], [1])
-m4_define([fox_minor], [7])
-m4_define([fox_level], [95])
+m4_define([fox_major], [2])
+m4_define([fox_minor], [0])
+m4_define([fox_level], [0])
 m4_define([fox_version],[fox_major.fox_minor.fox_level])
 
 # Init
@@ -58,6 +58,16 @@ case "$host_os" in
 *) OS_WINDOWS=0 ;;
 esac
 AM_CONDITIONAL(COND_OSWINDOWS, test x$OS_WINDOWS = x1)
+
+# 64-bit Unix builds install libraries in lib64 unless --libdir was given
+if test "$OS_WINDOWS" = 0; then
+  case "$host_cpu" in
+  x86_64|amd64|*64*|s390x|ia64)
+    if test "x$libdir" = 'x${exec_prefix}/lib'; then
+      libdir='${exec_prefix}/lib64'
+    fi ;;
+  esac
+fi
 
 # Windowing platform: win32 on Windows, otherwise x11 (default) or wayland
 AC_ARG_WITH(wayland,[  --with-wayland         build the Wayland platform instead of X11])
@@ -445,7 +455,7 @@ apps/pathfinder/Makefile
 apps/adie/Makefile
 apps/glviewer/Makefile
 tests/Makefile
-fox-1.7.pc
+fox-2.0.pc
 fox-config])
 AC_CONFIG_COMMANDS([chmod],[chmod +x fox-config])
 AC_OUTPUT

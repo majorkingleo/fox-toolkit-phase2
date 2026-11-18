@@ -94,7 +94,7 @@ depends on.
 | Internal contract | `fox2/lib/fxplatform.h`: `fxplatformSetDPIAwareness()`, `fxplatformGetSystemDPI()`, `fxplatformGetWindowDPI()` |
 | Windows module | `fox2/lib/FXApp_win32.cpp`: policy parsing and application with fallbacks, awareness verification, `GetDpiForSystem`/`GetDeviceCaps`, `GetDpiForWindow`; all functions resolved dynamically so old SDKs and runtimes still build and run |
 | X11 module | `fox2/lib/FXApp_x11.cpp`: no process awareness, no system DPI, no per-window DPI; the display scale is configured instead |
-| Build | `lib/Makefile.am`: exactly one module is added to `libFOX_1_7_la_SOURCES`; `fxplatform.h` is in `noinst_HEADERS` |
+| Build | `lib/Makefile.am`: exactly one module is added to `libFOX_2_0_la_SOURCES`; `fxplatform.h` is in `noinst_HEADERS` |
 | Portable core | `FXApp::init()` calls the seam; `FXApp::getWindowDPI()` keeps the app-DPI fallback; `applyWindowDPI()` keeps walking the widget tree |
 
 Deliberately left in `FXApp.cpp` for now:
@@ -123,7 +123,7 @@ Windows (`scripts/build-fox2-mingw.sh`):
 Linux host, cross build (`scripts/build-fox2-mingw-cross.sh --run`):
 
 - `autoreconf -fi` plus `--host=x86_64-w64-mingw32 --without-x` builds
-  `libFOX-1.7-0.dll`, the import library and `hello`, `button`, `dpi`;
+  `libFOX-2.0-0.dll`, the import library and `hello`, `button`, `dpi`;
   `X_BASE_LIBS` is reduced to the Win32 libraries and `FXApp_win32.cpp` is the
   module compiled in.
 - Wine starts all three programs. `dpi` reports per-monitor-v2, system DPI 96

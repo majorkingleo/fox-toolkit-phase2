@@ -1,13 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 
 # Version of the code (keep in sync with configure.ac)
-project(FOX VERSION 1.7.95 LANGUAGES CXX)
+project(FOX VERSION 2.0.0 LANGUAGES CXX)
 
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(FATAL_ERROR "In-source builds are not supported; use: cmake -S . -B <builddir>")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# 64-bit Unix builds install libraries in lib64 unless the caller chose a libdir
+if(UNIX AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
+  set(CMAKE_INSTALL_LIBDIR lib64 CACHE PATH "Object code libraries")
+endif()
 include(GNUInstallDirs)
 include(FOXFeatures)
 
@@ -36,7 +41,7 @@ if(FOX_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/fox-1.7
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/fox-2.0
         FILES_MATCHING PATTERN "*.h")
 install(FILES "${CMAKE_BINARY_DIR}/include/fxver.h"
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/fox-1.7)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/fox-2.0)
