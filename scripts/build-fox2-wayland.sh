@@ -19,6 +19,9 @@
 #   --run      run hello, button and the DPI test for 3 s after building
 #   --opengl   enable OpenGL: EGL canvases on wl_subsurfaces (needs libEGL,
 #              wayland-egl and libGL)
+#   --debug    build with debug information and no optimization (Debug)
+#   --relwithdebinfo  optimized build that still carries debug information
+#   --release  optimized build without debug information
 #   -h|--help  show this help
 #
 # Environment:
@@ -26,6 +29,9 @@
 #                        under WSL use the Linux file system, e.g. ~/build/fox2-wayland
 #   FOX_WAYLAND_TARGET   build one CMake target instead of everything
 #                        (e.g. FOX for the library alone)
+#   FOX_BUILD_TYPE       same as --debug/--relwithdebinfo/--release; empty
+#                        (the default) keeps CMake's flags for an unset
+#                        CMAKE_BUILD_TYPE, no -g and no -O
 #
 set -euo pipefail
 
@@ -39,9 +45,10 @@ check_only=no
 clean=no
 run_test=no
 with_opengl=no
+build_type=${FOX_BUILD_TYPE-}
 
 usage(){
-  sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,34p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -50,6 +57,9 @@ while [ $# -gt 0 ]; do
     --clean)    clean=yes ;;
     --run)      run_test=yes ;;
     --opengl)   with_opengl=yes ;;
+    --debug)    build_type=Debug ;;
+    --relwithdebinfo) build_type=RelWithDebInfo ;;
+    --release)  build_type=Release ;;
     --jobs)     shift; jobs=$1 ;;
     --jobs=*)   jobs=${1#*=} ;;
     -h|--help)  usage; exit 0 ;;
@@ -165,7 +175,9 @@ run(){
 echo "==> cmake configure"
 opengl=OFF
 [ "$with_opengl" = yes ] && opengl=ON
-run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF -DFOX_WITH_OPENGL=$opengl
+[ -n "$build_type" ] && echo "==> build type: $build_type"
+run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF \
+  -DFOX_WITH_OPENGL=$opengl ${build_type:+-DCMAKE_BUILD_TYPE=$build_type}
 
 echo "==> build library, tools and tests"
 if [ -n "${FOX_WAYLAND_TARGET-}" ]; then
