@@ -105,6 +105,33 @@ namespace FX {
 FXIMPLEMENT(FXIconItem,FXObject,nullptr,0)
 
 
+// Keep a detail item's drawing inside the scroll area's viewport.  On X11 and
+// Win32 the server clips a parent against its child windows, but on Wayland all
+// windows of a shell paint into one buffer, so a row that is partly scrolled
+// out of the viewport must not paint over the column header or scroll bars.
+static void setViewportClip(const FXIconList* list,FXDC& dc){
+  dc.setClipRectangle(list->getVisibleX(),list->getVisibleY(),list->getVisibleWidth(),list->getVisibleHeight());
+  }
+
+
+// Clip a detail cell against the scroll area's viewport before drawing it.
+// A cell is normally clipped to its own rectangle, but a row that is partly
+// scrolled out of the viewport must not let its icon or text paint over the
+// column header or the scroll bars that share the same buffer on Wayland.
+static void setCellClip(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXint w,FXint h){
+  FXint vx=list->getVisibleX();
+  FXint vy=list->getVisibleY();
+  FXint vw=list->getVisibleWidth();
+  FXint vh=list->getVisibleHeight();
+  FXint cx=FXMAX(x,vx);
+  FXint cy=FXMAX(y,vy);
+  FXint cw=FXMIN(x+w,vx+vw)-cx;
+  FXint ch=FXMIN(y+h,vy+vh)-cy;
+  if(cw<=0 || ch<=0){ cw=0; ch=0; }
+  dc.setClipRectangle(cx,cy,cw,ch);
+  }
+
+
 // Draw item
 void FXIconItem::draw(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXint w,FXint h) const {
   FXuint options=list->getListStyle();
@@ -231,6 +258,7 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
   FXTheme *theme=list->getApp()->getTheme();
   FXbool themed=0<theme->metric(METRIC_CORNER_RADIUS,list->getDisplayScale());
   if(header->getNumItems()==0) return;
+  setViewportClip(list,dc);
   if(isSelected()){
     dc.setForeground(list->getSelBackColor());
     dc.fillRectangle(x,y,w,h);
@@ -245,9 +273,9 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
   if(miniIcon){
     iw=list->getScaledIcon(miniIcon)->getWidth();
     ih=list->getScaledIcon(miniIcon)->getHeight();
-    dc.setClipRectangle(x,y,header->getItemSize(0),h);
+    setCellClip(list,dc,x,y,header->getItemSize(0),h);
     dc.drawIcon(list->getScaledIcon(miniIcon),xx,y+(h-ih)/2);
-    dc.clearClipRectangle();
+    setViewportClip(list,dc);
     xx+=iw+DETAIL_TEXT_SPACING;
     }
   if(!label.empty()){
@@ -269,10 +297,10 @@ void FXIconItem::drawDetails(const FXIconList* list,FXDC& dc,FXint x,FXint y,FXi
         tw=font->getTextWidth(&label[beg],drw);
         if(tw>space-4){
           while((tw=font->getTextWidth(&label[beg],drw))+dw>space-4 && drw>1) drw=label.dec(drw);
-          dc.setClipRectangle(xx,y,space,h);
+          setCellClip(list,dc,xx,y,space,h);
           dc.drawText(xx+2,yt+font->getFontAscent()+2,&label[beg],drw);
           dc.drawText(xx+tw+2,yt+font->getFontAscent()+2,"...",3);
-          dc.clearClipRectangle();
+          setViewportClip(list,dc);
           }
         else{
           dc.drawText(xx+2,yt+font->getFontAscent()+2,&label[beg],drw);
@@ -1684,6 +1712,11 @@ long FXIconList::onPaint(FXObject*,FXSelector,void* ptr){
 
   // Set font
   dc.setFont(font);
+
+  // Keep the item paint inside the viewport that the column header and the
+  // scroll bars leave exposed; the header covers the top of the viewport in
+  // detail mode, and a row that is partly scrolled out must not paint over it
+  setViewportClip(this,dc);
 
   // Icon mode
   if(options&(ICONLIST_BIG_ICONS|ICONLIST_MINI_ICONS)){
