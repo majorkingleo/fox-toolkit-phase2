@@ -78,6 +78,9 @@ FXImage* ClockView::makeImage(FXint w,FXint h){
     image=new FXImage(getApp());
     image->setData(pixels,IMAGE_OWNED,w,h);
     image->create();
+    // X11 and Win32 drop the pixel buffer in create() unless IMAGE_KEEP is
+    // set, which the constructor does not accept; restore() brings it back
+    image->restore();
     return image;
     }
   return nullptr;
