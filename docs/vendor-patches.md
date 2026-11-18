@@ -35,6 +35,7 @@ the fixes in the test programs themselves (the `match` test used `/` where
 | 097dc42 | time format and parse | `FXSystemTime.cpp`, `FXSystemTimeFormat.cpp`, `FXSystemTimeParse.cpp` | same names |
 | 4ae416b | variant, JSON, INI, string to integer | `FXVariant.cpp`, `FXJSON.cpp`, `FXINI.cpp`, `fxstrtoll.cpp`, `fxstrtoull.cpp` | same names |
 | c6e8176 | XML reader and writer | `FXXML.cpp` | `FXXML.cpp` |
+| 3e8a40a | text field focus crash | `FXTextField.cpp` | `FXTextField.cpp` |
 
 Line numbers refer to the files of `fox-1.7.95` as they are in this repository.
 
@@ -233,3 +234,12 @@ element is checked; `ErrReference` is never returned; the encoder does not
 escape the control characters U+0080 to U+009F that the XML grammar lists as
 restricted; a truncated end tag (`<a>x</a`) gives `ErrNoMatch` and not
 `ErrEof`; the writer writes `\r\n` for a line feed on Windows.
+## 3e8a40a: focus traversal crashes a text field
+
+Found by a Tab in the stopwatch timer page under headless sway, not by a console
+test.  A focus traversal (`FXShell::onFocusNext`, and the Wayland focus-in that
+starts one) sends `SEL_FOCUS_SELF` with a null event pointer.  The text field
+selects all text only for a key event, but it dereferenced the pointer before
+the test, so the first Tab that reached a text field or spinner crashed with
+SIGSEGV.  Check the pointer first.  FOX 1: `lib/FXTextField.cpp` line 1201
+(`onFocusSelf`).
