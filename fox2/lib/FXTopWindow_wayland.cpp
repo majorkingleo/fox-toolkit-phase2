@@ -348,10 +348,28 @@ void FXTopWindow::settitle(){
   }
 
 
-// Set decorations; the decoration protocol arrives in phase 5, so only the
-// size limits the decorations imply are declared here
+// Set decorations; a borderless window asks for client side decorations and
+// draws no title bar, so the compositor leaves the surface alone
 void FXTopWindow::setdecorations(){
-  sizeLimits(this,topSurface(getApp(),xid));
+  FXWaylandSurface* surf=topSurface(getApp(),xid);
+  FXbool bare=(getDecorations()&DECOR_ALL)==0;
+  if(surf && surf->toplevel){
+    surf->borderless=bare;
+    if(surf->decoration){
+      zxdg_toplevel_decoration_v1_set_mode(surf->decoration,bare?ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE:ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+      }
+    if(bare && surf->barh!=0){
+      surf->barh=0;
+      surf->dirty=true;
+      fxwaylandExpose(surf->app,surf->window);
+      }
+    else if(!bare && !surf->decoration && surf->barh==0){
+      surf->barh=fxwaylandBarHeight(surf->app);
+      surf->dirty=true;
+      fxwaylandExpose(surf->app,surf->window);
+      }
+    }
+  sizeLimits(this,surf);
   }
 
 
@@ -462,6 +480,16 @@ FXbool FXTopWindow::isFullScreen() const {
 // Request for toplevel window move
 void FXTopWindow::move(FXint x,FXint y){
   FXWindow::move(x,y);
+  }
+
+
+// Start an interactive move, driven by the compositor
+void FXTopWindow::startDrag(){
+  FXWaylandSurface* surf=topSurface(getApp(),xid);
+  FXWaylandApp* app=fxwayland(getApp()->getDisplay());
+  if(surf && surf->toplevel && app && app->seat && app->pointerserial){
+    xdg_toplevel_move(surf->toplevel,app->seat,app->pointerserial);
+    }
   }
 
 

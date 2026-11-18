@@ -765,6 +765,11 @@ void FXTopWindow::move(FXint x,FXint y){
   }
 
 
+// Start an interactive move; the application moves the window itself
+void FXTopWindow::startDrag(){
+  }
+
+
 // Request for toplevel window resize
 void FXTopWindow::resize(FXint w,FXint h){
   if((flags&FLAG_DIRTY) || (w!=width) || (h!=height)){

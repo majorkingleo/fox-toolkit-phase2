@@ -198,6 +198,9 @@ public:
   /// Move this window to the specified position in the parent's coordinates
   virtual void move(FXint x,FXint y) override;
 
+  /// Start an interactive move, if the platform supports it
+  void startDrag();
+
   /// Resize this window to the specified width and height
   virtual void resize(FXint w,FXint h) override;
 
