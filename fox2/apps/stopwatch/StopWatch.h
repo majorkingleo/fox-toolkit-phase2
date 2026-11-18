@@ -25,6 +25,8 @@ public:
     ID_MODE_CLOCK,
     ID_MODE_STOPWATCH,
     ID_MODE_TIMER,
+    ID_SHOW_TITLEBAR,
+    ID_RIGHT_CLICK,
     ID_QUIT,
     ID_LAST
     };
@@ -45,6 +47,9 @@ public:
   long onMotion(FXObject*,FXSelector,void*);
   long onConfigure(FXObject*,FXSelector,void*);
   long onPaint(FXObject*,FXSelector,void*);
+  long onRightPress(FXObject*,FXSelector,void*);
+  long onShowTitlebar(FXObject*,FXSelector,void*);
+  long onUpdShowTitlebar(FXObject*,FXSelector,void*);
   };
 
 #endif

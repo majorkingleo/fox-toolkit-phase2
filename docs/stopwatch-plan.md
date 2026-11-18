@@ -14,12 +14,12 @@ does not).
 
 | # | Requirement |
 | --- | --- |
-| R1 | A small desktop widget with no title bar and no border (`DECOR_NONE`). |
+| R1 | A small desktop widget that starts without a title bar or native border (`DECOR_NONE`). A right-click menu can temporarily enable a native title bar for moving and resizing; the choice is remembered. |
 | R2 | The user chooses the display: digital digits (seven segment) or a classic round analog clock. The choice is remembered. |
 | R3 | The default content is the current local time. |
 | R4 | At the bottom a row of three switch buttons: **Clock** (current time), **Stopwatch**, **Timer**. The active one is shown pressed. |
-| R5 | A middle mouse button drag moves the window on the desktop. A small drag grip (corner widget) that moves the window with the left button is the fallback if a middle press cannot be received over every widget (5.7). |
-| R6 | The last window position is remembered and restored. |
+| R5 | In borderless mode a middle-mouse drag remains the fast path. In title-bar mode the Win32 title bar handles left-button moving and the native frame handles resizing. No permanent drag button is required. |
+| R6 | The last window position, size and title-bar state are remembered and restored. |
 | R7 | The stopwatch remembers its last stop values (the value shown when stopped, and a history). |
 | R8 | A right click opens a popup that shows an `FXTable` with the history: elapsed value and when it happened (date and time of the stop). |
 | R9 | Build and verify with the MSYS2 target (Win32 only for now). |
@@ -86,8 +86,9 @@ Known limits to document, not to fix in the application:
 ## 3. Platform rule for the application
 
 The application source must not contain `#if defined(WIN32)` or `#if
-defined(X11)`. The move is written once, and the optional `MoveGrip` (5.7)
-feeds the same handlers with left button events:
+defined(X11)`. The middle-drag fast path is written once; the right-click
+**Show title bar** fallback delegates movement and resizing to the native
+Win32 window manager:
 
 ```
 middle press   -> startDrag()           (Wayland: compositor moves it;
@@ -111,7 +112,6 @@ New directory `fox2/apps/stopwatch/`:
 | `StopWatch.h`, `StopWatch.cpp` | `class StopWatch : public FXMainWindow`: layout, mode switching, timers, persistence, middle drag, right click popup. |
 | `ClockView.h`, `ClockView.cpp` | `class ClockView : public FXCanvas`: draws the analog face from three values (hour, minute, second as fractions). Digital mode does not use it. |
 | `History.h`, `History.cpp` | `class History`: plain data (no widgets), a list of `Entry{FXTime when; FXTime elapsed;}`, `add()`, `clear()`, `load(FXSettings&)`, `save(FXSettings&)`, `format()` helpers. Unit-testable without a display. |
-| `MoveGrip.h`, `MoveGrip.cpp` | Optional (5.7): small `FXFrame` grip that moves the window with the left button. Add it to the CMake and Autotools source lists only if it is created. |
 | `CMakeLists.txt` | see 7. |
 | `Makefile.am` | see 7. |
 | `README` text goes into `docs/`, not here. |
@@ -168,7 +168,7 @@ FXMainWindow(DECOR_NONE, no padding, no spacing)
       page 1 (stopwatch)  : [Start/Stop] [Reset]
       page 2 (timer)      : [spin h][spin m][spin s] [Start/Pause] [Reset]
     FXHorizontalFrame "bottom" (LAYOUT_FILL_X|PACK_UNIFORM_WIDTH)
-      [Clock] [Stopwatch] [Timer]   [Digital|Round]   [grip, optional]
+      [Clock] [Stopwatch] [Timer]  [Digital/Round style, clock only]
 ```
 
 - A one pixel frame (`FRAME_LINE`) is needed: with `DECOR_NONE` the window has
@@ -298,34 +298,42 @@ and record the result in section 10. If a stock widget swallows the event,
 subclass it in the application to forward the press; do not add an overlay
 window.
 
-**Move grip (fallback or addition).** `FXDragCorner` cannot be used for
-moving: it resizes the window (`fox2/lib/FXDragCorner_win32.cpp` draws an XOR
-rectangle and resizes). If the middle press does not reach the main window
-over enough of the surface, add a small `MoveGrip` class in the application
-(`MoveGrip.h`, `MoveGrip.cpp`): an `FXFrame` of about 16x16 pixels at the left
-end of the bottom row that paints three diagonal flat lines in
-`getApp()->getShadowColor()` (the same look as `FXDragCorner`), shows the
-4-way move cursor (`DEF_MOVE_CURSOR`, check `FXApp.h` for the name) and
-forwards `SEL_LEFTBUTTONPRESS`, `SEL_MOTION` and `SEL_LEFTBUTTONRELEASE` to
-the same three handlers as above (the handlers use `ev->root_x/root_y`, so it
-makes no difference which widget the event came from). Decide in step 2 of the
-implementation order, after testing the middle button, and record the decision
-in section 10. Keeping both is fine; do not drop the middle button when the
-grip is added.
+**Native title-bar fallback (required).** Do not add `MoveGrip.h/.cpp`, a drag
+button or a custom `FXDragCorner`. The Win32 native title bar already moves a
+top-level window and its native resizable frame already resizes it reliably.
+The right-click menu owns a checked **Show title bar** item:
 
-If the user wants to resize the widget, a real `FXDragCorner` can go at the
-bottom right; save `w` and `h` next to `x` and `y` in that case. This is not
-required.
+- unchecked (default): decorations `DECOR_NONE`; middle-button drag remains
+  available for quick movement;
+- checked: call `setDecorations(DECOR_TITLE|DECOR_BORDER|DECOR_RESIZE|DECOR_MENU|
+  DECOR_MINIMIZE|DECOR_MAXIMIZE|DECOR_CLOSE)`; Windows supplies the title bar,
+  minimize/maximize/close buttons and resizing frame;
+- toggling back to borderless must not reset the model or change the current
+  switcher page; preserve the client size and clamp the window back on screen;
+- use `FXMenuCheck` with a `SEL_UPDATE` handler or `setCheck(true/false)` for
+  the menu state; bind `ID_SHOW_TITLEBAR` to `onCmdShowTitleBar()";
+- the decoration choice is persisted as `SETTINGS/titlebar` and restored before
+  the window is shown. Restore `x`, `y`, `w`, `h`; width and height belong to
+  the client area and must use the application's existing `FXTopWindow::resize`
+  call (do not use Win32 APIs in the application);
+- after a decorated resize, save the new `w` and `h` on `SEL_CONFIGURE`, but
+  debounce the registry write: update in memory on each configure and write to
+  disk on close, mode change menu popdown, or an idle chore. Do not write the
+  registry on every mouse-move event;
+- decorate mode is not a new layout or resize handler. Let
+  `FXShell::onConfigure()` update geometry, then FOX's normal child layout and
+  repaint must run. Remove any application-level resize workaround if it
+  duplicates that logic.
 
-Handlers:
+Native title-bar mode is the supported answer to difficult drag/resize cases;
+a custom drag corner would only duplicate Win32 and could conflict with the
+frame resize border. Keep the existing middle-drag handlers as a borderless
+convenience; they are not a reason to create a permanent visual control.
 
-- `onMiddlePress`: `dragging=true; dragx=ev->root_x-getX(); dragy=ev->root_y-getY(); startDrag(); return 1;`
-- `onMotion`: `if(dragging){ move(ev->root_x-dragx,ev->root_y-dragy); return 1; } return 0;`
-- `onMiddleRelease`: `dragging=false; savePosition(); return 1;`
-- `SEL_LEAVE`/next press clear a stale `dragging` (Wayland case, see 2).
-- `getX()/getY()` of a top window are the screen position of the client
-  area on X11 and Win32; verify on Win32 that the window follows the pointer
-  without a jump (see 8).
+When changing decorations, remember the window's current client size, call
+`setDecorations()`, call `resize()` to preserve that size, recalculate layout,
+clamp position with `place(PLACEMENT_VISIBLE)` if needed, then update and save.
+Verify both directions: borderless -> decorated and decorated -> borderless.
 
 Position persistence:
 
@@ -383,7 +391,7 @@ Position persistence:
 
 ```
 [SETTINGS]
-x=...  y=...  mode=0|1|2  style=0|1
+x=...  y=...  w=...  h=...  titlebar=0|1  mode=0|1|2  style=0|1
 [STOPWATCH]
 elapsed=<ns, long>           ; last stop value
 count=<n>
@@ -410,25 +418,28 @@ Each step ends with a successful MSYS2 build (section 8) before the next.
    showing the local time, 1 s tick, `Escape`/`Ctrl+Q` quit. Wire the build
    (section 7). Run it; check that the window has no title bar and can be
    closed with `Escape`.
-2. **Moving and position** (5.7) with the label window: middle drag works on
-   Win32 over the label and the frame, `x`/`y` persisted and restored. Test the
-   middle press over each kind of widget and decide here whether the
-   `MoveGrip` is added (it will be needed as soon as a widget that swallows the
-   middle button covers a large part of the window). This is the riskiest
-   part; finish it before more UI exists.
-3. **Digital clock** with `FX7Segment` and the bottom mode row; the mode
-   switch changes the page and calls `rearm()` (5.3).
-4. **Analog face** (`ClockView`) and the style toggle; persist `style`.
-5. **Stopwatch**: Start/Stop/Reset, display with hundredths, persistence of
+2. **Moving and position** (5.7): verify middle drag in borderless mode and
+   persistence of `x`/`y`. If event forwarding from child controls proves
+   unreliable, do not add a permanent `MoveGrip`; the supported fallback is the
+   right-click **Show title bar** native drag/resize mode implemented in step 4.
+3. **Digital clock and switcher**: three pages with equal-width SVG mode
+   buttons at the bottom. The clock is digital for now; stopwatch and timer
+   pages are digital placeholders.
+4. **Window controls fallback**: implement the right-click **Show title bar**
+   context command, native Win32 moving and resizing, save/restore `x`, `y`, `w`,
+   `h`, `titlebar`, and verify both decoration transitions (5.7).
+5. **Analog face** (`ClockView`) and the style toggle; persist `style` (clock
+   only).
+6. **Stopwatch**: Start/Stop/Reset, display with hundredths, persistence of
    `accum`.
-6. **History**: `History` class, saving on stop, loading at start.
-7. **Right click popup** with the `FXTable` (5.8), Clear history, Quit.
-8. **Timer**: spinners, countdown, finish alert, persistence of `duration`
+7. **History**: `History` class, saving on stop, loading at start.
+8. **Right click history**: add the `FXTable` and history commands to the same
+   context menu as **Show title bar** (5.8), Clear history, Quit.
+9. **Timer**: spinners, countdown, finish alert, persistence of `duration`
    and `remaining`. Then re-test R10: start the stopwatch and the timer, switch
    modes in every order, neither may stop, reset or lose time.
-9. **Polish**: tooltips (`new FXToolTip` is already in `main.cpp`), disabled
-   states, keyboard accelerators (`Space` start/stop, `R` reset, `C`/`S`/`T`
-   modes), docs, screenshots.
+10. **Polish**: tooltips, disabled states, keyboard accelerators, screenshots
+    and final plan results.
 
 ## 7. Build wiring
 
@@ -498,20 +509,25 @@ Test matrix (every line is a pass/fail with a screenshot where it makes sense):
 | V1 | Start without settings | Window with no title bar, thin frame, current time, **Clock** button shown pressed |
 | V2 | Compare the displayed time with `Get-Date` | identical to the second, incl. daylight saving |
 | V3 | Style toggle | Digital becomes round clock and back; the choice survives a restart |
-| V4 | Middle drag | window follows the pointer without a jump, also over the buttons and the face; left drag on the face does nothing (the `MoveGrip`, when present, moves with the left button) |
+| V4 | Middle drag in borderless mode | window follows the pointer without a jump over the shell; if a control swallows the event, use **Show title bar** for native dragging instead of adding a permanent grip |
+| V4a | Right-click, enable **Show title bar** | native title bar and resize frame appear without changing the mode; menu item is checked |
+| V4b | Drag the title bar, resize all four edges, close and restart | exact client `x`, `y`, `w`, `h` and decorated state are restored |
+| V4c | Right-click in decorated mode and clear **Show title bar** | title bar and frame disappear; client content and dimensions remain valid and become borderless |
+| V4d | Toggle title bar twice during a running stopwatch/timer | no reset, pause or mode change; no model history entry |
 | V5 | Quit with `Escape`, restart | window reappears at the same position; delete the settings and it is centered |
 | V6 | Stopwatch Start, wait 5 s, Stop | 5.0x s; History gets one entry |
 | V7 | Start the stopwatch, switch to Clock, to Timer, back after 10 s | the stopwatch kept counting without a gap; the **Stopwatch** button showed the running mark while hidden |
 | V8 | Quit with a stopped value, restart | the value is still shown; history intact (order, times) |
-| V9 | Right click in stopwatch mode | table popup with `#`, `When`, `Elapsed`; the `When` column is the local time of the stop |
-| V10 | More than 50 stops | only 50 rows, newest first |
-| V11 | Clear history in the popup | table empty, registry entries gone |
-| V12 | Timer 0:00:05 | counts down, beeps, blinks, Reset restores 0:00:05 |
-| V12a | Start a timer of 0:00:08, switch to Clock at once, wait | at 8 s there is a beep and the **Timer** button blinks; the timer mode shows the blinking finished display; the remaining time shown at 4 s on return is about 4 s |
-| V12b | Timer and stopwatch running together, quit, restart | stopwatch value kept, timer restored as paused with its remaining time, history unchanged |
-| V13 | High DPI (`dpi.exe` style 150 %): start with a scale | the face and the fixed-size table scale; nothing is clipped |
-| V14 | Window moved partly off screen, quit, restart | the window is pulled back into view |
-| V15 | Autotools build | the same binary builds with `-Fast`, no new warnings |
+| V9 | Right click in stopwatch mode | table popup with `#`, `When`, `Elapsed` columns, one row with the stop time and value |
+| V10 | Clear history in the popup | history table disappears, **Clear history** button is gone |
+| V11 | Switch to timer, set 10 s, start, wait 5 s, switch to clock | timer keeps running, shows remaining time, **Timer** button has a running mark |
+| V12 | Switch to stopwatch, stop, check history | new entry at the top, elapsed time correct, shows date and time |
+| V13 | Right click in clock mode | small menu with **Quit** only |
+| V14 | Resize the window, move it around, quit, restart | position, size and title bar state restored, also after a toggle of the title bar |
+| V15 | Check the registry settings | `x`, `y`, `w`, `h`, `titlebar`, `mode`, `style`, `duration`, `remaining`, `accum` present and correct |
+| V16 | Test every menu item and button | all must work, also in every combination (stopwatch running, timer running, etc.) |
+| V17 | Build and run in Debug | no asserts, check the debug output for warnings or errors |
+| V18 | Check the license and about box | correct and complete |
 
 Automated input on Windows: the `capture-test-screenshots.ps1` helper can
 start a program, wait, and capture it with `PrintWindow` (`-Programs`,
@@ -520,7 +536,9 @@ entry. Middle button and right button cannot be sent with `-Click`, so V4,
 V9 and V10 need either manual testing or a small `SendMessage` helper
 (`WM_MBUTTONDOWN`, `WM_MOUSEMOVE`, `WM_MBUTTONUP`, `WM_RBUTTONDOWN` to the
 window handle, the same route `ShotWin.Click` uses for the left button);
-add the helper under `tmp/` only, not under `tools/`, unless asked.
+add the helper under `tmp/` only, not under `tools/`, unless asked. Native
+title-bar drag and resize are preferably checked manually once, because they
+are handled by the Win32 non-client loop rather than FOX child-window input.
 
 Screenshots go to `screenshots/tests/fox2/win32/`:
 
@@ -530,6 +548,7 @@ stopwatch-clock-analog.png
 stopwatch-stopwatch.png
 stopwatch-history.png
 stopwatch-timer.png
+stopwatch-titlebar.png
 ```
 
 Other platforms are out of scope for now; do not build or test them. The
@@ -556,7 +575,7 @@ needs more than the existing test pattern.
 Leave this section in the plan and complete it as the work proceeds:
 
 - Which widgets forwarded the middle and right button events (5.7):
-- Move grip added or not, and why (5.7):
+- Whether the native title-bar fallback was needed during verification (5.7):
 - Where the settings file was created on Windows (8):
 - Sign/daylight handling used for local time (5.3):
 - Popup vs dialog decision for the history table (5.8):
@@ -581,11 +600,12 @@ Do not push. Do not modify anything under `fox-1.7.95/`.
 
 | Risk | Mitigation |
 | --- | --- |
-| Middle press is swallowed by a child widget | Make `StopWatch` the target and test each widget (5.7); subclass the widget, or add the `MoveGrip` (5.7), if it does not forward the event |
+| Middle press is swallowed by a child widget | Forward mouse events to `StopWatch`; if that remains unreliable, use the native **Show title bar** drag fallback (5.7), never a permanent grip |
+| Toggling decorations changes client geometry | Save the client `w`/`h`, call `setDecorations()`, preserve size with `resize()`, layout and clamp with `place(PLACEMENT_VISIBLE)`; verify V4a-V4c |
 | A mode switch resets or stops a running stopwatch or timer | The model (`accum`, `started`, `deadline`, `remaining`) is independent of `mode`; only `rearm()` and the display change (5.3); V7, V12a |
 | Win32 `move()` jumps by the border width | `getX()`/`getY()` and `move()` use client coordinates through `AdjustWindowRectEx`; with `DECOR_NONE` the adjustment is 0, so check V4 and fix in the library if not |
 | `FXTable` in a popup loses scroll bar input | Fall back to a borderless dialog (5.8) |
 | Wayland drag leaves `dragging` set | Clear on `SEL_LEAVE` and the next press |
 | Timer drift | Compute from time stamps, never count ticks |
-| Position restore off screen | Clamp against the desktop size (5.7) |
+| Position or title-bar state restores off screen | Persist client geometry, validate the point/size, and clamp against the desktop (5.7) |
 | Local time offset wrong | Cross-check with `Get-Date`; fall back to `localTime(...,"%H:%M:%S")` |
