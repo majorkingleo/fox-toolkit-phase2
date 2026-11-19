@@ -110,6 +110,7 @@ public:
   long onUpdTimerReset(FXObject*,FXSelector,void*);
   long onClearHistory(FXObject*,FXSelector,void*);
   long onQuit(FXObject*,FXSelector,void*);
+  long onUnpost(FXObject*,FXSelector,void*);
   long onMiddlePress(FXObject*,FXSelector,void*);
   long onMiddleRelease(FXObject*,FXSelector,void*);
   long onMotion(FXObject*,FXSelector,void*);

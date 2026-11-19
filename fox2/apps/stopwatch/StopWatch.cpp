@@ -27,10 +27,12 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_TIMER_RESET,StopWatch::onUpdTimerReset),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_CLEAR_HISTORY,StopWatch::onClearHistory),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_QUIT,StopWatch::onQuit),
+  FXMAPFUNC(SEL_COMMAND,FXWindow::ID_UNPOST,StopWatch::onUnpost),
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,0,StopWatch::onMiddlePress),
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onMiddlePress),
   FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,0,StopWatch::onMiddleRelease),
   FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,StopWatch::ID_RIGHT_CLICK,StopWatch::onMiddleRelease),
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,StopWatch::onUnpost),
   FXMAPFUNC(SEL_MOTION,0,StopWatch::onMotion),
   FXMAPFUNC(SEL_MOTION,StopWatch::ID_RIGHT_CLICK,StopWatch::onMotion),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,0,StopWatch::onRightPress),
@@ -454,6 +456,15 @@ long StopWatch::onQuit(FXObject*,FXSelector,void*){
   }
 
 
+long StopWatch::onUnpost(FXObject*,FXSelector,void*){
+  if(contextMenu && contextMenu->shown()){
+    contextMenu->popdown();
+    if(grabbed()) ungrab();
+    }
+  return 1;
+  }
+
+
 long StopWatch::onModeClock(FXObject*,FXSelector,void*){
   mode=MODE_CLOCK;
   controlSwitcher->setCurrent(0);
@@ -494,6 +505,16 @@ long StopWatch::onUpdMode(FXObject* sender,FXSelector sel,void*){
 
 // Show context menu on right click
 
+
+// Show context menu on right click
+long StopWatch::onRightPress(FXObject*,FXSelector,void* ptr){
+  FXEvent* ev=(FXEvent*)ptr;
+  if(contextMenu){
+    contextMenu->popup(this,ev->root_x,ev->root_y);
+    if(!grabbed()) grab();
+    }
+  return 1;
+  }
 
 long StopWatch::onStyle(FXObject*,FXSelector,void*){
   style=(style==STYLE_DIGITAL)?STYLE_ANALOG:STYLE_DIGITAL;
@@ -646,44 +667,6 @@ long StopWatch::onMotion(FXObject*,FXSelector,void* ptr){
     }
   return 0;
   }
-
-
-long StopWatch::onRightPress(FXObject*,FXSelector,void* ptr){
-  FXEvent* event=(FXEvent*)ptr;
-  if(mode==MODE_STOPWATCH){
-    if(!historyPopup->id()) historyPopup->create();
-    // No row header: the row number is the first column
-    historyTable->getRowHeader()->hide();
-    historyTable->setRowHeaderWidth(0);
-    historyTable->setTableSize(history.size(),3);
-    historyTable->setColumnText(0,"#");
-    historyTable->setColumnText(1,"When");
-    historyTable->setColumnText(2,"Elapsed");
-    for(FXint i=0;i<history.size();i++){
-      FXString number;
-      number.format("%d",i+1);
-      historyTable->setItemText(i,0,number);
-      historyTable->setItemText(i,1,History::formatWhen(history.at(i).when));
-      historyTable->setItemText(i,2,History::formatElapsed(history.at(i).elapsed));
-      }
-    historyTable->fitColumnsToContents(0,3);
-    historyTable->setColumnWidth(0,40);
-    FXint w=historyPopup->getDefaultWidth();
-    FXint h=historyPopup->getDefaultHeight();
-    FXint x=event->root_x;
-    FXint y=event->root_y;
-    if(x+w>getRoot()->getWidth()) x=FXMAX(0,x-w);
-    if(y+h>getRoot()->getHeight()) y=FXMAX(0,y-h);
-    historyPopup->popup(nullptr,x,y);
-    }
-  else{
-    if(!contextMenu->id()) contextMenu->create();
-    if(titlebarCheck) titlebarCheck->setCheck(titlebar);
-    contextMenu->popup(this,event->root_x,event->root_y);
-    }
-  return 1;
-  }
-
 
 long StopWatch::onConfigure(FXObject* sender,FXSelector sel,void* ptr){
   FXShell::onConfigure(sender,sel,ptr);
