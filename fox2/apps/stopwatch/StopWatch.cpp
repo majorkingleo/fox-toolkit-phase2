@@ -8,6 +8,7 @@
 
 FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_TIMEOUT,StopWatch::ID_TICK,StopWatch::onTick),
+  FXMAPFUNC(SEL_TIMEOUT,StopWatch::ID_CONTEXT_MENU_MONITOR,StopWatch::onContextMenuMonitor),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_MODE_CLOCK,StopWatch::onModeClock),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_MODE_STOPWATCH,StopWatch::onModeStopwatch),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_MODE_TIMER,StopWatch::onModeTimer),
@@ -46,6 +47,17 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_START,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_RESET,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,0,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_MODE_CLOCK,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_MODE_STOPWATCH,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_MODE_TIMER,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_STYLE,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_STARTSTOP,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_STOPWATCH_RESET,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_SPIN,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_START,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_RESET,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onShowTitlebar),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onUpdShowTitlebar),
   FXMAPFUNC(SEL_CONFIGURE,0,StopWatch::onConfigure),
@@ -77,6 +89,13 @@ static FXString formatDuration(FXTime ns){
 // Design pixels to the display scale of this machine
 static FXint scaledPixels(FXApp* app,FXint value){
   return FXMAX((FXint)(value*app->getWindowScale(0)+0.5),1);
+  }
+
+
+static FXbool cursorInside(FXWindow* window){
+  FXint x,y;
+  FXuint buttons;
+  return window->getCursorPosition(x,y,buttons) && 0<=x && x<window->getWidth() && 0<=y && y<window->getHeight();
   }
 
 
@@ -207,6 +226,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
 
 StopWatch::~StopWatch(){
   getApp()->removeTimeout(this,ID_TICK);
+  getApp()->removeTimeout(this,ID_CONTEXT_MENU_MONITOR);
   for(FXint i=0;i<3;i++) delete modeIcons[i];
   for(FXint i=0;i<2;i++) delete styleIcons[i];
   }
@@ -310,6 +330,7 @@ void StopWatch::saveSettings(){
 
 FXbool StopWatch::close(FXbool notify){
   getApp()->removeTimeout(this,ID_TICK);
+  getApp()->removeTimeout(this,ID_CONTEXT_MENU_MONITOR);
   if(running) stopStopwatch();
   if(timerRunning){
     timerRunning=false;
@@ -504,9 +525,33 @@ long StopWatch::onQuit(FXObject*,FXSelector,void*){
 
 
 long StopWatch::onUnpost(FXObject*,FXSelector,void*){
+  getApp()->removeTimeout(this,ID_CONTEXT_MENU_MONITOR);
   if(contextMenu && contextMenu->shown()){
     contextMenu->popdown();
     if(grabbed()) ungrab();
+    }
+  return 1;
+  }
+
+
+long StopWatch::onRightRelease(FXObject*,FXSelector,void*){
+  if(contextMenu && contextMenu->shown()){
+    getApp()->removeTimeout(this,ID_CONTEXT_MENU_MONITOR);
+    onContextMenuMonitor(nullptr,0,nullptr);
+    }
+  return 1;
+  }
+
+
+long StopWatch::onContextMenuMonitor(FXObject*,FXSelector,void*){
+  if(contextMenu && contextMenu->shown()){
+    if(cursorInside(contextMenu)){
+      if(grabbed()) ungrab();
+      }
+    else if(!grabbed()){
+      grab();
+      }
+    getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_CONTEXT_MENU_MONITOR),20000000);
     }
   return 1;
   }
@@ -558,6 +603,11 @@ long StopWatch::onRightPress(FXObject*,FXSelector,void* ptr){
   FXEvent* ev=(FXEvent*)ptr;
   if(contextMenu){
     contextMenu->popup(this,ev->root_x,ev->root_y);
+    if(!cursorInside(contextMenu)){
+      FXint x=ev->root_x-contextMenu->getWidth()/2;
+      FXint y=ev->root_y-contextMenu->getHeight()/2;
+      contextMenu->popup(this,x,y,contextMenu->getWidth(),contextMenu->getHeight());
+      }
     }
   return 1;
   }

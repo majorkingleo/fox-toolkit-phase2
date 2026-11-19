@@ -85,6 +85,7 @@ public:
     ID_SHOW_TITLEBAR,
     ID_RIGHT_CLICK,
     ID_QUIT,
+    ID_CONTEXT_MENU_MONITOR,
     ID_LAST
     };
 public:
@@ -112,6 +113,8 @@ public:
   long onClearHistory(FXObject*,FXSelector,void*);
   long onQuit(FXObject*,FXSelector,void*);
   long onUnpost(FXObject*,FXSelector,void*);
+  long onRightRelease(FXObject*,FXSelector,void*);
+  long onContextMenuMonitor(FXObject*,FXSelector,void*);
   long onMiddlePress(FXObject*,FXSelector,void*);
   long onMiddleRelease(FXObject*,FXSelector,void*);
   long onMotion(FXObject*,FXSelector,void*);
