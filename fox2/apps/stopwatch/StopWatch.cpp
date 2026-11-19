@@ -511,7 +511,6 @@ long StopWatch::onRightPress(FXObject*,FXSelector,void* ptr){
   FXEvent* ev=(FXEvent*)ptr;
   if(contextMenu){
     contextMenu->popup(this,ev->root_x,ev->root_y);
-    if(!grabbed()) grab();
     }
   return 1;
   }
