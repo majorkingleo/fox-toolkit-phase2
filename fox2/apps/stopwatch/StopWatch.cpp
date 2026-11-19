@@ -2,6 +2,7 @@
 #include "ClockView.h"
 #include "icons.h"
 #include "fxkeys.h"
+#include <fxevent.h>
 
 #include <stdio.h>
 
@@ -479,6 +480,8 @@ long StopWatch::onModeTimer(FXObject*,FXSelector,void*){
   return 1;
   }
 
+// Show context menu on right click
+
 
 long StopWatch::onUpdMode(FXObject* sender,FXSelector sel,void*){
   FXButton* button=(FXButton*)sender;
@@ -488,6 +491,8 @@ long StopWatch::onUpdMode(FXObject* sender,FXSelector sel,void*){
   if(id==ID_MODE_TIMER) button->setState(mode==MODE_TIMER?STATE_DOWN:STATE_UP);
   return 1;
   }
+
+// Show context menu on right click
 
 
 long StopWatch::onStyle(FXObject*,FXSelector,void*){
