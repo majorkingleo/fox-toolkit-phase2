@@ -135,9 +135,9 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   main->setSelector(ID_RIGHT_CLICK);
 
   // Face: digital seven segment or the analog canvas
-  faceSwitcher=new FXSwitcher(main,LAYOUT_FILL_X|LAYOUT_FILL_Y|SWITCHER_HCOLLAPSE,0,0,0,0,0,0,0,0);
+  faceSwitcher=new FXSwitcher(main,LAYOUT_FILL_X|LAYOUT_FILL_Y|SWITCHER_HCOLLAPSE|FRAME_LINE,0,0,0,0,0,0,0,0);
   seven=new FX7Segment(faceSwitcher,"--:--:--",SEVENSEGMENT_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  FXVerticalFrame* analogFrame=new FXVerticalFrame(faceSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
+  FXVerticalFrame* analogFrame=new FXVerticalFrame(faceSwitcher,FRAME_LINE|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
   analogFrame->setTarget(this);
   analogFrame->setSelector(ID_RIGHT_CLICK);
   clockView=new ClockView(analogFrame,nullptr,0,FRAME_NONE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -376,6 +376,12 @@ void StopWatch::writeSpinners(){
 // Display
 
 void StopWatch::updateDisplay(){
+  FXbool showControls=(mode!=MODE_CLOCK);
+  if(controlSwitcher && controlSwitcher->shown()!=showControls){
+    if(showControls) controlSwitcher->show();
+    else controlSwitcher->hide();
+    controlSwitcher->getParent()->layout();
+    }
   FXbool showReadout=(mode!=MODE_CLOCK);
   if(readout && readout->shown()!=showReadout){
     if(showReadout) readout->show();
