@@ -719,6 +719,16 @@ FXString translateKeyEvent(FXuint,FXuval wParam,FXival lParam){
 
 
 // Message dispatching
+static void scaleTopWindow(FXWindow* window,FXint olddpi,FXint newdpi,FXint oldwidth,FXint oldheight){
+  if(olddpi<=0 || newdpi<=0 || olddpi==newdpi || !window->isMemberOf(FXMETACLASS(FXTopWindow))) return;
+  FXint width=FXMAX((FXint)(((FXlong)oldwidth*newdpi+olddpi/2)/olddpi),window->getDefaultWidth());
+  FXint height=FXMAX((FXint)(((FXlong)oldheight*newdpi+olddpi/2)/olddpi),window->getDefaultHeight());
+  FXTRACE(TOPIC_CONFIGURE,"%s DPI resize %d->%d current=%dx%d target=%dx%d\n",window->getClassName(),olddpi,newdpi,window->getWidth(),window->getHeight(),width,height);
+  if(window->getWidth()!=width || window->getHeight()!=height) window->resize(width,height);
+  FXTRACE(TOPIC_CONFIGURE,"%s DPI resized to %dx%d\n",window->getClassName(),window->getWidth(),window->getHeight());
+  }
+
+
 FXival FXApp::dispatchEvent(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam){
   const FXTime milliseconds=1000000;
   FXWindow *window,*ancestor,*win,*focuswin;
@@ -1214,6 +1224,18 @@ Alt key seems to repeat.
 
     // Configure (move)
     case WM_MOVE:
+      {
+        FXint olddpi=window->getWindowDPI();
+        FXint newdpi=getWindowDPI(hwnd);
+        FXint oldwidth=window->getWidth();
+        FXint oldheight=window->getHeight();
+        if(newdpi>0 && olddpi>0 && olddpi!=newdpi){
+          FXTRACE(TOPIC_CONFIGURE,"%s WM_MOVE dpi %d->%d size=%dx%d\n",window->getClassName(),olddpi,newdpi,oldwidth,oldheight);
+          applyWindowDPI(window,newdpi);
+          updateWindowScale(window);
+          scaleTopWindow(window,olddpi,newdpi,oldwidth,oldheight);
+          }
+      }
       event.type=SEL_CONFIGURE;
       event.rect.x=(short)LOWORD(lParam);
       event.rect.y=(short)HIWORD(lParam);
@@ -1230,9 +1252,13 @@ Alt key seems to repeat.
     case WM_DPICHANGED:
       {
         RECT *suggested=(RECT*)lParam;
+        FXint olddpi=window->getWindowDPI();
+        FXint oldwidth=window->getWidth();
+        FXint oldheight=window->getHeight();
         FXint newdpi=(FXint)HIWORD(wParam);
         if(newdpi<=0) newdpi=(FXint)LOWORD(wParam);
         if(newdpi<=0) break;
+        FXTRACE(TOPIC_CONFIGURE,"%s WM_DPICHANGED dpi %d->%d size=%dx%d\n",window->getClassName(),olddpi,newdpi,oldwidth,oldheight);
         applyWindowDPI(window,newdpi);
         updateWindowScale(window);
         if(suggested){
@@ -1252,16 +1278,22 @@ Alt key seems to repeat.
               }
             }
           }
+        scaleTopWindow(window,olddpi,newdpi,oldwidth,oldheight);
       }
       return 0;
 
     // DPI changed because the parent window changed DPI
     case WM_DPICHANGED_AFTERPARENT:
       {
+        FXint olddpi=window->getWindowDPI();
+        FXint oldwidth=window->getWidth();
+        FXint oldheight=window->getHeight();
         FXint newdpi=getWindowDPI(hwnd);
-        if(newdpi>0){
+        if(newdpi>0 && olddpi!=newdpi){
+          FXTRACE(TOPIC_CONFIGURE,"%s WM_DPICHANGED_AFTERPARENT dpi %d->%d size=%dx%d\n",window->getClassName(),olddpi,newdpi,oldwidth,oldheight);
           applyWindowDPI(window,newdpi);
           updateWindowScale(window);
+          scaleTopWindow(window,olddpi,newdpi,oldwidth,oldheight);
           }
       }
       return 0;

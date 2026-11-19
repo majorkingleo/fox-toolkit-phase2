@@ -19,6 +19,9 @@ private:
   FX7Segment* seven;
   ClockView* clockView;
   FXSwitcher* controlSwitcher;
+  FXHorizontalFrame* stopwatchPage;
+  FXHorizontalFrame* timerPage;
+  FXHorizontalFrame* bottomFrame;
   FXLabel* readout;            // value under the analog face
   FXButton* startStopButton;
   FXButton* stopwatchResetButton;
@@ -62,6 +65,7 @@ private:
   void loadSettings();
   void saveSettings();
   void updateDisplay();
+  void scaleControls();
   void scaleSevenSegment();
   void rearm();
   void startStopwatch();

@@ -92,6 +92,11 @@ static FXint scaledPixels(FXApp* app,FXint value){
   }
 
 
+static FXint scaledPixels(FXWindow* window,FXint value){
+  return FXMAX((FXint)(value*window->getDisplayScale()+0.5),1);
+  }
+
+
 static FXbool cursorInside(FXWindow* window){
   FXint x,y;
   FXuint buttons;
@@ -128,6 +133,9 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   seven=nullptr;
   clockView=nullptr;
   controlSwitcher=nullptr;
+  stopwatchPage=nullptr;
+  timerPage=nullptr;
+  bottomFrame=nullptr;
   readout=nullptr;
   startStopButton=nullptr;
   stopwatchResetButton=nullptr;
@@ -168,12 +176,12 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   FXFrame* emptyPage=new FXFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y);
   emptyPage->setTarget(this);
   emptyPage->setSelector(ID_RIGHT_CLICK);
-  FXHorizontalFrame* stopwatchPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
+  stopwatchPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
   stopwatchPage->setTarget(this);
   stopwatchPage->setSelector(ID_RIGHT_CLICK);
   startStopButton=new FXButton(stopwatchPage,"Start",nullptr,this,ID_STARTSTOP,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   stopwatchResetButton=new FXButton(stopwatchPage,"Reset",nullptr,this,ID_STOPWATCH_RESET,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  FXHorizontalFrame* timerPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
+  timerPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
   timerPage->setTarget(this);
   timerPage->setSelector(ID_RIGHT_CLICK);
   spinHours=new FXSpinner(timerPage,2,this,ID_TIMER_SPIN,SPIN_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -186,7 +194,8 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   timerResetButton=new FXButton(timerPage,"Reset",nullptr,this,ID_TIMER_RESET,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
 
   // Bottom: mode switch and the style toggle
-  FXHorizontalFrame* bottom=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,scaledPixels(getApp(),40),4,4,4,4);
+  bottomFrame=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,scaledPixels(getApp(),40),4,4,4,4);
+  FXHorizontalFrame* bottom=bottomFrame;
   bottom->setTarget(this);
   bottom->setSelector(ID_RIGHT_CLICK);
   modeIcons[0]=new FXSVGIcon(getApp(),clock_svg,FXRGB(32,33,36),0,32,32);
@@ -259,6 +268,7 @@ void StopWatch::create(){
     }
   history.load(getApp()->reg());
   loadSettings();
+  scaleControls();
   layout();
   scaleSevenSegment();
   show();
@@ -451,6 +461,34 @@ void StopWatch::updateDisplay(){
       }
     }
   scaleSevenSegment();
+  }
+
+
+void StopWatch::scaleControls(){
+  if(controlSwitcher){
+    FXint h=scaledPixels(this,36);
+    if(controlSwitcher->getHeight()!=h) controlSwitcher->setHeight(h);
+    }
+  if(bottomFrame){
+    FXint h=scaledPixels(this,40);
+    FXint p=scaledPixels(this,4);
+    if(bottomFrame->getHeight()!=h) bottomFrame->setHeight(h);
+    if(bottomFrame->getPadLeft()!=p) bottomFrame->setPadLeft(p);
+    if(bottomFrame->getPadRight()!=p) bottomFrame->setPadRight(p);
+    if(bottomFrame->getPadTop()!=p) bottomFrame->setPadTop(p);
+    if(bottomFrame->getPadBottom()!=p) bottomFrame->setPadBottom(p);
+    }
+  if(stopwatchPage && timerPage){
+    FXint p=scaledPixels(this,2);
+    stopwatchPage->setPadLeft(p);
+    stopwatchPage->setPadRight(p);
+    stopwatchPage->setPadTop(p);
+    stopwatchPage->setPadBottom(p);
+    timerPage->setPadLeft(p);
+    timerPage->setPadRight(p);
+    timerPage->setPadTop(p);
+    timerPage->setPadBottom(p);
+    }
   }
 
 
@@ -768,6 +806,7 @@ long StopWatch::onConfigure(FXObject* sender,FXSelector sel,void* ptr){
   FXShell::onConfigure(sender,sel,ptr);
   clientWidth=getWidth();
   clientHeight=getHeight();
+  scaleControls();
   layout();
   scaleSevenSegment();
   update();
