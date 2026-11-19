@@ -62,6 +62,7 @@ private:
   void loadSettings();
   void saveSettings();
   void updateDisplay();
+  void scaleSevenSegment();
   void rearm();
   void startStopwatch();
   void stopStopwatch();

@@ -39,6 +39,12 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_CLOCK,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_STOPWATCH,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_TIMER,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_STYLE,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_STARTSTOP,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_STOPWATCH_RESET,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_SPIN,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_START,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_RESET,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightPress),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onShowTitlebar),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onUpdShowTitlebar),
@@ -125,23 +131,32 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
 
   // The window has no decoration, so it needs its own one pixel border
   FXVerticalFrame* main=new FXVerticalFrame(this,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_LINE,0,0,0,0,0,0,0,0);
+  main->setTarget(this);
+  main->setSelector(ID_RIGHT_CLICK);
 
   // Face: digital seven segment or the analog canvas
   faceSwitcher=new FXSwitcher(main,LAYOUT_FILL_X|LAYOUT_FILL_Y|SWITCHER_HCOLLAPSE,0,0,0,0,0,0,0,0);
   seven=new FX7Segment(faceSwitcher,"--:--:--",SEVENSEGMENT_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   FXVerticalFrame* analogFrame=new FXVerticalFrame(faceSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
+  analogFrame->setTarget(this);
+  analogFrame->setSelector(ID_RIGHT_CLICK);
   clockView=new ClockView(analogFrame,nullptr,0,FRAME_NONE|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  // One readout under the face: empty in clock mode, so it is never shown
-  // or hidden, which would need a fresh layout pass
+  // Analog stopwatch/timer readout; hidden in clock mode to maximize the face
   readout=new FXLabel(analogFrame,"",nullptr,LAYOUT_FILL_X|JUSTIFY_CENTER_X);
 
   // Controls: one page per mode, all of the same height
   controlSwitcher=new FXSwitcher(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,scaledPixels(getApp(),36));
-  new FXFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  FXFrame* emptyPage=new FXFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  emptyPage->setTarget(this);
+  emptyPage->setSelector(ID_RIGHT_CLICK);
   FXHorizontalFrame* stopwatchPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
+  stopwatchPage->setTarget(this);
+  stopwatchPage->setSelector(ID_RIGHT_CLICK);
   startStopButton=new FXButton(stopwatchPage,"Start",nullptr,this,ID_STARTSTOP,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   stopwatchResetButton=new FXButton(stopwatchPage,"Reset",nullptr,this,ID_STOPWATCH_RESET,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   FXHorizontalFrame* timerPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
+  timerPage->setTarget(this);
+  timerPage->setSelector(ID_RIGHT_CLICK);
   spinHours=new FXSpinner(timerPage,2,this,ID_TIMER_SPIN,SPIN_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   spinHours->setRange(0,99);
   spinMinutes=new FXSpinner(timerPage,2,this,ID_TIMER_SPIN,SPIN_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -153,6 +168,8 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
 
   // Bottom: mode switch and the style toggle
   FXHorizontalFrame* bottom=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,scaledPixels(getApp(),40),4,4,4,4);
+  bottom->setTarget(this);
+  bottom->setSelector(ID_RIGHT_CLICK);
   modeIcons[0]=new FXSVGIcon(getApp(),clock_svg,FXRGB(32,33,36),0,32,32);
   modeIcons[1]=new FXSVGIcon(getApp(),stopwatch_svg,FXRGB(32,33,36),0,32,32);
   modeIcons[2]=new FXSVGIcon(getApp(),timer_svg,FXRGB(32,33,36),0,32,32);
@@ -222,6 +239,8 @@ void StopWatch::create(){
     }
   history.load(getApp()->reg());
   loadSettings();
+  layout();
+  scaleSevenSegment();
   show();
   raise();
   setFocus();
@@ -357,6 +376,12 @@ void StopWatch::writeSpinners(){
 // Display
 
 void StopWatch::updateDisplay(){
+  FXbool showReadout=(mode!=MODE_CLOCK);
+  if(readout && readout->shown()!=showReadout){
+    if(showReadout) readout->show();
+    else readout->hide();
+    readout->getParent()->layout();
+    }
   if(showAnalog()){
     FXint h=0,m=0,s=0,ms=0;
     FXdouble progress=-1.0;
@@ -398,6 +423,22 @@ void StopWatch::updateDisplay(){
       seven->setText(formatDuration(timerValue()));
       }
     }
+  scaleSevenSegment();
+  }
+
+
+void StopWatch::scaleSevenSegment(){
+  if(!seven) return;
+  FXint length=(FXint)seven->getText().length();
+  FXint availw=seven->getWidth()-2*seven->getBorderWidth()-seven->getPadLeft()-seven->getPadRight();
+  FXint availh=seven->getHeight()-2*seven->getBorderWidth()-seven->getPadTop()-seven->getPadBottom();
+  if(length<=0 || availw<=0 || availh<=0) return;
+  FXint cellw=(availw-2*(length-1))/length;
+  cellw=FXMAX(1,FXMIN(cellw,(availh*2)/3));
+  FXint cellh=FXMAX(1,FXMIN(availh,(cellw*3)/2));
+  seven->setCellWidth(cellw);
+  seven->setCellHeight(cellh);
+  seven->setThickness(FXMAX(1,cellh/6));
   }
 
 
@@ -672,6 +713,7 @@ long StopWatch::onConfigure(FXObject* sender,FXSelector sel,void* ptr){
   clientWidth=getWidth();
   clientHeight=getHeight();
   layout();
+  scaleSevenSegment();
   update();
   return 1;
   }
