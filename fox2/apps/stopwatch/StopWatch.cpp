@@ -235,7 +235,8 @@ void StopWatch::loadSettings(){
   // FXSettings answers a stored 0 with the default, so read these as text
   mode=FXCLAMP(0,FXString(reg.readStringEntry("SETTINGS","mode","0")).toInt(),2);
   style=FXCLAMP(0,FXString(reg.readStringEntry("SETTINGS","style","0")).toInt(),1);
-  titlebar=FXString(reg.readStringEntry("SETTINGS","titlebar","0")).toInt()!=0;
+  // titlebar setting is no longer persisted; default to false
+  titlebar=false;
   accum=reg.readLongEntry("STOPWATCH","elapsed",0);
   duration=reg.readLongEntry("TIMER","duration",0);
   remaining=reg.readLongEntry("TIMER","remaining",0);
@@ -273,7 +274,7 @@ void StopWatch::saveSettings(){
   reg.writeIntEntry("SETTINGS","y",getY());
   reg.writeIntEntry("SETTINGS","w",getWidth());
   reg.writeIntEntry("SETTINGS","h",getHeight());
-  reg.writeIntEntry("SETTINGS","titlebar",titlebar?1:0);
+  // reg.writeIntEntry("SETTINGS","titlebar",titlebar?1:0); // no longer saved
   reg.writeIntEntry("SETTINGS","mode",(FXint)mode);
   reg.writeIntEntry("SETTINGS","style",(FXint)style);
   reg.writeLongEntry("STOPWATCH","elapsed",elapsed());
