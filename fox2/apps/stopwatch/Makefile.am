@@ -6,6 +6,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
 bin_PROGRAMS = stopwatch
 
+if COND_OSWINDOWS
+stopwatch_LDFLAGS = -mwindows
+endif
+
 stopwatch_SOURCES = \
 ClockView.h \
 ClockView.cpp \
