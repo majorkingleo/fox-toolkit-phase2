@@ -484,12 +484,14 @@ void FXTopWindow::move(FXint x,FXint y){
 
 
 // Start an interactive move, driven by the compositor
-void FXTopWindow::startDrag(){
+FXbool FXTopWindow::startDrag(){
   FXWaylandSurface* surf=topSurface(getApp(),xid);
   FXWaylandApp* app=fxwayland(getApp()->getDisplay());
   if(surf && surf->toplevel && app && app->seat && app->pointerserial){
     xdg_toplevel_move(surf->toplevel,app->seat,app->pointerserial);
+    return true;
     }
+  return false;
   }
 
 

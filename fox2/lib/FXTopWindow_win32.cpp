@@ -637,7 +637,8 @@ void FXTopWindow::move(FXint x,FXint y){
 
 
 // Start an interactive move; the application moves the window itself
-void FXTopWindow::startDrag(){
+FXbool FXTopWindow::startDrag(){
+  return false;
   }
 
 

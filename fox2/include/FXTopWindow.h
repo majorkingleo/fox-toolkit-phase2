@@ -198,8 +198,8 @@ public:
   /// Move this window to the specified position in the parent's coordinates
   virtual void move(FXint x,FXint y) override;
 
-  /// Start an interactive move, if the platform supports it
-  void startDrag();
+  /// Start an interactive move; returns true when the platform took over
+  FXbool startDrag();
 
   /// Resize this window to the specified width and height
   virtual void resize(FXint w,FXint h) override;

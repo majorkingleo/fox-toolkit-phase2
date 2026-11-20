@@ -857,10 +857,12 @@ long StopWatch::onShowHistory(FXObject*,FXSelector,void*){
 
 long StopWatch::onMiddlePress(FXObject*,FXSelector,void* ptr){
   FXEvent* event=(FXEvent*)ptr;
-  dragging=true;
   dragx=event->root_x-getX();
   dragy=event->root_y-getY();
-  startDrag();
+  // The compositor moves the window on Wayland and keeps the pointer; the
+  // application only follows the motion itself on platforms where startDrag()
+  // has no implementation.
+  dragging=!startDrag();
   return 1;
   }
 
