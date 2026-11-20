@@ -126,6 +126,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   titlebar=false;
   clientWidth=scaledPixels(a,260);
   clientHeight=scaledPixels(a,200);
+  savedScale=1.0;
   dragging=false;
   dragx=0;
   dragy=0;
@@ -253,7 +254,16 @@ void StopWatch::routeContextEvents(){
 
 
 void StopWatch::create(){
+  history.load(getApp()->reg());
+  // Restore geometry before the native window is created, so Windows creates
+  // it on the saved monitor and assigns that monitor's DPI from the start.
+  loadSettings();
   FXMainWindow::create();
+  FXdouble factor=getDisplayScale()/savedScale;
+  clientWidth=FXMIN(2000,FXMAX(getDefaultWidth(),(FXint)(clientWidth*factor+0.5)));
+  clientHeight=FXMIN(2000,FXMAX(getDefaultHeight(),(FXint)(clientHeight*factor+0.5)));
+  resize(clientWidth,clientHeight);
+  FXTRACE(1003,"StopWatch native dpi=%d scale=%.2f saved-scale=%.2f position=%d,%d size=%dx%d default=%dx%d\n",getWindowDPI(),getDisplayScale(),savedScale,getX(),getY(),getWidth(),getHeight(),getDefaultWidth(),getDefaultHeight());
   for(FXint i=0;i<3;i++){
     if(modeIcons[i]){
       modeIcons[i]->create();
@@ -266,8 +276,6 @@ void StopWatch::create(){
       styleIcons[i]->render();
       }
     }
-  history.load(getApp()->reg());
-  loadSettings();
   scaleControls();
   layout();
   scaleSevenSegment();
@@ -304,9 +312,10 @@ void StopWatch::loadSettings(){
   writeSpinners();
   if(titlebarCheck) titlebarCheck->setCheck(titlebar);
   setDecorations(titlebar?(DECOR_ALL|DECOR_RESIZE):DECOR_NONE);
-  clientWidth=FXCLAMP(scaledPixels(getApp(),180),reg.readIntEntry("SETTINGS","w",scaledPixels(getApp(),260)),2000);
-  clientHeight=FXCLAMP(scaledPixels(getApp(),120),reg.readIntEntry("SETTINGS","h",scaledPixels(getApp(),200)),2000);
-  resize(clientWidth,clientHeight);
+  clientWidth=FXCLAMP(1,reg.readIntEntry("SETTINGS","w",260),2000);
+  clientHeight=FXCLAMP(1,reg.readIntEntry("SETTINGS","h",200),2000);
+  savedScale=reg.readRealEntry("SETTINGS","scale",1.0);
+  if(savedScale<=0.0) savedScale=1.0;
   // The virtual desktop may have monitors to the left or above the primary
   // display, so saved coordinates can legitimately be negative.
   FXbool validPosition=(x!=-1000000)&&(y!=-1000000)&&
@@ -316,8 +325,9 @@ void StopWatch::loadSettings(){
     move(x,y);
     }
   else{
-    show(PLACEMENT_SCREEN);
+    place(PLACEMENT_SCREEN);
     }
+  FXTRACE(1003,"StopWatch restore dpi=%d scale=%.2f saved-scale=%.2f position=%d,%d size=%dx%d valid=%d\n",getWindowDPI(),getDisplayScale(),savedScale,x,y,clientWidth,clientHeight,validPosition);
   updateDisplay();
   }
 
@@ -328,6 +338,7 @@ void StopWatch::saveSettings(){
   reg.writeIntEntry("SETTINGS","y",getY());
   reg.writeIntEntry("SETTINGS","w",getWidth());
   reg.writeIntEntry("SETTINGS","h",getHeight());
+  reg.writeRealEntry("SETTINGS","scale",getDisplayScale());
   // reg.writeIntEntry("SETTINGS","titlebar",titlebar?1:0); // no longer saved
   reg.writeIntEntry("SETTINGS","mode",(FXint)mode);
   reg.writeIntEntry("SETTINGS","style",(FXint)style);
@@ -836,6 +847,7 @@ long StopWatch::onShowTitlebar(FXObject*,FXSelector,void*){
   update();
   getApp()->reg().writeIntEntry("SETTINGS","w",oldWidth);
   getApp()->reg().writeIntEntry("SETTINGS","h",oldHeight);
+  getApp()->reg().writeRealEntry("SETTINGS","scale",getDisplayScale());
   getApp()->reg().writeIntEntry("SETTINGS","titlebar",titlebar?1:0);
   getApp()->reg().write();
   return 1;
