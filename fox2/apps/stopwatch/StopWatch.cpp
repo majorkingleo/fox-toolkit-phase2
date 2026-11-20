@@ -3,7 +3,7 @@
 #include "HistoryWindow.h"
 #include "icons.h"
 #include "fxkeys.h"
-#include <fxevent.h>
+#include <FXEvent.h>
 
 #include <stdio.h>
 
