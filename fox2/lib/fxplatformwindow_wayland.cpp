@@ -157,6 +157,24 @@ void fxplatformEndLayout(void* display){
   }
 
 
+// Begin a batch of widget changes
+void fxplatformBeginUpdate(void* display){
+  FXWaylandApp* app=fxwayland(display);
+  if(app) app->updatebatch++;
+  }
+
+
+// End a batch; let the queued paints finish before the next frame goes out
+void fxplatformEndUpdate(void* display){
+  FXWaylandApp* app=fxwayland(display);
+  if(app && app->updatebatch>0 && --app->updatebatch==0){
+    app->deferflush=true;
+    app->deferrepaint=true;
+    app->flushgeneration=app->paintgeneration-1;
+    }
+  }
+
+
 // Map or unmap a native window
 void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown){
   FXWaylandApp* app=fxwayland(display);

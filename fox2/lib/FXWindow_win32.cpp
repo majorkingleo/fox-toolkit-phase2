@@ -146,6 +146,15 @@ void fxplatformEndLayout(void*){
   }
 
 
+// Win32 paints into its own windows; no frame batching needed
+void fxplatformBeginUpdate(void*){
+  }
+
+
+void fxplatformEndUpdate(void*){
+  }
+
+
 // Map or unmap
 void fxplatformShowWindow(void*,FXID window,FXint,FXint,FXbool shown){
   ShowWindow((HWND)window,shown?SW_SHOWNOACTIVATE:SW_HIDE);

@@ -272,6 +272,15 @@ void fxplatformEndLayout(void*){
   }
 
 
+// X11 paints into its own windows; no frame batching needed
+void fxplatformBeginUpdate(void*){
+  }
+
+
+void fxplatformEndUpdate(void*){
+  }
+
+
 // Map or unmap
 void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown){
   Display* dpy=(Display*)display;

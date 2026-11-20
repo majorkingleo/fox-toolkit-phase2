@@ -853,6 +853,18 @@ void FXApp::enterWindow(FXWindow *window,FXWindow *ancestor){
 /*******************************************************************************/
 
 
+// Begin a batch of widget changes
+void FXApp::beginUpdate(){
+  fxplatformBeginUpdate(display);
+  }
+
+
+// End a batch of widget changes
+void FXApp::endUpdate(){
+  fxplatformEndUpdate(display);
+  }
+
+
 // Force GUI refresh of every widget in this application
 void FXApp::forceRefresh(){
   getRootWindow()->forceRefresh();

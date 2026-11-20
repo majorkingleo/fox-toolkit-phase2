@@ -107,6 +107,12 @@ extern void fxplatformBeginLayout(void* display);
 extern void fxplatformEndLayout(void* display);
 
 
+/// Begin or end a batch of widget changes.  Platforms that share one buffer
+/// hold the frame back until the batch ends, so all changes are committed at once.
+extern void fxplatformBeginUpdate(void* display);
+extern void fxplatformEndUpdate(void* display);
+
+
 /// Map or unmap a native window; mapping needs a positive size.
 extern void fxplatformShowWindow(void* display,FXID window,FXint w,FXint h,FXbool shown);
 

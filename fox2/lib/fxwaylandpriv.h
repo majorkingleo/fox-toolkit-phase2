@@ -280,6 +280,11 @@ struct FXWaylandApp {
   FXbool            argb;               // ARGB8888 buffers are supported
   FXbool            lost;               // Connection failed
   FXbool            inlayout;           // A layout pass is running in the core
+  FXuint            updatebatch;        // Widget update batches in progress
+  FXbool            deferflush;         // Flush after the queued paints are done
+  FXbool            deferrepaint;       // Repaint the whole tree before the deferred flush
+  FXuint            paintgeneration;    // Paints dispatched so far
+  FXuint            flushgeneration;    // Generation seen by the deferred flush
   FXWaylandEvent*   events;             // Queued neutral events
   FXuint            eventcount;         // Number of queued events
   FXuint            eventalloced;       // Allocated events

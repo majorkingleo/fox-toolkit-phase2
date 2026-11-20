@@ -143,6 +143,7 @@ void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect)
 // The paint of a window was dispatched; it stays on the list until the frame
 // goes out, so the same window is not painted twice for one frame
 void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window){
+  if(app) app->paintgeneration++;
   }
 
 
@@ -1062,11 +1063,49 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   }
 
 
+// A queued paint still has to reach the shared store before the frame goes out
+static FXbool exposePending(FXWaylandApp* app){
+  FXuint i;
+  for(i=app->eventhead; i<app->eventcount; i++){
+    if(app->events[i].code==FXXWL_EXPOSE) return true;
+    }
+  return false;
+  }
+
+
 // Commit the shells that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app){
   FXWaylandSurface* s;
   FXWaylandBuffer* b;
   if(!app) return;
+
+  // An update batch holds the frame back until every queued paint is done, so
+  // a mode or theme change becomes one commit instead of a series of partial
+  // frames that show the old content at the new geometry
+  if(app->updatebatch>0) return;
+  if(app->deferflush){
+    if(exposePending(app)) return;
+
+    // The paints of a layout change can arrive out of stacking order: a
+    // parent whose area changed may be painted after a child it contains.
+    // Repaint the whole tree once in tree order after the first wave has
+    // settled, then commit that final store as one frame.
+    if(app->deferrepaint){
+      app->deferrepaint=false;
+      fxwaylandPaintFlushed(app);
+      for(s=app->surfaces; s; s=s->next){
+        if(s->configured && s->store) fxwaylandExpose(app,s->window);
+        }
+      if(exposePending(app)) return;
+      }
+
+    if(app->flushgeneration!=app->paintgeneration){
+      app->flushgeneration=app->paintgeneration;
+      return;
+      }
+    app->deferflush=false;
+    }
+
   for(s=app->surfaces; s; s=s->next){
     if(s->dirty && s->store){
 

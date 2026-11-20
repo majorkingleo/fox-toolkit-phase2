@@ -653,28 +653,37 @@ long StopWatch::onContextMenuMonitor(FXObject*,FXSelector,void*){
 
 
 long StopWatch::onModeClock(FXObject*,FXSelector,void*){
+  getApp()->beginUpdate();
   mode=MODE_CLOCK;
   controlSwitcher->setCurrent(0);
   updateDisplay();
   rearm();
+  getApp()->forceRefresh();
+  getApp()->endUpdate();
   return 1;
   }
 
 
 long StopWatch::onModeStopwatch(FXObject*,FXSelector,void*){
+  getApp()->beginUpdate();
   mode=MODE_STOPWATCH;
   controlSwitcher->setCurrent(1);
   updateDisplay();
   rearm();
+  getApp()->forceRefresh();
+  getApp()->endUpdate();
   return 1;
   }
 
 
 long StopWatch::onModeTimer(FXObject*,FXSelector,void*){
+  getApp()->beginUpdate();
   mode=MODE_TIMER;
   controlSwitcher->setCurrent(2);
   updateDisplay();
   rearm();
+  getApp()->forceRefresh();
+  getApp()->endUpdate();
   return 1;
   }
 
@@ -709,10 +718,13 @@ long StopWatch::onRightPress(FXObject*,FXSelector sel,void* ptr){
   }
 
 long StopWatch::onStyle(FXObject*,FXSelector,void*){
+  getApp()->beginUpdate();
   style=(style==STYLE_DIGITAL)?STYLE_ANALOG:STYLE_DIGITAL;
   faceSwitcher->setCurrent(style);
   updateDisplay();
   rearm();
+  getApp()->forceRefresh();
+  getApp()->endUpdate();
   return 1;
   }
 

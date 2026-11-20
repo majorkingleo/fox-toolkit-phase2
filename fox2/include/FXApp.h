@@ -790,6 +790,18 @@ public:
   void forceRefresh();
 
   /**
+  * Begin a batch of widget changes.  Platforms that share one buffer between
+  * all widgets hold the frame back until endUpdate(), so the whole transition
+  * reaches the compositor in one commit instead of a series of partial frames.
+  */
+  void beginUpdate();
+
+  /**
+  * End a batch started with beginUpdate().
+  */
+  void endUpdate();
+
+  /**
   * Flush drawing commands to display; if sync then wait till drawing commands
   * have been performed.
   */
