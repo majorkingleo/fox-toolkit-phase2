@@ -12,6 +12,7 @@ class StopWatch : public FXMainWindow {
 private:
   enum{ MODE_CLOCK,MODE_STOPWATCH,MODE_TIMER };
   enum{ STYLE_DIGITAL,STYLE_ANALOG };
+  enum{ MAX_RECENT_TIMERS=5 };
 private:
   // View
   FXuint mode;
@@ -46,6 +47,8 @@ private:
   FXbool timerDone;
   FXbool blinkOn;
   History history;
+  FXTime recentTimers[MAX_RECENT_TIMERS];
+  FXint recentTimerCount;
   // Window
   FXbool titlebar;
   FXint clientWidth;
@@ -54,6 +57,13 @@ private:
   FXint dragx;
   FXint dragy;
   FXMenuPane* contextMenu;
+  FXMenuSeparator* contextMenuBeforeAction;
+  FXMenuSeparator* contextMenuAfterAction;
+  FXMenuCommand* historyCommand;
+  FXMenuPane* recentMenu;
+  FXMenuCascade* recentCascade;
+  FXMenuCommand* recentTimerCommands[MAX_RECENT_TIMERS];
+  FXMenuCommand* noRecentTimersCommand;
   FXMenuCheck* titlebarCheck;
   StopwatchHistoryWindow* historyWindow;
 private:
@@ -72,6 +82,11 @@ private:
   void stopStopwatch();
   void readSpinners();
   void writeSpinners();
+  void loadRecentTimers();
+  void saveRecentTimers();
+  void rememberTimer(FXTime value);
+  void updateRecentTimerMenu();
+  void updateContextMenu(FXuint source);
   FXbool showAnalog() const { return style==STYLE_ANALOG; }
 public:
   enum{
@@ -85,12 +100,18 @@ public:
     ID_TIMER_START,
     ID_TIMER_RESET,
     ID_TIMER_SPIN,
+    ID_CLOCK_WIDGET,
     ID_CLEAR_HISTORY,
     ID_SHOW_TITLEBAR,
     ID_RIGHT_CLICK,
     ID_QUIT,
     ID_CONTEXT_MENU_MONITOR,
     ID_SHOW_HISTORY,
+    ID_RECENT_TIMER_0,
+    ID_RECENT_TIMER_1,
+    ID_RECENT_TIMER_2,
+    ID_RECENT_TIMER_3,
+    ID_RECENT_TIMER_4,
     ID_LAST
     };
 public:
@@ -117,6 +138,7 @@ public:
   long onUpdTimerReset(FXObject*,FXSelector,void*);
   long onClearHistory(FXObject*,FXSelector,void*);
   long onShowHistory(FXObject*,FXSelector,void*);
+  long onRecentTimer(FXObject*,FXSelector,void*);
   long onQuit(FXObject*,FXSelector,void*);
   long onUnpost(FXObject*,FXSelector,void*);
   long onRightRelease(FXObject*,FXSelector,void*);

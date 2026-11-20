@@ -29,15 +29,19 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_TIMER_RESET,StopWatch::onUpdTimerReset),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_CLEAR_HISTORY,StopWatch::onClearHistory),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_HISTORY,StopWatch::onShowHistory),
+  FXMAPFUNCS(SEL_COMMAND,StopWatch::ID_RECENT_TIMER_0,StopWatch::ID_RECENT_TIMER_4,StopWatch::onRecentTimer),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_QUIT,StopWatch::onQuit),
   FXMAPFUNC(SEL_COMMAND,FXWindow::ID_UNPOST,StopWatch::onUnpost),
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,0,StopWatch::onMiddlePress),
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onMiddlePress),
+  FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,StopWatch::ID_CLOCK_WIDGET,StopWatch::onMiddlePress),
   FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,0,StopWatch::onMiddleRelease),
   FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,StopWatch::ID_RIGHT_CLICK,StopWatch::onMiddleRelease),
+  FXMAPFUNC(SEL_MIDDLEBUTTONRELEASE,StopWatch::ID_CLOCK_WIDGET,StopWatch::onMiddleRelease),
   FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,StopWatch::onUnpost),
   FXMAPFUNC(SEL_MOTION,0,StopWatch::onMotion),
   FXMAPFUNC(SEL_MOTION,StopWatch::ID_RIGHT_CLICK,StopWatch::onMotion),
+  FXMAPFUNC(SEL_MOTION,StopWatch::ID_CLOCK_WIDGET,StopWatch::onMotion),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,0,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_CLOCK,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_MODE_STOPWATCH,StopWatch::onRightPress),
@@ -49,6 +53,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_START,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_RESET,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_CLOCK_WIDGET,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,0,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_MODE_CLOCK,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_MODE_STOPWATCH,StopWatch::onRightRelease),
@@ -60,6 +65,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_START,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_RESET,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_CLOCK_WIDGET,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onShowTitlebar),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onUpdShowTitlebar),
   FXMAPFUNC(SEL_CONFIGURE,0,StopWatch::onConfigure),
@@ -125,6 +131,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   timerRunning=false;
   timerDone=false;
   blinkOn=false;
+  recentTimerCount=0;
   titlebar=false;
   clientWidth=scaledPixels(a,260);
   clientHeight=scaledPixels(a,200);
@@ -150,8 +157,18 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   styleIcons[0]=nullptr;
   styleIcons[1]=nullptr;
   contextMenu=nullptr;
+  contextMenuBeforeAction=nullptr;
+  contextMenuAfterAction=nullptr;
+  historyCommand=nullptr;
+  recentMenu=nullptr;
+  recentCascade=nullptr;
+  noRecentTimersCommand=nullptr;
   titlebarCheck=nullptr;
   historyWindow=nullptr;
+  for(FXint i=0;i<MAX_RECENT_TIMERS;i++){
+    recentTimers[i]=0;
+    recentTimerCommands[i]=nullptr;
+    }
   for(FXint i=0;i<3;i++){
     modeIcons[i]=nullptr;
     modeButtons[i]=nullptr;
@@ -215,9 +232,21 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   // Context menu for the clock and timer modes
   contextMenu=new FXMenuPane(this);
   titlebarCheck=new FXMenuCheck(contextMenu,"&Show title bar",this,ID_SHOW_TITLEBAR);
-  new FXMenuSeparator(contextMenu);
-  new FXMenuCommand(contextMenu,"&History...",nullptr,this,ID_SHOW_HISTORY);
-  new FXMenuSeparator(contextMenu);
+  contextMenuBeforeAction=new FXMenuSeparator(contextMenu);
+  historyCommand=new FXMenuCommand(contextMenu,"&History...",nullptr,this,ID_SHOW_HISTORY);
+  historyCommand->hide();
+  recentMenu=new FXMenuPane(contextMenu);
+  noRecentTimersCommand=new FXMenuCommand(recentMenu,"No recent timers",nullptr,nullptr,0);
+  noRecentTimersCommand->disable();
+  for(FXint i=0;i<MAX_RECENT_TIMERS;i++){
+    recentTimerCommands[i]=new FXMenuCommand(recentMenu,"",nullptr,this,ID_RECENT_TIMER_0+i);
+    recentTimerCommands[i]->hide();
+    }
+  recentCascade=new FXMenuCascade(contextMenu,"&Recent",nullptr,recentMenu);
+  recentCascade->hide();
+  contextMenuAfterAction=new FXMenuSeparator(contextMenu);
+  contextMenuBeforeAction->hide();
+  contextMenuAfterAction->hide();
   new FXMenuCommand(contextMenu,"&Quit",nullptr,this,ID_QUIT);
 
   // The dialog uses its child layout and table contents to determine its size.
@@ -242,16 +271,20 @@ StopWatch::~StopWatch(){
 // Let the widgets that cover the window deliver middle and right clicks
 // and motion to the main window, so the drag and the popup work everywhere.
 void StopWatch::routeContextEvents(){
-  FXWindow* widgets[]={faceSwitcher,seven,clockView,readout,controlSwitcher,nullptr};
+  FXWindow* widgets[]={faceSwitcher,seven,clockView,readout,nullptr};
   for(FXint i=0;widgets[i];i++){
     widgets[i]->setTarget(this);
-    widgets[i]->setSelector(ID_RIGHT_CLICK);
+    widgets[i]->setSelector(ID_CLOCK_WIDGET);
     }
+  controlSwitcher->setTarget(this);
+  controlSwitcher->setSelector(ID_RIGHT_CLICK);
   }
 
 
 void StopWatch::create(){
   history.load(getApp()->reg());
+  loadRecentTimers();
+  updateRecentTimerMenu();
   historyWindow->refresh();
   // Restore geometry before the native window is created, so Windows creates
   // it on the saved monitor and assigns that monitor's DPI from the start.
@@ -358,6 +391,7 @@ void StopWatch::saveSettings(){
   reg.writeIntEntry("SETTINGS","style",(FXint)style);
   reg.writeLongEntry("STOPWATCH","elapsed",elapsed());
   history.save(reg);
+  saveRecentTimers();
   readSpinners();
   reg.writeLongEntry("TIMER","duration",duration);
   reg.writeLongEntry("TIMER","remaining",timerRunning?(deadline-FXThread::time()):remaining);
@@ -660,9 +694,10 @@ long StopWatch::onUpdMode(FXObject* sender,FXSelector sel,void*){
 
 
 // Show context menu on right click
-long StopWatch::onRightPress(FXObject*,FXSelector,void* ptr){
+long StopWatch::onRightPress(FXObject*,FXSelector sel,void* ptr){
   FXEvent* ev=(FXEvent*)ptr;
   if(contextMenu){
+    updateContextMenu(FXSELID(sel));
     contextMenu->popup(this,ev->root_x,ev->root_y);
     if(!cursorInside(contextMenu)){
       FXint x=ev->root_x-contextMenu->getWidth()/2;
@@ -746,11 +781,30 @@ long StopWatch::onTimerStart(FXObject*,FXSelector,void*){
       }
     if(remaining<=0) remaining=duration;
     if(remaining<=0) return 1;
+    rememberTimer(duration);
     deadline=FXThread::time()+remaining;
     timerRunning=true;
     timerDone=false;
     blinkOn=false;
     }
+  updateDisplay();
+  rearm();
+  return 1;
+  }
+
+
+long StopWatch::onRecentTimer(FXObject*,FXSelector sel,void*){
+  FXint index=FXSELID(sel)-ID_RECENT_TIMER_0;
+  if(index<0 || index>=recentTimerCount) return 1;
+  duration=recentTimers[index];
+  remaining=duration;
+  timerRunning=false;
+  timerDone=false;
+  blinkOn=false;
+  mode=MODE_TIMER;
+  controlSwitcher->setCurrent(2);
+  writeSpinners();
+  rememberTimer(duration);
   updateDisplay();
   rearm();
   return 1;
@@ -875,4 +929,91 @@ long StopWatch::onShowTitlebar(FXObject*,FXSelector,void*){
 long StopWatch::onUpdShowTitlebar(FXObject* sender,FXSelector,void*){
   ((FXMenuCheck*)sender)->setCheck(titlebar);
   return 1;
+  }
+
+
+void StopWatch::loadRecentTimers(){
+  FXSettings& reg=getApp()->reg();
+  recentTimerCount=0;
+  for(FXint i=0;i<MAX_RECENT_TIMERS;i++){
+    FXString key="recent"+FXString::value(i);
+    FXTime value=reg.readLongEntry("TIMER",key.text(),0);
+    if(value<=0) continue;
+    FXbool duplicate=false;
+    for(FXint j=0;j<recentTimerCount;j++){
+      if(recentTimers[j]==value) duplicate=true;
+      }
+    if(!duplicate) recentTimers[recentTimerCount++]=value;
+    }
+  }
+
+
+void StopWatch::saveRecentTimers(){
+  FXRegistry& reg=getApp()->reg();
+  for(FXint i=0;i<MAX_RECENT_TIMERS;i++){
+    FXString key="recent"+FXString::value(i);
+    reg.writeLongEntry("TIMER",key.text(),i<recentTimerCount?recentTimers[i]:0);
+    }
+  }
+
+
+void StopWatch::rememberTimer(FXTime value){
+  if(value<=0) return;
+  FXint pos=0;
+  while(pos<recentTimerCount && recentTimers[pos]!=value) pos++;
+  if(pos==recentTimerCount){
+    if(recentTimerCount<MAX_RECENT_TIMERS) recentTimerCount++;
+    pos=recentTimerCount-1;
+    }
+  for(FXint i=pos; i>0; i--) recentTimers[i]=recentTimers[i-1];
+  recentTimers[0]=value;
+  saveRecentTimers();
+  getApp()->reg().write();
+  updateRecentTimerMenu();
+  }
+
+
+void StopWatch::updateRecentTimerMenu(){
+  if(!recentMenu) return;
+  for(FXint i=0;i<MAX_RECENT_TIMERS;i++){
+    if(i<recentTimerCount){
+      recentTimerCommands[i]->setText(formatDuration(recentTimers[i]));
+      if(!recentTimerCommands[i]->shown()) recentTimerCommands[i]->show();
+      }
+    else if(recentTimerCommands[i]->shown()){
+      recentTimerCommands[i]->hide();
+      }
+    }
+  if(recentTimerCount>0){
+    if(noRecentTimersCommand->shown()) noRecentTimersCommand->hide();
+    }
+  else if(!noRecentTimersCommand->shown()){
+    noRecentTimersCommand->show();
+    }
+  recentMenu->recalc();
+  }
+
+
+void StopWatch::updateContextMenu(FXuint source){
+  FXbool showHistory=(source==ID_MODE_STOPWATCH)||(source==ID_CLOCK_WIDGET && mode==MODE_STOPWATCH);
+  FXbool showRecent=(source==ID_MODE_TIMER)||(source==ID_CLOCK_WIDGET && mode==MODE_TIMER);
+  FXbool showAction=(showHistory || showRecent);
+  if(historyCommand->shown()!=showHistory){
+    if(showHistory) historyCommand->show();
+    else historyCommand->hide();
+    }
+  if(recentCascade->shown()!=showRecent){
+    if(showRecent) recentCascade->show();
+    else recentCascade->hide();
+    }
+  if(contextMenuBeforeAction->shown()!=showAction){
+    if(showAction) contextMenuBeforeAction->show();
+    else contextMenuBeforeAction->hide();
+    }
+  if(contextMenuAfterAction->shown()!=showAction){
+    if(showAction) contextMenuAfterAction->show();
+    else contextMenuAfterAction->hide();
+    }
+  if(showRecent) updateRecentTimerMenu();
+  contextMenu->recalc();
   }
