@@ -19,6 +19,7 @@
 #   --run      run hello, button and the DPI test for 3 s after building
 #   --opengl   enable OpenGL: EGL canvases on wl_subsurfaces (needs libEGL,
 #              wayland-egl and libGL)
+#   --trace    keep FXTRACE statements compiled in (no NDEBUG)
 #   --debug    build with debug information and no optimization (Debug)
 #   --relwithdebinfo  optimized build that still carries debug information
 #   --release  optimized build without debug information
@@ -48,13 +49,14 @@ check_only=no
 clean=no
 run_test=no
 with_opengl=no
+trace=no
 build_type=${FOX_BUILD_TYPE-}
 prefix=/usr/local
 destdir=
 do_install=no
 
 usage(){
-  sed -n '2,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -63,6 +65,7 @@ while [ $# -gt 0 ]; do
     --clean)    clean=yes ;;
     --run)      run_test=yes ;;
     --opengl)   with_opengl=yes ;;
+    --trace)    trace=yes ;;
     --debug)    build_type=Debug ;;
     --relwithdebinfo) build_type=RelWithDebInfo ;;
     --release)  build_type=Release ;;
@@ -104,6 +107,11 @@ if [ -n "${MSYSTEM-}" ] && command -v cygpath >/dev/null 2>&1; then
 if [ -n "${MSYSTEM-}" ]; then
   echo "error: Wayland needs Linux; in MSYS2 use ./scripts/build-fox2-mingw.sh" >&2
   exit 1
+  fi
+
+if [ "$trace" = yes ] && [ "$build_type" = Release ]; then
+  echo "error: --trace cannot be combined with --release" >&2
+  exit 2
   fi
 
 # Wayland gate: a compositor socket must be reachable
@@ -208,9 +216,12 @@ run(){
 echo "==> cmake configure"
 opengl=OFF
 [ "$with_opengl" = yes ] && opengl=ON
+foxtrace=OFF
+[ "$trace" = yes ] && foxtrace=ON
 [ -n "$build_type" ] && echo "==> build type: $build_type"
 run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF \
-  -DFOX_WITH_OPENGL=$opengl -DCMAKE_INSTALL_PREFIX="$cmake_prefix" \
+  -DFOX_WITH_OPENGL=$opengl -DFOX_FOXTRACE=$foxtrace \
+  -DCMAKE_INSTALL_PREFIX="$cmake_prefix" \
   ${build_type:+-DCMAKE_BUILD_TYPE=$build_type}
 
 echo "==> build library, tools and tests"
@@ -224,6 +235,13 @@ echo
 echo "==> artifacts"
 ls -l "$BUILD"/lib/*FOX* 2>/dev/null || true
 echo "$(ls "$BUILD"/bin 2>/dev/null | wc -l) test and tool binaries in $BUILD/bin"
+
+if [ "$trace" = yes ]; then
+  echo
+  echo "trace build: FXTRACE is compiled in; run with -tracelevel N or FOX_TRACE_LEVEL=N"
+  echo "and FOX_WAYLAND_TRACE=1 for the module trace, redirect stderr to a file"
+  echo "e.g. bin/stopwatch -tracelevel 1023 2> trace.log"
+  fi
 
 if [ "$run_test" = yes ]; then
   for prog in hello button dpi; do

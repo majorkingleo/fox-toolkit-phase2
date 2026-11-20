@@ -443,11 +443,16 @@ long FXLabel::onQueryHelp(FXObject* sender,FXSelector sel,void* ptr){
 // Change text, removing hotkey if changed
 void FXLabel::setText(const FXString& text){
   if(text!=label){
+    // Only a size change needs a new layout; a label whose text changes
+    // without changing its extent (a running clock, a counter) must not
+    // dirty every parent above it on each update.
+    FXbool resize=(labelWidth(label)!=labelWidth(text)) ||
+                  (labelHeight(label)!=labelHeight(text));
     remHotKey(hotkey);
     hotkey=0;
     hotoff=-1;
     label=text;
-    recalc();
+    if(resize) recalc();
     update();
     }
   }
