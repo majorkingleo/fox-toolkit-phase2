@@ -1,5 +1,6 @@
 #include "StopWatch.h"
 #include "ClockView.h"
+#include "HistoryWindow.h"
 #include "icons.h"
 #include "fxkeys.h"
 #include <fxevent.h>
@@ -27,6 +28,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_TIMER_RESET,StopWatch::onTimerReset),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_TIMER_RESET,StopWatch::onUpdTimerReset),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_CLEAR_HISTORY,StopWatch::onClearHistory),
+  FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_HISTORY,StopWatch::onShowHistory),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_QUIT,StopWatch::onQuit),
   FXMAPFUNC(SEL_COMMAND,FXWindow::ID_UNPOST,StopWatch::onUnpost),
   FXMAPFUNC(SEL_MIDDLEBUTTONPRESS,0,StopWatch::onMiddlePress),
@@ -149,8 +151,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   styleIcons[1]=nullptr;
   contextMenu=nullptr;
   titlebarCheck=nullptr;
-  historyPopup=nullptr;
-  historyTable=nullptr;
+  historyWindow=nullptr;
   for(FXint i=0;i<3;i++){
     modeIcons[i]=nullptr;
     modeButtons[i]=nullptr;
@@ -215,15 +216,12 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   contextMenu=new FXMenuPane(this);
   titlebarCheck=new FXMenuCheck(contextMenu,"&Show title bar",this,ID_SHOW_TITLEBAR);
   new FXMenuSeparator(contextMenu);
+  new FXMenuCommand(contextMenu,"&History...",nullptr,this,ID_SHOW_HISTORY);
+  new FXMenuSeparator(contextMenu);
   new FXMenuCommand(contextMenu,"&Quit",nullptr,this,ID_QUIT);
 
-  // Stopwatch history popup
-  historyPopup=new FXPopup(this,POPUP_VERTICAL|FRAME_RAISED|FRAME_THICK);
-  historyTable=new FXTable(historyPopup,nullptr,0,TABLE_READONLY|TABLE_COL_SIZABLE|TABLE_NO_COLSELECT|TABLE_NO_ROWSELECT|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT,0,0,320,180);
-  FXHorizontalFrame* popupButtons=new FXHorizontalFrame(historyPopup,LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
-  new FXButton(popupButtons,"Clear history",nullptr,this,ID_CLEAR_HISTORY,BUTTON_NORMAL|LAYOUT_FILL_X);
-  new FXButton(popupButtons,"Quit",nullptr,this,ID_QUIT,BUTTON_NORMAL|LAYOUT_FILL_X);
-  new FXButton(popupButtons,"Close",nullptr,historyPopup,FXSEL(SEL_COMMAND,FXWindow::ID_UNPOST),BUTTON_NORMAL|LAYOUT_FILL_X);
+  // The dialog uses its child layout and table contents to determine its size.
+  historyWindow=new StopwatchHistoryWindow(this,history,this,ID_CLEAR_HISTORY);
 
   // Keyboard: no title bar means no close button
   getAccelTable()->addAccel(MKUINT(KEY_Escape,0),this,FXSEL(SEL_COMMAND,ID_QUIT));
@@ -254,6 +252,7 @@ void StopWatch::routeContextEvents(){
 
 void StopWatch::create(){
   history.load(getApp()->reg());
+  historyWindow->refresh();
   // Restore geometry before the native window is created, so Windows creates
   // it on the saved monitor and assigns that monitor's DPI from the start.
   loadSettings();
@@ -408,6 +407,7 @@ void StopWatch::stopStopwatch(){
   history.save(getApp()->reg());
   getApp()->reg().writeLongEntry("STOPWATCH","elapsed",accum);
   getApp()->reg().write();
+  if(historyWindow && historyWindow->shown()) historyWindow->refresh();
   rearm();
   }
 
@@ -581,11 +581,6 @@ long StopWatch::onTick(FXObject*,FXSelector,void*){
 // Commands
 
 long StopWatch::onQuit(FXObject*,FXSelector,void*){
-  // The first Escape only closes an open history popup
-  if(historyPopup && historyPopup->shown()){
-    historyPopup->popdown();
-    return 1;
-    }
   return close(true)?1:0;
   }
 
@@ -792,7 +787,13 @@ long StopWatch::onClearHistory(FXObject*,FXSelector,void*){
   history.clear();
   history.save(getApp()->reg());
   getApp()->reg().write();
-  if(historyPopup->shown()) historyPopup->popdown();
+  historyWindow->refresh();
+  return 1;
+  }
+
+
+long StopWatch::onShowHistory(FXObject*,FXSelector,void*){
+  historyWindow->showHistory();
   return 1;
   }
 

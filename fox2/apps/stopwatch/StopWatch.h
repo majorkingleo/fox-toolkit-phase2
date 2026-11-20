@@ -5,6 +5,7 @@
 #include "History.h"
 
 class ClockView;
+class StopwatchHistoryWindow;
 
 class StopWatch : public FXMainWindow {
   FXDECLARE(StopWatch)
@@ -54,8 +55,7 @@ private:
   FXint dragy;
   FXMenuPane* contextMenu;
   FXMenuCheck* titlebarCheck;
-  FXPopup* historyPopup;
-  FXTable* historyTable;
+  StopwatchHistoryWindow* historyWindow;
 private:
   StopWatch();
   StopWatch(const StopWatch&);
@@ -90,6 +90,7 @@ public:
     ID_RIGHT_CLICK,
     ID_QUIT,
     ID_CONTEXT_MENU_MONITOR,
+    ID_SHOW_HISTORY,
     ID_LAST
     };
 public:
@@ -115,6 +116,7 @@ public:
   long onTimerReset(FXObject*,FXSelector,void*);
   long onUpdTimerReset(FXObject*,FXSelector,void*);
   long onClearHistory(FXObject*,FXSelector,void*);
+  long onShowHistory(FXObject*,FXSelector,void*);
   long onQuit(FXObject*,FXSelector,void*);
   long onUnpost(FXObject*,FXSelector,void*);
   long onRightRelease(FXObject*,FXSelector,void*);

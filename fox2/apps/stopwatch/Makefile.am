@@ -15,6 +15,8 @@ ClockView.h \
 ClockView.cpp \
 History.h \
 History.cpp \
+HistoryWindow.h \
+HistoryWindow.cpp \
 StopWatch.h \
 StopWatch.cpp \
 main.cpp
