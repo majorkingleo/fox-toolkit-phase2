@@ -49,7 +49,6 @@ private:
   FXbool titlebar;
   FXint clientWidth;
   FXint clientHeight;
-  FXdouble savedScale;
   FXbool dragging;
   FXint dragx;
   FXint dragy;
