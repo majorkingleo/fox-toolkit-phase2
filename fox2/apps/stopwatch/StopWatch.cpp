@@ -307,9 +307,11 @@ void StopWatch::loadSettings(){
   clientWidth=FXCLAMP(scaledPixels(getApp(),180),reg.readIntEntry("SETTINGS","w",scaledPixels(getApp(),260)),2000);
   clientHeight=FXCLAMP(scaledPixels(getApp(),120),reg.readIntEntry("SETTINGS","h",scaledPixels(getApp(),200)),2000);
   resize(clientWidth,clientHeight);
-  FXbool validPosition=(x!=-1000000) && (y!=-1000000) &&
-                       (x>=-32) && (y>=-32) &&
-                       (x<getRoot()->getWidth()) && (y<getRoot()->getHeight());
+  // The virtual desktop may have monitors to the left or above the primary
+  // display, so saved coordinates can legitimately be negative.
+  FXbool validPosition=(x!=-1000000)&&(y!=-1000000)&&
+                       (x>=-getRoot()->getWidth())&&(y>=-getRoot()->getHeight())&&
+                       (x<getRoot()->getWidth())&&(y<getRoot()->getHeight());
   if(validPosition){
     move(x,y);
     }
