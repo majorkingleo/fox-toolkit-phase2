@@ -44,6 +44,7 @@ protected:
   FXuchar check;        // State of menu
 protected:
   FXMenuCheck();
+  virtual FXint getMenuTextLeadSpace() const override;
 private:
   FXMenuCheck(const FXMenuCheck&);
   FXMenuCheck &operator=(const FXMenuCheck&);

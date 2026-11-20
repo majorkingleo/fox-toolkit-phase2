@@ -142,7 +142,7 @@ FXint FXMenuCommand::getDefaultWidth(){
   if(!accel.empty()) aw=font->getTextWidth(accel.text(),accel.length());
   if(aw && tw) aw+=5;
   if(icon) iw=getScaledIcon(icon)->getWidth()+5;
-  return FXMAX(iw,LEADSPACE)+tw+aw+TRAILSPACE;
+  return FXMAX(iw,getMenuTextLeadSpace())+tw+aw+TRAILSPACE;
   }
 
 
@@ -289,7 +289,7 @@ long FXMenuCommand::onPaint(FXObject*,FXSelector,void* ptr){
       r=FXMIN(r,(height-2)/2);
       getApp()->getStyle()->drawRoundedRectangle(dc,2,1,width-4,height-2,r,sel,sel,0);
       }
-    xx=LEADSPACE;
+    xx=getMenuTextLeadSpace();
     if(icon){
       dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
       if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
@@ -306,7 +306,7 @@ long FXMenuCommand::onPaint(FXObject*,FXSelector,void* ptr){
     return 1;
     }
 
-  xx=LEADSPACE;
+  xx=getMenuTextLeadSpace();
 
   // Grayed out
   if(!isEnabled()){

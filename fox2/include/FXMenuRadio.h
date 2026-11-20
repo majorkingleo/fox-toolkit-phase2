@@ -47,6 +47,7 @@ protected:
   FXuchar check;        // State of menu
 protected:
   FXMenuRadio();
+  virtual FXint getMenuTextLeadSpace() const override;
 private:
   FXMenuRadio(const FXMenuRadio&);
   FXMenuRadio &operator=(const FXMenuRadio&);

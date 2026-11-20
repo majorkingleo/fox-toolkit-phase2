@@ -66,6 +66,7 @@ protected:
   FXint        hotoff;          // Offset in string
 protected:
   FXMenuCaption();
+  virtual FXint getMenuTextLeadSpace() const;
 private:
   FXMenuCaption(const FXMenuCaption&);
   FXMenuCaption &operator=(const FXMenuCaption&);

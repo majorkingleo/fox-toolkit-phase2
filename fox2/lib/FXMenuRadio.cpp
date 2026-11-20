@@ -121,7 +121,21 @@ FXint FXMenuRadio::getDefaultWidth(){
   if(!label.empty()) tw=font->getTextWidth(label.text(),label.length());
   if(!accel.empty()) aw=font->getTextWidth(accel.text(),accel.length());
   if(aw && tw) aw+=5;
-  return LEADSPACE+tw+aw+TRAILSPACE;
+  return getMenuTextLeadSpace()+tw+aw+TRAILSPACE;
+  }
+
+
+FXint FXMenuRadio::getMenuTextLeadSpace() const {
+  if(isMenuRowThemed()){
+    FXTheme* theme=getApp()->getTheme();
+    FXdouble scale=getDisplayScale();
+    FXint size=theme->metric(METRIC_CHECK_SIZE,scale);
+    FXint row=theme->metric(METRIC_ROW_HEIGHT,scale);
+    FXint gap=FXMAX((FXint)(4*scale+0.5),theme->metric(METRIC_SPACING,scale));
+    size=FXMAX(9,FXMIN(size,row-2));
+    return 5+size+gap;
+    }
+  return LEADSPACE;
   }
 
 
@@ -307,7 +321,7 @@ long FXMenuRadio::onPaint(FXObject*,FXSelector,void* ptr){
     return 1;
     }
 
-  xx=LEADSPACE;
+  xx=getMenuTextLeadSpace();
 
   // Grayed out
   if(!isEnabled()){

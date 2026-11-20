@@ -169,7 +169,12 @@ FXint FXMenuCaption::getDefaultWidth(){
   tw=iw=0;
   if(!label.empty()) tw=font->getTextWidth(label.text(),label.length());
   if(icon) iw=getScaledIcon(icon)->getWidth()+5;
-  return FXMAX(iw,LEADSPACE)+tw+TRAILSPACE;
+  return FXMAX(iw,getMenuTextLeadSpace())+tw+TRAILSPACE;
+  }
+
+
+FXint FXMenuCaption::getMenuTextLeadSpace() const {
+  return LEADSPACE;
   }
 
 
@@ -271,7 +276,7 @@ long FXMenuCaption::onPaint(FXObject*,FXSelector,void* ptr){
   FXint xx,yy;
   dc.setForeground(backColor);
   dc.fillRectangle(0,0,width,height);
-  xx=LEADSPACE;
+  xx=getMenuTextLeadSpace();
   if(icon){
     dc.drawIcon(getScaledIcon(icon),3,(height-getScaledIcon(icon)->getHeight())/2);
     if(getScaledIcon(icon)->getWidth()+5>xx) xx=getScaledIcon(icon)->getWidth()+5;
