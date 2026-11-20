@@ -326,6 +326,7 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   appArgc=0;                              // Number of program arguments
   appArgv=nullptr;                        // Program arguments
   waitCount=0;                            // Cursor wait count
+  updatebatch=0;                          // No update batch in progress
   windowCount=0;                          // Number of windows
   initialized=false;                      // Not yet initialized
   dpiawareness=DPIAWARENESS_UNKNOWN;      // DPI awareness not established
@@ -855,13 +856,27 @@ void FXApp::enterWindow(FXWindow *window,FXWindow *ancestor){
 
 // Begin a batch of widget changes
 void FXApp::beginUpdate(){
-  fxplatformBeginUpdate(display);
+  if(updatebatch++==0) fxplatformBeginUpdate(display);
   }
 
 
 // End a batch of widget changes
 void FXApp::endUpdate(){
-  fxplatformEndUpdate(display);
+  if(0<updatebatch && --updatebatch==0){
+    discardRepaints();
+    fxplatformEndUpdate(display);
+    }
+  }
+
+
+// Throw away repaint rectangles; an update batch replaces them with one full repaint
+void FXApp::discardRepaints(){
+  FXRepaint *r;
+  while((r=repaints)!=nullptr){
+    repaints=r->next;
+    r->next=repaintrecs;
+    repaintrecs=r;
+    }
   }
 
 

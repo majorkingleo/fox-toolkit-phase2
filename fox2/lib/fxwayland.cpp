@@ -1063,6 +1063,57 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   }
 
 
+// Post a paint for a window and its children in stacking order.  The wave
+// repaints the whole tree, so a paint must not hand the area back to the
+// windows above it; state 2 tells the dispatch that the wave is complete.
+static void exposeTreeOrdered(FXWaylandApp* app,FXID window){
+  FXWaylandEvent ev;
+  FXRectangle r;
+  FXID child;
+  if(!app || !window || !app->childmap.isVisible(window)) return;
+  r=app->childmap.getGeometry(window);
+  if(0<r.w && 0<r.h){
+    clearElms(&ev,1);
+    ev.type=0;
+    ev.id=window;
+    ev.x=0;
+    ev.y=0;
+    ev.w=r.w;
+    ev.h=r.h;
+    ev.code=FXXWL_EXPOSE;
+    ev.state=2;                 // Posted in tree order, hands nothing on
+    fxwaylandPost(app,ev);
+    }
+  for(child=app->childmap.getFirst(window); child; child=app->childmap.getNext(child)){
+    exposeTreeOrdered(app,child);
+    }
+  }
+
+
+// Drop queued paints and repaint every shell; the update batch only needs the
+// final state, and one full pass puts the windows into stacking order again
+void fxwaylandRepaintAll(FXWaylandApp* app){
+  FXWaylandSurface* s;
+  FXuint i,out;
+  if(!app) return;
+
+  // Keep input events, drop the paints of intermediate states
+  out=app->eventhead;
+  for(i=app->eventhead; i<app->eventcount; i++){
+    if(app->events[i].code!=FXXWL_EXPOSE) app->events[out++]=app->events[i];
+    }
+  app->eventcount=out;
+  if(app->eventhead==app->eventcount) app->eventhead=app->eventcount=0;
+  app->numpaints=0;
+  app->numcovered=0;
+  app->nummoved=0;
+
+  for(s=app->surfaces; s; s=s->next){
+    if(s->configured && s->store) exposeTreeOrdered(app,s->window);
+    }
+  }
+
+
 // A queued paint still has to reach the shared store before the frame goes out
 static FXbool exposePending(FXWaylandApp* app){
   FXuint i;
@@ -1085,19 +1136,6 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
   if(app->updatebatch>0) return;
   if(app->deferflush){
     if(exposePending(app)) return;
-
-    // The paints of a layout change can arrive out of stacking order: a
-    // parent whose area changed may be painted after a child it contains.
-    // Repaint the whole tree once in tree order after the first wave has
-    // settled, then commit that final store as one frame.
-    if(app->deferrepaint){
-      app->deferrepaint=false;
-      fxwaylandPaintFlushed(app);
-      for(s=app->surfaces; s; s=s->next){
-        if(s->configured && s->store) fxwaylandExpose(app,s->window);
-        }
-      if(exposePending(app)) return;
-      }
 
     if(app->flushgeneration!=app->paintgeneration){
       app->flushgeneration=app->paintgeneration;

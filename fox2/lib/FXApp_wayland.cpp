@@ -319,7 +319,6 @@ void FXApp::initPlatformMembers(){
   app->inlayout=false;
   app->updatebatch=0;
   app->deferflush=false;
-  app->deferrepaint=false;
   app->paintgeneration=0;
   app->flushgeneration=0;
   app->events=nullptr;

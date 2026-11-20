@@ -250,6 +250,7 @@ private:
   FXStyle          style;               // Chrome renderer for the theme
   FXCursor        *waitCursor;          // Current wait cursor
   FXuint           waitCount;           // Number of times wait cursor was called
+  FXint            updatebatch;         // Nested beginUpdate()/endUpdate() calls
   FXuint           windowCount;         // Number of windows
   FXCursor        *cursor[DEF_WAIT_CURSOR+1];
   FXTranslator    *translator;          // Message translator
@@ -382,6 +383,7 @@ private:
   static void applyWindowDPI(FXWindow* window,FXint dpivalue);
   static FXival CALLBACK wndproc(FXID hwnd,FXuint iMsg,FXuval wParam,FXival lParam);
   void addRepaint(FXID win,FXint x,FXint y,FXint w,FXint h,FXbool synth=false);
+  void discardRepaints();
   void removeRepaints(FXID win,FXint x,FXint y,FXint w,FXint h);
   void scrollRepaints(FXID win,FXint dx,FXint dy);
   static void imcreatecallback(void*,FXApp*,void*);

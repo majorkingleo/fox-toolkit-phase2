@@ -168,8 +168,8 @@ void fxplatformBeginUpdate(void* display){
 void fxplatformEndUpdate(void* display){
   FXWaylandApp* app=fxwayland(display);
   if(app && app->updatebatch>0 && --app->updatebatch==0){
+    fxwaylandRepaintAll(app);
     app->deferflush=true;
-    app->deferrepaint=true;
     app->flushgeneration=app->paintgeneration-1;
     }
   }
