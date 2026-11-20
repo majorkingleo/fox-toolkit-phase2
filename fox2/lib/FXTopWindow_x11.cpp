@@ -458,11 +458,13 @@ void FXTopWindow::setdecorations(){
     long functions;
     long decorations;
     long inputmode;
+    long status;
     } prop;
   prop.flags=MWM_HINTS_FUNCTIONS|MWM_HINTS_DECORATIONS|MWM_HINTS_INPUT_MODE;
   prop.decorations=0;
   prop.functions=MWM_FUNC_MOVE;
   prop.inputmode=MWM_INPUT_MODELESS;
+  prop.status=0;              // Motif hints are five words; KWin ignores four
   if(options&DECOR_TITLE){
     prop.decorations|=MWM_DECOR_TITLE;
     }
@@ -491,7 +493,7 @@ void FXTopWindow::setdecorations(){
   if(icon || miniIcon){         // Icons won't show unless we enable menu
     prop.decorations|=MWM_DECOR_MENU;
     }
-  XChangeProperty(DISPLAY(getApp()),xid,getApp()->wmMotifHints,getApp()->wmMotifHints,32,PropModeReplace,(unsigned char*)&prop,4);
+  XChangeProperty(DISPLAY(getApp()),xid,getApp()->wmMotifHints,getApp()->wmMotifHints,32,PropModeReplace,(unsigned char*)&prop,5);
   }
 
 
