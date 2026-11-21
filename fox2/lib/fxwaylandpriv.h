@@ -162,6 +162,8 @@ struct FXWaylandSurface {
   FXint                      wantw;      // Size the compositor asked for
   FXint                      wanth;
   FXuint                     state;      // FXXWL_STATE_* of the toplevel
+  FXbool                     settled;    // One configure reached the core
+  FXuint                     lastmask;   // Maximized and full screen state of that one
   FXuint                     configuregen;// Generation of the newest configure
   FXint                      width;      // Width of the pool buffers
   FXint                      height;     // Height of the pool buffers

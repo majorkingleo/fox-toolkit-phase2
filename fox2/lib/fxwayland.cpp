@@ -296,19 +296,33 @@ void fxwaylandExposeRect(FXWaylandApp* app,FXID window,const FXRectangle& rect){
 static void shellConfigure(void* data,xdg_surface* xdsurface,uint32_t serial){
   FXWaylandSurface* s=(FXWaylandSurface*)data;
   FXWaylandEvent ev;
+  FXint w=s->wantw;
+  FXint h=s->wanth;
+  FXuint mask=s->state&(FXXWL_STATE_MAXIMIZED|FXXWL_STATE_FULLSCREEN);
   xdg_surface_ack_configure(xdsurface,serial);
   s->configured=true;
-  fxwaylandTrace("configure %u serial %u size %dx%d at scale %.3f\n",(unsigned int)s->window,serial,s->wantw,s->wanth,s->scale);
+  s->wantw=0;
+  s->wanth=0;
+
+  // A configure that asks for the size the shell already has and changes
+  // neither the maximize nor the full screen state only tells about the
+  // activation, which arrives with every focus switch. Sending it to the core
+  // would lay out the tree and repaint the whole shell for nothing
+  if(s->settled && (w==0 || w==s->logicalw) && (h==0 || h==s->logicalh) && mask==s->lastmask){
+    fxwaylandTrace("configure %u serial %u needs no layout\n",(unsigned int)s->window,serial);
+    return;
+    }
+  s->settled=true;
+  s->lastmask=mask;
+  fxwaylandTrace("configure %u serial %u size %dx%d at scale %.3f\n",(unsigned int)s->window,serial,w,h,s->scale);
   clearElms(&ev,1);
   ev.code=FXXWL_CONFIGURE;
   ev.id=s->window;
-  s->logicalw=s->wantw;
-  s->logicalh=s->wanth;
-  ev.w=fxwaylandScaleIn(s,s->wantw);
-  ev.h=fxwaylandScaleIn(s,s->wanth);
+  s->logicalw=w;
+  s->logicalh=h;
+  ev.w=fxwaylandScaleIn(s,w);
+  ev.h=fxwaylandScaleIn(s,h);
   ev.data[0]=(FXint)(++s->configuregen);
-  s->wantw=0;
-  s->wanth=0;
   fxwaylandPost(s->app,ev);
   }
 
@@ -402,6 +416,8 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->wantw=0;
   s->wanth=0;
   s->state=0;
+  s->settled=false;
+  s->lastmask=0;
   s->width=0;
   s->height=0;
   s->surface=wl_compositor_create_surface(app->compositor);
@@ -556,6 +572,8 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->wantw=0;
   s->wanth=0;
   s->state=0;
+  s->settled=false;
+  s->lastmask=0;
   s->width=0;
   s->height=0;
   s->surface=wl_compositor_create_surface(app->compositor);

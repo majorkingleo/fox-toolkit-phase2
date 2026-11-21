@@ -517,7 +517,11 @@ Done in this phase so far (the protocol files and the platform seam):
   `fxplatformShowWindow()` and the configure of a shell post exposures for the
   whole tree below them (`fxwaylandExpose()`), and a shell that the compositor
   has not configured yet is not painted at all, which is why the first frame is
-  only committed after the first configure. The root window gets an id of its
+  only committed after the first configure. A configure that repeats the size
+  the shell already has and changes neither the maximized nor the full screen
+  state reaches the core not at all: compositors send one for every activation
+  change, and passing it on laid out and exposed the whole tree on every focus
+  switch. The root window gets an id of its
   own even though it has no row in the table, and a shell with a parent that is
   not in the table hangs off the root.
 - `FOX_WAYLAND_TRACE=1` prints what the module does — connect, create window,
