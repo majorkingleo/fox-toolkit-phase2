@@ -101,6 +101,12 @@ FXLabel::FXLabel(){
   hotkey=0;
   hotoff=0;
   fontOverride=false;
+  cachedLabelWidth=0;
+  cachedLabelHeight=0;
+  cachedLabelHash=0;
+  cachedLabelLength=0;
+  cachedLabelFont=nullptr;
+  cachedLabelValid=false;
   }
 
 
@@ -119,6 +125,12 @@ FXLabel::FXLabel(FXComposite* p,const FXString& text,FXIcon* ic,FXuint opts,FXin
   spacing=4;
   flags|=FLAG_ENABLED;
   fontOverride=false;
+  cachedLabelWidth=0;
+  cachedLabelHeight=0;
+  cachedLabelHash=0;
+  cachedLabelLength=0;
+  cachedLabelFont=nullptr;
+  cachedLabelValid=false;
   }
 
 
@@ -160,6 +172,9 @@ void FXLabel::disable(){
 FXint FXLabel::labelHeight(const FXString& text) const {
   FXint beg,end;
   FXint th=0;
+  if(&text==&label && cachedLabelValid && cachedLabelFont==font && cachedLabelLength==text.length() && cachedLabelHash==text.hash()){
+    return cachedLabelHeight;
+    }
   beg=0;
   do{
     end=beg;
@@ -173,9 +188,21 @@ FXint FXLabel::labelHeight(const FXString& text) const {
 
 
 // Get width of multi-line label
+// The extent of the label is measured once and kept with the text it belongs
+// to; a label can be painted for a narrow strip of itself (Wayland repaints the
+// exposed part of every window), and measuring a page of text every time is
+// work for nothing
 FXint FXLabel::labelWidth(const FXString& text) const {
   FXint beg,end;
   FXint w,tw=0;
+  FXuint hash=0;
+  FXbool cache=(&text==&label);
+  if(cache){
+    hash=text.hash();
+    if(cachedLabelValid && cachedLabelFont==font && cachedLabelLength==text.length() && cachedLabelHash==hash){
+      return cachedLabelWidth;
+      }
+    }
   beg=0;
   do{
     end=beg;
@@ -184,6 +211,14 @@ FXint FXLabel::labelWidth(const FXString& text) const {
     beg=end+1;
     }
   while(end<text.length());
+  if(cache){
+    cachedLabelHeight=labelHeight(text);
+    cachedLabelWidth=tw;
+    cachedLabelFont=font;
+    cachedLabelHash=hash;
+    cachedLabelLength=text.length();
+    cachedLabelValid=true;
+    }
   return tw;
   }
 
@@ -243,20 +278,31 @@ void FXLabel::just_y(FXint& ty,FXint& iy,FXint th,FXint ih){
 // Draw multi-line label, with underline for hotkey
 void FXLabel::drawLabel(FXDCWindow& dc,const FXString& text,FXint hot,FXint tx,FXint ty,FXint tw,FXint){
   FXint beg,end;
-  FXint xx,yy;
-  yy=ty+font->getFontAscent();
+  FXint xx,yy,clipb,clipe;
+  FXint fontascent=font->getFontAscent();
+  FXint fontheight=font->getFontHeight();
+  yy=ty+fontascent;
   beg=0;
+
+  // Lines that fall outside the clip are not measured or drawn; a window can
+  // be painted for a strip of a few pixels only (Wayland, where the client
+  // paints the exposed strip of a window that another window uncovered), and a
+  // label of a page full of text should not cost its full width for that
+  clipb=dc.getClipY();
+  clipe=clipb+dc.getClipHeight();
   do{
     end=beg;
     while(end<text.length() && text[end]!='\n') end++;
-    if(options&JUSTIFY_LEFT) xx=tx;
-    else if(options&JUSTIFY_RIGHT) xx=tx+tw-font->getTextWidth(&text[beg],end-beg);
-    else xx=tx+(tw-font->getTextWidth(&text[beg],end-beg))/2;
-    dc.drawText(xx,yy,&text[beg],end-beg);
-    if(beg<=hot && hot<end){
-      dc.fillRectangle(xx+font->getTextWidth(&text[beg],hot-beg),yy+1,font->getTextWidth(&text[hot],wclen(&text[hot])),1);
+    if(clipb<yy-fontascent+fontheight && yy-fontascent<clipe){
+      if(options&JUSTIFY_LEFT) xx=tx;
+      else if(options&JUSTIFY_RIGHT) xx=tx+tw-font->getTextWidth(&text[beg],end-beg);
+      else xx=tx+(tw-font->getTextWidth(&text[beg],end-beg))/2;
+      dc.drawText(xx,yy,&text[beg],end-beg);
+      if(beg<=hot && hot<end){
+        dc.fillRectangle(xx+font->getTextWidth(&text[beg],hot-beg),yy+1,font->getTextWidth(&text[hot],wclen(&text[hot])),1);
+        }
       }
-    yy+=font->getFontHeight();
+    yy+=fontheight;
     beg=end+1;
     }
   while(end<text.length());
@@ -508,6 +554,7 @@ void FXLabel::setTextColor(FXColor clr){
 // Re-apply theme colors unless the application overrode them
 void FXLabel::applyTheme(FXTheme* theme){
   FXFrame::applyTheme(theme);
+  cachedLabelValid=false;              // A font may have been rescaled in place
   if(!textColorOverride){
     textColor=theme->color(ROLE_TEXT);
     }
@@ -578,6 +625,7 @@ void FXLabel::save(FXStream& store) const {
 // Load object from stream
 void FXLabel::load(FXStream& store){
   FXFrame::load(store);
+  cachedLabelValid=false;
   store >> label;
   store >> icon;
   store >> font;

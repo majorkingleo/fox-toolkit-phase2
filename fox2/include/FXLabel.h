@@ -75,6 +75,12 @@ protected:
   FXbool       fontOverride=false;       // Font set explicitly
   FXHotKey     hotkey;          // Hotkey
   FXint        hotoff;          // Offset in string
+  mutable FXint cachedLabelWidth;      // Width of the label, when cached
+  mutable FXint cachedLabelHeight;     // Height of the label, when cached
+  mutable FXuint cachedLabelHash;      // Hash of the text, when cached
+  mutable FXint cachedLabelLength;     // Length of the text, when cached
+  mutable FXFont *cachedLabelFont;     // Font the label was measured with
+  mutable FXbool cachedLabelValid;     // The cache holds the label's extent
 protected:
   FXLabel();
   FXint labelHeight(const FXString& text) const;

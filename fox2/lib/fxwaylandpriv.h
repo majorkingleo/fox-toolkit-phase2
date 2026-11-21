@@ -345,11 +345,9 @@ void fxwaylandPaintFlushed(FXWaylandApp* app);
 /// Remember that a paint covered that area of a window, in shell coordinates
 void fxwaylandCovered(FXWaylandApp* app,FXID window,const FXRectangle& area);
 
-/// Areas painted over other windows, one per window, in shell coordinates
-FXWaylandPaint* fxwaylandCoveredList(FXWaylandApp* app,FXuint& count);
-
-/// Forget the areas, once they have been handed out for painting
-void fxwaylandCoveredDone(FXWaylandApp* app);
+/// Take the first area that a paint left over another window, in shell
+/// coordinates; false when there is none
+FXbool fxwaylandCoveredPop(FXWaylandApp* app,FXWaylandPaint& area);
 
 /// Remember that a window moved away from that rectangle, in shell coordinates
 void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was);
@@ -424,6 +422,9 @@ FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);
 /// Make and drop a shared memory buffer that is not part of a surface pool
 FXWaylandBuffer* fxwaylandCreateImageBuffer(FXWaylandApp* app,FXint w,FXint h);
 void fxwaylandDestroyImageBuffer(FXWaylandBuffer* buf);
+
+/// True while a paint of a window is still queued for the event loop
+FXbool fxwaylandPaintPending(FXWaylandApp* app);
 
 /// Attach the buffer, damage the rectangle and commit the surface
 void fxwaylandCommitBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf,FXint x,FXint y,FXint w,FXint h);

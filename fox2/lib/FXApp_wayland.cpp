@@ -487,7 +487,7 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
   FXRectangle here,there;
   FXWindow* window;
   FXWindow* parent;
-  FXuint numcovered,nummoved,i;
+  FXuint nummoved,i;
   FXint n;
   FXTime now,interval;
   FXint nfds;
@@ -535,7 +535,13 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
   // pointer) keeps the queue non-empty and the poll busy: the idle branch is
   // never reached, and the window stops following the pointer until the stream
   // ends.  One rectangle per call keeps the event loop responsive
-  if(initialized && app && app->display && !app->lost){
+  //
+  // A wave of paints is dispatched before anything new is handed out.  The
+  // paints of a wave are posted in stacking order, parents before children, and
+  // a paint posted that way hands nothing on; a covered area or a repaint that
+  // slipped in between would append a window above the one still queued and
+  // leave the lower window's pixels on top of it
+  if(initialized && app && app->display && !app->lost && app->eventcount==app->eventhead){
     if(app->nummoved){
       moved=fxwaylandMovedList(app,nummoved);
       for(i=0; i<nummoved; i++){
@@ -560,12 +566,13 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
       fxwaylandMovedDone(app);
       return true;
       }
+    // One covered area per pass: its wave has to reach the store before the
+    // next area is handed out.  Two areas posted together would put a window of
+    // the second area behind a window the first area paints over it
     if(app->numcovered){
-      FXWaylandPaint* covered=fxwaylandCoveredList(app,numcovered);
-      for(i=0; i<numcovered; i++){
-        exposeAbove(app,covered[i].window,covered[i].rect);
-        }
-      fxwaylandCoveredDone(app);
+      FXWaylandPaint covered;
+      fxwaylandCoveredPop(app,covered);
+      exposeAbove(app,covered.window,covered.rect);
       return true;
       }
     if(repaints){
@@ -583,6 +590,9 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
       repaintrecs=r;
       return true;
       }
+
+    // No paint is queued any more, so the pixels of the whole frame are in the
+    // store and the frame can go out as one commit
     fxwaylandFlushFrames(app);
     }
 

@@ -581,6 +581,32 @@ Done in this phase so far:
   `tests/button` left the old button and the old radio buttons in the frame
   (`screenshots/tests/fox2/wayland/button-iconpos-stale.png`), the same frame is
   clean with the exposure (`button-iconpos.png`).
+- A window that only changes place repaints itself at the new place, and the
+  strips it left in the parent are painted from the parent down.  Copying the
+  pixel block of the window inside the shared store, as the X11 server moves a
+  native child window, was tried and dropped: the block carries the frame and
+  the scroll viewport of the window, and a child of the window that paints
+  between two moves leaves the edges of its old place behind, which only a full
+  repaint of the window removes.  The repaint of the page of text inside an MDI
+  sub-window is what the label extent cache and the clip aware text drawing
+  above keep cheap.
+  `scripts/gate-wayland-mdi-drag.sh` drags the sub-window to one place in many
+  steps and in two, and requires the same final frame and a frame for every
+  step.
+- A frame is committed only when the whole wave of paints reached the store:
+  the paints are dispatched in the order they were posted, and a covered area
+  or a new repaint is handed out only when the queue is empty.  Before that, a
+  covered area could be appended behind a paint of the same wave, so a window
+  above was painted before a window below it and the lower window painted its
+  pixels over it again; and a commit in the middle of a wave showed the parent
+  without the window that was being dragged.
+- The covered areas of one window are kept as separate rectangles instead of
+  their bounding box: the parts a window painted can be two thin strips in an
+  L, and the box handed the whole window to the windows above it, which is a
+  repaint of the window and its tree instead of two strips.
+- A label keeps the extent it measured, keyed by font and text hash, and
+  `drawLabel()` skips the lines outside the clip; a window repainted for a
+  narrow strip no longer measures a page of text on every frame.
 
 - `xdg_surface.configure`/`ack_configure` handling, resize (`FXTopWindow` size
   from the compositor, `layout()`, new buffer), maximize, fullscreen, minimize,
@@ -1136,6 +1162,12 @@ platform module the ported applications were waiting for (`glviewer`).
   compares the two dumped frames byte for byte. A correct repaint makes them
   identical; without the parent exposure of phase 5 the three click frame keeps
   9 pixels of the states in between and the gate fails.
+- **MDI drag gate:** `scripts/gate-wayland-mdi-drag.sh` runs `tests/mditest`
+  against headless sway and drags a sub-window's title bar to the same place in
+  twenty-four steps and in two. The frame the drag ends on must be the same
+  bytes in both runs, so a covered paint that lands in the wrong order, a stale
+  strip, or a frame committed before its paints are done all fail it. The trace
+  must also show at least one frame per step and no more than a few extra.
 - **Focus:** the core has no other way to learn that the compositor handed the
   keyboard to a shell, so the shell focuses its first focusable widget
   (`SEL_FOCUS_NEXT`) when the keyboard enters. A keyboard leave does not raise

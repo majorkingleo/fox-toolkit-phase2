@@ -140,10 +140,20 @@ void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect)
   }
 
 
-// The paint of a window was dispatched; it stays on the list until the frame
-// goes out, so the same window is not painted twice for one frame
+// The paint of a window was dispatched.  Its entry leaves the list: a paint
+// that comes later in the same frame may cover the window again (a window
+// above it moves over it), and the covered pass has to be able to hand that
+// area back to it rather than skip it as "already painted"
 void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window){
-  if(app) app->paintgeneration++;
+  FXuint i;
+  if(!app) return;
+  for(i=0; i<app->numpaints; i++){
+    if(app->paints[i].window==window){
+      app->paints[i]=app->paints[--app->numpaints];
+      break;
+      }
+    }
+  app->paintgeneration++;
   }
 
 
@@ -160,9 +170,13 @@ void fxwaylandCovered(FXWaylandApp* app,FXID window,const FXRectangle& area){
   FXWaylandPaint* grown;
   FXuint i,cap;
   if(!app) return;
+
+  // The same area again needs no second entry, but two areas of one window are
+  // kept apart: the parts a window painted can be two thin strips in an L, and
+  // their bounding box would hand the whole window back to the windows above
+  // it, which is a repaint of the window and its tree instead of two strips
   for(i=0; i<app->numcovered; i++){
-    if(app->covered[i].window==window){
-      app->covered[i].rect+=area;
+    if(app->covered[i].window==window && app->covered[i].rect==area){
       return;
       }
     }
@@ -177,16 +191,13 @@ void fxwaylandCovered(FXWaylandApp* app,FXID window,const FXRectangle& area){
   }
 
 
-// The areas that a paint covered, one for each window that painted
-FXWaylandPaint* fxwaylandCoveredList(FXWaylandApp* app,FXuint& count){
-  count=app?app->numcovered:0;
-  return app?app->covered:nullptr;
-  }
-
-
-// The areas have been handed out for painting
-void fxwaylandCoveredDone(FXWaylandApp* app){
-  if(app) app->numcovered=0;
+// Take one area that a paint covered; the areas are handed out one at a time
+// so the wave of each has reached the store before the next is posted
+FXbool fxwaylandCoveredPop(FXWaylandApp* app,FXWaylandPaint& area){
+  if(!app || !app->numcovered) return false;
+  area=app->covered[0];
+  app->covered[0]=app->covered[--app->numcovered];
+  return true;
   }
 
 
@@ -934,6 +945,7 @@ void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
   const FXchar* alpha=getenv("FOX_WAYLAND_DUMP_ALPHA");
   FXchar bar[32];
   FXchar path[512];
+  FXchar part[520];
   FXbool withalpha;
   FILE* fp;
   FXint x,y;
@@ -944,7 +956,8 @@ void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
   else bar[0]='\0';
   withalpha=(alpha && alpha[0])!=0;
   snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s.%s",dir,(unsigned int)surf->window,buf->width,buf->height,bar,withalpha?"pam":"ppm");
-  if((fp=fopen(path,"wb"))==nullptr) return;
+  snprintf(part,sizeof(part),"%s.part",path);
+  if((fp=fopen(part,"wb"))==nullptr) return;
   if(withalpha) fprintf(fp,"P7\n%d %d\n255\n4\nRGB_ALPHA\n",buf->width,buf->height);
   else fprintf(fp,"P6\n%d %d\n255\n",buf->width,buf->height);
   for(y=0; y<buf->height; y++){
@@ -966,6 +979,7 @@ void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
       }
     }
   fclose(fp);
+  rename(part,path);
   }
 
 
@@ -1133,7 +1147,7 @@ void fxwaylandRepaintAll(FXWaylandApp* app){
 
 
 // A queued paint still has to reach the shared store before the frame goes out
-static FXbool exposePending(FXWaylandApp* app){
+FXbool fxwaylandPaintPending(FXWaylandApp* app){
   FXuint i;
   for(i=app->eventhead; i<app->eventcount; i++){
     if(app->events[i].code==FXXWL_EXPOSE) return true;
@@ -1153,7 +1167,7 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
   // frames that show the old content at the new geometry
   if(app->updatebatch>0) return;
   if(app->deferflush){
-    if(exposePending(app)) return;
+    if(fxwaylandPaintPending(app)) return;
 
     if(app->flushgeneration!=app->paintgeneration){
       app->flushgeneration=app->paintgeneration;

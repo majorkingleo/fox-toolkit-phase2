@@ -1179,10 +1179,18 @@ void FXRaster::drawText(FXint x,FXint y,const FXchar* text,FXint len){
   while(p<len){
     glyph=font->getGlyph(fxutf8decode(text,len,p));
     if(!glyph) break;
+
+    // A glyph that falls outside the clip entirely is skipped as a whole; a
+    // paint of a thin strip through a page of text is otherwise pixel-by-pixel
+    // clipping work for every glyph of every line
     if(glyph->coverage){
-      for(yy=0; yy<glyph->height; yy++){
-        for(xx=0; xx<glyph->width; xx++){
-          blend(x+glyph->bearing+xx,y-glyph->top+yy,glyph->coverage[yy*glyph->width+xx]);
+      FXint gx=x+glyph->bearing;
+      FXint gy=y-glyph->top;
+      if(gx<clip.x+clip.w && clip.x<gx+glyph->width && gy<clip.y+clip.h && clip.y<gy+glyph->height){
+        for(yy=0; yy<glyph->height; yy++){
+          for(xx=0; xx<glyph->width; xx++){
+            blend(gx+xx,gy+yy,glyph->coverage[yy*glyph->width+xx]);
+            }
           }
         }
       }
