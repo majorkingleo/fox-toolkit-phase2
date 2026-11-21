@@ -343,6 +343,8 @@ void FXApp::freePlatformMembers(){
     freeElms(app->events);
     freeElms(app->paints);
     freeElms(app->covered);
+    freeElms(app->moved);
+    freeElms(app->redrawlast);
     freeElms(app->typenames);
     delete app;
     display=nullptr;
@@ -488,6 +490,7 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
   FXWindow* window;
   FXWindow* parent;
   FXuint nummoved,i;
+  FXID lastid;
   FXint n;
   FXTime now,interval;
   FXint nfds;
@@ -561,7 +564,10 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
             fxwaylandExposeRect(app,parent->id(),FXRectangle(pieces[n].x-there.x,pieces[n].y-there.y,pieces[n].w,pieces[n].h));
             }
           }
-        fxwaylandExposeRect(app,moved[i].window,FXRectangle(0,0,window->getWidth(),window->getHeight()));
+        // The window itself paints when the rest of the frame is done, so
+        // that the strips its parent and the windows below painted in this
+        // frame can not end up on top of it
+        fxwaylandRedrawLast(app,moved[i].window);
         }
       fxwaylandMovedDone(app);
       return true;
@@ -588,6 +594,13 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
       repaints=r->next;
       r->next=repaintrecs;
       repaintrecs=r;
+      return true;
+      }
+    if((lastid=fxwaylandRedrawLastPop(app))!=0){
+      window=findWindowWithId(lastid);
+      if(window){
+        fxwaylandExposeRect(app,lastid,FXRectangle(0,0,window->getWidth(),window->getHeight()));
+        }
       return true;
       }
 

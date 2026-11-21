@@ -582,14 +582,18 @@ Done in this phase so far:
   (`screenshots/tests/fox2/wayland/button-iconpos-stale.png`), the same frame is
   clean with the exposure (`button-iconpos.png`).
 - A window that only changes place repaints itself at the new place, and the
-  strips it left in the parent are painted from the parent down.  Copying the
-  pixel block of the window inside the shared store, as the X11 server moves a
-  native child window, was tried and dropped: the block carries the frame and
-  the scroll viewport of the window, and a child of the window that paints
-  between two moves leaves the edges of its old place behind, which only a full
-  repaint of the window removes.  The repaint of the page of text inside an MDI
-  sub-window is what the label extent cache and the clip aware text drawing
-  above keep cheap.
+  strips it left in the parent are painted from the parent down.  The window
+  paints **last** in the frame, after the covered passes for the parent strips
+  and for the windows below it: the drag of an MDI sub-window otherwise ended a
+  frame with the other sub-window's frame on top of its own title bar, because
+  the cover pass for the strip painted that window after the moved one.
+  Copying the pixel block of the window inside the shared store, as the X11
+  server moves a native child window, was tried and dropped: the block carries
+  the frame and the scroll viewport of the window, and a child of the window
+  that paints between two moves leaves the edges of its old place behind, which
+  only a full repaint of the window removes.  The repaint of the page of text
+  inside an MDI sub-window is what the label extent cache and the clip aware
+  text drawing above keep cheap.
   `scripts/gate-wayland-mdi-drag.sh` drags the sub-window to one place in many
   steps and in two, and requires the same final frame and a frame for every
   step.

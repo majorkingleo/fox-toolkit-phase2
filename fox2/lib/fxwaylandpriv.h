@@ -299,6 +299,9 @@ struct FXWaylandApp {
   FXWaylandPaint*   moved;              // Windows that moved, with the rect they left
   FXuint            nummoved;           // Number of moves
   FXuint            allocedmoved;       // Allocated entries
+  FXID*             redrawlast;         // Windows to paint last in this frame
+  FXuint            numlast;            // Number of them
+  FXuint            allocedlast;        // Allocated entries
   FXWinMap          childmap;           // Virtual child windows
   FXWaylandSurface* surfaces;           // Surfaces of the shells
   };
@@ -357,6 +360,12 @@ FXWaylandPaint* fxwaylandMovedList(FXWaylandApp* app,FXuint& count);
 
 /// Forget the moves, once they have been handed out for painting
 void fxwaylandMovedDone(FXWaylandApp* app);
+
+/// Remember a window that has to paint itself last in the frame
+void fxwaylandRedrawLast(FXWaylandApp* app,FXID window);
+
+/// Take a window that has to paint itself last, or 0
+FXID fxwaylandRedrawLastPop(FXWaylandApp* app);
 
 /// Find the surface of a shell
 FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window);

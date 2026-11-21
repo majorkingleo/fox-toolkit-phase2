@@ -238,6 +238,33 @@ void fxwaylandMovedDone(FXWaylandApp* app){
   }
 
 
+// Remember a window that has to paint itself once more when the rest of the
+// frame is done.  A window that moves is painted last, so that whatever a
+// window below it painted over it during the frame is gone; the drag of an MDI
+// sub-window showed the frame of the window below on top of it without this
+void fxwaylandRedrawLast(FXWaylandApp* app,FXID window){
+  FXID* grown;
+  FXuint i,cap;
+  if(!app) return;
+  for(i=0; i<app->numlast; i++){
+    if(app->redrawlast[i]==window) return;
+    }
+  if(app->numlast>=app->allocedlast){
+    cap=app->allocedlast?app->allocedlast*2:16;
+    if(!resizeElms(app->redrawlast,cap)) return;
+    app->allocedlast=cap;
+    }
+  app->redrawlast[app->numlast++]=window;
+  }
+
+
+// The window to paint last, or 0 when there is none
+FXID fxwaylandRedrawLastPop(FXWaylandApp* app){
+  if(!app || !app->numlast) return 0;
+  return app->redrawlast[--app->numlast];
+  }
+
+
 // Find the surface of a shell
 FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window){
   FXWaylandSurface* s;
