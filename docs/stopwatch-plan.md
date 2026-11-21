@@ -140,7 +140,7 @@ FXbool  running;       // not persisted: a restart always shows it stopped
 FXTime  accum;         // ns collected before the current run     (persisted)
 FXTime  started;       // FXThread::time() at the last start
 // timer
-FXTime  duration;      // ns, set with the three spinners          (persisted)
+FXTime  duration;      // ns, set with the HH:MM:SS field           (persisted)
 FXTime  remaining;     // ns, valid while the timer is running or paused
 FXTime  deadline;      // FXThread::time()+remaining at the start
 FXbool  timerRunning, timerDone;   // both independent of 'mode' (R10)
@@ -167,7 +167,7 @@ FXMainWindow(DECOR_NONE, no padding, no spacing)
     FXSwitcher "controls" (LAYOUT_FILL_X, only visible for stopwatch/timer)
       page 0 (clock)      : empty FXFrame of height 0
       page 1 (stopwatch)  : [Start/Stop] [Reset]
-      page 2 (timer)      : [spin h][spin m][spin s] [Start/Pause] [Reset]
+      page 2 (timer)      : [HH:MM:SS field] [Start/Pause] [Reset]
     FXHorizontalFrame "bottom" (LAYOUT_FILL_X|PACK_UNIFORM_WIDTH)
       [Clock] [Stopwatch] [Timer]  [Digital/Round style, clock only]
 ```
@@ -256,8 +256,10 @@ FXMainWindow(DECOR_NONE, no padding, no spacing)
 
 ### 5.6 Timer
 
-- Controls: three `FXSpinner`s (hours 0..99, minutes 0..59, seconds 0..59)
-  editing `duration`, **Start/Pause**, **Reset**.
+- Controls: an `FXTextField` for `duration` as `HH:MM:SS` (`MM:SS` and `SS`
+  are accepted too, overflowing fields carry upwards, the value is clamped to
+  99:59:59), **Start/Pause**, **Reset**. Enter or leaving the field takes the
+  typed value over; invalid text restores the old value and beeps.
 - Start: if `remaining==0` then `remaining=duration`; `deadline=now+remaining`.
 - Tick: `remaining=deadline-now`; at `<=0` set `timerDone=true`, `remaining=0`,
   `timerRunning=false`, call `getApp()->beep()`, and blink at 500 ms until
@@ -266,12 +268,12 @@ FXMainWindow(DECOR_NONE, no padding, no spacing)
 - While the timer runs and another mode is shown the **Timer** button label
   shows the remaining time or a running mark (`Timer *`); after finishing it
   blinks `Timer!`.
-- Switching the mode does not pause or reset the timer; the spinners keep their
-  values.
+- Switching the mode does not pause or reset the timer; the field keeps its
+  value.
 - Pause: `remaining=deadline-now`, remove the tick.
 - Reset: `remaining=duration`, `timerDone=false`.
-- The spinners are disabled while the timer runs (`SEL_UPDATE` +
-  `ID_DISABLE`/`ID_ENABLE`).
+- The field is not accepted while the timer runs or has finished; the shown
+  value is restored instead (the finished timer keeps its value until Reset).
 - The timer does not write to the history; the history is a stopwatch feature
   (R7/R8).
 
@@ -292,7 +294,7 @@ FOX widgets send `SEL_MIDDLEBUTTONPRESS`, `SEL_MIDDLEBUTTONRELEASE`,
 `FXWindow::onMiddleBtnPress()` and friends, so for each widget that covers the
 window (`FX7Segment`, `ClockView`, the frames, the label of the analog
 readout) call `setTarget(this)` with the selector `0` and check that
-`StopWatch` receives the events. `FXButton`, `FXSpinner` and the table do not
+`StopWatch` receives the events. `FXButton` and the table do not
 need to forward them (middle and right click over a button may do nothing).
 Test which widgets deliver the events (`-tracelevel`, or a temporary `fxmessage`)
 and record the result in section 10. If a stock widget swallows the event,
@@ -436,7 +438,7 @@ Each step ends with a successful MSYS2 build (section 8) before the next.
 7. **History**: `History` class, saving on stop, loading at start.
 8. **Right click history**: add the `FXTable` and history commands to the same
    context menu as **Show title bar** (5.8), Clear history, Quit.
-9. **Timer**: spinners, countdown, finish alert, persistence of `duration`
+9. **Timer**: HH:MM:SS field, countdown, finish alert, persistence of `duration`
    and `remaining`. Then re-test R10: start the stopwatch and the timer, switch
    modes in every order, neither may stop, reset or lose time.
 10. **Polish**: tooltips, disabled states, keyboard accelerators, screenshots
@@ -627,7 +629,7 @@ on the heap and stays free of platform conditionals.
   `[STOPWATCH]`; `formatElapsed()` prints `MM:SS.hh` and `HH:MM:SS.hh`.
 - The stopwatch appends to the history on every stop and saves `elapsed`
   immediately, so a crash does not lose the value.
-- The timer counts down from three spinners, beeps and blinks at the end, and
+- The timer counts down from the value in the HH:MM:SS field, beeps and blinks at the end, and
   keeps the model independent of the shown mode (R10).
 - One tick timer (`ID_TICK`) is re-armed by `rearm()` with the shortest delay
   anything needs: 50 ms while a visible stopwatch or timer runs, 500 ms while
@@ -696,8 +698,8 @@ Two findings on the way:
   are wired with `setTarget(this)` and selector `ID_RIGHT_CLICK`; the message
   map accepts `SEL_MIDDLEBUTTONPRESS`, `SEL_MIDDLEBUTTONRELEASE`, `SEL_MOTION`
   and `SEL_RIGHTBUTTONPRESS` both with id 0 and with `ID_RIGHT_CLICK`.
-  `FXButton` and `FXSpinner` are not wired: a middle or right click over a
-  control does nothing.
+  `FXButton` is not wired: a middle or right click over a control does
+  nothing.
 - **Whether the native title-bar fallback was needed:** not for the drag.  The
   middle-button drag works on Wayland through `startDrag()`; over the face
   widgets the forwarded events reach `StopWatch`.  The **Show title bar** item

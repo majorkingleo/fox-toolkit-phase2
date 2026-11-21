@@ -27,9 +27,7 @@ private:
   FXLabel* readout;            // value under the analog face
   FXButton* startStopButton;
   FXButton* stopwatchResetButton;
-  FXSpinner* spinHours;
-  FXSpinner* spinMinutes;
-  FXSpinner* spinSeconds;
+  FXTextField* timerField;
   FXButton* timerStartButton;
   FXButton* timerResetButton;
   FXIcon* modeIcons[3];
@@ -80,8 +78,8 @@ private:
   void rearm();
   void startStopwatch();
   void stopStopwatch();
-  void readSpinners();
-  void writeSpinners();
+  void writeTimerField();
+  FXbool commitTimerField();
   void loadRecentTimers();
   void saveRecentTimers();
   void rememberTimer(FXTime value);
@@ -99,7 +97,7 @@ public:
     ID_STOPWATCH_RESET,
     ID_TIMER_START,
     ID_TIMER_RESET,
-    ID_TIMER_SPIN,
+    ID_TIMER_FIELD,
     ID_CLOCK_WIDGET,
     ID_CLEAR_HISTORY,
     ID_SHOW_TITLEBAR,
@@ -131,7 +129,7 @@ public:
   long onUpdStartStop(FXObject*,FXSelector,void*);
   long onStopwatchReset(FXObject*,FXSelector,void*);
   long onUpdStopwatchReset(FXObject*,FXSelector,void*);
-  long onTimerSpin(FXObject*,FXSelector,void*);
+  long onTimerField(FXObject*,FXSelector,void*);
   long onTimerStart(FXObject*,FXSelector,void*);
   long onUpdTimerStart(FXObject*,FXSelector,void*);
   long onTimerReset(FXObject*,FXSelector,void*);

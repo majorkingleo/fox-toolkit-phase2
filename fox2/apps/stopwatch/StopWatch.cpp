@@ -22,7 +22,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_STARTSTOP,StopWatch::onUpdStartStop),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_STOPWATCH_RESET,StopWatch::onStopwatchReset),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_STOPWATCH_RESET,StopWatch::onUpdStopwatchReset),
-  FXMAPFUNC(SEL_COMMAND,StopWatch::ID_TIMER_SPIN,StopWatch::onTimerSpin),
+  FXMAPFUNC(SEL_COMMAND,StopWatch::ID_TIMER_FIELD,StopWatch::onTimerField),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_TIMER_START,StopWatch::onTimerStart),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_TIMER_START,StopWatch::onUpdTimerStart),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_TIMER_RESET,StopWatch::onTimerReset),
@@ -49,7 +49,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_STYLE,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_STARTSTOP,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_STOPWATCH_RESET,StopWatch::onRightPress),
-  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_SPIN,StopWatch::onRightPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_FIELD,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_START,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_TIMER_RESET,StopWatch::onRightPress),
   FXMAPFUNC(SEL_RIGHTBUTTONPRESS,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightPress),
@@ -61,7 +61,7 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_STYLE,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_STARTSTOP,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_STOPWATCH_RESET,StopWatch::onRightRelease),
-  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_SPIN,StopWatch::onRightRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_FIELD,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_START,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_TIMER_RESET,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_RIGHT_CLICK,StopWatch::onRightRelease),
@@ -91,6 +91,41 @@ static FXString formatDuration(FXTime ns){
   FXTime secs=ns/1000000000;
   snprintf(text,sizeof(text),"%02d:%02d:%02d",(FXint)(secs/3600),(FXint)((secs/60)%60),(FXint)(secs%60));
   return FXString(text);
+  }
+
+
+// Parse a typed duration. Accepted forms: "HH:MM:SS", "MM:SS" and "SS".
+// Later fields overflow upwards, so "0:90" becomes 1 minute 30 seconds.
+static FXbool parseDuration(const FXString& input,FXTime& ns){
+  FXString text(input);
+  text.trim();
+  if(text.empty()) return false;
+  FXint parts[3]={0,0,0};
+  FXint count=0;
+  FXint start=0;
+  for(;;){
+    FXint colon=text.find(':',start);
+    FXString token=(colon<0)?text.mid(start,text.length()-start):text.mid(start,colon-start);
+    token.trim();
+    if(token.empty() || token.length()>9) return false;
+    for(FXint i=0;i<token.length();i++){
+      if(token[i]<'0' || token[i]>'9') return false;
+      }
+    if(count>=3) return false;
+    parts[count++]=token.toInt();
+    if(colon<0) break;
+    start=colon+1;
+    }
+  // The rightmost field is seconds; carry the rest upwards if they overflow
+  FXTime secs=0;
+  FXTime unit=1;
+  for(FXint i=count-1;i>=0;i--){
+    secs+=((FXTime)parts[i])*unit;
+    unit*=60;
+    }
+  secs=FXMIN(secs,(FXTime)(99*3600+59*60+59));
+  ns=secs*1000000000;
+  return true;
   }
 
 
@@ -148,9 +183,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   readout=nullptr;
   startStopButton=nullptr;
   stopwatchResetButton=nullptr;
-  spinHours=nullptr;
-  spinMinutes=nullptr;
-  spinSeconds=nullptr;
+  timerField=nullptr;
   timerStartButton=nullptr;
   timerResetButton=nullptr;
   styleButton=nullptr;
@@ -202,14 +235,14 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   timerPage=new FXHorizontalFrame(controlSwitcher,LAYOUT_FILL_X|LAYOUT_FILL_Y|PACK_UNIFORM_WIDTH,0,0,0,0,2,2,2,2);
   timerPage->setTarget(this);
   timerPage->setSelector(ID_RIGHT_CLICK);
-  spinHours=new FXSpinner(timerPage,2,this,ID_TIMER_SPIN,SPIN_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  spinHours->setRange(0,99);
-  spinMinutes=new FXSpinner(timerPage,2,this,ID_TIMER_SPIN,SPIN_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  spinMinutes->setRange(0,59);
-  spinSeconds=new FXSpinner(timerPage,2,this,ID_TIMER_SPIN,SPIN_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  spinSeconds->setRange(0,59);
-  timerStartButton=new FXButton(timerPage,"Start",nullptr,this,ID_TIMER_START,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  timerResetButton=new FXButton(timerPage,"Reset",nullptr,this,ID_TIMER_RESET,BUTTON_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  // The duration is typed in one piece as HH:MM:SS
+  timerField=new FXTextField(timerPage,8,this,ID_TIMER_FIELD,TEXTFIELD_NORMAL|LAYOUT_FILL_X|LAYOUT_FILL_Y|JUSTIFY_CENTER_X);
+  timerField->setText("00:00:00");
+  timerField->setPadLeft(1);
+  timerField->setPadRight(1);
+  timerField->setTipText("Timer duration as HH:MM:SS (also MM:SS or SS)");
+  timerStartButton=new FXButton(timerPage,"Start",nullptr,this,ID_TIMER_START,BUTTON_NORMAL|LAYOUT_FILL_Y);
+  timerResetButton=new FXButton(timerPage,"Reset",nullptr,this,ID_TIMER_RESET,BUTTON_NORMAL|LAYOUT_FILL_Y);
 
   // Bottom: mode switch and the style toggle
   bottomFrame=new FXHorizontalFrame(main,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT|PACK_UNIFORM_WIDTH,0,0,0,scaledPixels(getApp(),40),4,4,4,4);
@@ -339,7 +372,7 @@ void StopWatch::loadSettings(){
   faceSwitcher->setCurrent(style);
   controlSwitcher->setCurrent(mode);
   clockView->setTime(0,0,0,0,ClockView::MODE_CLOCK);
-  writeSpinners();
+  writeTimerField();
   if(titlebarCheck) titlebarCheck->setCheck(titlebar);
   setDecorations(titlebar?(DECOR_ALL|DECOR_RESIZE):DECOR_NONE);
   FXint savedWidth=reg.readIntEntry("SETTINGS","w",260);
@@ -392,7 +425,8 @@ void StopWatch::saveSettings(){
   reg.writeLongEntry("STOPWATCH","elapsed",elapsed());
   history.save(reg);
   saveRecentTimers();
-  readSpinners();
+  // Save a duration that was typed but not yet confirmed with Enter
+  if(!timerRunning) commitTimerField();
   reg.writeLongEntry("TIMER","duration",duration);
   reg.writeLongEntry("TIMER","remaining",timerRunning?(deadline-FXThread::time()):remaining);
   reg.write();
@@ -446,22 +480,9 @@ void StopWatch::stopStopwatch(){
   }
 
 
-void StopWatch::readSpinners(){
-  if(spinHours && spinMinutes && spinSeconds){
-    duration=(((FXTime)spinHours->getValue())*3600+
-              ((FXTime)spinMinutes->getValue())*60+
-              ((FXTime)spinSeconds->getValue()))*1000000000;
-    }
-  }
-
-
-void StopWatch::writeSpinners(){
-  if(spinHours && spinMinutes && spinSeconds){
-    FXTime total=duration/1000000000;
-    spinHours->setValue((FXint)(total/3600));
-    spinMinutes->setValue((FXint)((total/60)%60));
-    spinSeconds->setValue((FXint)(total%60));
-    }
+// Show the model value in the text field
+void StopWatch::writeTimerField(){
+  if(timerField) timerField->setText(formatDuration(duration));
   }
 
 
@@ -640,7 +661,11 @@ long StopWatch::onRightRelease(FXObject*,FXSelector,void*){
 
 long StopWatch::onContextMenuMonitor(FXObject*,FXSelector,void*){
   if(contextMenu && contextMenu->shown()){
-    if(cursorInside(contextMenu)){
+    // The Recent submenu is a pane of its own; a pointer grab while it is
+    // open would take the click away from its commands
+    FXbool inside=cursorInside(contextMenu)||
+                  (recentMenu && recentMenu->shown() && cursorInside(recentMenu));
+    if(inside){
       if(grabbed()) ungrab();
       }
     else if(!grabbed()){
@@ -772,16 +797,41 @@ long StopWatch::onUpdStopwatchReset(FXObject* sender,FXSelector,void*){
   }
 
 
-long StopWatch::onTimerSpin(FXObject*,FXSelector,void*){
-  if(!timerRunning && !timerDone){
-    readSpinners();
-    remaining=duration;
+// Take the typed HH:MM:SS text over into the model
+FXbool StopWatch::commitTimerField(){
+  if(!timerField) return false;
+  FXTime value;
+  if(!parseDuration(timerField->getText(),value)){
+    writeTimerField();
+    return false;
+    }
+  duration=value;
+  remaining=duration;
+  writeTimerField();
+  return true;
+  }
+
+
+long StopWatch::onTimerField(FXObject*,FXSelector,void*){
+  if(timerRunning || timerDone){
+    // A running or finished timer keeps its value until Reset
+    writeTimerField();
+    return 1;
+    }
+  if(commitTimerField()){
+    updateDisplay();
+    rearm();
+    }
+  else{
+    getApp()->beep();
     }
   return 1;
   }
 
 
 long StopWatch::onTimerStart(FXObject*,FXSelector,void*){
+  // A value typed but not yet confirmed with Enter counts as well
+  if(!timerRunning) commitTimerField();
   if(timerRunning){
     remaining=deadline-FXThread::time();
     timerRunning=false;
@@ -815,7 +865,7 @@ long StopWatch::onRecentTimer(FXObject*,FXSelector sel,void*){
   blinkOn=false;
   mode=MODE_TIMER;
   controlSwitcher->setCurrent(2);
-  writeSpinners();
+  writeTimerField();
   rememberTimer(duration);
   updateDisplay();
   rearm();
@@ -833,8 +883,8 @@ long StopWatch::onTimerReset(FXObject*,FXSelector,void*){
   timerRunning=false;
   timerDone=false;
   blinkOn=false;
-  readSpinners();
   remaining=duration;
+  writeTimerField();
   updateDisplay();
   rearm();
   return 1;
