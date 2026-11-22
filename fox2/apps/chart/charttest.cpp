@@ -34,6 +34,7 @@ protected:
   FXVerticalFrame *staticseries;
   FXVerticalFrame *liveseries;
   FXVerticalFrame *livesection;
+  FXButton     *zoomreset;
   FXCheckButton *demochecks[16];
   FXCheckButton *livechecks[16];
   FXbool        demovis[16];
@@ -66,6 +67,7 @@ private:
 public:
   long onCmdChart(FXObject*,FXSelector,void*);
   long onChartZoom(FXObject*,FXSelector,void*);
+  long onCmdResetZoom(FXObject*,FXSelector,void*);
   long onCmdStatic(FXObject*,FXSelector,void*);
   long onCmdLive(FXObject*,FXSelector,void*);
   long onCmdRate(FXObject*,FXSelector,void*);
@@ -82,6 +84,7 @@ public:
     ID_WINDOW,
     ID_SCROLL,
     ID_LIVE_SAMPLE,
+    ID_RESETZOOM,
     ID_SERIES,
     ID_SERIES_LAST=ID_SERIES+15,
     ID_LAST
@@ -94,6 +97,7 @@ public:
 protected:
   void updateRadios();
   void updateScroll();
+  void updateZoomButton();
   void addSeriesRow(FXVerticalFrame* box,FXCurve* curve,FXint id,FXCheckButton*& check);
   void syncSeriesChecks();
   virtual ~ChartWindow();
@@ -114,6 +118,7 @@ FXDEFMAP(ChartWindow) ChartWindowMap[]={
   FXMAPFUNC(SEL_CHANGED,  ChartWindow::ID_SCROLL,    ChartWindow::onScroll),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_SCROLL,    ChartWindow::onScroll),
   FXMAPFUNCS(SEL_COMMAND, ChartWindow::ID_SERIES,    ChartWindow::ID_SERIES_LAST, ChartWindow::onSeries),
+  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_RESETZOOM,ChartWindow::onCmdResetZoom),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE_SAMPLE,ChartWindow::onLiveSample),
   };
 
@@ -170,6 +175,7 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   livecpu=new FXLabel(livesection,"CPU: 0.0 %",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   livememory=new FXLabel(livesection,"Memory: 0.0 MB",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   liveframe=new FXLabel(livesection,"Frame: 0.00 ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  zoomreset=new FXButton(livepanel,"Reset zoom",nullptr,this,ID_RESETZOOM,BUTTON_NORMAL|LAYOUT_BOTTOM|LAYOUT_FILL_X);
   liveseries->hide();
   livesection->hide();
 
@@ -331,6 +337,7 @@ void ChartWindow::create(){
   updateScroll();
   xscroll->hide();
   xscroll->disable();
+  updateZoomButton();
   }
 
 
@@ -355,7 +362,23 @@ long ChartWindow::onChartZoom(FXObject*,FXSelector,void*){
     windowfield->setText(FXString::value("%.3g",live->getWindow()));
     updateScroll();
     }
+  updateZoomButton();
   return 1;
+  }
+
+
+// Restore the ranges in effect before the first zoom
+long ChartWindow::onCmdResetZoom(FXObject*,FXSelector,void*){
+  plot->resetZoom();
+  updateZoomButton();
+  return 1;
+  }
+
+
+// Grey out the reset button while nothing is zoomed
+void ChartWindow::updateZoomButton(){
+  if(plot->isZoomed()) zoomreset->enable();
+  else zoomreset->disable();
   }
 
 
@@ -533,6 +556,7 @@ void ChartWindow::startLive(){
   xscroll->show();
   xscroll->enable();
   updateScroll();
+  updateZoomButton();
   syncSeriesChecks();
   updateRadios();
   }
@@ -564,6 +588,7 @@ void ChartWindow::stopLive(){
   xscroll->hide();
   xscroll->disable();
   updateScroll();
+  updateZoomButton();
   syncSeriesChecks();
   updateRadios();
   }

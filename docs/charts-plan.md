@@ -93,6 +93,8 @@ Target order: Wayland first, then X11 and Win32.
 - [x] Mouse wheel zooms both axes around the pointer and a rubber band drawn
       with the left button zooms into a rectangle; a double click returns to
       the ranges in effect before the first zoom
+- [x] A Reset zoom button at the bottom of the sidebar restores the pre-zoom
+      ranges and is greyed out while nothing is zoomed
 
 ## What the fox2 port already provides
 
@@ -589,6 +591,7 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
   `charttest-live-series-toggle.png`, `charttest-live-scrolled.png`,
   `charttest-zoom-wheel.png`, `charttest-zoom-band.png`,
   `charttest-zoom-rect.png`, `charttest-live-zoom.png`,
+  `charttest-reset-zoom.png`,
   `chartdemo-csv.png`, `chartdemo-xlsx.png`,
   `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and
