@@ -93,10 +93,10 @@ for i in $(seq 1 400); do
 [ -S "$RUN/wayland-kwin" ] || { echo "error: kwin did not create a socket" >&2; exit 2; }
 export WAYLAND_DISPLAY=wayland-kwin
 
-# Drag the first sub-window's title bar to a place $2 pixels to the right and
-# $3 down, in $1 steps; keep the frames, the last one and the log
+# Drag the first sub-window's title bar by $3,$4 pixels in $1 steps; keep the
+# frames, the last one and the log
 drag(){
-  local steps="$1" tag="$2"
+  local steps="$1" tag="$2" movex="${3:-192}" movey="${4:-96}"
   local dump="$RUN/dump-$tag" log="$RUN/$tag.log"
   mkdir -p -- "$dump"
   # A home of its own per run: mditest saves the places of its sub-windows in
@@ -135,7 +135,7 @@ drag(){
   # Title bar of the first sub-window: 10,10 in the client, the client starts
   # below the menu bar (28) and the bar is grabbed 10 pixels down
   local gx=$((ox+10+100)) gy=$((oy+28+10+10))
-  local tx=$((gx+192)) ty=$((gy+96))
+  local tx=$((gx+movex)) ty=$((gy+movey))
   local args=("move:$gx,$gy" sleep:300 down sleep:150)
   local i dx dy
   for i in $(seq 1 "$steps"); do
@@ -162,6 +162,76 @@ echo "==> dragging in $STEPS steps"
 drag "$STEPS" many
 echo "==> dragging in 2 steps"
 drag 2 few
+echo "==> dragging to the top left corner"
+drag 6 corner -320 -200
+
+# A sub-window dragged to the corner hangs out of the store to the left and
+# above.  A window whose origin is negative used to be handed a buffer that
+# started at the corner instead, which moved its drawing origin and dropped the
+# clip against the window above it, so its scrolled content grew over the whole
+# client.  Everything below and right of the three sub-windows is client
+# background, and it has to stay background in every frame of that drag
+echo "==> checking the corner drag"
+python3 - "$RUN/dump-corner" "$RUN/corner.log" <<'CORNER' || exit 1
+import glob
+import os
+import re
+import sys
+
+dump, logpath = sys.argv[1], sys.argv[2]
+lines = open(logpath, errors="replace").read().splitlines()
+if not any("moved window" in line for line in lines):
+    print("FAIL: the trace names no moving window; was the drag a move?")
+    sys.exit(1)
+if not any(re.search(r"origin -\d+", line) for line in lines):
+    print("FAIL: the sub-window never reached a negative origin; see the log")
+    sys.exit(1)
+
+
+def readppm(path):
+    data = open(path, "rb").read()
+    head = data.split(b"\n", 3)
+    w, h = map(int, head[1].split())
+    return w, h, head[3]
+
+
+files = sorted(glob.glob(os.path.join(dump, "*.ppm")),
+               key=lambda p: int(re.search(r"-(\d+)\.ppm$", p).group(1)))
+if len(files) < 3:
+    print("FAIL: the corner drag produced %d frames, too few to check" % len(files))
+    sys.exit(1)
+w, h, ref = readppm(files[0])
+
+# The sub-windows are 400x300 at 10,10 to 30,30, so all of the client below
+# y=400 and right of x=460 is background
+right = 460
+below = 400
+top = 28
+bottom = h - 40
+badframes = 0
+for i, path in enumerate(files):
+    w2, h2, pix = readppm(path)
+    if (w2, h2) != (w, h):
+        continue
+    bad = 0
+    for y in range(top, bottom):
+        row = y * w * 3
+        for x in range(4, w - 4):
+            if x < right and y < below:
+                continue
+            o = row + x * 3
+            if pix[o:o + 3] != ref[o:o + 3]:
+                bad += 1
+    if bad:
+        badframes += 1
+        print("frame %d (%s) has %d pixels of content outside the sub-windows"
+              % (i, os.path.basename(path), bad))
+if badframes:
+    print("FAIL: %d of %d frames of the corner drag painted outside the sub-window"
+          % (badframes, len(files)))
+    sys.exit(1)
+print("the client outside the sub-windows stays background in all %d frames" % len(files))
+CORNER
 
 if cmp -s "$RUN/many.ppm" "$RUN/few.ppm"; then
   echo "the two drags ended on the same frame"
@@ -196,9 +266,13 @@ wid = moved.most_common(1)[0][0]
 frames = []
 last = None
 for line in lines:
-    m = re.search(r"bind window %d store \d+x\d+ at \+(-?\d+)\+(-?\d+) size (\d+)x(\d+)" % wid, line)
+    # The frame of a moving window that hangs out of the store is excluded by
+    # the part of it that was painted: the origin says where the window sits in
+    # the store and the visible rectangle where that part is in the window
+    m = re.search(r"bind window %d store \d+x\d+ origin ([+-]\d+)([+-]\d+) visible (\d+)x(\d+) at ([+-]\d+)([+-]\d+)" % wid, line)
     if m:
-        last = tuple(int(v) for v in m.groups())
+        ox, oy, vw, vh, vx, vy = (int(v) for v in m.groups())
+        last = (ox + vx, oy + vy, vw, vh)
         continue
     if "commit window 2 " in line:
         frames.append(last)
@@ -253,4 +327,5 @@ print("%d drag steps, %d frames committed, all of them clean" % (steps, commits)
 PY
 
 echo "PASS: an MDI sub-window drag leaves no strip of an earlier place in any frame"
+echo "PASS: a sub-window dragged to the corner keeps its content inside itself"
 exit 0

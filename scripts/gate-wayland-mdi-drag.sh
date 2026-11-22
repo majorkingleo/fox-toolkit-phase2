@@ -23,6 +23,11 @@
 # what a real drag of an MDI sub-window looked like.
 #
 #   ./scripts/gate-wayland-mdi-drag.sh
+#   ./scripts/gate-wayland-mdi-drag.sh --bin=FILE
+#
+# Options:
+#   --bin=FILE   application to run (default: tmp/build-fox2-wayland/bin/mditest)
+#   --run-dir=DIR  scratch directory (default: tmp/sway-mdi-drag)
 #
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -32,6 +37,18 @@ OUT=${OUT:-tmp/wlxinject}
 SRC=tools/wlxinject.c
 XML=scripts/protocols/wlr-virtual-pointer-unstable-v1.xml
 BIN=tmp/build-fox2-wayland/bin/mditest
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --bin)       shift; BIN=$1 ;;
+    --bin=*)     BIN=${1#*=} ;;
+    --run-dir)   shift; RUN=$1 ;;
+    --run-dir=*) RUN=${1#*=} ;;
+    -h|--help)   sed -n '2,31p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "error: unknown option '$1'" >&2; exit 2 ;;
+    esac
+  shift
+  done
 
 [ -x "$BIN" ] || { echo "error: no mditest at $BIN (build with scripts/build-fox2-wayland.sh)" >&2; exit 2; }
 
@@ -150,9 +167,13 @@ wid = moved.most_common(1)[0][0]
 frames = []
 last = None
 for line in lines:
-    m = re.search(r"bind window %d store \d+x\d+ at \+(-?\d+)\+(-?\d+) size (\d+)x(\d+)" % wid, line)
+    # The frame of a moving window that hangs out of the store is excluded by
+    # the part of it that was painted: the origin says where the window sits in
+    # the store and the visible rectangle where that part is in the window
+    m = re.search(r"bind window %d store \d+x\d+ origin ([+-]\d+)([+-]\d+) visible (\d+)x(\d+) at ([+-]\d+)([+-]\d+)" % wid, line)
     if m:
-        last = tuple(int(v) for v in m.groups())
+        ox, oy, vw, vh, vx, vy = (int(v) for v in m.groups())
+        last = (ox + vx, oy + vy, vw, vh)
         continue
     if "commit window 2 " in line:
         frames.append(last)

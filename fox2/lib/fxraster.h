@@ -55,6 +55,8 @@ private:
   FXint           twidth;       // Target width
   FXint           theight;      // Target height
   FXint           tstride;      // Target stride in pixels
+  FXint           ox;           // Where the drawing origin sits in the target
+  FXint           oy;           // Where the drawing origin sits in the target
   FXRectangle     clip;         // Clip rectangle
   FXRegion*       clipregion;   // Clip region or nullptr
   const FXuchar*  maskbits;     // Clip mask bits or nullptr
@@ -94,6 +96,7 @@ private:
 private:
   FXRaster(const FXRaster&);
   FXRaster& operator=(const FXRaster&);
+  FXColor* pixel(FXint x,FXint y) const { return target+(y+oy)*tstride+(x+ox); }
   FXbool inClip(FXint x,FXint y) const;
   FXbool stipBit(FXint x,FXint y) const;
   void plot(FXint x,FXint y,FXColor src);
@@ -116,6 +119,19 @@ public:
 
   /// Change target buffer; a stride of 0 means width pixels per row
   void setTarget(FXColor* pixels,FXint width,FXint height,FXint stride=0);
+
+  /// Place the drawing origin at pixel (x,y) of the target, as a target that
+  /// starts at the origin would; the clip is reset, so this belongs right after
+  /// setTarget() and before the clip is set.  A window whose top left corner
+  /// lies outside the buffer it shares with its neighbours draws in its own
+  /// coordinates, and the origin says where those are in that buffer
+  void setOrigin(FXint x,FXint y){ ox=x; oy=y; clearClipRectangle(); }
+
+  /// Where the drawing origin sits in the target
+  FXint getOriginX() const { return ox; }
+
+  /// Where the drawing origin sits in the target
+  FXint getOriginY() const { return oy; }
 
   /// Return target buffer
   FXColor* getTarget() const { return target; }

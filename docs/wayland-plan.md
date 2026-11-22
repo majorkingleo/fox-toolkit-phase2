@@ -1394,6 +1394,33 @@ moved code of `FXApp::getNextEvent()` and the "paint last" list are gone, and th
 One pass in tree order is also what X11 and Win32 cost for a native child window
 that moves, and it is the pass that produces the frame the release ends on.
 
+### A window that hangs out of the store
+
+The same drag shows a second fault of the same machinery, reported after the
+first one was fixed: a sub-window dragged to the upper left corner of an MDI
+client had its content painted shifted, and its scrolled content grew over the
+whole client instead of staying inside the window (`tmp/mdi5.png` and `log.txt`
+of the user report; the child ends at `-189,-16` in the client).  On X11 nothing
+like it happens, because the server clips every drawable to its parent and to the
+window it belongs to.
+
+`fxwaylandBindWindow()` cut the buffer it handed the DC down to the visible part
+of a window and moved the pixel pointer to the corner of the store, so the
+drawing origin of a window with a negative offset moved with it: everything it
+drew landed shifted by the offset.  Worse, the intersection with the windows
+above was only computed when the origin was positive, so a scrolled child of a
+window that hung out of the store was no longer clipped to it and painted its
+whole 4485 pixel content over the client.  The old code writes outside the store
+in that case: the corner drag of the bug build segfaults in the gate.
+
+`FXRaster` now has a drawing origin (`setOrigin()`, `getOriginX/Y`) and clips to
+the part of the target that exists, so the DC gets the whole store as its buffer
+with the window's place as the origin and keeps drawing in the coordinates of the
+window.  `fxwaylandBindWindow()` no longer cuts the buffer, always intersects the
+visible rectangle with the windows above, and intersects it with the store seen
+from the window, which is what keeps a window that hangs out of it from drawing
+past the end of the buffer.
+
 ### Gates
 
 - `scripts/gate-wayland-mdi-drag.sh` runs `tests/mditest` against headless sway,
@@ -1402,10 +1429,22 @@ that moves, and it is the pass that produces the frame the release ends on.
   the frame the drag ends on.
 - `scripts/gate-kwin-mdi-drag.sh` is the same gate on a private
   `kwin_wayland --virtual`, driven with `tools/kwininject`, because KWin
-  delivers every pointer motion and is where the fault was seen.
+  delivers every pointer motion and is where the fault was seen.  It drags a
+  sub-window to the upper left corner as well and requires the window to reach a
+  negative origin and the client outside the sub-windows to stay background; a
+  drag past the left edge cannot be driven under sway, where the window jumps to
+  the opposite corner instead (see below).
 - `scripts/gate-wayland-repaint.sh` and the rest of the frame gates still pass;
   they are the check that the covered handback, which normal widget repaints
   still use, did not regress.
+
+### Open
+
+- A sub-window dragged past the left edge of its client under headless sway
+  jumps to the opposite corner instead of stopping at the edge (the trace shows
+  `22,29` followed by `1031,29`).  The pointer leaves the surface there; KWin
+  hands out the motion with a position outside the surface and the window
+  follows, sway does not.  Not investigated yet.
 
 ## Risks
 

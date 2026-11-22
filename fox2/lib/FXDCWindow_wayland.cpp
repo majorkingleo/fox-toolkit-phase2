@@ -83,11 +83,14 @@ static inline FXRaster* raster(void* ctx){
 
 
 // Return the pixel buffer of a drawable; an image owns its pixels, a window
-// draws into the frame buffer of the shell it belongs to, at its place there;
-// visible is the part of the drawable that can be painted, in its coordinates
-static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXRectangle& visible){
+// draws into the frame buffer of the shell it belongs to, with its drawing
+// origin set into it; visible is the part of the drawable that can be painted,
+// in its coordinates, and ox,oy say where those sit in the buffer
+static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXint& ox,FXint& oy,FXRectangle& visible){
   FXImage* image=dynamic_cast<FXImage*>(draw);
   FXWindow* window;
+  ox=0;
+  oy=0;
   if(image){
     pixels=image->getData();
     w=image->getWidth();
@@ -102,7 +105,7 @@ static FXbool getSurface(FXDrawable* draw,FXColor*& pixels,FXint& w,FXint& h,FXi
   pixels=nullptr;
   visible=FXRectangle(0,0,w,h);
   if((window=dynamic_cast<FXWindow*>(draw))!=nullptr && window->id()){
-    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,w,h,stride,visible);
+    return fxwaylandBindWindow(fxwayland(window->getApp()->getDisplay()),window->id(),pixels,w,h,stride,ox,oy,visible);
     }
   return false;
   }
@@ -157,7 +160,7 @@ FXDCWindow::~FXDCWindow(){
 void FXDCWindow::begin(FXDrawable* draw){
   FXColor* pixels;
   FXRectangle visible;
-  FXint w,h,stride;
+  FXint w,h,stride,ox,oy;
   if(draw && !surface){
     surface=draw;
     surface->visual->create();
@@ -165,7 +168,7 @@ void FXDCWindow::begin(FXDrawable* draw){
     devbg=surface->visual->getPixel(bg);
 
     // Nothing to draw into: the window has no shell or no frame yet
-    if(!getSurface(draw,pixels,w,h,stride,visible)) return;
+    if(!getSurface(draw,pixels,w,h,stride,ox,oy,visible)) return;
 
     // The clip rectangle of the DC follows the drawable, as on X11 and Win32;
     // code that draws with getClipX()/getClipWidth() reads this one, not the
@@ -174,6 +177,7 @@ void FXDCWindow::begin(FXDrawable* draw){
     // what every clip set below is measured against
     rect=clip=visible;
     ctx=new FXRaster(pixels,w,h,stride);
+    raster(ctx)->setOrigin(ox,oy);
     raster(ctx)->setForeground(fg);
     raster(ctx)->setBackground(bg);
     raster(ctx)->setLineWidth(width);

@@ -124,6 +124,16 @@ bugs were:
   and both MDI gates check every frame against the one the drag ends on. Details
   in `docs/wayland-plan.md`, section "A moved window and the windows it
   uncovers".
+- **A sub-window dragged to the corner grew over its neighbours.** A window
+  whose top left corner lies outside the store (dragged to the upper left of an
+  MDI client) had the buffer it drew into cut down to the visible part, which
+  moved its drawing origin, and its scrolled content was no longer clipped to it
+  and painted over the whole client. `FXRaster` has a drawing origin now, the DC
+  always gets the whole store, and the visible rectangle is always intersected
+  with the windows above and with the store; the bug build segfaults on the
+  corner drag, the current one keeps the content inside the window. Details in
+  `docs/wayland-plan.md`, section "A window that hangs out of the store", and
+  the corner check in `scripts/gate-kwin-mdi-drag.sh`.
 - **Pixel-block move of a child smears.** Copying the moved window's pixels
   inside the shared store (what X11 does with a native child window) was tried
   and dropped in `c053e31`: it smears the frame, the scroll viewport and the

@@ -1042,15 +1042,20 @@ FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window){
   }
 
 
-// Bind a window to the backing store of its shell
-FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXRectangle& visible){
+// Bind a window to the backing store of its shell.  The buffer handed out is
+// the whole store with the drawing origin of the window set into it: a window
+// that hangs out of the store to the left or above has a negative origin, and
+// the clip is what keeps the rasterizer inside pixels that exist.  Cutting the
+// buffer down to the visible part instead moved the origin of the drawing, and
+// the content of a sub-window dragged to the corner of an MDI client grew over
+// its neighbours
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXint& ox,FXint& oy,FXRectangle& visible){
   FXWaylandSurface* s;
   FXRectangle shell;
   FXRectangle place;
   FXRectangle here;
   FXRectangle above;
   FXID up;
-  FXint ox,oy;
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
 
   // The store is as large as the shell, plus the client side title bar; every
@@ -1066,41 +1071,38 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   here=app->childmap.getGlobalGeometry(window);
   ox=here.x-place.x;
   oy=here.y-place.y+s->barh;
-  pixels=s->store+(FXival)oy*s->storew+ox;
+  pixels=s->store;
+  w=s->storew;
+  h=s->storeh;
   stride=s->storew;
 
   // The part of the window that is inside the windows above it.  X11 never
   // lets a child draw outside its parent, but here every window of a shell
   // writes into the same buffer, and a scrolled child is larger than the
   // window that scrolls it
-  visible=FXRectangle(0,0,w,h);
-  if(0<=ox && 0<=oy){
-    for(up=app->childmap.getParent(window); up && up!=s->window; up=app->childmap.getParent(up)){
-      above=app->childmap.getGlobalGeometry(up);
-      above.x-=here.x;
-      above.y-=here.y;
-      visible*=above;
-      visible.w=FXMAX(visible.w,0);
-      visible.h=FXMAX(visible.h,0);
-      }
+  visible=FXRectangle(0,0,app->childmap.getGeometry(window).w,app->childmap.getGeometry(window).h);
+  for(up=app->childmap.getParent(window); up && up!=s->window; up=app->childmap.getParent(up)){
+    above=app->childmap.getGlobalGeometry(up);
+    above.x-=here.x;
+    above.y-=here.y;
+    visible*=above;
+    visible.w=FXMAX(visible.w,0);
+    visible.h=FXMAX(visible.h,0);
     }
 
-  // Whatever the geometry says, the rasterizer writes straight into the store,
-  // so a window that hangs out of it is clipped here instead of running past
-  // the end of the buffer.  A window that starts above or left of the store is
-  // cut down to it and painted from the corner, as it always was
-  if(ox<0){ pixels-=ox; w+=ox; ox=0; visible=FXRectangle(0,0,w,h); }
-  if(oy<0){ pixels-=(FXival)oy*s->storew; h+=oy; oy=0; visible=FXRectangle(0,0,w,h); }
-  w=FXMIN(w,FXMAX(s->storew-ox,0));
-  h=FXMIN(h,FXMAX(s->storeh-oy,0));
+  // The store seen from the window; a window that hangs out of it is clipped
+  // to the part that exists instead of running past the end of the buffer
+  visible*=FXRectangle(-ox,-oy,s->storew,s->storeh);
+  visible.w=FXMAX(visible.w,0);
+  visible.h=FXMAX(visible.h,0);
   s->dirty=true;
 
   // A window entirely outside the store has nothing to paint into
-  if(w<=0 || h<=0 || visible.w<=0 || visible.h<=0){
+  if(visible.w<=0 || visible.h<=0){
     pixels=nullptr;
     return false;
     }
-  fxwaylandTrace("bind window %u store %dx%d at %+d%+d size %dx%d pixels %p visible %dx%d at %+d%+d\n",(unsigned int)window,s->storew,s->storeh,ox,oy,w,h,pixels,visible.w,visible.h,visible.x,visible.y);
+  fxwaylandTrace("bind window %u store %dx%d origin %+d%+d visible %dx%d at %+d%+d\n",(unsigned int)window,s->storew,s->storeh,ox,oy,visible.w,visible.h,visible.x,visible.y);
   return true;
   }
 

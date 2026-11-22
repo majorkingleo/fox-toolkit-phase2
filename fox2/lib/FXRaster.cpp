@@ -137,6 +137,8 @@ FXRaster::FXRaster(){
   twidth=0;
   theight=0;
   tstride=0;
+  ox=0;
+  oy=0;
   clipregion=nullptr;
   maskbits=nullptr;
   maskwidth=0;
@@ -199,17 +201,20 @@ void FXRaster::setTarget(FXColor* pixels,FXint width,FXint height,FXint stride){
   twidth=width;
   theight=height;
   tstride=stride>0?stride:width;
+  ox=0;
+  oy=0;
   clearClipRectangle();
   }
 
 
-// Return clip rectangle limited to the target
+// Return clip rectangle limited to the target; the target reaches from the
+// drawing origin minus where that origin sits in it to the far edge of it
 FXRectangle FXRaster::getClipRectangle() const {
   FXRectangle r;
-  r.x=FXMAX(clip.x,0);
-  r.y=FXMAX(clip.y,0);
-  r.w=FXMIN(clip.x+clip.w,twidth)-r.x;
-  r.h=FXMIN(clip.y+clip.h,theight)-r.y;
+  r.x=FXMAX(clip.x,-ox);
+  r.y=FXMAX(clip.y,-oy);
+  r.w=FXMIN(clip.x+clip.w,twidth-ox)-r.x;
+  r.h=FXMIN(clip.y+clip.h,theight-oy)-r.y;
   if(r.w<0) r.w=0;
   if(r.h<0) r.h=0;
   return r;
@@ -218,8 +223,8 @@ FXRectangle FXRaster::getClipRectangle() const {
 
 // Read back pixel
 FXColor FXRaster::readPixel(FXint x,FXint y) const {
-  if(!target || x<0 || y<0 || x>=twidth || y>=theight) return 0;
-  return target[y*tstride+x];
+  if(!target || x<-ox || y<-oy || x>=twidth-ox || y>=theight-oy) return 0;
+  return *pixel(x,y);
   }
 
 
@@ -228,6 +233,7 @@ FXColor FXRaster::readPixel(FXint x,FXint y) const {
 // Return true if pixel is inside clip rectangle, clip mask and clip region
 FXbool FXRaster::inClip(FXint x,FXint y) const {
   if(x<clip.x || y<clip.y || x>=clip.x+clip.w || y>=clip.y+clip.h) return false;
+  if(x<-ox || y<-oy || x>=twidth-ox || y>=theight-oy) return false;
   if(maskbits){
     FXint dx=x-mx;
     FXint dy=y-my;
@@ -254,7 +260,7 @@ FXbool FXRaster::stipBit(FXint x,FXint y) const {
 // Draw a pixel with the raster function
 void FXRaster::plot(FXint x,FXint y,FXColor src){
   if(inClip(x,y)){
-    FXColor* p=target+y*tstride+x;
+    FXColor* p=pixel(x,y);
     *p=fxrasterop(function,src,*p);
     }
   }
@@ -1086,7 +1092,7 @@ void FXRaster::blend(FXint x,FXint y,FXuint cov){
   FXColor d;
   FXuint inv;
   if(!inClip(x,y) || cov==0) return;
-  p=target+y*tstride+x;
+  p=pixel(x,y);
   if(cov>=255){
     *p=fg|0xff000000u;
     return;
@@ -1106,7 +1112,7 @@ void FXRaster::blendPixel(FXint x,FXint y,FXColor color,FXuint alpha){
   FXColor d;
   FXuint inv;
   if(!inClip(x,y) || alpha==0) return;
-  p=target+y*tstride+x;
+  p=pixel(x,y);
   if(alpha>=255){
     *p=color|0xff000000u;
     return;
@@ -1124,7 +1130,7 @@ void FXRaster::blendPixel(FXint x,FXint y,FXColor color,FXuint alpha){
 void FXRaster::plotAlpha(FXint x,FXint y,FXColor color,FXuint alpha){
   FXColor* p;
   if(!inClip(x,y)) return;
-  p=target+y*tstride+x;
+  p=pixel(x,y);
   if(alpha>=255){
     *p=color|0xff000000u;
     return;
@@ -1557,10 +1563,10 @@ void FXRaster::clearClipRegion(){
 // Set clip rectangle; the server clips on the other platforms, but here the
 // rectangle has to be kept inside the buffer or a stale expose writes past it
 void FXRaster::setClipRectangle(FXint x,FXint y,FXint w,FXint h){
-  FXint x1=FXMAX(x,0);
-  FXint y1=FXMAX(y,0);
-  FXint x2=FXMIN(x+w,twidth);
-  FXint y2=FXMIN(y+h,theight);
+  FXint x1=FXMAX(x,-ox);
+  FXint y1=FXMAX(y,-oy);
+  FXint x2=FXMIN(x+w,twidth-ox);
+  FXint y2=FXMIN(y+h,theight-oy);
   clip.x=x1;
   clip.y=y1;
   clip.w=FXMAX(x2-x1,0);
@@ -1579,8 +1585,8 @@ void FXRaster::setClipRectangle(const FXRectangle& rectangle){
 void FXRaster::clearClipRectangle(){
   clearClipRegion();
   clearClipMask();
-  clip.x=0;
-  clip.y=0;
+  clip.x=-ox;
+  clip.y=-oy;
   clip.w=twidth;
   clip.h=theight;
   }

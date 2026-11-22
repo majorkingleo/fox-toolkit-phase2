@@ -391,7 +391,7 @@ FXWaylandSurface* fxwaylandShellSurface(FXWaylandApp* app,FXID window);
 /// Bind a window to the frame buffer of its shell; false when it has none;
 /// visible is the part of the window inside the windows above it, in the
 /// coordinates of the window itself
-FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXRectangle& visible);
+FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint& w,FXint& h,FXint& stride,FXint& ox,FXint& oy,FXRectangle& visible);
 
 /// Commit the frames that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app);
