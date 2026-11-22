@@ -168,6 +168,7 @@ protected:
   FXCapStyle       cap;         // Line cap style
   FXJoinStyle      join;        // Line join style
   FXLineStyle      style;       // Line style
+  FXbool           antialias;   // Antialias thin lines
   FXFillStyle      fill;        // Fill style
   FXFillRule       rule;        // Fill rule
   FXFunction       rop;         // RasterOp
@@ -346,6 +347,12 @@ public:
 
   /// Get line style
   FXLineStyle getLineStyle() const { return style; }
+
+  /// Enable antialiasing for thin solid lines
+  virtual void setAntialias(FXbool aa);
+
+  /// Return true if thin lines are antialiased
+  FXbool getAntialias() const { return antialias; }
 
   /// Set fill style
   virtual void setFillStyle(FXFillStyle fillstyle=FILL_SOLID);

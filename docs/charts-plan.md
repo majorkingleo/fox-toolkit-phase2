@@ -57,8 +57,19 @@ Target order: Wayland first, then X11 and Win32.
 - [x] `charttest` deterministic 10,000-sample series plus a marker series
 - [x] Wayland build and `FOX_WAYLAND_DUMP` frame verified
 - [ ] curve fills
-- [ ] client-side `FXImage`+`FXRaster` buffer (still `FXDC`, aliased)
+- [ ] client-side `FXImage` buffer (chart still draws through `FXDC`; AA is
+      Wayland-only)
 - [ ] X11 and Win32 verification
+
+### M3 — antialiasing
+
+- [x] `FXRaster::setAntialias` with Wu coverage for thin solid lines
+- [x] segment clipping so off-screen live samples stay cheap
+- [x] `FXDC`/`FXDCWindow` seam; Wayland forwards it, X11 and Win32 accept it
+- [x] chart curves and marker outlines antialiased on Wayland
+- [x] live mode stays around 12% CPU at 20 Hz with AA
+- [ ] polygon fills, wide lines and dashed lines
+- [ ] X11 and Win32 antialiasing
 
 ### M6 — live mode in `charttest`
 
@@ -283,6 +294,10 @@ Add antialiasing there, not in the chart:
   grid, ticks and 1-px rules, which stay snapped to half pixels and crisp;
 - dash handling reuses the existing dash machinery; split by dash length first,
   then antialias each dash.
+
+The current implementation uses per-segment Wu coverage, clipped to the plot
+rectangle; the row-span maximum-coverage accumulation for dense joins, wide
+lines, dashed lines and filled polygons remains future work.
 
 Text needs an `FXGlyphs`. Wayland already provides one through
 `FXFont::getGlyphCache()`; the X11 `FXFont` returns `nullptr` because Xft draws

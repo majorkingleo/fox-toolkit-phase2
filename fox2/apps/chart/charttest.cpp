@@ -279,6 +279,12 @@ void ChartWindow::create(){
   vertLabelFont->create();
   horzNumberFont->create();
   vertNumberFont->create();
+
+  // Keep the sidebar wide enough for the largest buffer readout
+  livebuffer->setText("Buffer: 20000 samples");
+  livepanel->setLayoutHints(LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y);
+  livepanel->setWidth(livebuffer->getDefaultWidth()+2*4+2*2+2);
+  livebuffer->setText("Buffer: 0 samples");
   }
 
 

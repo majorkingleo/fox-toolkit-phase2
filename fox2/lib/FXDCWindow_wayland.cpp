@@ -194,6 +194,7 @@ void FXDCWindow::begin(FXDrawable* draw){
     raster(ctx)->setLineCap(cap);
     raster(ctx)->setLineJoin(join);
     raster(ctx)->setLineStyle(style);
+    raster(ctx)->setAntialias(antialias);
     raster(ctx)->setFillStyle(fill);
     raster(ctx)->setFillRule(rule);
     raster(ctx)->setFunction(rop);
@@ -502,6 +503,13 @@ void FXDCWindow::setLineJoin(FXJoinStyle joinstyle){
 void FXDCWindow::setLineStyle(FXLineStyle linestyle){
   style=linestyle;
   if(ctx) raster(ctx)->setLineStyle(linestyle);
+  }
+
+
+// Enable antialiasing for thin solid lines
+void FXDCWindow::setAntialias(FXbool aa){
+  FXDC::setAntialias(aa);
+  if(ctx) raster(ctx)->setAntialias(aa);
   }
 
 

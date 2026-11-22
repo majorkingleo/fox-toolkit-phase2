@@ -1020,6 +1020,12 @@ void FXDCWindow::setLineStyle(FXLineStyle linestyle){
   }
 
 
+// Antialiasing is not available on the X11 DC
+void FXDCWindow::setAntialias(FXbool aa){
+  FXDC::setAntialias(aa);
+  }
+
+
 // Set fill style
 void FXDCWindow::setFillStyle(FXFillStyle fillstyle){
   if(!surface){ fxerror("FXDCWindow::setFillStyle: DC not connected to drawable.\n"); }

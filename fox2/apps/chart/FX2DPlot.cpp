@@ -180,6 +180,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
   if(plotleft>=plotright || plottop>=plotbottom) return;
   start=FXThread::steadytime();
   dc.setClipRectangle(plotleft,plottop,plotright-plotleft,plotbottom-plottop);
+  dc.setAntialias(true);
   for(i=0; i<curves.no(); i++){
     FXCurve *curve=curves[i];
     FXAxis *xaxis;
@@ -237,6 +238,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
         }
       }
     }
+  dc.setAntialias(false);
   dc.setClipRectangle(save);
   lastdraw=FXThread::steadytime()-start;
   }

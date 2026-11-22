@@ -71,6 +71,7 @@ private:
   FXCapStyle      cap;          // Line cap style
   FXJoinStyle     join;         // Line join style
   FXLineStyle     linestyle;    // Line style
+  FXbool          antialias;    // Antialias thin lines
   FXFillStyle     fillstyle;    // Fill style
   FXFillRule      fillrule;     // Fill rule
   FXFunction      function;     // Raster function
@@ -103,6 +104,7 @@ private:
   void plotStyled(FXint x,FXint y);
   void span(FXint y,FXint x1,FXint x2);
   void plotLine(FXint x1,FXint y1,FXint x2,FXint y2,FXuint& dashindex,FXuint& dashremain,FXbool& dashon,FXbool skipfirst);
+  void aaLine(FXint x1,FXint y1,FXint x2,FXint y2);
   void wideLine(FXint x1,FXint y1,FXint x2,FXint y2);
   void fillFgRectangle(FXint x,FXint y,FXint w,FXint h);
   void fillFgEllipse(FXint x,FXint y,FXint w,FXint h);
@@ -299,6 +301,12 @@ public:
 
   /// Get line style
   FXLineStyle getLineStyle() const { return linestyle; }
+
+  /// Enable antialiasing for thin solid lines
+  void setAntialias(FXbool aa);
+
+  /// Return true if thin lines are antialiased
+  FXbool getAntialias() const { return antialias; }
 
   /// Set fill style
   void setFillStyle(FXFillStyle fillstyle=FILL_SOLID);

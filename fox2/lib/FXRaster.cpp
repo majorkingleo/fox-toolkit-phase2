@@ -164,6 +164,7 @@ FXRaster::FXRaster(){
   cap=CAP_BUTT;
   join=JOIN_MITER;
   linestyle=LINE_SOLID;
+  antialias=false;
   fillstyle=FILL_SOLID;
   fillrule=RULE_EVEN_ODD;
   function=BLT_SRC;
@@ -422,6 +423,129 @@ void FXRaster::wideLine(FXint x1,FXint y1,FXint x2,FXint y2){
   }
 
 
+
+// Fractional part and its complement
+static inline FXdouble rasterFrac(FXdouble x){ return x-Math::floor(x); }
+static inline FXdouble rasterInvFrac(FXdouble x){ return 1.0-rasterFrac(x); }
+
+
+// Convert a coverage fraction to 0..255
+static inline FXuint rasterCoverage(FXdouble c){
+  if(c<=0.0) return 0;
+  if(c>=1.0) return 255;
+  return (FXuint)(c*255.0+0.5);
+  }
+
+
+// Clip a segment to the clip rectangle; return false when it is outside
+static FXbool rasterClipLine(FXdouble& x0,FXdouble& y0,FXdouble& x1,FXdouble& y1,const FXRectangle& clip){
+  FXdouble ox=x0;
+  FXdouble oy=y0;
+  FXdouble t0=0.0;
+  FXdouble t1=1.0;
+  FXdouble dx=x1-x0;
+  FXdouble dy=y1-y0;
+  FXdouble p[4],q[4],r;
+  FXint i;
+  if(clip.w<=0 || clip.h<=0) return false;
+  p[0]=-dx; q[0]=x0-clip.x;
+  p[1]= dx; q[1]=clip.x+clip.w-1-x0;
+  p[2]=-dy; q[2]=y0-clip.y;
+  p[3]= dy; q[3]=clip.y+clip.h-1-y0;
+  for(i=0; i<4; i++){
+    if(p[i]==0.0){
+      if(q[i]<0.0) return false;
+      }
+    else{
+      r=q[i]/p[i];
+      if(p[i]<0.0){
+        if(r>t1) return false;
+        if(r>t0) t0=r;
+        }
+      else{
+        if(r<t0) return false;
+        if(r<t1) t1=r;
+        }
+      }
+    }
+  if(t0>=t1) return false;
+  if(t0>0.0){
+    x0=ox+t0*dx;
+    y0=oy+t0*dy;
+    }
+  if(t1<1.0){
+    x1=ox+t1*dx;
+    y1=oy+t1*dy;
+    }
+  return true;
+  }
+
+
+// Draw a thin antialiased line using Wu coverage
+void FXRaster::aaLine(FXint x1,FXint y1,FXint x2,FXint y2){
+  FXdouble x0=x1;
+  FXdouble y0=y1;
+  FXdouble x3=x2;
+  FXdouble y3=y2;
+  FXdouble dx,dy,gradient,intery,xend,yend,xgap;
+  FXint xpxl1,ypxl1,xpxl2,ypxl2,x;
+  FXbool steep;
+  if(!rasterClipLine(x0,y0,x3,y3,clip)) return;
+  steep=FXABS(y3-y0)>FXABS(x3-x0);
+  if(steep){
+    FXdouble d=x0; x0=y0; y0=d;
+    d=x3; x3=y3; y3=d;
+    }
+  if(x0>x3){
+    FXdouble d=x0; x0=x3; x3=d;
+    d=y0; y0=y3; y3=d;
+    }
+  dx=x3-x0;
+  dy=y3-y0;
+  gradient=dx!=0.0 ? dy/dx : 1.0;
+
+  xend=Math::floor(x0+0.5);
+  yend=y0+gradient*(xend-x0);
+  xgap=rasterInvFrac(x0+0.5);
+  xpxl1=(FXint)xend;
+  ypxl1=(FXint)Math::floor(yend);
+  if(steep){
+    blend(ypxl1,xpxl1,rasterCoverage(rasterInvFrac(yend)*xgap));
+    blend(ypxl1+1,xpxl1,rasterCoverage(rasterFrac(yend)*xgap));
+    }
+  else{
+    blend(xpxl1,ypxl1,rasterCoverage(rasterInvFrac(yend)*xgap));
+    blend(xpxl1,ypxl1+1,rasterCoverage(rasterFrac(yend)*xgap));
+    }
+
+  intery=yend+gradient;
+  xend=Math::floor(x3+0.5);
+  yend=y3+gradient*(xend-x3);
+  xgap=rasterFrac(x3+0.5);
+  xpxl2=(FXint)xend;
+  ypxl2=(FXint)Math::floor(yend);
+  if(steep){
+    blend(ypxl2,xpxl2,rasterCoverage(rasterInvFrac(yend)*xgap));
+    blend(ypxl2+1,xpxl2,rasterCoverage(rasterFrac(yend)*xgap));
+    }
+  else{
+    blend(xpxl2,ypxl2,rasterCoverage(rasterInvFrac(yend)*xgap));
+    blend(xpxl2,ypxl2+1,rasterCoverage(rasterFrac(yend)*xgap));
+    }
+
+  for(x=xpxl1+1; x<xpxl2; x++){
+    if(steep){
+      blend((FXint)Math::floor(intery),x,rasterCoverage(rasterInvFrac(intery)));
+      blend((FXint)Math::floor(intery)+1,x,rasterCoverage(rasterFrac(intery)));
+      }
+    else{
+      blend(x,(FXint)Math::floor(intery),rasterCoverage(rasterInvFrac(intery)));
+      blend(x,(FXint)Math::floor(intery)+1,rasterCoverage(rasterFrac(intery)));
+      }
+    intery+=gradient;
+    }
+  }
+
 // Draw a line
 void FXRaster::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
   FXuint dashindex;
@@ -429,6 +553,10 @@ void FXRaster::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
   FXbool dashon;
   if(linewidth>1){
     wideLine(x1,y1,x2,y2);
+    return;
+    }
+  if(antialias && linestyle==LINE_SOLID){
+    aaLine(x1,y1,x2,y2);
     return;
     }
   dashBegin(dashpat,dashlen,dashoff,dashindex,dashremain,dashon);
@@ -443,6 +571,12 @@ void FXRaster::drawLines(const FXPoint* points,FXuint npoints){
   FXint ex;
   if(npoints<2){
     if(npoints==1) plot(points[0].x,points[0].y,fg);
+    return;
+    }
+  if(antialias && linewidth<=1 && linestyle==LINE_SOLID){
+    for(i=0; i<npoints-1; i++){
+      aaLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y);
+      }
     return;
     }
   if(linewidth>1){
@@ -1493,6 +1627,12 @@ void FXRaster::setLineJoin(FXJoinStyle joinstyle){
 // Set line style
 void FXRaster::setLineStyle(FXLineStyle linestyle){
   this->linestyle=linestyle;
+  }
+
+
+// Enable antialiasing for thin solid lines
+void FXRaster::setAntialias(FXbool aa){
+  antialias=aa;
   }
 
 

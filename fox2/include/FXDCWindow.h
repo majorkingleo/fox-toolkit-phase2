@@ -199,6 +199,9 @@ public:
   /// Set line style
   virtual void setLineStyle(FXLineStyle linestyle=LINE_SOLID) override;
 
+  /// Enable antialiasing for thin solid lines
+  virtual void setAntialias(FXbool aa) override;
+
   /// Set fill style
   virtual void setFillStyle(FXFillStyle fillstyle=FILL_SOLID) override;
 

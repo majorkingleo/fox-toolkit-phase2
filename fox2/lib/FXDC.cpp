@@ -126,6 +126,7 @@ FXDC::FXDC(FXApp* a):app(a){
   cap=CAP_BUTT;
   join=JOIN_MITER;
   style=LINE_SOLID;
+  antialias=false;
   fill=FILL_SOLID;
   rule=RULE_EVEN_ODD;
   rop=BLT_SRC;
@@ -368,6 +369,12 @@ void FXDC::setLineJoin(FXJoinStyle joinstyle){
 // Set line style
 void FXDC::setLineStyle(FXLineStyle linestyle){
   style=linestyle;
+  }
+
+
+// Enable antialiasing for thin solid lines
+void FXDC::setAntialias(FXbool aa){
+  antialias=aa;
   }
 
 
