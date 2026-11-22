@@ -299,9 +299,6 @@ struct FXWaylandApp {
   FXWaylandPaint*   moved;              // Windows that moved, with the rect they left
   FXuint            nummoved;           // Number of moves
   FXuint            allocedmoved;       // Allocated entries
-  FXID*             redrawlast;         // Windows to paint last in this frame
-  FXuint            numlast;            // Number of them
-  FXuint            allocedlast;        // Allocated entries
   FXWinMap          childmap;           // Virtual child windows
   FXWaylandSurface* surfaces;           // Surfaces of the shells
   };
@@ -337,7 +334,7 @@ FXbool fxwaylandPaintCovered(FXWaylandApp* app,FXID window,const FXRectangle& re
 void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect);
 
 /// The paint of a window was dispatched
-void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window);
+void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window,const FXRectangle& rect);
 
 /// Drop queued paints and repaint every shell in tree order
 void fxwaylandRepaintAll(FXWaylandApp* app);
@@ -354,18 +351,6 @@ FXbool fxwaylandCoveredPop(FXWaylandApp* app,FXWaylandPaint& area);
 
 /// Remember that a window moved away from that rectangle, in shell coordinates
 void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was);
-
-/// Windows that moved, with the rectangle each of them left, one per window
-FXWaylandPaint* fxwaylandMovedList(FXWaylandApp* app,FXuint& count);
-
-/// Forget the moves, once they have been handed out for painting
-void fxwaylandMovedDone(FXWaylandApp* app);
-
-/// Remember a window that has to paint itself last in the frame
-void fxwaylandRedrawLast(FXWaylandApp* app,FXID window);
-
-/// Take a window that has to paint itself last, or 0
-FXID fxwaylandRedrawLastPop(FXWaylandApp* app);
 
 /// Find the surface of a shell
 FXWaylandSurface* fxwaylandFindSurface(FXWaylandApp* app,FXID window);

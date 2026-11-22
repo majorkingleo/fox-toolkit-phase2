@@ -399,7 +399,9 @@ Done in this phase so far:
   not depend on compositor screenshots (Wayland restricts capture, which the
   existing plans already note). `FOX_WAYLAND_DUMP_ALPHA=1` writes a PAM with the
   alpha channel instead, un-premultiplied, which is how a test tells a
-  transparent popup corner from an opaque one.
+  transparent popup corner from an opaque one. `FOX_WAYLAND_DUMP_FRAMES=1` puts
+  the number of the frame into the name, which is what a test needs to look at
+  every frame of a drag instead of only the last one.
 - Acceptance: `hello` and `button` show on WSLg and on KDE, and the dumped
   buffer matches the X11 screenshot.
 
@@ -1172,6 +1174,11 @@ platform module the ported applications were waiting for (`glviewer`).
   bytes in both runs, so a covered paint that lands in the wrong order, a stale
   strip, or a frame committed before its paints are done all fail it. The trace
   must also show at least one frame per step and no more than a few extra.
+  Every frame of the many-step drag is checked on its own as well: a pixel
+  outside the moving window has to be the same byte in it and in the frame the
+  drag ends on. `scripts/gate-kwin-mdi-drag.sh` is the same check on a private
+  KWin, driven with `tools/kwininject`; see "A moved window and the windows it
+  uncovers" below.
 - **Focus:** the core has no other way to learn that the compositor handed the
   keyboard to a shell, so the shell focuses its first focusable widget
   (`SEL_FOCUS_NEXT`) when the keyboard enters. A keyboard leave does not raise
@@ -1322,6 +1329,83 @@ platform module the ported applications were waiting for (`glviewer`).
 - **Run-time failure behaviour:** missing optional protocols are detected at
   bind time and disable only the feature; a missing required protocol aborts
   `FXApp::init()` with a message that names it.
+
+## A moved window and the windows it uncovers
+
+Status: fixed. A drag of an MDI sub-window kept 1 to 2 pixel wide remnants of the
+frame, the bevel and the title bar of the window that moved at places it had
+already left, until the release repainted the client as a whole. The section
+records how it was measured, what caused it and what was done, because the same
+class of fault is easy to bring back.
+
+### What was seen
+
+`log.txt` and `tmp/mdi3.png` in the repository root are the run and the screen of
+the user report: the sub-window came from `10,10` to `270,152` over roughly a
+hundred pointer steps, and a sibling showed its bevel and a title bar layered
+over an older place. It reproduced on the KWin session of the development
+machine at scale 1 and not on headless sway, which is why the MDI drag gate did
+not see it: sway coalesces input, so the drag arrived in fewer, larger steps.
+
+### How it is measured
+
+- `FOX_WAYLAND_DUMP_FRAMES=1` puts the number of the frame into the dumped file
+  name (`window-2-800x600-17.ppm`), so a test can read every frame of a drag in
+  order; without it a run keeps one file per size and every frame but the last is
+  overwritten.
+- The invariant needs no reference image: the windows a moving one uncovers do
+  not change, so a pixel outside the moving window in two frames of a drag has
+  to be the same byte. Frames are compared against the frame the drag ends on.
+- The moving window comes from the `moved window <id> left <rect>` trace line,
+  and its rectangle in a frame is the last place the window table bound it to
+  before that frame was committed.
+- Measured that way, the old binary kept 249 to 6183 pixels of an earlier state
+  in every frame of a ten step drag on the live KWin session; the current one
+  keeps 0, and every frame agrees with the frame the release produces.
+
+### What caused it
+
+The frame was sliced: the moved branch posted the strips the window left on its
+parent, the covered pass handed those areas to the windows above it, and the
+moved window painted itself last. Three things went wrong with that:
+
+1. A strip was clipped to the parent's **current** rectangle and the rest was
+   dropped. A strip of a window that shrank can lie outside the parent it is
+   posted on, and the parent's own move only exposes the rectangle *it* vacated,
+   so nobody painted the rest. `exposeOwned()` now hands the remainder to the
+   parent of the parent.
+2. `fxwaylandPaintQueued()` merged the rectangles of a window into one bounding
+   box, and `fxwaylandPaintCovered()` then treated an area as painted that lay
+   inside the box but outside the strips. The entries are kept apart now, and
+   `fxwaylandPaintDispatched()` looks the entry up by its rectangle, so a window
+   can have more than one paint queued and only the one that went out leaves.
+3. `exposeArea()` registered the area it handed to a window in shell
+   coordinates, while `fxwaylandExposeRect()` registers the same paint in the
+   coordinates of the window, so the covered question was answered about a
+   different rectangle than the one that was painted. Both speak the coordinates
+   of the window now.
+
+None of that was the whole story, and the strips never bought much: the trace
+showed every step of a drag posting a full-rect paint for every window of the
+shell anyway. The moved branch now paints the whole tree once in stacking order
+(`fxwaylandRepaintAll()`) instead of slicing the frame; the strip, covered and
+moved code of `FXApp::getNextEvent()` and the "paint last" list are gone, and the
+`moved` list is only the trigger that says "a window moved, repaint the shell".
+One pass in tree order is also what X11 and Win32 cost for a native child window
+that moves, and it is the pass that produces the frame the release ends on.
+
+### Gates
+
+- `scripts/gate-wayland-mdi-drag.sh` runs `tests/mditest` against headless sway,
+  drags a sub-window to the same place in twenty-four steps and in two, and now
+  checks **every** frame of the many-step drag with the invariant above, not only
+  the frame the drag ends on.
+- `scripts/gate-kwin-mdi-drag.sh` is the same gate on a private
+  `kwin_wayland --virtual`, driven with `tools/kwininject`, because KWin
+  delivers every pointer motion and is where the fault was seen.
+- `scripts/gate-wayland-repaint.sh` and the rest of the frame gates still pass;
+  they are the check that the covered handback, which normal widget repaints
+  still use, did not regress.
 
 ## Risks
 

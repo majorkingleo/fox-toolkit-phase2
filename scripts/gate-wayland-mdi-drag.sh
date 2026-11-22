@@ -15,7 +15,12 @@
 #
 # The gate runs mditest twice, drags the same child to the same place (once in
 # many steps, once in two) and compares the final frames.  It also reads the
-# trace to check that the drag committed a frame for every step.
+# trace to check that the drag committed a frame for every step, and it checks
+# every frame of the many-step drag on its own: the windows the moving one
+# uncovers do not change, so a pixel outside the moving window in two frames of
+# a drag has to be the same byte.  Comparing only the frame a drag ends on
+# misses a frame in between that keeps a strip of an earlier place, which is
+# what a real drag of an MDI sub-window looked like.
 #
 #   ./scripts/gate-wayland-mdi-drag.sh
 #
@@ -71,7 +76,7 @@ drag(){
   local steps="$1" tag="$2" frame="$3" log="$4"
   local dump="$RUN/dump-$tag"
   mkdir -p -- "$dump"
-  FOX_WAYLAND_TRACE=1 FOX_WAYLAND_DUMP="$dump" "$BIN" --no-dialogs >"$log" 2>&1 &
+  FOX_WAYLAND_TRACE=1 FOX_WAYLAND_DUMP="$dump" FOX_WAYLAND_DUMP_FRAMES=1 "$BIN" --no-dialogs >"$log" 2>&1 &
   app_pid=$!
   sleep 2.0
   kill -0 "$app_pid" 2>/dev/null || { echo "error: mditest did not stay up; see $log" >&2; exit 2; }
@@ -115,6 +120,88 @@ drag 24 many "$RUN/many.ppm" "$RUN/many.log"
 echo "==> dragging in 2 steps"
 drag 2 few "$RUN/few.ppm" "$RUN/few.log"
 
+# Every frame of the many-step drag, not only the one it ends on: the windows
+# the moving one uncovers keep their content, so a pixel outside the moving
+# window in a frame and in the last frame has to be the same byte.  The moving
+# window is the one the trace names as moved, and its rectangle in a frame is
+# the last place the table bound it to before that frame was committed
+echo "==> checking every frame of the many-step drag"
+python3 - "$RUN/dump-many" "$RUN/many.log" <<'PY' || exit 1
+import collections
+import glob
+import os
+import re
+import sys
+
+dump, logpath = sys.argv[1], sys.argv[2]
+lines = open(logpath, errors="replace").read().splitlines()
+
+moved = collections.Counter()
+for line in lines:
+    m = re.search(r"moved window (\d+) left", line)
+    if m:
+        moved[int(m.group(1))] += 1
+if not moved:
+    print("FAIL: the trace names no moving window; was the drag a move?")
+    sys.exit(1)
+wid = moved.most_common(1)[0][0]
+
+# The rectangle of the moving window at the time each frame was committed
+frames = []
+last = None
+for line in lines:
+    m = re.search(r"bind window %d store \d+x\d+ at \+(-?\d+)\+(-?\d+) size (\d+)x(\d+)" % wid, line)
+    if m:
+        last = tuple(int(v) for v in m.groups())
+        continue
+    if "commit window 2 " in line:
+        frames.append(last)
+
+files = sorted(glob.glob(os.path.join(dump, "*.ppm")),
+               key=lambda p: int(re.search(r"-(\d+)\.ppm$", p).group(1)))
+if len(files) < 4:
+    print("FAIL: the drag produced %d frames, too few to check" % len(files))
+    sys.exit(1)
+
+
+def readppm(path):
+    data = open(path, "rb").read()
+    head = data.split(b"\n", 3)
+    w, h = map(int, head[1].split())
+    return w, h, head[3]
+
+
+def inside(r, x, y):
+    return r is not None and r[0] <= x < r[0] + r[2] and r[1] <= y < r[1] + r[3]
+
+
+w, h, ref = readppm(files[-1])
+refrect = frames[-1]
+badframes = 0
+for i, path in enumerate(files):
+    w2, h2, pix = readppm(path)
+    if (w2, h2) != (w, h) or i >= len(frames):
+        continue
+    r = frames[i]
+    bad = 0
+    for y in range(26, h):
+        row = y * w * 3
+        for x in range(w):
+            if inside(r, x, y) or inside(refrect, x, y):
+                continue
+            o = row + x * 3
+            if pix[o:o + 3] != ref[o:o + 3]:
+                bad += 1
+    if bad:
+        badframes += 1
+        print("frame %d (%s) keeps %d pixels of an earlier state" % (i, os.path.basename(path), bad))
+if badframes:
+    print("FAIL: %d of %d frames differ from the frame the drag ends on, outside"
+          " the moving window" % (badframes, len(files)))
+    sys.exit(1)
+print("all %d frames keep the content of the windows the drag uncovers" % len(files))
+PY
+
 # The final frame of a drag must not depend on the path the pointer took
 if cmp -s "$RUN/many.ppm" "$RUN/few.ppm"; then
   echo "the two drags ended on the same frame"
@@ -143,4 +230,5 @@ print("%d drag steps, %d frames committed"%(steps,commits))
 PY
 
 echo "PASS: a dragged MDI sub-window leaves the same frame however it was dragged"
+echo "PASS: no frame of the drag keeps a strip of a place the window had been in"
 exit 0

@@ -344,7 +344,6 @@ void FXApp::freePlatformMembers(){
     freeElms(app->paints);
     freeElms(app->covered);
     freeElms(app->moved);
-    freeElms(app->redrawlast);
     freeElms(app->typenames);
     delete app;
     display=nullptr;
@@ -484,14 +483,7 @@ static void exposeAbove(FXWaylandApp* app,FXID window,const FXRectangle& area);
 // Get the next event for the shared event loop
 FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
   FXWaylandApp* app=fxwayland(display);
-  FXWaylandPaint* moved;
-  FXRectangle pieces[4];
-  FXRectangle here,there;
-  FXWindow* window;
-  FXWindow* parent;
-  FXuint nummoved,i;
-  FXID lastid;
-  FXint n;
+  FXuint i;
   FXTime now,interval;
   FXint nfds;
   fd_set readfds;
@@ -546,30 +538,17 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
   // leave the lower window's pixels on top of it
   if(initialized && app && app->display && !app->lost && app->eventcount==app->eventhead){
     if(app->nummoved){
-      moved=fxwaylandMovedList(app,nummoved);
-      for(i=0; i<nummoved; i++){
-        window=findWindowWithId(moved[i].window);
-        if(window==nullptr) continue;
-        parent=window->getParent();
-        if(parent==nullptr) continue;
-
-        // What the window left behind is the places it was in, less the place
-        // it is in now; only that has to be painted again.  The window itself
-        // paints at the place it is in now
-        here=app->childmap.getGlobalGeometry(moved[i].window);
-        there=app->childmap.getGlobalGeometry(parent->id());
-        moved[i].rect.bite(pieces,FXRectangle(here.x,here.y,window->getWidth(),window->getHeight()));
-        for(n=0; n<4; n++){
-          if(pieces[n].w>0 && pieces[n].h>0){
-            fxwaylandExposeRect(app,parent->id(),FXRectangle(pieces[n].x-there.x,pieces[n].y-there.y,pieces[n].w,pieces[n].h));
-            }
-          }
-        // The window itself paints when the rest of the frame is done, so
-        // that the strips its parent and the windows below painted in this
-        // frame can not end up on top of it
-        fxwaylandRedrawLast(app,moved[i].window);
-        }
-      fxwaylandMovedDone(app);
+      // A window that moves changes the picture in every place it was: what it
+      // painted there is gone, and the windows below it have to put theirs
+      // back.  The whole tree is painted once in stacking order instead of
+      // slicing the frame into the strips the window left and handing the
+      // covered areas back afterwards.  A strip of a window that shrank can lie
+      // outside the parent it is posted on, and the order of the strips, the
+      // covered areas and the moved window is not guaranteed, which is where a
+      // drag of an MDI sub-window left thin strips of the places it had been in
+      // and the frame of the window below on top of it.  A native child window
+      // costs a repaint of the tree around it on every move on X11 as well
+      fxwaylandRepaintAll(app);
       return true;
       }
     // One covered area per pass: its wave has to reach the store before the
@@ -594,13 +573,6 @@ FXbool FXApp::getNextEvent(FXRawEvent& ev,FXTime blocking){
       repaints=r->next;
       r->next=repaintrecs;
       repaintrecs=r;
-      return true;
-      }
-    if((lastid=fxwaylandRedrawLastPop(app))!=0){
-      window=findWindowWithId(lastid);
-      if(window){
-        fxwaylandExposeRect(app,lastid,FXRectangle(0,0,window->getWidth(),window->getHeight()));
-        }
       return true;
       }
 
@@ -847,21 +819,27 @@ static void exposeArea(FXWaylandApp* app,FXID window,const FXRectangle& area){
   FXWaylandEvent ev;
   FXRectangle theirs;
   FXRectangle part;
+  FXRectangle here;
   FXID child;
   if(!app || !window || !app->childmap.isVisible(window)) return;
   theirs=app->childmap.getGlobalGeometry(window);
   part=theirs*area;
   part.w=FXMAX(part.w,0);
   part.h=FXMAX(part.h,0);
-  if(part.w>0 && part.h>0 && !fxwaylandPaintCovered(app,window,part)){
-    fxwaylandPaintQueued(app,window,part);
+
+  // The paint list speaks the coordinates of the window, as the paint of a
+  // window that was posted from an expose rectangle does; the area here is in
+  // shell coordinates, so it is moved into the window before it is registered
+  here=FXRectangle(part.x-theirs.x,part.y-theirs.y,part.w,part.h);
+  if(part.w>0 && part.h>0 && !fxwaylandPaintCovered(app,window,here)){
+    fxwaylandPaintQueued(app,window,here);
     clearElms(&ev,1);
     ev.type=0;
     ev.id=window;
-    ev.x=part.x-theirs.x;
-    ev.y=part.y-theirs.y;
-    ev.w=part.w;
-    ev.h=part.h;
+    ev.x=here.x;
+    ev.y=here.y;
+    ev.w=here.w;
+    ev.h=here.h;
     ev.code=FXXWL_EXPOSE;
     ev.state=2;                 // Posted in tree order, hands nothing on
     fxwaylandPost(app,ev);
@@ -941,7 +919,9 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
           event.rect.h=ev.h;
           event.synthetic=(ev.state!=0);
           window->handle(this,FXSEL(SEL_PAINT,0),&event);
-          fxwaylandPaintDispatched(app,ev.id);
+          // The paint of a window was dispatched: its entry leaves the list, so that a
+  // later paint of the area it covered is not skipped as "already painted"
+  fxwaylandPaintDispatched(app,ev.id,FXRectangle(ev.x,ev.y,ev.w,ev.h));
 
           // The windows above this one have just been painted over.  The id
           // is used rather than the window, which a paint handler may have

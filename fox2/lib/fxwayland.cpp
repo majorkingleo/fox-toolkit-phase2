@@ -118,15 +118,19 @@ FXbool fxwaylandPaintCovered(FXWaylandApp* app,FXID window,const FXRectangle& re
   }
 
 
-// Remember the part of a window that a queued paint covers
+// Remember the part of a window that a queued paint covers.  The rectangles of
+// a window are kept apart instead of being merged into one bounding box: the
+// parts a window is painted in can be two thin strips in an L, and a box over
+// both would tell the next request that an area had been painted that the
+// strips do not cover
 void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect){
   FXWaylandPaint* grown;
   FXuint i,cap;
   if(!app) return;
   for(i=0; i<app->numpaints; i++){
     if(app->paints[i].window==window){
-      app->paints[i].rect+=rect;
-      return;
+      const FXRectangle& r=app->paints[i].rect;
+      if(r.x<=rect.x && r.y<=rect.y && rect.x+rect.w<=r.x+r.w && rect.y+rect.h<=r.y+r.h) return;
       }
     }
   if(app->numpaints>=app->allocedpaints){
@@ -143,14 +147,19 @@ void fxwaylandPaintQueued(FXWaylandApp* app,FXID window,const FXRectangle& rect)
 // The paint of a window was dispatched.  Its entry leaves the list: a paint
 // that comes later in the same frame may cover the window again (a window
 // above it moves over it), and the covered pass has to be able to hand that
-// area back to it rather than skip it as "already painted"
-void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window){
+// area back to it rather than skip it as "already painted".  The entry is
+// looked up by its rectangle, because a window can have more than one paint
+// queued and only the one that was dispatched is done
+void fxwaylandPaintDispatched(FXWaylandApp* app,FXID window,const FXRectangle& rect){
   FXuint i;
   if(!app) return;
   for(i=0; i<app->numpaints; i++){
     if(app->paints[i].window==window){
-      app->paints[i]=app->paints[--app->numpaints];
-      break;
+      const FXRectangle& r=app->paints[i].rect;
+      if(r.x<=rect.x && r.y<=rect.y && rect.x+rect.w<=r.x+r.w && rect.y+rect.h<=r.y+r.h){
+        app->paints[i]=app->paints[--app->numpaints];
+        break;
+        }
       }
     }
   app->paintgeneration++;
@@ -202,8 +211,9 @@ FXbool fxwaylandCoveredPop(FXWaylandApp* app,FXWaylandPaint& area){
 
 
 // Remember a window that moved away from a rectangle; a drag moves the same
-// window many times per painted frame, and only the places it left have to be
-// painted again
+// window many times per painted frame, and the frame is painted once for all of
+// them.  The trace names the window, which is what a test needs to know which
+// rectangle of a dumped frame to leave out of the comparison
 void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was){
   FXWaylandPaint* grown;
   FXuint i,cap;
@@ -211,6 +221,7 @@ void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was){
   for(i=0; i<app->nummoved; i++){
     if(app->moved[i].window==window){
       app->moved[i].rect+=was;
+      fxwaylandTrace("moved window %u left %dx%d%+d%+d\n",(unsigned int)window,was.w,was.h,was.x,was.y);
       return;
       }
     }
@@ -222,46 +233,7 @@ void fxwaylandMoved(FXWaylandApp* app,FXID window,const FXRectangle& was){
   app->moved[app->nummoved].window=window;
   app->moved[app->nummoved].rect=was;
   app->nummoved++;
-  }
-
-
-// The windows that moved, with the rectangle each of them left
-FXWaylandPaint* fxwaylandMovedList(FXWaylandApp* app,FXuint& count){
-  count=app?app->nummoved:0;
-  return app?app->moved:nullptr;
-  }
-
-
-// The moves have been handed out for painting
-void fxwaylandMovedDone(FXWaylandApp* app){
-  if(app) app->nummoved=0;
-  }
-
-
-// Remember a window that has to paint itself once more when the rest of the
-// frame is done.  A window that moves is painted last, so that whatever a
-// window below it painted over it during the frame is gone; the drag of an MDI
-// sub-window showed the frame of the window below on top of it without this
-void fxwaylandRedrawLast(FXWaylandApp* app,FXID window){
-  FXID* grown;
-  FXuint i,cap;
-  if(!app) return;
-  for(i=0; i<app->numlast; i++){
-    if(app->redrawlast[i]==window) return;
-    }
-  if(app->numlast>=app->allocedlast){
-    cap=app->allocedlast?app->allocedlast*2:16;
-    if(!resizeElms(app->redrawlast,cap)) return;
-    app->allocedlast=cap;
-    }
-  app->redrawlast[app->numlast++]=window;
-  }
-
-
-// The window to paint last, or 0 when there is none
-FXID fxwaylandRedrawLastPop(FXWaylandApp* app){
-  if(!app || !app->numlast) return 0;
-  return app->redrawlast[--app->numlast];
+  fxwaylandTrace("moved window %u left %dx%d%+d%+d\n",(unsigned int)window,was.w,was.h,was.x,was.y);
   }
 
 
@@ -964,11 +936,17 @@ void fxwaylandDestroyImageBuffer(FXWaylandBuffer* buf){
 
 // Write a committed buffer as PPM when FOX_WAYLAND_DUMP is set; a client side
 // title bar is part of the name, so a test knows where the client area starts.
+// FOX_WAYLAND_DUMP_FRAMES puts the number of the frame into the name as well,
+// so that a drag which commits many frames of one size keeps all of them
+// instead of the last one; a test needs that to check every frame of a drag and
+// not only the frame it ends on.
 // FOX_WAYLAND_DUMP_ALPHA writes a PAM with the alpha channel instead, which is
 // how a test tells a transparent corner from an opaque one; the RGB values are
 // un-premultiplied there, because PAM carries straight alpha.
 void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
+  static FXuint serial=0;
   const FXchar* dir=getenv("FOX_WAYLAND_DUMP");
+  const FXchar* frames=getenv("FOX_WAYLAND_DUMP_FRAMES");
   const FXchar* alpha=getenv("FOX_WAYLAND_DUMP_ALPHA");
   FXchar bar[32];
   FXchar path[512];
@@ -982,7 +960,12 @@ void fxwaylandDumpBuffer(FXWaylandSurface* surf,FXWaylandBuffer* buf){
   if(surf->barh>0) snprintf(bar,sizeof(bar),"-bar%d",surf->barh);
   else bar[0]='\0';
   withalpha=(alpha && alpha[0])!=0;
-  snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s.%s",dir,(unsigned int)surf->window,buf->width,buf->height,bar,withalpha?"pam":"ppm");
+  if(frames && frames[0]){
+    snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s-%u.%s",dir,(unsigned int)surf->window,buf->width,buf->height,bar,++serial,withalpha?"pam":"ppm");
+    }
+  else{
+    snprintf(path,sizeof(path),"%s/window-%u-%dx%d%s.%s",dir,(unsigned int)surf->window,buf->width,buf->height,bar,withalpha?"pam":"ppm");
+    }
   snprintf(part,sizeof(part),"%s.part",path);
   if((fp=fopen(part,"wb"))==nullptr) return;
   if(withalpha) fprintf(fp,"P7\n%d %d\n255\n4\nRGB_ALPHA\n",buf->width,buf->height);
