@@ -226,10 +226,12 @@ bugs were:
 
 ## Still open
 
-- `docs/charts-plan.md` plans a new reusable chart widget (antialiased curves,
-  smooth zoom/scroll, many samples, SVG export). The FOX 1.7.95 chart package
-  is already copied to `fox2/apps/chart` and builds `charttest`; the new widget
-  is the remaining piece.
+- `docs/charts-plan.md` plans a reusable chart widget (antialiased curves,
+  smooth zoom/scroll, many samples) plus a demo application that imports CSV,
+  XLSX and ODS and writes SVG itself from the widget's data/geometry API. The
+  FOX 1.7.95 chart package is already copied to `fox2/apps/chart` and builds
+  `charttest`; the data model and curve rendering are the remaining widget
+  pieces.
 - MDI theming is recorded as PARTIAL/OPEN in `docs/theme-widget-checklist.md`
   (title background/text, active/inactive states, border and button decoration).
 - Browser thin client deferred (`docs/modernization-plan.md`, noted in
