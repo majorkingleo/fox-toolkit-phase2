@@ -85,6 +85,8 @@ Target order: Wayland first, then X11 and Win32.
 - [x] Live view hides the title, starts at 20 Hz, and shows editable sample
       rate and viewport fields plus the buffer size and current values in a
       side panel; the chart keeps a fixed-width time window while scrolling
+- [x] Right sidebar lists every series with a color swatch, its label and a
+      visibility checkbox; toggling one refits the axis or the live window
 
 ## What the fox2 port already provides
 
@@ -571,7 +573,8 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
 
 - Screenshots under `screenshots/tests/fox2/x11/`, `.../wayland/` and
   `.../win32/` (`charttest-static.png`, `charttest-live.png`,
-  `charttest-viewmenu.png`, `chartdemo-csv.png`, `chartdemo-xlsx.png`,
+  `charttest-viewmenu.png`, `charttest-series-toggle.png`,
+  `charttest-live-series-toggle.png`, `chartdemo-csv.png`, `chartdemo-xlsx.png`,
   `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and
   `sample.ods` with the same columns and values, plus an import check mode that

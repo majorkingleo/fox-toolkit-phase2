@@ -125,6 +125,12 @@ public:
   /// Return true if the timer is running
   FXbool isRunning() const { return running; }
 
+  /// Return number of live series
+  FXint getNumSeries() const { return SERIES_COUNT; }
+
+  /// Return live curve at index
+  FXCurve* getCurve(FXint index) const { return (index>=0 && index<SERIES_COUNT) ? curves[index] : nullptr; }
+
   /// Timer callback
   long onTimeout(FXObject*,FXSelector,void*);
 

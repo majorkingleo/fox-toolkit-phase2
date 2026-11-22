@@ -30,6 +30,13 @@ protected:
   FXMenuRadio  *staticRadio;
   FXMenuRadio  *liveRadio;
   FXVerticalFrame *livepanel;
+  FXVerticalFrame *staticseries;
+  FXVerticalFrame *liveseries;
+  FXVerticalFrame *livesection;
+  FXCheckButton *demochecks[16];
+  FXCheckButton *livechecks[16];
+  FXbool        demovis[16];
+  FXbool        livevis[16];
   FXTextField  *ratefield;
   FXTextField  *windowfield;
   FXLabel      *livebuffer;
@@ -61,6 +68,7 @@ public:
   long onCmdLive(FXObject*,FXSelector,void*);
   long onCmdRate(FXObject*,FXSelector,void*);
   long onCmdWindow(FXObject*,FXSelector,void*);
+  long onSeries(FXObject*,FXSelector,void*);
   long onLiveSample(FXObject*,FXSelector,void*);
 public:
   enum {
@@ -70,6 +78,8 @@ public:
     ID_RATE,
     ID_WINDOW,
     ID_LIVE_SAMPLE,
+    ID_SERIES,
+    ID_SERIES_LAST=ID_SERIES+15,
     ID_LAST
     };
 public:
@@ -79,6 +89,8 @@ public:
   virtual void stopLive();
 protected:
   void updateRadios();
+  void addSeriesRow(FXVerticalFrame* box,FXCurve* curve,FXint id,FXCheckButton*& check);
+  void syncSeriesChecks();
   virtual ~ChartWindow();
   };
 
@@ -93,6 +105,7 @@ FXDEFMAP(ChartWindow) ChartWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE,      ChartWindow::onCmdLive),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_RATE,      ChartWindow::onCmdRate),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_WINDOW,    ChartWindow::onCmdWindow),
+  FXMAPFUNCS(SEL_COMMAND, ChartWindow::ID_SERIES,    ChartWindow::ID_SERIES_LAST, ChartWindow::onSeries),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE_SAMPLE,ChartWindow::onLiveSample),
   };
 
@@ -103,7 +116,7 @@ FXIMPLEMENT(ChartWindow,FXMainWindow,ChartWindowMap,ARRAYNUMBER(ChartWindowMap))
 
 
 // Make some windows
-ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,DECOR_ALL,20,20,700,460){
+ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,DECOR_ALL,20,20,700,540){
 
   // Menubar
   menubar=new FXMenuBar(this,FRAME_RAISED|LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
@@ -127,25 +140,30 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   // Well for chart
   FXHorizontalFrame *chartwell=new FXHorizontalFrame(container,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0, 0,0,0,0, 0,0);
 
-  // Live buffer readout, shown only in live mode
+  // Right sidebar: series list and, in live mode, the live controls
   livepanel=new FXVerticalFrame(container,LAYOUT_FILL_Y|FRAME_RAISED,0,0,190,0,4,4,4,4);
-  new FXLabel(livepanel,"Live buffer",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  new FXLabel(livepanel,"Sample rate (Hz)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  ratefield=new FXTextField(livepanel,6,this,ID_RATE,TEXTFIELD_REAL|TEXTFIELD_NORMAL|LAYOUT_FILL_X);
+  new FXLabel(livepanel,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  staticseries=new FXVerticalFrame(livepanel,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,0,0);
+  liveseries=new FXVerticalFrame(livepanel,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,0,0);
+  livesection=new FXVerticalFrame(livepanel,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,0,2);
+  new FXLabel(livesection,"Live buffer",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  new FXLabel(livesection,"Sample rate (Hz)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  ratefield=new FXTextField(livesection,6,this,ID_RATE,TEXTFIELD_REAL|TEXTFIELD_NORMAL|LAYOUT_FILL_X);
   ratefield->setText("20");
   ratefield->setJustify(JUSTIFY_RIGHT);
-  new FXLabel(livepanel,"Viewport (s)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  windowfield=new FXTextField(livepanel,6,this,ID_WINDOW,TEXTFIELD_REAL|TEXTFIELD_NORMAL|LAYOUT_FILL_X);
+  new FXLabel(livesection,"Viewport (s)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  windowfield=new FXTextField(livesection,6,this,ID_WINDOW,TEXTFIELD_REAL|TEXTFIELD_NORMAL|LAYOUT_FILL_X);
   windowfield->setText("10");
   windowfield->setJustify(JUSTIFY_RIGHT);
-  livebuffer=new FXLabel(livepanel,"Buffer: 0 samples",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  livetime=new FXLabel(livepanel,"Time: 0.0 s",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  livespeed=new FXLabel(livepanel,"Speed: 0.00 px/ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  liveaccel=new FXLabel(livepanel,"Accel: 0.00 px/ms2",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  livecpu=new FXLabel(livepanel,"CPU: 0.0 %",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  livememory=new FXLabel(livepanel,"Memory: 0.0 MB",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  liveframe=new FXLabel(livepanel,"Frame: 0.00 ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  livepanel->hide();
+  livebuffer=new FXLabel(livesection,"Buffer: 0 samples",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livetime=new FXLabel(livesection,"Time: 0.0 s",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livespeed=new FXLabel(livesection,"Speed: 0.00 px/ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  liveaccel=new FXLabel(livesection,"Accel: 0.00 px/ms2",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livecpu=new FXLabel(livesection,"CPU: 0.0 %",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livememory=new FXLabel(livesection,"Memory: 0.0 MB",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  liveframe=new FXLabel(livesection,"Frame: 0.00 ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  liveseries->hide();
+  livesection->hide();
 
   // Chart
   plot=new FX2DPlot(chartwell,this,ID_CHART,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,20,20,20,20);
@@ -266,12 +284,20 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
     live->setInterval(50000000);
     live->setWindow(10.0);
     live->setTarget(this,FXSEL(SEL_COMMAND,ID_LIVE_SAMPLE));
+    for(i=0; i<demoCurves.no(); i++){
+      addSeriesRow(staticseries,demoCurves[i],i,demochecks[i]);
+      }
+    for(i=0; i<live->getNumSeries(); i++){
+      addSeriesRow(liveseries,live->getCurve(i),demoCurves.no()+i,livechecks[i]);
+      livevis[i]=true;
+      }
     }
   }
 
 
 // Create image
 void ChartWindow::create(){
+  FXint panelwidth;
   FXMainWindow::create();
   image->create();
   captionFont->create();
@@ -280,11 +306,17 @@ void ChartWindow::create(){
   horzNumberFont->create();
   vertNumberFont->create();
 
-  // Keep the sidebar wide enough for the largest buffer readout
+  // Keep the sidebar wide enough for the widest series row and buffer readout
+  staticseries->show();
+  liveseries->show();
+  livesection->show();
   livebuffer->setText("Buffer: 20000 samples");
-  livepanel->setLayoutHints(LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y);
-  livepanel->setWidth(livebuffer->getDefaultWidth()+2*4+2*2+2);
+  panelwidth=livepanel->getDefaultWidth();
   livebuffer->setText("Buffer: 0 samples");
+  livepanel->setLayoutHints(LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y);
+  livepanel->setWidth(panelwidth);
+  liveseries->hide();
+  livesection->hide();
   }
 
 
@@ -351,6 +383,55 @@ long ChartWindow::onCmdWindow(FXObject*,FXSelector,void*){
   }
 
 
+// Add one series row: color swatch, label, visibility check
+void ChartWindow::addSeriesRow(FXVerticalFrame* box,FXCurve* curve,FXint id,FXCheckButton*& check){
+  if(curve==nullptr){
+    check=nullptr;
+    return;
+    }
+  FXHorizontalFrame *row=new FXHorizontalFrame(box,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,2,0);
+  FXLabel *swatch=new FXLabel(row,"",nullptr,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT,0,0,14,12);
+  swatch->setBackColor(curve->getLineStyle().color);
+  new FXLabel(row,curve->getLabel(),nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  check=new FXCheckButton(row,"",this,ID_SERIES+id,CHECKBUTTON_NORMAL);
+  check->setCheck(curve->isVisible());
+  }
+
+
+// Show or hide one series
+long ChartWindow::onSeries(FXObject* sender,FXSelector sel,void*){
+  FXint index=FXSELID(sel)-ID_SERIES;
+  FXint num=demoCurves.no();
+  FXbool show=((FXCheckButton*)sender)->getCheck()!=0;
+  if(0<=index && index<num){
+    demoCurves[index]->setVisible(show);
+    if(!live->isRunning()) plot->fitData();
+    }
+  else if(num<=index && index<num+live->getNumSeries()){
+    FXCurve *curve=live->getCurve(index-num);
+    if(curve!=nullptr){
+      curve->setVisible(show);
+      if(live->isRunning()) plot->fitY();
+      }
+    }
+  plot->invalidateChart();
+  return 1;
+  }
+
+
+// Bring the visibility checks in sync with the curves
+void ChartWindow::syncSeriesChecks(){
+  FXint i;
+  for(i=0; i<demoCurves.no(); i++){
+    if(demochecks[i]) demochecks[i]->setCheck(demoCurves[i]->isVisible(),false);
+    }
+  for(i=0; i<live->getNumSeries(); i++){
+    FXCurve *curve=live->getCurve(i);
+    if(livechecks[i] && curve) livechecks[i]->setCheck(curve->isVisible(),false);
+    }
+  }
+
+
 // Switch to live data
 void ChartWindow::startLive(){
   FXint i;
@@ -359,8 +440,12 @@ void ChartWindow::startLive(){
     return;
     }
   for(i=0; i<demoCurves.no(); i++){
+    demovis[i]=demoCurves[i]->isVisible();
     demoCurves[i]->setVisible(false);
     }
+  staticseries->hide();
+  liveseries->show();
+  livesection->show();
   savedbackstyle=plot->getBackStyle();
   savedchartstyle=plot->getChartStyle();
   savedcaptionstyle=plot->getCaptionStyle();
@@ -376,11 +461,14 @@ void ChartWindow::startLive(){
   livecpu->setText("CPU: 0.0 %");
   livememory->setText("Memory: 0.0 MB");
   liveframe->setText("Frame: 0.00 ms");
-  livepanel->show();
   onCmdRate(nullptr,0,nullptr);
   onCmdWindow(nullptr,0,nullptr);
   live->clear();
   live->start();
+  for(i=0; i<live->getNumSeries(); i++){
+    live->getCurve(i)->setVisible(livevis[i]);
+    }
+  syncSeriesChecks();
   updateRadios();
   }
 
@@ -392,17 +480,23 @@ void ChartWindow::stopLive(){
     updateRadios();
     return;
     }
+  for(i=0; i<live->getNumSeries(); i++){
+    livevis[i]=live->getCurve(i)->isVisible();
+    }
   live->stop();
   for(i=0; i<demoCurves.no(); i++){
-    demoCurves[i]->setVisible(true);
+    demoCurves[i]->setVisible(demovis[i]);
     }
+  staticseries->show();
+  liveseries->hide();
+  livesection->hide();
   plot->getAxis(FX2DChart::YLO)->setLabel("Value");
   plot->getAxis(FX2DChart::YHI)->setLabel("Value");
   plot->setBackStyle(savedbackstyle);
   plot->setChartStyle(savedchartstyle);
   plot->setCaptionStyle(savedcaptionstyle);
   plot->fitData();
-  livepanel->hide();
+  syncSeriesChecks();
   updateRadios();
   }
 
