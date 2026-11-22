@@ -8,7 +8,6 @@
 #include "fx.h"
 #include "chart.h"
 #include "live/LiveSource.h"
-#include "icons.h"
 
 /*
   Notes:
@@ -48,9 +47,10 @@ protected:
   FXLabel      *livecpu;
   FXLabel      *livememory;
   FXLabel      *liveframe;
-  FXBMPImage   *image;
   LiveSource   *live;
   FXCurveList   demoCurves;
+  FillStyle     liveBackStyle;   // Solid theme fills for the live view
+  FillStyle     liveChartStyle;
   FillStyle     savedbackstyle;
   FillStyle     savedchartstyle;
   FXuint        savedcaptionstyle;
@@ -187,9 +187,6 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
 
   plot->setCaption("Multi-line\ncaptions are great!");
 
-  // Make tile pattern
-  image=new FXBMPImage(getApp(),marble);
-
   // Make label fonts
   horzLabelFont=new FXFont(getApp(),"helvetica",14,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
   vertLabelFont=new FXFont(getApp(),"helvetica",14,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
@@ -206,13 +203,32 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   captionFont=new FXFont(getApp(),"helvetica",18,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
   //captionFont->setAngle(90*64);
 
-  // Set up fill style
-  FillStyle bs={image,FXRGB(128,255,255),FXRGB(128,128,255),FXRGB(200,200,200),FXRGB(128,128,128),STIPPLE_NONE,FILLSTYLE_HORIZONTAL};
-  FillStyle cs={image,FXRGB(128,255,255),FXRGB(128,128,255),FXRGB(230,230,230),FXRGB(128,128,255),STIPPLE_NONE,FILLSTYLE_VERTICAL};
+  // Fill styles follow the theme: the frame is the window background, the
+  // plot area is the base color with a light gradient towards the top
+  FXColor back=getApp()->getBackColor();
+  FXColor base=getApp()->getBaseColor();
+  FXColor hilite=getApp()->getHiliteColor();
+  FXColor shadow=getApp()->getShadowColor();
+  FillStyle bs={nullptr,back,FXRGBA(0,0,0,0),shadow,back,STIPPLE_NONE,FILLSTYLE_HORIZONTAL};
+  FillStyle cs={nullptr,base,FXRGBA(0,0,0,0),base,hilite,STIPPLE_NONE,FILLSTYLE_VERTICAL};
 
   // Change fill styles
   plot->setBackStyle(bs);
   plot->setChartStyle(cs);
+
+  // The live view fills solid, which is much cheaper than a gradient
+  liveBackStyle.image=nullptr;
+  liveBackStyle.forecolor=back;
+  liveBackStyle.backcolor=FXRGBA(0,0,0,0);
+  liveBackStyle.lower=liveBackStyle.upper=back;
+  liveBackStyle.hatch=STIPPLE_NONE;
+  liveBackStyle.style=FILLSTYLE_SOLID;
+  liveChartStyle.image=nullptr;
+  liveChartStyle.forecolor=base;
+  liveChartStyle.backcolor=FXRGBA(0,0,0,0);
+  liveChartStyle.lower=liveChartStyle.upper=base;
+  liveChartStyle.hatch=STIPPLE_NONE;
+  liveChartStyle.style=FILLSTYLE_SOLID;
 
   // Change axis labels
   plot->getAxis(FX2DChart::XLO)->setLabel("Time (s)");
@@ -264,7 +280,7 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
         xd->append(x);
         yd->append(y);
         }
-      ls.color=colors[s];
+      ls.color=readableColor(colors[s],base);
       ls.weight=1;
       ls.style=LINESTYLE_SOLID;
       curve->setLineStyle(ls);
@@ -283,10 +299,10 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
         xd->append(5.0*i);
         yd->append(50.0+45.0*Math::sin(0.25*i));
         }
-      ls.color=colors[3];
+      ls.color=readableColor(colors[3],base);
       ls.weight=1;
       ls.style=LINESTYLE_NONE;
-      ms.color=colors[3];
+      ms.color=readableColor(colors[3],base);
       ms.size=7;
       ms.style=MARKER_DIAMOND|MARKER_SOLID;
       curve->setLineStyle(ls);
@@ -312,11 +328,10 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   }
 
 
-// Create image
+// Create window and fonts
 void ChartWindow::create(){
   FXint panelwidth;
   FXMainWindow::create();
-  image->create();
   captionFont->create();
   horzLabelFont->create();
   vertLabelFont->create();
@@ -339,11 +354,6 @@ void ChartWindow::create(){
   xscroll->disable();
   updateZoomButton();
   }
-
-
-// Solid fills for the live view; gradients cost more than the data update
-static const FillStyle liveBackStyle={nullptr,FXRGB(235,235,235),FXRGBA(0,0,0,0),FXRGB(255,255,255),FXRGB(255,255,255),STIPPLE_NONE,FILLSTYLE_SOLID};
-static const FillStyle liveChartStyle={nullptr,FXRGB(255,255,255),FXRGBA(0,0,0,0),FXRGB(255,255,255),FXRGB(255,255,255),STIPPLE_NONE,FILLSTYLE_SOLID};
 
 
 // Command from chart
@@ -622,7 +632,6 @@ ChartWindow::~ChartWindow(){
   delete live;
   delete filemenu;
   delete viewmenu;
-  delete image;
   delete captionFont;
   delete horzLabelFont;
   delete vertLabelFont;

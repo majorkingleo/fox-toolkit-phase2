@@ -42,7 +42,7 @@ const FXdouble zoomwheelstep=1.25;
 const FXint    zoombandsize=8;
 
 
-// Default chart fill style
+// Default chart fill style; the colors are replaced by the theme colors
 const FillStyle defaultChartStyle={nullptr,FXRGB(255,255,255),FXRGBA(0,0,0,0),FXRGB(240,240,240),FXRGB(255,255,255),STIPPLE_NONE,FILLSTYLE_SOLID};
 
 
@@ -65,6 +65,8 @@ FXIMPLEMENT(FX2DChart,FXChart,FX2DChartMap,ARRAYNUMBER(FX2DChartMap))
 FX2DChart::FX2DChart(){
   FXint i;
   chartstyle=defaultChartStyle;
+  chartstyle.forecolor=getApp()->getBaseColor();
+  chartstyle.lower=chartstyle.upper=getApp()->getBaseColor();
   bandanchorx=0;
   bandanchory=0;
   banding=false;

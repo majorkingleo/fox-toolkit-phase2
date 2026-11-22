@@ -60,7 +60,7 @@ FXDragType FXChart::csvType=0;
 FXDragType FXChart::tifType=0;
 
 
-// Default back fill style
+// Default back fill style; the colors are replaced by the theme colors
 const FillStyle defaultBackStyle={
   nullptr,FXRGB(255,255,255),FXRGBA(0,0,0,0),FXRGB(255,255,255),FXRGB(0,0,255),STIPPLE_NONE,FILLSTYLE_SOLID
   };
@@ -88,9 +88,11 @@ FXChart::FXChart(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x
   flags|=FLAG_SHOWN|FLAG_ENABLED|FLAG_DROPTARGET;
   chart=new FXImage(getApp(),nullptr,IMAGE_DITHER|IMAGE_SHMI|IMAGE_SHMP|IMAGE_OPAQUE,w,h);
   captionfont=getApp()->getNormalFont();
-  captioncolor=FXRGB(0,0,0);
+  captioncolor=getApp()->getForeColor();
   captionoffset=5;
   backstyle=defaultBackStyle;
+  backstyle.forecolor=getApp()->getBackColor();
+  backstyle.lower=backstyle.upper=getApp()->getBackColor();
   chartdirty=false;
   lastupdatetime=0;
   target=tgt;

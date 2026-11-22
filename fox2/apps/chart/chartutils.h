@@ -31,6 +31,8 @@ extern FXCHARTAPI void drawText(FXDC& dc,const FXString& string,FXint x,FXint y,
 extern FXCHARTAPI void drawRectangle(FXDC& dc,const FillStyle& fs,FXint x,FXint y,FXint w,FXint h);
 extern FXCHARTAPI void drawMarker(FXDC& dc,const Marker& ms,FXint x,FXint y);
 extern FXCHARTAPI void getTickSpacing(FXdouble& major,FXdouble& minor,FXdouble min,FXdouble max);
+extern FXCHARTAPI FXColor readableColor(FXColor color,FXColor background);
+extern FXCHARTAPI FXColor contrastColor(FXColor background,FXint percent);
 
 }
 

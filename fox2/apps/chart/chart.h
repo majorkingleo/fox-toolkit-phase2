@@ -23,6 +23,7 @@
 
 // Chart includes
 #include "chartdefs.h"
+#include "chartutils.h"
 #include "FXAxis.h"
 #include "FXChart.h"
 #include "FXData.h"

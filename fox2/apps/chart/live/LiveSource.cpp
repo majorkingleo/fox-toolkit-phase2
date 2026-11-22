@@ -61,13 +61,14 @@ FXIMPLEMENT(LiveSource,FXObject,LiveSourceMap,ARRAYNUMBER(LiveSourceMap))
 
 // Make a live curve
 void LiveSource::addCurve(FXint index,const FXString& label,FXColor color,FXuchar axis){
+  FXColor back=plot->getChartStyle().forecolor;
   FXData *xd=new FXData();
   FXData *yd=new FXData();
   FXCurve *curve=new FXCurve(plot,label);
   LineStyle style;
   xd->setLimit(20000);
   yd->setLimit(20000);
-  style.color=color;
+  style.color=readableColor(color,back);
   style.weight=1;
   style.style=LINESTYLE_SOLID;
   curve->setLineStyle(style);

@@ -325,6 +325,25 @@ void drawRectangle(FXDC& dc,const FillStyle& fs,FXint x,FXint y,FXint w,FXint h)
   }
 
 
+// Luminance of a color, from 0 for black to 255 for white
+static FXint colorLuminance(FXColor clr){
+  return (30*FXREDVAL(clr)+59*FXGREENVAL(clr)+11*FXBLUEVAL(clr))/100;
+  }
+
+
+// Lift a curve color that would be lost on a dark background
+FXColor readableColor(FXColor color,FXColor background){
+  return colorLuminance(background)<128 ? makeHiliteColor(color,30) : color;
+  }
+
+
+// Return a color that stands out against the background: darker on a light
+// background, lighter on a dark one
+FXColor contrastColor(FXColor background,FXint percent){
+  return colorLuminance(background)<128 ? makeHiliteColor(background,percent) : makeShadowColor(background,percent);
+  }
+
+
 // Determine tick spacing
 void getTickSpacing(FXdouble& major,FXdouble& minor,FXdouble min,FXdouble max){
   FXdouble range=max-min;
