@@ -174,7 +174,7 @@ FXdouble LiveSource::sampleMemory(){
 
 
 // Deserialization
-LiveSource::LiveSource():plot(nullptr),target(nullptr),message(0),interval(50000000),starttime(0),lasttime(0),window(60.0),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
+LiveSource::LiveSource():plot(nullptr),target(nullptr),message(0),interval(50000000),starttime(0),lasttime(0),window(60.0),viewleft(0.0),follow(true),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
   FXint i;
   current.time=current.speed=current.accel=current.cpu=current.memory=current.frame=0.0;
   current.count=0;
@@ -187,7 +187,7 @@ LiveSource::LiveSource():plot(nullptr),target(nullptr),message(0),interval(50000
 
 
 // Construct a live source feeding plot
-LiveSource::LiveSource(FX2DPlot* p,FXTime ns):plot(p),target(nullptr),message(0),interval(ns),starttime(0),lasttime(0),window(60.0),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
+LiveSource::LiveSource(FX2DPlot* p,FXTime ns):plot(p),target(nullptr),message(0),interval(ns),starttime(0),lasttime(0),window(60.0),viewleft(0.0),follow(true),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
   FXint i;
   current.time=current.speed=current.accel=current.cpu=current.memory=current.frame=0.0;
   current.count=0;
@@ -224,6 +224,8 @@ void LiveSource::start(){
   lastcpu=0;
   lastidle=0;
   running=true;
+  follow=true;
+  viewleft=0.0;
   showCurves(true);
   plot->getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT),interval);
   }
@@ -248,6 +250,8 @@ void LiveSource::clear(){
   starttime=lasttime=FXThread::steadytime();
   current.time=0.0;
   current.count=0;
+  follow=true;
+  viewleft=0.0;
   lastspeed=0.0;
   lastvalid=false;
   lastcpu=0;
@@ -279,12 +283,24 @@ void LiveSource::setWindow(FXdouble seconds){
   }
 
 
-// Move the viewport to the last sample
+// Apply the visible history to the X axes
 void LiveSource::refreshView(){
-  FXdouble xmin=current.time>window ? current.time-window : 0.0;
-  plot->getAxis(FX2DChart::XLO)->setAxisRange(xmin,xmin+window);
-  plot->getAxis(FX2DChart::XHI)->setAxisRange(xmin,xmin+window);
+  FXdouble maxleft=getViewMax();
+  if(follow || viewleft>maxleft) viewleft=maxleft;
+  plot->getAxis(FX2DChart::XLO)->setAxisRange(viewleft,viewleft+window);
+  plot->getAxis(FX2DChart::XHI)->setAxisRange(viewleft,viewleft+window);
   plot->invalidateChart();
+  }
+
+
+// Move the viewport to a given left edge; the end resumes following
+void LiveSource::setViewPosition(FXdouble left){
+  FXdouble maxleft=getViewMax();
+  if(left<0.0) left=0.0;
+  if(left>maxleft) left=maxleft;
+  viewleft=left;
+  follow=(left>=maxleft);
+  refreshView();
   }
 
 

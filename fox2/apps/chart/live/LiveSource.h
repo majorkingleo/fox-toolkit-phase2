@@ -73,6 +73,8 @@ protected:
   FXTime    starttime;          // Time of first sample
   FXTime    lasttime;           // Time of previous sample
   FXdouble  window;             // Visible history, seconds
+  FXdouble  viewleft;           // Left edge of the visible history
+  FXbool    follow;             // Viewport follows the latest sample
   FXdouble  lastspeed;          // Previous mouse speed
   FXint     lastx;              // Previous pointer x
   FXint     lasty;              // Previous pointer y
@@ -118,6 +120,21 @@ public:
 
   /// Move the viewport to the last sample
   void refreshView();
+
+  /// Move the viewport to a given left edge; dragging to the end resumes follow
+  void setViewPosition(FXdouble left);
+
+  /// Return left edge of the visible history
+  FXdouble getViewLeft() const { return viewleft; }
+
+  /// Return largest possible left edge
+  FXdouble getViewMax() const { return current.time>window ? current.time-window : 0.0; }
+
+  /// Return true if the viewport follows the latest sample
+  FXbool isFollowing() const { return follow; }
+
+  /// Return elapsed time of the latest sample
+  FXdouble getTime() const { return current.time; }
 
   /// Return visible history in seconds
   FXdouble getWindow() const { return window; }

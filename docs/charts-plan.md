@@ -87,6 +87,8 @@ Target order: Wayland first, then X11 and Win32.
       side panel; the chart keeps a fixed-width time window while scrolling
 - [x] Right sidebar lists every series with a color swatch, its label and a
       visibility checkbox; toggling one refits the axis or the live window
+- [x] Horizontal scrollbar below the chart pans the live viewport through the
+      retained history; dragging back to the end resumes following
 
 ## What the fox2 port already provides
 
@@ -347,7 +349,8 @@ deterministic dataset mode, and adds a live sheet. The sheet is a small
 - the live sheet hides the chart caption and shows the buffer size and the
   current sample values in a side panel while the chart visualises the buffer;
 - the time axis keeps a fixed-width viewport and scrolls horizontally as
-  samples arrive; the axis frame and ticks stay in place;
+  samples arrive; the axis frame and ticks stay in place, and a scrollbar
+  below the chart pans back through retained history;
 - series:
   - mouse x and y speed (pixels/s) and acceleration (pixels/s²), derived from
     `SEL_MOTION` events and `FXThread::steadytime()`;
@@ -574,7 +577,8 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
 - Screenshots under `screenshots/tests/fox2/x11/`, `.../wayland/` and
   `.../win32/` (`charttest-static.png`, `charttest-live.png`,
   `charttest-viewmenu.png`, `charttest-series-toggle.png`,
-  `charttest-live-series-toggle.png`, `chartdemo-csv.png`, `chartdemo-xlsx.png`,
+  `charttest-live-series-toggle.png`, `charttest-live-scrolled.png`,
+  `chartdemo-csv.png`, `chartdemo-xlsx.png`,
   `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and
   `sample.ods` with the same columns and values, plus an import check mode that

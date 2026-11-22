@@ -23,6 +23,7 @@ class ChartWindow : public FXMainWindow {
   FXDECLARE(ChartWindow)
 protected:
   FX2DPlot     *plot;
+  FXScrollBar  *xscroll;
   FXMenuBar    *menubar;
   FXStatusBar  *statusbar;
   FXMenuPane   *filemenu;
@@ -68,6 +69,7 @@ public:
   long onCmdLive(FXObject*,FXSelector,void*);
   long onCmdRate(FXObject*,FXSelector,void*);
   long onCmdWindow(FXObject*,FXSelector,void*);
+  long onScroll(FXObject*,FXSelector,void*);
   long onSeries(FXObject*,FXSelector,void*);
   long onLiveSample(FXObject*,FXSelector,void*);
 public:
@@ -77,6 +79,7 @@ public:
     ID_LIVE,
     ID_RATE,
     ID_WINDOW,
+    ID_SCROLL,
     ID_LIVE_SAMPLE,
     ID_SERIES,
     ID_SERIES_LAST=ID_SERIES+15,
@@ -89,6 +92,7 @@ public:
   virtual void stopLive();
 protected:
   void updateRadios();
+  void updateScroll();
   void addSeriesRow(FXVerticalFrame* box,FXCurve* curve,FXint id,FXCheckButton*& check);
   void syncSeriesChecks();
   virtual ~ChartWindow();
@@ -105,6 +109,8 @@ FXDEFMAP(ChartWindow) ChartWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE,      ChartWindow::onCmdLive),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_RATE,      ChartWindow::onCmdRate),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_WINDOW,    ChartWindow::onCmdWindow),
+  FXMAPFUNC(SEL_CHANGED,  ChartWindow::ID_SCROLL,    ChartWindow::onScroll),
+  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_SCROLL,    ChartWindow::onScroll),
   FXMAPFUNCS(SEL_COMMAND, ChartWindow::ID_SERIES,    ChartWindow::ID_SERIES_LAST, ChartWindow::onSeries),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE_SAMPLE,ChartWindow::onLiveSample),
   };
@@ -165,8 +171,11 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   liveseries->hide();
   livesection->hide();
 
-  // Chart
-  plot=new FX2DPlot(chartwell,this,ID_CHART,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,20,20,20,20);
+  // Chart, with a scrollbar underneath it to pan the visible time range
+  FXVerticalFrame *chartcolumn=new FXVerticalFrame(chartwell,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
+  plot=new FX2DPlot(chartcolumn,this,ID_CHART,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,20,20,20,20);
+  xscroll=new FXScrollBar(chartcolumn,this,ID_SCROLL,SCROLLBAR_HORIZONTAL|LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM,0,0,0,0);
+  xscroll->setLine(1000);
 
   plot->setCaption("Multi-line\ncaptions are great!");
 
@@ -317,6 +326,8 @@ void ChartWindow::create(){
   livepanel->setWidth(panelwidth);
   liveseries->hide();
   livesection->hide();
+  updateScroll();
+  xscroll->disable();
   }
 
 
@@ -379,6 +390,33 @@ long ChartWindow::onCmdWindow(FXObject*,FXSelector,void*){
     }
   live->setWindow(seconds);
   windowfield->setText(FXString::value("%g",seconds));
+  updateScroll();
+  return 1;
+  }
+
+
+// Update the scrollbar to the full time range and the visible window
+void ChartWindow::updateScroll(){
+  FXint range=1,page=1,pos=0;
+  if(live->isRunning()){
+    range=(FXint)(live->getTime()*1000.0+0.5);
+    page=(FXint)(live->getWindow()*1000.0+0.5);
+    pos=(FXint)(live->getViewLeft()*1000.0+0.5);
+    if(range<1) range=1;
+    if(page<1) page=1;
+    }
+  xscroll->setRange(range,false);
+  xscroll->setPage(page,false);
+  xscroll->setPosition(pos,false);
+  }
+
+
+// Drag or step the viewport through the retained history
+long ChartWindow::onScroll(FXObject*,FXSelector,void* ptr){
+  if(live->isRunning()){
+    live->setViewPosition((FXdouble)(FXival)ptr/1000.0);
+    updateScroll();
+    }
   return 1;
   }
 
@@ -468,6 +506,8 @@ void ChartWindow::startLive(){
   for(i=0; i<live->getNumSeries(); i++){
     live->getCurve(i)->setVisible(livevis[i]);
     }
+  xscroll->enable();
+  updateScroll();
   syncSeriesChecks();
   updateRadios();
   }
@@ -496,6 +536,8 @@ void ChartWindow::stopLive(){
   plot->setChartStyle(savedchartstyle);
   plot->setCaptionStyle(savedcaptionstyle);
   plot->fitData();
+  xscroll->disable();
+  updateScroll();
   syncSeriesChecks();
   updateRadios();
   }
@@ -511,6 +553,7 @@ long ChartWindow::onLiveSample(FXObject*,FXSelector,void* ptr){
   livecpu->setText(FXString::value("CPU: %.1f %%",sample->cpu));
   livememory->setText(FXString::value("Memory: %.1f MB",sample->memory));
   liveframe->setText(FXString::value("Frame: %.2f ms",sample->frame));
+  if(sample->count<5 || (sample->count%5)==0) updateScroll();
   return 1;
   }
 
