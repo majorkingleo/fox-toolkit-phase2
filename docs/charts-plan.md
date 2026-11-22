@@ -90,6 +90,9 @@ Target order: Wayland first, then X11 and Win32.
 - [x] Horizontal scrollbar below the chart, shown only in live mode, pans the
       viewport through retained history; dragging back to the end resumes
       following
+- [x] Mouse wheel zooms both axes around the pointer and a rubber band drawn
+      with the left button zooms into a rectangle; a double click returns to
+      the ranges in effect before the first zoom
 
 ## What the fox2 port already provides
 
@@ -352,6 +355,11 @@ deterministic dataset mode, and adds a live sheet. The sheet is a small
 - the time axis keeps a fixed-width viewport and scrolls horizontally as
   samples arrive; the axis frame and ticks stay in place, and a scrollbar
   below the chart, hidden in static mode, pans back through retained history;
+- the chart widget zooms itself: the wheel scales both axes around the
+  pointer, the left button opens a rubber band that is dragged into a
+  rectangle, and a double click restores the pre-zoom ranges.  In live mode
+  the x range of a zoom becomes the viewport length, so the zoom is a
+  viewport reduction and leaves the following window;
 - series:
   - mouse x and y speed (pixels/s) and acceleration (pixels/s²), derived from
     `SEL_MOTION` events and `FXThread::steadytime()`;
@@ -579,6 +587,8 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
   `.../win32/` (`charttest-static.png`, `charttest-live.png`,
   `charttest-viewmenu.png`, `charttest-series-toggle.png`,
   `charttest-live-series-toggle.png`, `charttest-live-scrolled.png`,
+  `charttest-zoom-wheel.png`, `charttest-zoom-band.png`,
+  `charttest-zoom-rect.png`, `charttest-live-zoom.png`,
   `chartdemo-csv.png`, `chartdemo-xlsx.png`,
   `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and

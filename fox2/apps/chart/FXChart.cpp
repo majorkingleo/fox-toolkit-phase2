@@ -256,7 +256,13 @@ long FXChart::onPaint(FXObject*,FXSelector,void* ptr){
   if(chartdirty) updateChart();
   FXDCWindow dc(this,(FXEvent*)ptr);
   dc.drawImage(chart,0,0);
+  drawOverlay(dc);
   return 1;
+  }
+
+
+// Draw annotations on top of the chart image
+void FXChart::drawOverlay(FXDC&) const {
   }
 
 

@@ -65,6 +65,7 @@ private:
   ChartWindow &operator=(const ChartWindow&);
 public:
   long onCmdChart(FXObject*,FXSelector,void*);
+  long onChartZoom(FXObject*,FXSelector,void*);
   long onCmdStatic(FXObject*,FXSelector,void*);
   long onCmdLive(FXObject*,FXSelector,void*);
   long onCmdRate(FXObject*,FXSelector,void*);
@@ -105,6 +106,7 @@ protected:
 // Map
 FXDEFMAP(ChartWindow) ChartWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_CHART,     ChartWindow::onCmdChart),
+  FXMAPFUNC(SEL_CHANGED,  ChartWindow::ID_CHART,     ChartWindow::onChartZoom),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_STATIC,    ChartWindow::onCmdStatic),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE,      ChartWindow::onCmdLive),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_RATE,      ChartWindow::onCmdRate),
@@ -343,6 +345,20 @@ long ChartWindow::onCmdChart(FXObject*,FXSelector,void*){
   }
 
 
+// The chart zoomed; drive the live viewport from the new time range
+long ChartWindow::onChartZoom(FXObject*,FXSelector,void*){
+  if(live->isRunning()){
+    FXdouble lo=plot->getAxis(FX2DChart::XLO)->getAxisRangeMin();
+    FXdouble hi=plot->getAxis(FX2DChart::XLO)->getAxisRangeMax();
+    live->setWindow(hi-lo);
+    live->setViewPosition(lo);
+    windowfield->setText(FXString::value("%.3g",live->getWindow()));
+    updateScroll();
+    }
+  return 1;
+  }
+
+
 // Switch to the static data mode
 long ChartWindow::onCmdStatic(FXObject*,FXSelector,void*){
   if(live->isRunning()){
@@ -415,7 +431,14 @@ void ChartWindow::updateScroll(){
 // Drag or step the viewport through the retained history
 long ChartWindow::onScroll(FXObject*,FXSelector,void* ptr){
   if(live->isRunning()){
-    live->setViewPosition((FXdouble)(FXival)ptr/1000.0);
+    FXint pos=(FXint)(FXival)ptr;
+    FXint end=xscroll->getRange()-xscroll->getPage();
+    if(pos>=end-xscroll->getLine()){
+      live->setViewPosition(live->getViewMax());
+      }
+    else{
+      live->setViewPosition((FXdouble)pos/1000.0);
+      }
     updateScroll();
     }
   return 1;
@@ -444,7 +467,7 @@ long ChartWindow::onSeries(FXObject* sender,FXSelector sel,void*){
   FXbool show=((FXCheckButton*)sender)->getCheck()!=0;
   if(0<=index && index<num){
     demoCurves[index]->setVisible(show);
-    if(!live->isRunning()) plot->fitData();
+    if(!live->isRunning() && !plot->isZoomed()) plot->fitData();
     }
   else if(num<=index && index<num+live->getNumSeries()){
     FXCurve *curve=live->getCurve(index-num);

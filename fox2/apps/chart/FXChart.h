@@ -60,6 +60,7 @@ protected:
   FXChart();
   virtual void updateChart();
   virtual void drawSelf(FXDC& dc) const;
+  virtual void drawOverlay(FXDC& dc) const;
 private:
   FXChart(const FXChart&);
   FXChart &operator=(const FXChart&);

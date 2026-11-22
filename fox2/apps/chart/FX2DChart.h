@@ -34,15 +34,30 @@ class FXCHARTAPI FX2DChart : public FXChart {
 protected:
   FXAxis   *axes[4];            // Axis definitions
   FillStyle chartstyle;         // Chart fill style
+  mutable FXRectangle plotarea;   // Plot area in widget coordinates
+  FXRectangle bandrect;         // Rubber band rectangle
+  FXint     bandanchorx;        // Rubber band anchor x
+  FXint     bandanchory;        // Rubber band anchor y
+  FXbool    banding;            // Rubber band being dragged
+  FXbool    zoomed;             // Axes zoomed away from the data range
+  FXdouble  savedrange[4][2];   // Ranges in effect before the first zoom
 protected:
   FX2DChart();
   virtual void drawSelf(FXDC& dc) const override;
+  virtual void drawOverlay(FXDC& dc) const override;
   virtual void drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FXint plotbottom) const;
+  void saveZoomRanges();
+  void setZoomRanges(FXdouble xlo,FXdouble xhi,FXdouble ylo,FXdouble yhi);
 private:
   FX2DChart(const FX2DChart&);
   FX2DChart &operator=(const FX2DChart&);
 public:
   long onCmdXXX(FXObject*,FXSelector,void*);
+  long onMouseWheel(FXObject*,FXSelector,void*);
+  long onLeftBtnPress(FXObject*,FXSelector,void*);
+  long onMotion(FXObject*,FXSelector,void*);
+  long onLeftBtnRelease(FXObject*,FXSelector,void*);
+  long onUngrabbed(FXObject*,FXSelector,void*);
 public:
   enum{
     ID_XXX=FXChart::ID_LAST,
@@ -69,6 +84,24 @@ public:
 
   /// Return axis
   FXAxis* getAxis(FXint ax) const { return axes[ax]; }
+
+  /// Return the plot area in widget coordinates
+  const FXRectangle& getPlotArea() const { return plotarea; }
+
+  /// Zoom the axes by factor around a point in the plot
+  void zoomAt(FXint x,FXint y,FXdouble factor);
+
+  /// Zoom the axes to a rectangle in the plot
+  void zoomRectangle(FXint x,FXint y,FXint w,FXint h);
+
+  /// Return to the ranges in effect before the first zoom
+  void resetZoom();
+
+  /// Return true if the axes are zoomed away from the data range
+  FXbool isZoomed() const { return zoomed; }
+
+  /// Forget the zoom state, keeping the current axis ranges
+  void clearZoom(){ zoomed=false; }
 
   /// Set chart fill style
   void setChartStyle(const FillStyle& fs);

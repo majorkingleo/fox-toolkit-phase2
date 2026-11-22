@@ -37,6 +37,11 @@ using namespace FXCHART;
 namespace FXCHART {
 
 
+// Zoom step per wheel notch and smallest rubber band size
+const FXdouble zoomwheelstep=1.25;
+const FXint    zoombandsize=8;
+
+
 // Default chart fill style
 const FillStyle defaultChartStyle={nullptr,FXRGB(255,255,255),FXRGBA(0,0,0,0),FXRGB(240,240,240),FXRGB(255,255,255),STIPPLE_NONE,FILLSTYLE_SOLID};
 
@@ -44,6 +49,11 @@ const FillStyle defaultChartStyle={nullptr,FXRGB(255,255,255),FXRGBA(0,0,0,0),FX
 // Map
 FXDEFMAP(FX2DChart) FX2DChartMap[]={
   FXMAPFUNC(SEL_COMMAND,FX2DChart::ID_XXX,FX2DChart::onCmdXXX),
+  FXMAPFUNC(SEL_MOUSEWHEEL,0,FX2DChart::onMouseWheel),
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,FX2DChart::onLeftBtnPress),
+  FXMAPFUNC(SEL_MOTION,0,FX2DChart::onMotion),
+  FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,FX2DChart::onLeftBtnRelease),
+  FXMAPFUNC(SEL_UNGRABBED,0,FX2DChart::onUngrabbed),
   };
 
 
@@ -53,7 +63,18 @@ FXIMPLEMENT(FX2DChart,FXChart,FX2DChartMap,ARRAYNUMBER(FX2DChartMap))
 
 // Deserialization
 FX2DChart::FX2DChart(){
+  FXint i;
   chartstyle=defaultChartStyle;
+  bandanchorx=0;
+  bandanchory=0;
+  banding=false;
+  zoomed=false;
+  plotarea.x=plotarea.y=plotarea.w=plotarea.h=0;
+  bandrect.x=bandrect.y=bandrect.w=bandrect.h=0;
+  for(i=0; i<4; i++){
+    savedrange[i][0]=0.0;
+    savedrange[i][1]=0.0;
+    }
   axes[XLO]=nullptr;
   axes[YLO]=nullptr;
   axes[XHI]=nullptr;
@@ -63,7 +84,18 @@ FX2DChart::FX2DChart(){
 
 // Construct two-dimensional chart widget
 FX2DChart::FX2DChart(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FXChart(p,tgt,sel,opts,x,y,w,h,pl,pr,pt,pb){
+  FXint i;
   chartstyle=defaultChartStyle;
+  bandanchorx=0;
+  bandanchory=0;
+  banding=false;
+  zoomed=false;
+  plotarea.x=plotarea.y=plotarea.w=plotarea.h=0;
+  bandrect.x=bandrect.y=bandrect.w=bandrect.h=0;
+  for(i=0; i<4; i++){
+    savedrange[i][0]=0.0;
+    savedrange[i][1]=0.0;
+    }
   axes[XLO]=new FXAxis(this,"X",TEXT_ATTACH_TOP,   TEXT_ATTACH_TOP,   AXIS_LINE|AXIS_LABEL|AXIS_NUMBERS|AXIS_TICKS_MAJOR|AXIS_TICKS_MINOR|AXIS_TICKS_INSIDE|AXIS_TICKS_AUTO|AXIS_GRID_MAJOR);
   axes[YLO]=new FXAxis(this,"Y",TEXT_ATTACH_RIGHT, TEXT_ATTACH_RIGHT, AXIS_LINE|AXIS_LABEL|AXIS_NUMBERS|AXIS_TICKS_MAJOR|AXIS_TICKS_MINOR|AXIS_TICKS_INSIDE|AXIS_TICKS_AUTO|AXIS_GRID_MAJOR);
 //  axes[XHI]=new FXAxis(this,"X",TEXT_ATTACH_BOTTOM,TEXT_ATTACH_BOTTOM,AXIS_LINE);
@@ -263,6 +295,12 @@ void FX2DChart::drawSelf(FXDC& dc) const {
       // Draw plot if there's still space for it
       if(plotleft<plotright && plottop<plotbottom){
 
+        // Remember where the plot is so mouse zooming can map pixels
+        plotarea.x=(FXshort)plotleft;
+        plotarea.y=(FXshort)plottop;
+        plotarea.w=(FXshort)(plotright-plotleft);
+        plotarea.h=(FXshort)(plotbottom-plottop);
+
         // Draw the caption
         if(options&CAPTION_SHOWN){
           if(!(options&(CAPTION_LEFT|CAPTION_RIGHT))){      // Caption centered above/below chart
@@ -290,6 +328,192 @@ void FX2DChart::drawSelf(FXDC& dc) const {
         }
       }
     }
+  }
+
+
+// Remember the axis ranges before the first zoom
+void FX2DChart::saveZoomRanges(){
+  FXint i;
+  if(zoomed) return;
+  for(i=0; i<4; i++){
+    savedrange[i][0]=axes[i]->getAxisRangeMin();
+    savedrange[i][1]=axes[i]->getAxisRangeMax();
+    }
+  zoomed=true;
+  }
+
+
+// Apply new ranges to both sides of each axis and tell the target
+void FX2DChart::setZoomRanges(FXdouble xlo,FXdouble xhi,FXdouble ylo,FXdouble yhi){
+  if(!(xlo<xhi) || !(ylo<yhi)) return;
+  axes[XLO]->setAxisRange(xlo,xhi);
+  axes[XHI]->setAxisRange(xlo,xhi);
+  axes[YLO]->setAxisRange(ylo,yhi);
+  axes[YHI]->setAxisRange(ylo,yhi);
+  if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),nullptr);
+  }
+
+
+// Zoom the axes by factor around a point in the plot; factor below one zooms in
+void FX2DChart::zoomAt(FXint x,FXint y,FXdouble factor){
+  FXdouble xlo,xhi,ylo,yhi,dx,dy;
+  if(factor<=0.0) return;
+  if(plotarea.w<=0 || plotarea.h<=0) return;
+  if(x<plotarea.x) x=plotarea.x;
+  if(x>plotarea.x+plotarea.w) x=plotarea.x+plotarea.w;
+  if(y<plotarea.y) y=plotarea.y;
+  if(y>plotarea.y+plotarea.h) y=plotarea.y+plotarea.h;
+  xlo=axes[XLO]->getAxisRangeMin();
+  xhi=axes[XLO]->getAxisRangeMax();
+  ylo=axes[YLO]->getAxisRangeMin();
+  yhi=axes[YLO]->getAxisRangeMax();
+  dx=xlo+(xhi-xlo)*(FXdouble)(x-plotarea.x)/plotarea.w;
+  dy=yhi-(yhi-ylo)*(FXdouble)(y-plotarea.y)/plotarea.h;
+  saveZoomRanges();
+  setZoomRanges(dx+(xlo-dx)*factor,dx+(xhi-dx)*factor,dy+(ylo-dy)*factor,dy+(yhi-dy)*factor);
+  }
+
+
+// Zoom the axes to a rectangle in the plot
+void FX2DChart::zoomRectangle(FXint x,FXint y,FXint w,FXint h){
+  FXdouble xlo,xhi,ylo,yhi;
+  FXint x0,x1,y0,y1;
+  if(plotarea.w<=0 || plotarea.h<=0) return;
+  if(w<0){ x+=w; w=-w; }
+  if(h<0){ y+=h; h=-h; }
+  if(w<zoombandsize || h<zoombandsize) return;
+  x0=FXMAX(x,plotarea.x);
+  y0=FXMAX(y,plotarea.y);
+  x1=FXMIN(x+w,plotarea.x+plotarea.w);
+  y1=FXMIN(y+h,plotarea.y+plotarea.h);
+  if(x0>=x1 || y0>=y1) return;
+  xlo=axes[XLO]->getAxisRangeMin();
+  xhi=axes[XLO]->getAxisRangeMax();
+  ylo=axes[YLO]->getAxisRangeMin();
+  yhi=axes[YLO]->getAxisRangeMax();
+  saveZoomRanges();
+  setZoomRanges(xlo+(xhi-xlo)*(FXdouble)(x0-plotarea.x)/plotarea.w,
+                xlo+(xhi-xlo)*(FXdouble)(x1-plotarea.x)/plotarea.w,
+                yhi-(yhi-ylo)*(FXdouble)(y1-plotarea.y)/plotarea.h,
+                yhi-(yhi-ylo)*(FXdouble)(y0-plotarea.y)/plotarea.h);
+  }
+
+
+// Return to the ranges in effect before the first zoom
+void FX2DChart::resetZoom(){
+  if(!zoomed) return;
+  zoomed=false;
+  axes[XLO]->setAxisRange(savedrange[XLO][0],savedrange[XLO][1]);
+  axes[XHI]->setAxisRange(savedrange[XHI][0],savedrange[XHI][1]);
+  axes[YLO]->setAxisRange(savedrange[YLO][0],savedrange[YLO][1]);
+  axes[YHI]->setAxisRange(savedrange[YHI][0],savedrange[YHI][1]);
+  if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),nullptr);
+  }
+
+
+// Repaint the area covered by two band rectangles
+static void updateBand(FXWindow* window,const FXRectangle& a,const FXRectangle& b){
+  FXint x0=a.x;
+  FXint y0=a.y;
+  FXint x1=a.x+a.w;
+  FXint y1=a.y+a.h;
+  if(b.w>0 && b.h>0){
+    x0=FXMIN(x0,b.x);
+    y0=FXMIN(y0,b.y);
+    x1=FXMAX(x1,b.x+b.w);
+    y1=FXMAX(y1,b.y+b.h);
+    }
+  if(x0<x1 && y0<y1) window->update(x0-1,y0-1,x1-x0+2,y1-y0+2);
+  }
+
+
+// Draw the rubber band on top of the chart image
+void FX2DChart::drawOverlay(FXDC& dc) const {
+  if(banding && bandrect.w>0 && bandrect.h>0){
+    dc.setForeground(FXRGB(0,0,0));
+    dc.drawFocusRectangle(bandrect.x,bandrect.y,bandrect.w,bandrect.h);
+    }
+  }
+
+
+// Zoom in and out with the mouse wheel
+long FX2DChart::onMouseWheel(FXObject*,FXSelector,void* ptr){
+  FXEvent *event=(FXEvent*)ptr;
+  if(!isEnabled()) return 0;
+  if(event->win_x<plotarea.x || event->win_x>=plotarea.x+plotarea.w) return 0;
+  if(event->win_y<plotarea.y || event->win_y>=plotarea.y+plotarea.h) return 0;
+  zoomAt(event->win_x,event->win_y,event->code>0 ? 1.0/zoomwheelstep : zoomwheelstep);
+  return 1;
+  }
+
+
+// Start a rubber band, or reset the zoom on a double click
+long FX2DChart::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
+  FXEvent *event=(FXEvent*)ptr;
+  if(!isEnabled()) return 0;
+  if(event->win_x<plotarea.x || event->win_x>=plotarea.x+plotarea.w) return 0;
+  if(event->win_y<plotarea.y || event->win_y>=plotarea.y+plotarea.h) return 0;
+  if(event->click_count>1){
+    resetZoom();
+    return 1;
+    }
+  bandanchorx=event->win_x;
+  bandanchory=event->win_y;
+  bandrect.x=(FXshort)bandanchorx;
+  bandrect.y=(FXshort)bandanchory;
+  bandrect.w=0;
+  bandrect.h=0;
+  banding=true;
+  grab();
+  return 1;
+  }
+
+
+// Stretch the rubber band
+long FX2DChart::onMotion(FXObject*,FXSelector,void* ptr){
+  FXEvent *event=(FXEvent*)ptr;
+  FXRectangle old;
+  FXint x,y;
+  if(!banding) return 0;
+  x=event->win_x;
+  y=event->win_y;
+  if(x<plotarea.x) x=plotarea.x;
+  if(x>plotarea.x+plotarea.w) x=plotarea.x+plotarea.w;
+  if(y<plotarea.y) y=plotarea.y;
+  if(y>plotarea.y+plotarea.h) y=plotarea.y+plotarea.h;
+  old=bandrect;
+  bandrect.x=(FXshort)FXMIN(bandanchorx,x);
+  bandrect.y=(FXshort)FXMIN(bandanchory,y);
+  bandrect.w=(FXshort)(FXABS(x-bandanchorx)+1);
+  bandrect.h=(FXshort)(FXABS(y-bandanchory)+1);
+  updateBand(this,old,bandrect);
+  return 1;
+  }
+
+
+// Zoom to the rubber band
+long FX2DChart::onLeftBtnRelease(FXObject*,FXSelector,void*){
+  if(!banding) return 0;
+  banding=false;
+  ungrab();
+  updateBand(this,bandrect,FXRectangle(0,0,0,0));
+  zoomRectangle(bandrect.x,bandrect.y,bandrect.w,bandrect.h);
+  bandrect.w=0;
+  bandrect.h=0;
+  return 1;
+  }
+
+
+// Cancel the rubber band when the grab is lost
+long FX2DChart::onUngrabbed(FXObject*,FXSelector,void*){
+  if(banding){
+    banding=false;
+    updateBand(this,bandrect,FXRectangle(0,0,0,0));
+    bandrect.w=0;
+    bandrect.h=0;
+    return 1;
+    }
+  return 0;
   }
 
 

@@ -126,6 +126,7 @@ void FX2DPlot::rangeY(FXint axis,FXdouble& lo,FXdouble& hi) const {
 void FX2DPlot::fitData(){
   FXdouble lo,hi;
   FXint axis;
+  clearZoom();
   for(axis=0; axis<4; axis++){
     rangeX(axis,lo,hi);
     if(lo<=hi){
@@ -151,7 +152,7 @@ void FX2DPlot::fitData(){
   }
 
 
-// Fit the y axis ranges to the curve data
+// Fit the y axis ranges to the curve data; a partial fit keeps the zoom record
 void FX2DPlot::fitY(){
   FXdouble lo,hi;
   FXint axis;
