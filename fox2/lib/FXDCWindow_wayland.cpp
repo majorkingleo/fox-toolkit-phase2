@@ -128,7 +128,17 @@ FXDCWindow::FXDCWindow(FXDrawable* draw,FXEvent* event):FXDC(draw->getApp()){
   xftDraw=nullptr;
   flags=0;
   begin(draw);
-  setClipRectangle(event->rect);
+
+  // The paint rectangle limits the drawing and not only the clip: a widget that
+  // clears the clip while it draws falls back to it, exactly as on X11 and
+  // Win32, where the paint rectangle is what a cleared clip means.  Without it a
+  // widget that paints a part of itself and then clears its clip paints its
+  // whole visible area, which is how the content of a window that another
+  // window repainted underneath lost the part it had not been asked to paint
+  rect=rect*FXRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
+  rect.w=FXMAX(rect.w,0);
+  rect.h=FXMAX(rect.h,0);
+  setClipRectangle(rect);
   }
 
 
@@ -567,8 +577,8 @@ void FXDCWindow::setClipRectangle(const FXRectangle& rectangle){
   }
 
 
-// Clear clipping; drawing is then clipped to the visible part only, which is
-// what a cleared clip means on X11
+// Clear clipping; drawing is then clipped to the paint rectangle of the DC
+// again, which is what a cleared clip means on X11
 void FXDCWindow::clearClipRectangle(){
   clip=rect;
   if(ctx){

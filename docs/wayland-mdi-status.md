@@ -134,6 +134,14 @@ bugs were:
   corner drag, the current one keeps the content inside the window. Details in
   `docs/wayland-plan.md`, section "A window that hangs out of the store", and
   the corner check in `scripts/gate-kwin-mdi-drag.sh`.
+- **The content of a window lost the part another window did not cover.** A
+  widget that paints a part of itself and then clears its clip painted its whole
+  visible area: the DC's `rect` was the visible area instead of the paint
+  rectangle, which is what a cleared clip means on X11 and Win32. A sub-window
+  whose scroll area was repainted in parts whitewashed the part of the content
+  that another window's repaint did not reach. The expose constructor intersects
+  `rect` with the paint rectangle now; details in `docs/wayland-plan.md`,
+  section "A widget that paints only a part of itself".
 - **Pixel-block move of a child smears.** Copying the moved window's pixels
   inside the shared store (what X11 does with a native child window) was tried
   and dropped in `c053e31`: it smears the frame, the scroll viewport and the

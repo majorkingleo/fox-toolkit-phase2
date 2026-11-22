@@ -1421,6 +1421,35 @@ visible rectangle with the windows above, and intersects it with the store seen
 from the window, which is what keeps a window that hangs out of it from drawing
 past the end of the buffer.
 
+### A widget that paints only a part of itself
+
+Reported after the corner fault was fixed: drag the first sub-window to the
+bottom right of its client and then move the pointer over the second one, and the
+right part of the top window's content turns blank (`tmp/mdi6.png` of the user
+report).  Measured on the live KWin session: between the frame after the drag and
+the frame the pointer move commits, 4372 pixels changed in `x 636..769,
+y 218..481`, exactly the part of the dragged window's scroll area that the other
+window's content does not reach, and they changed from text to white.
+
+On X11 and Win32 the `rect` of a DC is the paint rectangle of the expose it was
+made for, and `clearClipRectangle()` falls back to it.  The Wayland module set
+`rect` to the *visible* area instead (the part of the window the windows above it
+leave uncovered) and let only the clip follow the paint rectangle.  A widget that
+sets a clip while it draws and clears it again — `FXScrollArea` does that for its
+viewport — therefore went on painting across its whole visible area: the scroll
+window of the dragged sub-window whitewashed its full viewport while only the
+part the other window's content covered had been handed back to it, so the rest
+of its content was lost until something repainted it.
+
+The expose constructor intersects `rect` with the paint rectangle now and sets
+the clip from that, so clearing the clip falls back to the paint rectangle as it
+does on the other platforms.
+
+This one is not gated: both headless harnesses answer a pointer move with a full
+repaint of the tree, which repairs the damage in the same frame.  The fault needs
+a partial repaint of a scroll area, and the live session is where it was seen and
+where the fix was checked.
+
 ### Gates
 
 - `scripts/gate-wayland-mdi-drag.sh` runs `tests/mditest` against headless sway,
