@@ -251,6 +251,7 @@ void FXApp::initPlatformMembers(){
   app->cursordevice=nullptr;
   app->pointerenterserial=0;
   app->cursorwindow=nullptr;
+  app->cursorlast=nullptr;
   app->activation=nullptr;
   app->activations=nullptr;
   app->viewporter=nullptr;
@@ -1183,6 +1184,12 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         else if(modalAllows(this,window) && window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
         event.last_x=event.win_x;
         event.last_y=event.win_y;
+
+        // The widget may have changed its own cursor while it handled the
+        // motion, as an MDI sub-window does over its title bar and its border;
+        // the compositor has to learn about that in this event and not in the
+        // next one
+        fxwaylandSetCursor(app,findWindowWithId(ev.id),mouseGrabWindow);
         return true;
         }
 

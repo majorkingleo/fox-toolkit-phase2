@@ -142,6 +142,14 @@ bugs were:
   that another window's repaint did not reach. The expose constructor intersects
   `rect` with the paint rectangle now; details in `docs/wayland-plan.md`,
   section "A widget that paints only a part of itself".
+- **The cursor of a sub-window did not follow the pointer.** The cursor was
+  remembered by the widget under the pointer only, so a sub-window that changes
+  its own cursor between its title bar, its border and a drag kept the first one:
+  the resize cursor stayed over the title bar and the drag cursor never appeared.
+  The cache is keyed by the cursor as well now, and the motion path asks again
+  after the widget handled the motion. `scripts/gate-wayland-mdi-cursor.sh`
+  checks the wire log; details in `docs/wayland-plan.md`, section "The cursor of
+  an MDI sub-window".
 - **Pixel-block move of a child smears.** Copying the moved window's pixels
   inside the shared store (what X11 does with a native child window) was tried
   and dropped in `c053e31`: it smears the frame, the scroll viewport and the

@@ -325,6 +325,7 @@ void FXWindow::setDefaultCursor(FXCursor* cur){
   if(defaultCursor!=cur){
     if(!cur){ fxerror("%s::setDefaultCursor: NULL cursor argument.\n",getClassName()); }
     defaultCursor=cur;
+    if(id()){ fxwaylandCursorChanged(this); }
     }
   }
 
@@ -334,6 +335,7 @@ void FXWindow::setDragCursor(FXCursor* cur){
   if(dragCursor!=cur){
     if(!cur){ fxerror("%s::setDragCursor: NULL cursor argument.\n",getClassName()); }
     dragCursor=cur;
+    if(id()){ fxwaylandCursorChanged(this); }
     }
   }
 

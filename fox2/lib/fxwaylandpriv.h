@@ -212,6 +212,7 @@ struct FXWaylandApp {
   FXuint            pointerserial;      // Serial of the last pointer event
   FXuint            pointerenterserial; // Serial of the pointer enter
   void*             cursorwindow;       // Widget whose cursor is shown
+  void*             cursorlast;         // Cursor that was shown for it
   void*             waitcursor;         // Wait cursor while a wait block runs
   FXuint            keyboardserial;     // Serial of the last keyboard event
   FXint             pointerx;           // Position of the pointer in the shell
@@ -366,6 +367,10 @@ void fxwaylandSetModal(FXWaylandApp* app,FXID window,FXbool modal);
 
 /// Ask for the cursor of the widget under the pointer
 void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow);
+
+/// A widget changed its own cursor; if it is the one the pointer is on, the
+/// compositor is told again
+void fxwaylandCursorChanged(FXWindow* window);
 
 /// Ask the compositor to resize a toplevel with the corner under the pointer
 FXbool fxwaylandStartResize(FXWaylandApp* app,FXID window);

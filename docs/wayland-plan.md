@@ -1450,6 +1450,30 @@ repaint of the tree, which repairs the damage in the same frame.  The fault need
 a partial repaint of a scroll area, and the live session is where it was seen and
 where the fix was checked.
 
+### The cursor of an MDI sub-window
+
+An MDI sub-window has one widget for its title bar, its resize border and its
+content, and it changes its *own* cursor as the pointer moves inside it: an arrow
+over the title bar, the resize cursor over the border, and the move cursor while
+it is dragged.  The compositor shows one cursor for the whole surface, so
+`fxwaylandSetCursor()` has to hand it over whenever the *cursor* changes.  It
+compared the widget under the pointer with the last one and returned when they
+matched, so a change inside one widget never reached the compositor: the resize
+cursor stayed over the title bar, and the drag cursor was never shown at all (the
+wire log of the old build has no `wl_pointer.set_cursor` for the whole gesture).
+
+`fxwaylandSetCursor()` remembers the cursor as well as the widget now, the motion
+path asks for the cursor again after the widget handled the motion (so a cursor
+it changed in that handler goes out with the same event and not the next one),
+and `FXWindow::setDefaultCursor()`/`setDragCursor()` drop the cache when they
+change the cursor of the widget the pointer is on.
+
+`scripts/gate-wayland-mdi-cursor.sh` checks it: it moves over the content, the
+resize border and the title bar of the first sub-window and drags it on a headless
+sway, and reads the cursor requests off the wire.  Two image cursors have to be
+asked for (the border and the drag), one of them after the press, and the arrow
+has to come back afterwards.  The old build asks for no image cursor at all.
+
 ### Gates
 
 - `scripts/gate-wayland-mdi-drag.sh` runs `tests/mditest` against headless sway,
@@ -1466,6 +1490,7 @@ where the fix was checked.
 - `scripts/gate-wayland-repaint.sh` and the rest of the frame gates still pass;
   they are the check that the covered handback, which normal widget repaints
   still use, did not regress.
+- `scripts/gate-wayland-mdi-cursor.sh` is the cursor check described above.
 
 ### Open
 

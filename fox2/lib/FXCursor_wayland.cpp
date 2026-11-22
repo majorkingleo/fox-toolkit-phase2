@@ -202,8 +202,18 @@ void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow)
   // A grab takes the cursor from the window holding it, even while the pointer
   // wanders over other widgets
   source=grabwindow?grabwindow:window;
-  if(source==(FXWindow*)app->cursorwindow) return;
+
+  // The drag cursor while grabbing, the wait cursor during a wait block, the
+  // default cursor otherwise
+  cur=source?(app->waitcursor?(FXCursor*)app->waitcursor:(grabwindow?source->getDragCursor():source->getDefaultCursor())):nullptr;
+
+  // The cursor is remembered by the window *and* by the cursor: a widget that
+  // changes its own cursor while the pointer stays on it, which is what an MDI
+  // sub-window does between its title bar and its border, has to reach the
+  // compositor as well
+  if(source==(FXWindow*)app->cursorwindow && cur==(FXCursor*)app->cursorlast) return;
   app->cursorwindow=source;
+  app->cursorlast=cur;
   if(!source) return;
 
   // A window that hid the cursor shows nothing
@@ -212,9 +222,6 @@ void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow)
     return;
     }
 
-  // The drag cursor while grabbing, the wait cursor during a wait block, the
-  // default cursor otherwise
-  cur=app->waitcursor?(FXCursor*)app->waitcursor:(grabwindow?source->getDragCursor():source->getDefaultCursor());
   if(!cur) return;
 
   // Stock cursors are resolved by the compositor from its own theme
@@ -228,6 +235,17 @@ void fxwaylandSetCursor(FXWaylandApp* app,FXWindow* window,FXWindow* grabwindow)
   // Image cursors are their own little surface
   if((wcur=(FXWaylandCursor*)cur->id())!=nullptr && wcur->surface){
     wl_pointer_set_cursor(app->pointer,app->pointerenterserial,wcur->surface,cur->getHotX(),cur->getHotY());
+    }
+  }
+
+
+// A widget changed its own cursor; when it is the widget whose cursor is shown,
+// the cache is dropped so that the next call hands the new one to the
+// compositor
+void fxwaylandCursorChanged(FXWindow* window){
+  FXWaylandApp* app;
+  if(window && (app=fxwayland(window->getApp()->getDisplay()))!=nullptr){
+    if(app->cursorwindow==(void*)window) app->cursorlast=nullptr;
     }
   }
 
