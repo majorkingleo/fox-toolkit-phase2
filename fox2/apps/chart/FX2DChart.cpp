@@ -284,9 +284,17 @@ void FX2DChart::drawSelf(FXDC& dc) const {
         axes[YLO]->drawAxis(dc,plotleft,plotbottom,plotleft,plottop,plotright-plotleft,0);
         axes[XHI]->drawAxis(dc,plotleft,plottop,plotright,plottop,0,plotbottom-plottop);
         axes[YHI]->drawAxis(dc,plotright,plotbottom,plotright,plottop,plotleft-plotright,0);
+
+        // Draw curves on top of the grid
+        drawPlot(dc,plotleft,plottop,plotright,plotbottom);
         }
       }
     }
+  }
+
+
+// Draw chart contents; subclasses draw curves here
+void FX2DChart::drawPlot(FXDC&,FXint,FXint,FXint,FXint) const {
   }
 
 

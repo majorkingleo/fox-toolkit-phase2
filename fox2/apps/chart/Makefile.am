@@ -19,12 +19,16 @@ FXAxis.h \
 FXAxis.cpp \
 FXChart.h \
 FXChart.cpp \
+FXData.h \
+FXData.cpp \
 FXCurve.h \
 FXCurve.cpp \
 FX2DChart.h \
 FX2DChart.cpp \
 FX2DPlot.h \
 FX2DPlot.cpp \
+live/LiveSource.h \
+live/LiveSource.cpp \
 charttest.cpp
 
 EXTRA_DIST = \

@@ -44,6 +44,29 @@ coordinates; the application owns the file format and its styling. The widget
 must therefore provide a complete read-only data and geometry API, but it must
 not contain an SVG serialiser, a spreadsheet reader or a file-format layer.
 
+## Progress
+
+Target order: Wayland first, then X11 and Win32.
+
+### M1 — data model and static curves
+
+- [x] `FXData` storage, unlimited and ring-bounded
+- [x] `FXCurve` line/marker/fill style, visibility, correct default axes
+- [x] `FX2DPlot` draws visible curves with gaps, markers and plot clipping
+- [x] `FX2DPlot::fitData` and `fitY`; upper/right axes follow the lower/left
+- [x] `charttest` deterministic 10,000-sample series plus a marker series
+- [x] Wayland build and `FOX_WAYLAND_DUMP` frame verified
+- [ ] curve fills
+- [ ] client-side `FXImage`+`FXRaster` buffer (still `FXDC`, aliased)
+- [ ] X11 and Win32 verification
+
+### M6 — live mode in `charttest`
+
+- [x] `LiveSource` timer and mouse speed/acceleration series
+- [x] Linux CPU, memory and chart frame-time series (Win32 seam pending)
+- [x] follow window and ring retention
+- [x] `charttest --live`, Wayland build and `charttest-live.png` verified on sway
+
 ## What the fox2 port already provides
 
 The FOX 1.7.95 chart package is copied to `fox2/apps/chart` and builds
@@ -520,9 +543,9 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
 ## Verification
 
 - Screenshots under `screenshots/tests/fox2/x11/`, `.../wayland/` and
-  `.../win32/` (`chartdemo-csv.png`, `chartdemo-xlsx.png`, `chartdemo-ods.png`,
-  `charttest-live.png`, `chart-aa.png`, `chart-legend.png`,
-  `chart-zoomed.png`).
+  `.../win32/` (`charttest-static.png`, `charttest-live.png`,
+  `chartdemo-csv.png`, `chartdemo-xlsx.png`, `chartdemo-ods.png`,
+  `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and
   `sample.ods` with the same columns and values, plus an import check mode that
   prints or asserts the table shape, headers and numeric columns without a

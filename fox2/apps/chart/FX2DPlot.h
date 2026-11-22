@@ -40,12 +40,25 @@ class FXCHARTAPI FX2DPlot : public FX2DChart {
   FXDECLARE(FX2DPlot)
 protected:
   FXCurveList curves;   // List of curves
+  mutable FXTime lastdraw; // Duration of the last curve draw
 protected:
   FX2DPlot();
+  virtual void drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FXint plotbottom) const override;
+  void rangeX(FXint axis,FXdouble& lo,FXdouble& hi) const;
+  void rangeY(FXint axis,FXdouble& lo,FXdouble& hi) const;
 private:
   FX2DPlot(const FX2DPlot&);
   FX2DPlot &operator=(const FX2DPlot&);
 public:
+
+  /// Fit all axis ranges to the curve data
+  virtual void fitData();
+
+  /// Fit the Y axis ranges to the curve data
+  virtual void fitY();
+
+  /// Return duration of the last curve draw in nanoseconds
+  FXTime getLastDrawTime() const { return lastdraw; }
 
   /// Construct two-dimensional plot widget
   FX2DPlot(FXComposite* p,FXObject* tgt=nullptr,FXSelector sel=0,FXuint opts=FRAME_NORMAL,FXint x=0,FXint y=0,FXint w=0,FXint h=0,FXint pl=4,FXint pr=4,FXint pt=4,FXint pb=4);

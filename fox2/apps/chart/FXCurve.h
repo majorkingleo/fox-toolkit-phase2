@@ -21,6 +21,10 @@
 #ifndef FXCURVE_H
 #define FXCURVE_H
 
+#ifndef CHARTDEFS_H
+#include "chartdefs.h"
+#endif
+
 namespace FXCHART {
 
 
@@ -36,8 +40,12 @@ protected:
   FXData   *xdata;      // X data samples
   FXData   *ydata;      // Y data samples
   FXString  label;      // Name of plot
+  LineStyle linestyle;  // Line style
+  Marker    marker;     // Marker style
+  FillStyle fillstyle;  // Fill style
   FXuchar   xaxis;      // X-Axis
   FXuchar   yaxis;      // Y-Axis
+  FXbool    visible;    // Curve is visible
 protected:
   FXCurve();
 private:
@@ -65,6 +73,30 @@ public:
 
   /// Return y axis description
   FXuchar getYAxis() const { return yaxis; }
+
+  /// Change line style
+  void setLineStyle(const LineStyle& style);
+
+  /// Return line style
+  const LineStyle& getLineStyle() const { return linestyle; }
+
+  /// Change marker style
+  void setMarkerStyle(const Marker& style);
+
+  /// Return marker style
+  const Marker& getMarkerStyle() const { return marker; }
+
+  /// Change fill style
+  void setFillStyle(const FillStyle& style);
+
+  /// Return fill style
+  const FillStyle& getFillStyle() const { return fillstyle; }
+
+  /// Show or hide curve
+  void setVisible(FXbool vis);
+
+  /// Return true if curve is visible
+  FXbool isVisible() const { return visible; }
 
   /// Change x data samples
   void setXData(FXData* dd);

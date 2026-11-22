@@ -37,6 +37,7 @@ protected:
 protected:
   FX2DChart();
   virtual void drawSelf(FXDC& dc) const override;
+  virtual void drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FXint plotbottom) const;
 private:
   FX2DChart(const FX2DChart&);
   FX2DChart &operator=(const FX2DChart&);

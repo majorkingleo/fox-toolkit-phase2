@@ -25,6 +25,7 @@
 #include "chartdefs.h"
 #include "FXAxis.h"
 #include "FXChart.h"
+#include "FXData.h"
 #include "FXCurve.h"
 #include "FX2DChart.h"
 #include "FX2DPlot.h"

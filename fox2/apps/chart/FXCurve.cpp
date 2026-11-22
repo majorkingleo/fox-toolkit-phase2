@@ -22,6 +22,7 @@
 #include "chartdefs.h"
 #include "chartutils.h"
 #include "FXChart.h"
+#include "FXData.h"
 #include "FXCurve.h"
 #include "FX2DChart.h"
 #include "FX2DPlot.h"
@@ -41,17 +42,39 @@ namespace FXCHART {
 FXIMPLEMENT(FXCurve,FXObject,nullptr,0)
 
 
-class FXData {
-  };
-
-
 // Deserialization
-FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(0),yaxis(0){
+FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+  linestyle.color=FXRGB(0,0,0);
+  linestyle.weight=1;
+  linestyle.style=LINESTYLE_SOLID;
+  marker.color=FXRGB(0,0,0);
+  marker.size=0;
+  marker.style=MARKER_NONE;
+  fillstyle.image=nullptr;
+  fillstyle.forecolor=FXRGBA(0,0,0,0);
+  fillstyle.backcolor=FXRGBA(0,0,0,0);
+  fillstyle.lower=FXRGBA(0,0,0,0);
+  fillstyle.upper=FXRGBA(0,0,0,0);
+  fillstyle.hatch=STIPPLE_NONE;
+  fillstyle.style=FILLSTYLE_OFF;
   }
 
 
 // Init
-FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),xdata(nullptr),ydata(nullptr),label(nm),xaxis(0),yaxis(0){
+FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),xdata(nullptr),ydata(nullptr),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+  linestyle.color=FXRGB(0,0,0);
+  linestyle.weight=1;
+  linestyle.style=LINESTYLE_SOLID;
+  marker.color=FXRGB(0,0,0);
+  marker.size=0;
+  marker.style=MARKER_NONE;
+  fillstyle.image=nullptr;
+  fillstyle.forecolor=FXRGBA(0,0,0,0);
+  fillstyle.backcolor=FXRGBA(0,0,0,0);
+  fillstyle.lower=FXRGBA(0,0,0,0);
+  fillstyle.upper=FXRGBA(0,0,0,0);
+  fillstyle.hatch=STIPPLE_NONE;
+  fillstyle.style=FILLSTYLE_OFF;
   }
 
 
@@ -82,6 +105,36 @@ void FXCurve::setYAxis(FXuchar ax){
   }
 
 
+// Change line style
+void FXCurve::setLineStyle(const LineStyle& style){
+  linestyle=style;
+  plot->update();
+  }
+
+
+// Change marker style
+void FXCurve::setMarkerStyle(const Marker& style){
+  marker=style;
+  plot->update();
+  }
+
+
+// Change fill style
+void FXCurve::setFillStyle(const FillStyle& style){
+  fillstyle=style;
+  plot->update();
+  }
+
+
+// Show or hide curve
+void FXCurve::setVisible(FXbool vis){
+  if(visible!=vis){
+    visible=vis;
+    plot->update();
+    }
+  }
+
+
 // Change x data samples
 void FXCurve::setXData(FXData* dd){
   if(xdata!=dd){
@@ -105,6 +158,13 @@ void FXCurve::save(FXStream& store) const {
   store << label;
   store << xaxis;
   store << yaxis;
+  store << linestyle.color;
+  store << linestyle.weight;
+  store << linestyle.style;
+  store << marker.color;
+  store << marker.size;
+  store << marker.style;
+  store << visible;
   }
 
 
@@ -114,6 +174,13 @@ void FXCurve::load(FXStream& store){
   store >> label;
   store >> xaxis;
   store >> yaxis;
+  store >> linestyle.color;
+  store >> linestyle.weight;
+  store >> linestyle.style;
+  store >> marker.color;
+  store >> marker.size;
+  store >> marker.style;
+  store >> visible;
   }
 
 
