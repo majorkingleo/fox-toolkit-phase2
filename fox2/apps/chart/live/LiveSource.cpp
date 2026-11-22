@@ -174,8 +174,10 @@ FXdouble LiveSource::sampleMemory(){
 
 
 // Deserialization
-LiveSource::LiveSource():plot(nullptr),interval(50000000),starttime(0),lasttime(0),window(60.0),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
+LiveSource::LiveSource():plot(nullptr),target(nullptr),message(0),interval(50000000),starttime(0),lasttime(0),window(60.0),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
   FXint i;
+  current.time=current.speed=current.accel=current.cpu=current.memory=current.frame=0.0;
+  current.count=0;
   for(i=0; i<SERIES_COUNT; i++){
     curves[i]=nullptr;
     timedata[i]=nullptr;
@@ -185,8 +187,10 @@ LiveSource::LiveSource():plot(nullptr),interval(50000000),starttime(0),lasttime(
 
 
 // Construct a live source feeding plot
-LiveSource::LiveSource(FX2DPlot* p,FXTime ns):plot(p),interval(ns),starttime(0),lasttime(0),window(60.0),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
+LiveSource::LiveSource(FX2DPlot* p,FXTime ns):plot(p),target(nullptr),message(0),interval(ns),starttime(0),lasttime(0),window(60.0),lastspeed(0.0),lastx(0),lasty(0),lastvalid(false),lastcpu(0),lastidle(0),running(false){
   FXint i;
+  current.time=current.speed=current.accel=current.cpu=current.memory=current.frame=0.0;
+  current.count=0;
   if(interval<1000000) interval=1000000;
   for(i=0; i<SERIES_COUNT; i++){
     curves[i]=nullptr;
@@ -201,11 +205,20 @@ LiveSource::LiveSource(FX2DPlot* p,FXTime ns):plot(p),interval(ns),starttime(0),
   }
 
 
+// Set the target and message notified for every sample
+void LiveSource::setTarget(FXObject* tgt,FXSelector sel){
+  target=tgt;
+  message=sel;
+  }
+
+
 // Start sampling
 void LiveSource::start(){
   if(running) return;
   starttime=FXThread::steadytime();
   lasttime=starttime;
+  current.time=0.0;
+  current.count=0;
   lastspeed=0.0;
   lastvalid=false;
   lastcpu=0;
@@ -233,32 +246,52 @@ void LiveSource::clear(){
     values[i]->clear();
     }
   starttime=lasttime=FXThread::steadytime();
+  current.time=0.0;
+  current.count=0;
   lastspeed=0.0;
   lastvalid=false;
   lastcpu=0;
   lastidle=0;
-  plot->invalidateChart();
+  refreshView();
   }
 
 
 // Change sampling interval
 void LiveSource::setInterval(FXTime ns){
   if(ns<1000000) ns=1000000;
-  interval=ns;
+  if(interval!=ns){
+    interval=ns;
+    if(running){
+      plot->getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT));
+      plot->getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT),interval);
+      }
+    }
   }
 
 
 // Change visible history
 void LiveSource::setWindow(FXdouble seconds){
   if(seconds<1.0) seconds=1.0;
-  window=seconds;
+  if(window!=seconds){
+    window=seconds;
+    if(running) refreshView();
+    }
+  }
+
+
+// Move the viewport to the last sample
+void LiveSource::refreshView(){
+  FXdouble xmin=current.time>window ? current.time-window : 0.0;
+  plot->getAxis(FX2DChart::XLO)->setAxisRange(xmin,xmin+window);
+  plot->getAxis(FX2DChart::XHI)->setAxisRange(xmin,xmin+window);
+  plot->invalidateChart();
   }
 
 
 // Timer callback
 long LiveSource::onTimeout(FXObject*,FXSelector,void*){
   FXTime now;
-  FXdouble t,dt,speed,accel,cpu,memory,frame,xmin;
+  FXdouble t,dt,speed,accel,cpu,memory,frame;
   FXint i;
   if(!running) return 0;
   now=FXThread::steadytime();
@@ -277,11 +310,16 @@ long LiveSource::onTimeout(FXObject*,FXSelector,void*){
   values[SERIES_CPU]->append(cpu);
   values[SERIES_MEMORY]->append(memory);
   values[SERIES_FRAME]->append(frame);
-  xmin=t>window ? t-window : 0.0;
-  plot->getAxis(FX2DChart::XLO)->setAxisRange(xmin,t);
-  plot->getAxis(FX2DChart::XHI)->setAxisRange(xmin,t);
+  current.time=t;
+  current.speed=speed;
+  current.accel=accel;
+  current.cpu=cpu;
+  current.memory=memory;
+  current.frame=frame;
+  current.count=timedata[SERIES_SPEED]->no();
+  if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,message),(void*)&current);
   plot->fitY();
-  plot->invalidateChart();
+  refreshView();
   lasttime=now;
   plot->getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT),interval);
   return 1;

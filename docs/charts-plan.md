@@ -70,6 +70,10 @@ Target order: Wayland first, then X11 and Win32.
       under 10% CPU at 20 Hz on Wayland
 - [x] `FXRaster` row-fill and opaque-image blit fast paths; chart update is
       about 3.5 ms and the blit is under 0.2 ms
+- [x] View menu selects static/live with one two-entry radio group
+- [x] Live view hides the title, starts at 20 Hz, and shows editable sample
+      rate and viewport fields plus the buffer size and current values in a
+      side panel; the chart keeps a fixed-width time window while scrolling
 
 ## What the fox2 port already provides
 
@@ -320,9 +324,13 @@ deterministic dataset mode, and adds a live sheet. The sheet is a small
 `FXDialogBox` with `FXButton`/`FXSpinner`/`FXCheckButton` controls and an
 `FX2DPlot`; it can also be docked beside the chart.
 
-- `LiveSource` samples on an `FXTimer` at a configurable interval (default
-  20 Hz, up to 60 Hz), independent of the paint loop. Each tick appends one
-  sample per series; the chart is updated at most once per frame;
+- `LiveSource` samples on an `FXTimer` at a configurable interval. The demo
+  starts at 20 Hz; the side panel edits the rate and the viewport length
+  (default 10 seconds). The chart is updated at most once per frame;
+- the live sheet hides the chart caption and shows the buffer size and the
+  current sample values in a side panel while the chart visualises the buffer;
+- the time axis keeps a fixed-width viewport and scrolls horizontally as
+  samples arrive; the axis frame and ticks stay in place;
 - series:
   - mouse x and y speed (pixels/s) and acceleration (pixels/s²), derived from
     `SEL_MOTION` events and `FXThread::steadytime()`;
@@ -548,8 +556,8 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
 
 - Screenshots under `screenshots/tests/fox2/x11/`, `.../wayland/` and
   `.../win32/` (`charttest-static.png`, `charttest-live.png`,
-  `chartdemo-csv.png`, `chartdemo-xlsx.png`, `chartdemo-ods.png`,
-  `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
+  `charttest-viewmenu.png`, `chartdemo-csv.png`, `chartdemo-xlsx.png`,
+  `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and
   `sample.ods` with the same columns and values, plus an import check mode that
   prints or asserts the table shape, headers and numeric columns without a

@@ -27,12 +27,24 @@ protected:
   FXStatusBar  *statusbar;
   FXMenuPane   *filemenu;
   FXMenuPane   *viewmenu;
-  FXMenuCheck  *livecheck;
+  FXMenuRadio  *staticRadio;
+  FXMenuRadio  *liveRadio;
+  FXVerticalFrame *livepanel;
+  FXTextField  *ratefield;
+  FXTextField  *windowfield;
+  FXLabel      *livebuffer;
+  FXLabel      *livetime;
+  FXLabel      *livespeed;
+  FXLabel      *liveaccel;
+  FXLabel      *livecpu;
+  FXLabel      *livememory;
+  FXLabel      *liveframe;
   FXBMPImage   *image;
   LiveSource   *live;
   FXCurveList   demoCurves;
   FillStyle     savedbackstyle;
   FillStyle     savedchartstyle;
+  FXuint        savedcaptionstyle;
   FXFont       *captionFont;    // Caption font
   FXFont       *horzLabelFont;  // Normal horizontal font
   FXFont       *vertLabelFont;  // Vertical font
@@ -45,19 +57,28 @@ private:
   ChartWindow &operator=(const ChartWindow&);
 public:
   long onCmdChart(FXObject*,FXSelector,void*);
-  long onCmdFit(FXObject*,FXSelector,void*);
+  long onCmdStatic(FXObject*,FXSelector,void*);
   long onCmdLive(FXObject*,FXSelector,void*);
+  long onCmdRate(FXObject*,FXSelector,void*);
+  long onCmdWindow(FXObject*,FXSelector,void*);
+  long onLiveSample(FXObject*,FXSelector,void*);
 public:
   enum {
     ID_CHART=FXMainWindow::ID_LAST,
-    ID_FIT,
+    ID_STATIC,
     ID_LIVE,
+    ID_RATE,
+    ID_WINDOW,
+    ID_LIVE_SAMPLE,
     ID_LAST
     };
 public:
   ChartWindow(FXApp *a);
   virtual void create() override;
   virtual void startLive();
+  virtual void stopLive();
+protected:
+  void updateRadios();
   virtual ~ChartWindow();
   };
 
@@ -68,8 +89,11 @@ public:
 // Map
 FXDEFMAP(ChartWindow) ChartWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_CHART,     ChartWindow::onCmdChart),
-  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_FIT,       ChartWindow::onCmdFit),
+  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_STATIC,    ChartWindow::onCmdStatic),
   FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE,      ChartWindow::onCmdLive),
+  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_RATE,      ChartWindow::onCmdRate),
+  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_WINDOW,    ChartWindow::onCmdWindow),
+  FXMAPFUNC(SEL_COMMAND,  ChartWindow::ID_LIVE_SAMPLE,ChartWindow::onLiveSample),
   };
 
 
@@ -90,10 +114,11 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   new FXMenuCommand(filemenu,"&Quit\tCtl-Q",nullptr,getApp(),FXApp::ID_QUIT);
   new FXMenuTitle(menubar,"&File",nullptr,filemenu);
 
-  // View menu
+  // View menu: one radio group for the two data modes
   viewmenu=new FXMenuPane(this);
-  new FXMenuCommand(viewmenu,"&Fit data",nullptr,this,ID_FIT);
-  livecheck=new FXMenuCheck(viewmenu,"&Live data",this,ID_LIVE);
+  staticRadio=new FXMenuRadio(viewmenu,"&Static data",this,ID_STATIC);
+  liveRadio=new FXMenuRadio(viewmenu,"&Live data",this,ID_LIVE);
+  staticRadio->setCheck(true);
   new FXMenuTitle(menubar,"&View",nullptr,viewmenu);
 
   // Container
@@ -101,6 +126,26 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
 
   // Well for chart
   FXHorizontalFrame *chartwell=new FXHorizontalFrame(container,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0, 0,0,0,0, 0,0);
+
+  // Live buffer readout, shown only in live mode
+  livepanel=new FXVerticalFrame(container,LAYOUT_FILL_Y|FRAME_RAISED,0,0,190,0,4,4,4,4);
+  new FXLabel(livepanel,"Live buffer",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  new FXLabel(livepanel,"Sample rate (Hz)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  ratefield=new FXTextField(livepanel,6,this,ID_RATE,TEXTFIELD_REAL|TEXTFIELD_NORMAL|LAYOUT_FILL_X);
+  ratefield->setText("20");
+  ratefield->setJustify(JUSTIFY_RIGHT);
+  new FXLabel(livepanel,"Viewport (s)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  windowfield=new FXTextField(livepanel,6,this,ID_WINDOW,TEXTFIELD_REAL|TEXTFIELD_NORMAL|LAYOUT_FILL_X);
+  windowfield->setText("10");
+  windowfield->setJustify(JUSTIFY_RIGHT);
+  livebuffer=new FXLabel(livepanel,"Buffer: 0 samples",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livetime=new FXLabel(livepanel,"Time: 0.0 s",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livespeed=new FXLabel(livepanel,"Speed: 0.00 px/ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  liveaccel=new FXLabel(livepanel,"Accel: 0.00 px/ms2",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livecpu=new FXLabel(livepanel,"CPU: 0.0 %",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livememory=new FXLabel(livepanel,"Memory: 0.0 MB",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  liveframe=new FXLabel(livepanel,"Frame: 0.00 ms",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  livepanel->hide();
 
   // Chart
   plot=new FX2DPlot(chartwell,this,ID_CHART,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,20,20,20,20);
@@ -218,6 +263,9 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
       }
     plot->fitData();
     live=new LiveSource(plot);
+    live->setInterval(50000000);
+    live->setWindow(10.0);
+    live->setTarget(this,FXSEL(SEL_COMMAND,ID_LIVE_SAMPLE));
     }
   }
 
@@ -245,33 +293,54 @@ long ChartWindow::onCmdChart(FXObject*,FXSelector,void*){
   }
 
 
-// Fit all data into the view
-long ChartWindow::onCmdFit(FXObject*,FXSelector,void*){
-  plot->fitData();
-  plot->update();
+// Switch to the static data mode
+long ChartWindow::onCmdStatic(FXObject*,FXSelector,void*){
+  if(live->isRunning()){
+    stopLive();
+    }
+  else{
+    updateRadios();
+    }
   return 1;
   }
 
 
-// Start or stop the live data mode
+// Switch to the live data mode
 long ChartWindow::onCmdLive(FXObject*,FXSelector,void*){
-  FXint i;
-  if(live->isRunning()){
-    live->stop();
-    for(i=0; i<demoCurves.no(); i++){
-      demoCurves[i]->setVisible(true);
-      }
-    plot->getAxis(FX2DChart::YLO)->setLabel("Value");
-    plot->getAxis(FX2DChart::YHI)->setLabel("Value");
-    plot->setBackStyle(savedbackstyle);
-    plot->setChartStyle(savedchartstyle);
-    plot->fitData();
-    livecheck->setCheck(false);
-    }
-  else{
+  if(!live->isRunning()){
     startLive();
     }
-  plot->update();
+  else{
+    updateRadios();
+    }
+  return 1;
+  }
+
+
+// Change the sample rate from the sidebar
+long ChartWindow::onCmdRate(FXObject*,FXSelector,void*){
+  FXbool ok=false;
+  FXdouble hz=ratefield->getText().toDouble(&ok);
+  if(!ok || hz<0.1 || hz>1000.0){
+    ratefield->setText(FXString::value("%g",1000000000.0/live->getInterval()));
+    return 1;
+    }
+  live->setInterval((FXTime)(1000000000.0/hz));
+  ratefield->setText(FXString::value("%g",hz));
+  return 1;
+  }
+
+
+// Change the viewport length from the sidebar
+long ChartWindow::onCmdWindow(FXObject*,FXSelector,void*){
+  FXbool ok=false;
+  FXdouble seconds=windowfield->getText().toDouble(&ok);
+  if(!ok || seconds<1.0 || seconds>3600.0){
+    windowfield->setText(FXString::value("%g",live->getWindow()));
+    return 1;
+    }
+  live->setWindow(seconds);
+  windowfield->setText(FXString::value("%g",seconds));
   return 1;
   }
 
@@ -279,19 +348,78 @@ long ChartWindow::onCmdLive(FXObject*,FXSelector,void*){
 // Switch to live data
 void ChartWindow::startLive(){
   FXint i;
+  if(live->isRunning()){
+    updateRadios();
+    return;
+    }
   for(i=0; i<demoCurves.no(); i++){
     demoCurves[i]->setVisible(false);
     }
   savedbackstyle=plot->getBackStyle();
   savedchartstyle=plot->getChartStyle();
+  savedcaptionstyle=plot->getCaptionStyle();
+  plot->setCaptionStyle(CAPTION_NONE);
   plot->setBackStyle(liveBackStyle);
   plot->setChartStyle(liveChartStyle);
   plot->getAxis(FX2DChart::YLO)->setLabel("Mouse (px/ms)");
   plot->getAxis(FX2DChart::YHI)->setLabel("CPU % / MB");
+  livebuffer->setText("Buffer: 0 samples");
+  livetime->setText("Time: 0.0 s");
+  livespeed->setText("Speed: 0.00 px/ms");
+  liveaccel->setText("Accel: 0.00 px/ms2");
+  livecpu->setText("CPU: 0.0 %");
+  livememory->setText("Memory: 0.0 MB");
+  liveframe->setText("Frame: 0.00 ms");
+  livepanel->show();
+  onCmdRate(nullptr,0,nullptr);
+  onCmdWindow(nullptr,0,nullptr);
   live->clear();
   live->start();
-  livecheck->setCheck(true);
-  plot->update();
+  updateRadios();
+  }
+
+
+// Switch back to static data
+void ChartWindow::stopLive(){
+  FXint i;
+  if(!live->isRunning()){
+    updateRadios();
+    return;
+    }
+  live->stop();
+  for(i=0; i<demoCurves.no(); i++){
+    demoCurves[i]->setVisible(true);
+    }
+  plot->getAxis(FX2DChart::YLO)->setLabel("Value");
+  plot->getAxis(FX2DChart::YHI)->setLabel("Value");
+  plot->setBackStyle(savedbackstyle);
+  plot->setChartStyle(savedchartstyle);
+  plot->setCaptionStyle(savedcaptionstyle);
+  plot->fitData();
+  livepanel->hide();
+  updateRadios();
+  }
+
+
+// Show the current sample and buffer size
+long ChartWindow::onLiveSample(FXObject*,FXSelector,void* ptr){
+  LiveSample *sample=(LiveSample*)ptr;
+  livebuffer->setText(FXString::value("Buffer: %d samples",sample->count));
+  livetime->setText(FXString::value("Time: %.1f s",sample->time));
+  livespeed->setText(FXString::value("Speed: %.2f px/ms",sample->speed));
+  liveaccel->setText(FXString::value("Accel: %.2f px/ms2",sample->accel));
+  livecpu->setText(FXString::value("CPU: %.1f %%",sample->cpu));
+  livememory->setText(FXString::value("Memory: %.1f MB",sample->memory));
+  liveframe->setText(FXString::value("Frame: %.2f ms",sample->frame));
+  return 1;
+  }
+
+
+// Keep the two view-mode radios mutually exclusive
+void ChartWindow::updateRadios(){
+  FXbool running=live->isRunning();
+  staticRadio->setCheck(!running);
+  liveRadio->setCheck(running);
   }
 
 

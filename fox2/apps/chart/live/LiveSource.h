@@ -33,6 +33,18 @@ class FXCurve;
 class FXData;
 
 
+/// One sample of live data, sent to the application
+struct LiveSample {
+  FXdouble time;                // Elapsed seconds
+  FXdouble speed;               // Mouse speed, px/ms
+  FXdouble accel;               // Mouse acceleration, px/ms²
+  FXdouble cpu;                 // CPU load, percent
+  FXdouble memory;              // Resident memory, MB
+  FXdouble frame;               // Chart update time, ms
+  FXint    count;               // Samples in the buffer
+  };
+
+
 /// Feed mouse and system values into a chart on a timer
 class FXCHARTAPI LiveSource : public FXObject {
   FXDECLARE(LiveSource)
@@ -51,6 +63,9 @@ public:
     };
 protected:
   FX2DPlot *plot;               // Chart to feed
+  FXObject *target;             // Target for each sample
+  FXSelector message;           // Message sent per sample
+  LiveSample current;           // Last sample
   FXCurve  *curves[SERIES_COUNT];       // Live curves
   FXData   *timedata[SERIES_COUNT];     // Time samples
   FXData   *values[SERIES_COUNT];       // Value samples
@@ -80,6 +95,9 @@ public:
   /// Construct a live source feeding plot
   LiveSource(FX2DPlot* p,FXTime ns=50000000);
 
+  /// Set the target and message notified for every sample
+  void setTarget(FXObject* tgt,FXSelector sel);
+
   /// Start sampling
   void start();
 
@@ -97,6 +115,9 @@ public:
 
   /// Change visible history in seconds
   void setWindow(FXdouble seconds);
+
+  /// Move the viewport to the last sample
+  void refreshView();
 
   /// Return visible history in seconds
   FXdouble getWindow() const { return window; }
