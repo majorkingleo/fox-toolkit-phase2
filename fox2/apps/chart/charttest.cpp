@@ -31,6 +31,8 @@ protected:
   FXBMPImage   *image;
   LiveSource   *live;
   FXCurveList   demoCurves;
+  FillStyle     savedbackstyle;
+  FillStyle     savedchartstyle;
   FXFont       *captionFont;    // Caption font
   FXFont       *horzLabelFont;  // Normal horizontal font
   FXFont       *vertLabelFont;  // Vertical font
@@ -232,6 +234,11 @@ void ChartWindow::create(){
   }
 
 
+// Solid fills for the live view; gradients cost more than the data update
+static const FillStyle liveBackStyle={nullptr,FXRGB(235,235,235),FXRGBA(0,0,0,0),FXRGB(255,255,255),FXRGB(255,255,255),STIPPLE_NONE,FILLSTYLE_SOLID};
+static const FillStyle liveChartStyle={nullptr,FXRGB(255,255,255),FXRGBA(0,0,0,0),FXRGB(255,255,255),FXRGB(255,255,255),STIPPLE_NONE,FILLSTYLE_SOLID};
+
+
 // Command from chart
 long ChartWindow::onCmdChart(FXObject*,FXSelector,void*){
   return 1;
@@ -256,6 +263,8 @@ long ChartWindow::onCmdLive(FXObject*,FXSelector,void*){
       }
     plot->getAxis(FX2DChart::YLO)->setLabel("Value");
     plot->getAxis(FX2DChart::YHI)->setLabel("Value");
+    plot->setBackStyle(savedbackstyle);
+    plot->setChartStyle(savedchartstyle);
     plot->fitData();
     livecheck->setCheck(false);
     }
@@ -273,6 +282,10 @@ void ChartWindow::startLive(){
   for(i=0; i<demoCurves.no(); i++){
     demoCurves[i]->setVisible(false);
     }
+  savedbackstyle=plot->getBackStyle();
+  savedchartstyle=plot->getChartStyle();
+  plot->setBackStyle(liveBackStyle);
+  plot->setChartStyle(liveChartStyle);
   plot->getAxis(FX2DChart::YLO)->setLabel("Mouse (px/ms)");
   plot->getAxis(FX2DChart::YHI)->setLabel("CPU % / MB");
   live->clear();

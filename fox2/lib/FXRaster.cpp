@@ -615,14 +615,25 @@ void FXRaster::drawEllipse(FXint x,FXint y,FXint w,FXint h){
 
 // Fill a rectangle with the current fill style
 void FXRaster::fillRectangle(FXint x,FXint y,FXint w,FXint h){
-  FXint x1,x2,y1,y2,xx,yy;
+  FXint x1,x2,y1,y2,yy;
   if(w<=0 || h<=0) return;
   x1=FXMAX(x,clip.x);
   x2=FXMIN(x+w,clip.x+clip.w);
   y1=FXMAX(y,clip.y);
   y2=FXMIN(y+h,clip.y+clip.h);
+  if(x2<=x1 || y2<=y1) return;
+
+  // Solid copy: fill whole rows instead of plotting every pixel
+  if(fillstyle==FILL_SOLID && function==BLT_SRC){
+    FXColor color=0xff000000u|(fg&0x00ffffffu);
+    for(yy=y1; yy<y2; yy++){
+      fillElms(pixel(x1,yy),color,x2-x1);
+      }
+    return;
+    }
+
   for(yy=y1; yy<y2; yy++){
-    for(xx=x1; xx<x2; xx++){
+    for(FXint xx=x1; xx<x2; xx++){
       plotStyled(xx,yy);
       }
     }
@@ -1238,7 +1249,7 @@ void FXRaster::drawImageText(FXint,FXint,const FXchar*,FXint){
 // Draw area from image
 void FXRaster::drawArea(const FXImage* source,FXint sx,FXint sy,FXint sw,FXint sh,FXint dx,FXint dy){
   const FXColor* src;
-  FXint x1,x2,y1,y2,xx,yy,iw,ih;
+  FXint x1,x2,y1,y2,xx,xx0,yy,iw,ih;
   if(!source || !(src=source->getData())) return;
   iw=source->getWidth();
   ih=source->getHeight();
@@ -1246,6 +1257,19 @@ void FXRaster::drawArea(const FXImage* source,FXint sx,FXint sy,FXint sw,FXint s
   x2=FXMIN(dx+sw,clip.x+clip.w);
   y1=FXMAX(dy,clip.y);
   y2=FXMIN(dy+sh,clip.y+clip.h);
+  if(x2<=x1 || y2<=y1) return;
+
+  // Opaque image with a plain copy: move whole rows instead of plotting
+  // every pixel; this is the chart back buffer blit
+  if(function==BLT_SRC && (source->getOptions()&IMAGE_OPAQUE)){
+    for(yy=y1; yy<y2; yy++){
+      xx0=sx+x1-dx;
+      if(xx0<0 || xx0+(x2-x1)>iw || sy+yy-dy<0 || sy+yy-dy>=ih) continue;
+      copyElms(pixel(x1,yy),src+(sy+yy-dy)*iw+xx0,x2-x1);
+      }
+    return;
+    }
+
   for(yy=y1; yy<y2; yy++){
     for(xx=x1; xx<x2; xx++){
       FXint ix=sx+xx-dx;

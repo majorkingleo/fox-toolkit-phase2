@@ -66,6 +66,10 @@ Target order: Wayland first, then X11 and Win32.
 - [x] Linux CPU, memory and chart frame-time series (Win32 seam pending)
 - [x] follow window and ring retention
 - [x] `charttest --live`, Wayland build and `charttest-live.png` verified on sway
+- [x] axis changes redraw the chart image without relayout; live mode stays
+      under 10% CPU at 20 Hz on Wayland
+- [x] `FXRaster` row-fill and opaque-image blit fast paths; chart update is
+      about 3.5 ms and the blit is under 0.2 ms
 
 ## What the fox2 port already provides
 

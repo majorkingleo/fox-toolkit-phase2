@@ -54,6 +54,8 @@ protected:
   FXint     marginright;        // Margin right
   FXString  tip;                // Tooltip value
   FXString  help;               // Help value
+  FXbool    chartdirty;         // Chart image needs redrawing
+  mutable FXTime lastupdatetime; // Duration of the last chart update
 protected:
   FXChart();
   virtual void updateChart();
@@ -87,6 +89,9 @@ public:
 
   /// Perform layout
   virtual void layout() override;
+
+  /// Redraw the chart image on the next paint
+  void invalidateChart();
 
   /// Change caption
   void setCaption(const FXString& cap);
@@ -159,6 +164,9 @@ public:
 
   /// Get tool tip message for this chart
   FXString getTipText() const { return tip; }
+
+  /// Return duration of the last chart update in nanoseconds
+  FXTime getLastUpdateTime() const { return lastupdatetime; }
 
   /// Save chart to a stream
   virtual void save(FXStream& store) const override;

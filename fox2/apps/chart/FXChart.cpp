@@ -74,6 +74,8 @@ FXChart::FXChart(){
   captioncolor=0;
   captionoffset=0;
   chart=(FXImage*)-1L;
+  chartdirty=false;
+  lastupdatetime=0;
   margintop=0;
   marginbottom=0;
   marginleft=0;
@@ -84,11 +86,13 @@ FXChart::FXChart(){
 // Make a chart
 FXChart::FXChart(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FXComposite(p,opts,x,y,w,h){
   flags|=FLAG_SHOWN|FLAG_ENABLED|FLAG_DROPTARGET;
-  chart=new FXImage(getApp(),nullptr,IMAGE_DITHER|IMAGE_SHMI|IMAGE_SHMP,w,h);
+  chart=new FXImage(getApp(),nullptr,IMAGE_DITHER|IMAGE_SHMI|IMAGE_SHMP|IMAGE_OPAQUE,w,h);
   captionfont=getApp()->getNormalFont();
   captioncolor=FXRGB(0,0,0);
   captionoffset=5;
   backstyle=defaultBackStyle;
+  chartdirty=false;
+  lastupdatetime=0;
   target=tgt;
   message=sel;
   margintop=pt;
@@ -140,8 +144,20 @@ void FXChart::drawSelf(FXDC& dc) const {
 
 // Update chart
 void FXChart::updateChart(){
+  FXTime start=FXThread::steadytime();
   FXDCWindow dc(chart);
   drawSelf(dc);
+  lastupdatetime=FXThread::steadytime()-start;
+  chartdirty=false;
+  }
+
+
+// Redraw the chart image on the next paint
+void FXChart::invalidateChart(){
+  if(!chartdirty){
+    chartdirty=true;
+    update();
+    }
   }
 
 
@@ -237,6 +253,7 @@ long FXChart::onClipboardRequest(FXObject *sender,FXSelector sel,void *ptr){
 
 // Handle repaint
 long FXChart::onPaint(FXObject*,FXSelector,void* ptr){
+  if(chartdirty) updateChart();
   FXDCWindow dc(this,(FXEvent*)ptr);
   dc.drawImage(chart,0,0);
   return 1;

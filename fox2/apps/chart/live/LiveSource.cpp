@@ -30,7 +30,6 @@
 #include "LiveSource.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 
 #if defined(__linux__)
 #include <unistd.h>
@@ -89,7 +88,7 @@ void LiveSource::showCurves(FXbool show){
   for(i=0; i<SERIES_COUNT; i++){
     curves[i]->setVisible(show);
     }
-  plot->update();
+  plot->invalidateChart();
   }
 
 
@@ -238,7 +237,7 @@ void LiveSource::clear(){
   lastvalid=false;
   lastcpu=0;
   lastidle=0;
-  plot->update();
+  plot->invalidateChart();
   }
 
 
@@ -269,10 +268,7 @@ long LiveSource::onTimeout(FXObject*,FXSelector,void*){
   samplePointer(dt,speed,accel);
   cpu=sampleCPU();
   memory=sampleMemory();
-  frame=(FXdouble)plot->getLastDrawTime()/1000000.0;
-  if(getenv("CHART_LIVE_TRACE")){
-    fprintf(stderr,"live t=%.3f speed=%.1f accel=%.1f cpu=%.1f mem=%.1f frame=%.3f\n",t,speed,accel,cpu,memory,frame);
-    }
+  frame=(FXdouble)plot->getLastUpdateTime()/1000000.0;
   for(i=0; i<SERIES_COUNT; i++){
     timedata[i]->append(t);
     }
@@ -285,7 +281,7 @@ long LiveSource::onTimeout(FXObject*,FXSelector,void*){
   plot->getAxis(FX2DChart::XLO)->setAxisRange(xmin,t);
   plot->getAxis(FX2DChart::XHI)->setAxisRange(xmin,t);
   plot->fitY();
-  plot->update();
+  plot->invalidateChart();
   lasttime=now;
   plot->getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT),interval);
   return 1;

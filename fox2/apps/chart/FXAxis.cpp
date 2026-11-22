@@ -293,7 +293,7 @@ void FXAxis::setDataRange(FXdouble min,FXdouble max){
   if(datarange.minimum!=min || datarange.maximum!=max){
     datarange.minimum=min;
     datarange.maximum=max;
-    chart->recalc();
+    chart->invalidateChart();
     }
   }
 
@@ -317,7 +317,7 @@ void FXAxis::setAxisRange(FXdouble min,FXdouble max){
     FXASSERT(min<max);
     axisrange.minimum=min;
     axisrange.maximum=max;
-    chart->recalc();
+    chart->invalidateChart();
     }
   }
 
