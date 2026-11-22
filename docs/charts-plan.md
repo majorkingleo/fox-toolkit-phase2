@@ -87,8 +87,9 @@ Target order: Wayland first, then X11 and Win32.
       side panel; the chart keeps a fixed-width time window while scrolling
 - [x] Right sidebar lists every series with a color swatch, its label and a
       visibility checkbox; toggling one refits the axis or the live window
-- [x] Horizontal scrollbar below the chart pans the live viewport through the
-      retained history; dragging back to the end resumes following
+- [x] Horizontal scrollbar below the chart, shown only in live mode, pans the
+      viewport through retained history; dragging back to the end resumes
+      following
 
 ## What the fox2 port already provides
 
@@ -350,7 +351,7 @@ deterministic dataset mode, and adds a live sheet. The sheet is a small
   current sample values in a side panel while the chart visualises the buffer;
 - the time axis keeps a fixed-width viewport and scrolls horizontally as
   samples arrive; the axis frame and ticks stay in place, and a scrollbar
-  below the chart pans back through retained history;
+  below the chart, hidden in static mode, pans back through retained history;
 - series:
   - mouse x and y speed (pixels/s) and acceleration (pixels/s²), derived from
     `SEL_MOTION` events and `FXThread::steadytime()`;

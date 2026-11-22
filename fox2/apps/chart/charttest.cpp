@@ -327,6 +327,7 @@ void ChartWindow::create(){
   liveseries->hide();
   livesection->hide();
   updateScroll();
+  xscroll->hide();
   xscroll->disable();
   }
 
@@ -506,6 +507,7 @@ void ChartWindow::startLive(){
   for(i=0; i<live->getNumSeries(); i++){
     live->getCurve(i)->setVisible(livevis[i]);
     }
+  xscroll->show();
   xscroll->enable();
   updateScroll();
   syncSeriesChecks();
@@ -536,6 +538,7 @@ void ChartWindow::stopLive(){
   plot->setChartStyle(savedchartstyle);
   plot->setCaptionStyle(savedcaptionstyle);
   plot->fitData();
+  xscroll->hide();
   xscroll->disable();
   updateScroll();
   syncSeriesChecks();
