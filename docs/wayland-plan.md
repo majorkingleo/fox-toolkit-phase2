@@ -583,6 +583,15 @@ Done in this phase so far:
   `tests/button` left the old button and the old radio buttons in the frame
   (`screenshots/tests/fox2/wayland/button-iconpos-stale.png`), the same frame is
   clean with the exposure (`button-iconpos.png`).
+- A hidden window has nothing to draw into.  Every window of a shell shares its
+  frame, so a DC on a window of an unmapped tree wrote its pixels on top of the
+  visible page; X11 and Win32 drop the drawing of an unmapped window in the
+  server.  `FXProgressBar::setProgress()` and the dial paint themselves in the
+  setter, so a widget on a tab that is not shown flashed its bar and its value
+  over the current tab each time its `FXDataTarget` refreshed (first seen with
+  the collectdata port, whose min/max page updates every timer tick).
+  `fxwaylandBindWindow()` refuses a window that the window table does not
+  report as visible.
 - A window that only changes place repaints itself at the new place, and the
   strips it left in the parent are painted from the parent down.  The window
   paints **last** in the frame, after the covered passes for the parent strips
