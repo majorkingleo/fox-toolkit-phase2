@@ -117,6 +117,20 @@ with X11 and the shared `FXRaster` rendering path still pending.
       or extend past the axis during zoom; tick marks and grid lines remain
       unchanged
 
+### M7 — chartdemo (initial CSV slice)
+
+- [x] `chartdemo` opens multiple selected CSV files, one document per tab
+- [x] Delimiter detection for comma, semicolon, tab and pipe; quoted fields,
+  doubled quotes and embedded newlines are parsed
+- [x] BOM-based UTF-8/16/32 detection, BOM-less UTF-16/32 heuristics, UTF-8
+  validation and Windows-1252 fallback
+- [x] Numeric and date/time columns are inferred; the first detected timestamp
+  column is the default X axis and is plotted as elapsed seconds
+- [x] X-column selector, per-series visibility controls, CSV inspection mode
+  and the supplied 8,795-row Manila sample verified
+- [ ] Preview/table view, explicit codec and delimiter overrides, XLSX/ODS
+  import, export and cross-platform UI screenshots
+
 ## What the fox2 port already provides
 
 The FOX 1.7.95 chart package is copied to `fox2/apps/chart` and builds
