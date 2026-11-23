@@ -183,6 +183,7 @@ void ChartDemoWindow::openFile(const FXString& filename){
     }
   documents.push_back(document);
   rebuild(document);
+  page->create();
   tabs->setCurrent((FXint)documents.size());
   }
 
