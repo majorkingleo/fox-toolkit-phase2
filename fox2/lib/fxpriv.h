@@ -82,6 +82,9 @@ extern int (WINAPI *ToUnicodeEx)(UINT, UINT, const BYTE*, LPWSTR, int, UINT, HKL
 
 // Windows helpers
 extern FXbool fxgdiplus();
+extern void fxshadowSet(FXID window,FXint radius,FXint margin);
+extern void fxshadowSync(FXID window);
+extern void fxshadowDestroy(FXID window);
 extern HANDLE fxsendrequest(HWND window,HWND requestor,WPARAM type);
 extern HANDLE fxsenddata(HWND window,FXuchar* data,FXuint size);
 extern HANDLE fxrecvdata(HANDLE hMap,FXuchar*& data,FXuint& size);

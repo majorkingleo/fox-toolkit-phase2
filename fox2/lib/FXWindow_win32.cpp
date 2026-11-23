@@ -102,6 +102,9 @@ void fxplatformAttachWindow(const FXWindowCreateInfo& info,FXID window){
 
 // Destroy a native window we own
 void fxplatformDestroyWindow(void*,FXID window,FXID shell,FXID,FXID xdndaware){
+  // A popup carries its drop shadow in a second window
+  fxshadowDestroy(window);
+
   // Delete the XdndAware property of a toplevel window
   if(shell==window){
     RemoveProp((HWND)window,(LPCTSTR)MAKELONG(xdndaware,0));
@@ -134,6 +137,7 @@ void fxplatformPlaceWindow(void*,FXID window,FXint x,FXint y,FXint w,FXint h,FXi
   if(!(placement&PLACEMENT_X)) flags|=SWP_NOMOVE;
   if(!(placement&(PLACEMENT_W|PLACEMENT_H))) flags|=SWP_NOSIZE;
   SetWindowPos((HWND)window,nullptr,x,y,w,h,flags);
+  fxshadowSync(window);
   }
 
 
@@ -158,6 +162,7 @@ void fxplatformEndUpdate(void*){
 // Map or unmap
 void fxplatformShowWindow(void*,FXID window,FXint,FXint,FXbool shown){
   ShowWindow((HWND)window,shown?SW_SHOWNOACTIVATE:SW_HIDE);
+  fxshadowSync(window);
   }
 
 
@@ -170,6 +175,7 @@ void fxplatformReparentWindow(void*,FXID window,FXID parent){
 // Raise or lower in the stacking order
 void fxplatformRaiseWindow(void*,FXID window,FXbool raised){
   SetWindowPos((HWND)window,raised?HWND_TOP:HWND_BOTTOM,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_NOOWNERZORDER);
+  fxshadowSync(window);
   }
 
 
@@ -263,17 +269,23 @@ void FXWindow::setCornerRadius(FXint radius){
 // Round the corners of an inner rectangle of the window
 void FXWindow::setCornerRadius(FXint radius,FXint x,FXint y,FXint w,FXint h){
   if(xid){
-    if(radius<=0){
-      SetWindowRgn((HWND)xid,nullptr,false);
-      return;
-      }
     FXint r=FXMIN(radius,FXMIN(w,h)/2);
     if(r<=0){
       SetWindowRgn((HWND)xid,nullptr,false);
+      fxshadowDestroy(xid);
       return;
       }
     // SetWindowRgn takes ownership of the region
     SetWindowRgn((HWND)xid,CreateRoundRectRgn(x,y,x+w+1,y+h+1,r<<1,r<<1),false);
+    // Only a shell carries a drop shadow, and it goes outside the window; an
+    // inner rounded viewport would paint one inside its parent
+    FXint margin=isShell()?getApp()->getTheme()->metric(METRIC_SHADOW_SIZE,getDisplayScale()):0;
+    if(0<margin){
+      fxshadowSet(xid,r,margin);
+      }
+    else{
+      fxshadowDestroy(xid);
+      }
     }
   }
 
