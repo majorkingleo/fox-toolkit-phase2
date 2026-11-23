@@ -91,6 +91,28 @@ static FXbool hasNumber(const FXArray<AxisNumber>& list,const FXString& text){
   }
 
 
+// Format tick values with the precision implied by the major tick spacing
+static FXString formatAxisNumber(FXdouble value,FXdouble spacing){
+  FXString text;
+  FXint decimals=0;
+  FXdouble scaled=spacing;
+  if(!Math::fpFinite(value) || !Math::fpFinite(spacing) || spacing<=0.0 || FXABS(value)>=1.0e9 || (value!=0.0 && FXABS(value)<1.0e-6)){
+    text.format("%g",value);
+    return text;
+    }
+  while(decimals<8 && FXABS(scaled-Math::round(scaled))>1.0e-7*FXMAX(1.0,FXABS(scaled))){
+    scaled*=10.0;
+    decimals++;
+    }
+  if(decimals==8 && FXABS(scaled-Math::round(scaled))>1.0e-7*FXMAX(1.0,FXABS(scaled))){
+    text.format("%g",value);
+    return text;
+    }
+  text.format("%.*f",decimals,value);
+  return text;
+  }
+
+
 // Drop horizontal labels that do not fit beside the preceding label
 static void fitHorizontalNumbers(FXArray<AxisNumber>& numbers,FXFont* font,FXuint style,FXint fx,FXint tx){
   FXint direction=(tx>=fx)?1:-1;
@@ -242,7 +264,7 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text.format("%g",i*majorspace);
+          item.text=formatAxisNumber(i*majorspace,majorspace);
           item.x=x+tin*ex;
           item.y=y+tin*ey;
           item.born=now;
@@ -257,7 +279,7 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text.format("%g",i*majorspace);
+          item.text=formatAxisNumber(i*majorspace,majorspace);
           item.x=x-tout*ex;
           item.y=y-tout*ey;
           item.born=now;
