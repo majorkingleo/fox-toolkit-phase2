@@ -33,6 +33,7 @@ protected:
   FXMenuBar* menubar;
   FXMenuPane* filemenu;
   FXTabBook* tabs;
+  FXFont* verticalLabelFont;
   FXLabel* welcome;
   std::vector<ChartDocument*> documents;
 protected:
@@ -96,6 +97,8 @@ static void attachConsole(){
 
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
+  verticalLabelFont=new FXFont(app,"helvetica",14,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
+  verticalLabelFont->setAngle(90*64);
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   filemenu=new FXMenuPane(this);
   new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
@@ -168,17 +171,23 @@ void ChartDemoWindow::openFile(const FXString& filename){
   FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
   new FXLabel(controls,"X axis:",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y);
   document->xcolumn=new FXComboBox(controls,32,this,ID_XCOLUMN,COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
-  document->xcolumn->setNumVisible(18);
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
     document->xcolumn->appendItem(document->table.columns[col].name);
     if(col==document->selectedx) document->xcolumn->setCurrentItem((FXint)i);
     }
+  document->xcolumn->setNumVisible(FXMIN((FXint)document->xcolumns.size(),8));
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
   FXHorizontalFrame* content=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,4,0);
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
-  document->plot=new FX2DPlot(chartarea,nullptr,0,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  document->plot=new FX2DPlot(chartarea,nullptr,0,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
+  document->plot->getAxis(FX2DChart::YLO)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_RIGHT);
+  document->plot->getAxis(FX2DChart::YLO)->setLabelOffset(40);
+  document->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
+  document->plot->getAxis(FX2DChart::YHI)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_LEFT);
+  document->plot->getAxis(FX2DChart::YHI)->setLabelOffset(40);
   document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
   new FXLabel(document->series,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   FXComposite* listparent=document->series;
@@ -186,7 +195,10 @@ void ChartDemoWindow::openFile(const FXString& filename){
   FXVerticalFrame* list=new FXVerticalFrame(listparent,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
-    FXCheckButton* check=new FXCheckButton(list,document->table.columns[col].name,this,ID_SERIES,JUSTIFY_LEFT|ICON_BEFORE_TEXT|LAYOUT_FILL_X);
+    FXHorizontalFrame* row=new FXHorizontalFrame(list,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,1,2,1,4,0);
+    FXFrame* swatch=new FXFrame(row,FRAME_SUNKEN|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT|LAYOUT_CENTER_Y,0,0,12,12);
+    swatch->setBackColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))]);
+    FXCheckButton* check=new FXCheckButton(row,document->table.columns[col].name,this,ID_SERIES,JUSTIFY_LEFT|ICON_BEFORE_TEXT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
     check->setCheck(true);
     if(col==document->selectedx) check->disable();
     document->checks.push_back(check);
@@ -224,16 +236,15 @@ void ChartDemoWindow::rebuild(ChartDocument* document){
       }
     curve->setXData(xdata);
     curve->setYData(ydata);
-    LineStyle line={seriesColors[visiblecount%(sizeof(seriesColors)/sizeof(seriesColors[0]))],1,LINESTYLE_SOLID};
+    LineStyle line={seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],1,LINESTYLE_SOLID};
     curve->setLineStyle(line);
     document->plot->appendCurve(curve);
     visiblecount++;
     }
-  document->plot->setCaption(displayFileName(document->filename));
   document->plot->getAxis(FX2DChart::XLO)->setLabel(document->table.columns[xcol].name+(document->table.columns[xcol].timestamp?" (seconds from start)":""));
   document->plot->getAxis(FX2DChart::YLO)->setLabel("Value");
   document->plot->fitData();
-  document->plot->update();
+  document->plot->invalidateChart();
   FXint ycount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++) if((FXint)i!=xindex) ycount++;
   document->info->setText(FXString::value(document->table.rows)+" rows; "+FXString::value(visiblecount)+" plotted / "+FXString::value(ycount)+" numeric series; "+document->table.delimiter+"; "+document->table.encoding);
@@ -255,13 +266,12 @@ long ChartDemoWindow::onXColumn(FXObject* sender,FXSelector,void*){
   }
 
 
-long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void*){
+long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void* ptr){
   for(FXuval d=0; d<documents.size(); d++){
     ChartDocument* document=documents[d];
     for(FXuval i=0; i<document->checks.size(); i++){
       if(document->checks[i]==sender){
-        FXCheckButton* check=(FXCheckButton*)sender;
-        document->visible[i]=check->getCheck();
+        document->visible[i]=(FXbool)(FXuval)ptr;
         rebuild(document);
         return 1;
         }
@@ -274,6 +284,8 @@ long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void*){
 ChartDemoWindow::~ChartDemoWindow(){
   for(FXuval i=0; i<documents.size(); i++) delete documents[i];
   documents.clear();
+  delete tabs;
+  delete verticalLabelFont;
   delete filemenu;
   }
 
