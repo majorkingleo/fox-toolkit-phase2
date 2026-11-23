@@ -40,6 +40,15 @@
 #include "FXEvent.h"
 #include "FXWindow.h"
 #include "FXApp.h"
+
+// GDI+ is the only antialiased drawing that composes with GDI, and it needs the
+// plain Windows names that fxdefs.h shadows
+#define VOID void
+#define PROPID ULONG
+#include <gdiplus.h>
+#undef PROPID
+#undef VOID
+
 #include "fxpriv.h"
 
 #if defined(WIN32)
@@ -48,6 +57,7 @@
   Notes:
 
   - Windows data transfer for clipboard, selection and drag and drop: shared memory helpers and the FXApp transfer members.
+  - The GDI+ session is started once for every antialiased drawing helper.
 */
 
 using namespace FX;
@@ -55,6 +65,24 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+// Start GDI+ once for the antialiased drawing helpers; false when unavailable
+FXbool fxgdiplus(){
+  struct GDIPlusSession {
+    ULONG_PTR token;
+    FXbool started;
+    GDIPlusSession():token(0),started(false){
+      Gdiplus::GdiplusStartupInput input;
+      started=Gdiplus::GdiplusStartup(&token,&input,nullptr)==Gdiplus::Ok;
+      }
+    ~GDIPlusSession(){
+      if(started) Gdiplus::GdiplusShutdown(token);
+      }
+    };
+  static GDIPlusSession session;
+  return session.started;
+  }
+
 
 // Send data via shared memory
 HANDLE fxsenddata(HWND window,FXuchar* data,FXuint size){

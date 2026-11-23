@@ -55,6 +55,7 @@
 #include "FXShell.h"
 #include "FXRegion.h"
 #include "FXDCWindow.h"
+#include "fxpriv.h"
 
 #if defined(WIN32)
 
@@ -79,22 +80,8 @@ namespace FX {
 
 namespace {
 
-struct GDIPlusSession {
-  ULONG_PTR token;
-  FXbool started;
-  GDIPlusSession():token(0),started(false){
-    Gdiplus::GdiplusStartupInput input;
-    started=Gdiplus::GdiplusStartup(&token,&input,nullptr)==Gdiplus::Ok;
-    }
-  ~GDIPlusSession(){
-    if(started) Gdiplus::GdiplusShutdown(token);
-    }
-  };
-
-
 static FXbool drawAntialiasedLines(HDC hdc,const FXPoint* points,FXuint npoints,FXColor color,FXuint linewidth,FXJoinStyle join){
-  static GDIPlusSession session;
-  if(!session.started || npoints<2 || npoints>0x7fffffffU) return false;
+  if(!fxgdiplus() || npoints<2 || npoints>0x7fffffffU) return false;
   std::vector<Gdiplus::Point> path;
   path.reserve(npoints);
   for(FXuint i=0; i<npoints; i++) path.push_back(Gdiplus::Point(points[i].x,points[i].y));

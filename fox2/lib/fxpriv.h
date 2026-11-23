@@ -81,6 +81,7 @@ extern FXuint wkbMapKeyCode(UINT iMsg, WPARAM uVirtKey, LPARAM lParam);
 extern int (WINAPI *ToUnicodeEx)(UINT, UINT, const BYTE*, LPWSTR, int, UINT, HKL);
 
 // Windows helpers
+extern FXbool fxgdiplus();
 extern HANDLE fxsendrequest(HWND window,HWND requestor,WPARAM type);
 extern HANDLE fxsenddata(HWND window,FXuchar* data,FXuint size);
 extern HANDLE fxrecvdata(HANDLE hMap,FXuchar*& data,FXuint& size);
