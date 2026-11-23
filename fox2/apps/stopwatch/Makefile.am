@@ -4,6 +4,12 @@ AM_CXXFLAGS = @X_CFLAGS@
 INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
 LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
+if COND_OSWINDOWS
+stopwatch_LDADD = $(LDADD) -ladvapi32
+else
+stopwatch_LDADD = $(LDADD)
+endif
+
 bin_PROGRAMS = stopwatch
 
 if COND_OSWINDOWS
