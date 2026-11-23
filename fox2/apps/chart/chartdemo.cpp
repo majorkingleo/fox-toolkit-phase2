@@ -27,15 +27,45 @@ struct ChartDocument {
   };
 
 
+class CSVLoadTask : public FXThread {
+private:
+  FXMutex progressMutex;
+  FXuint progress;
+  static void reportProgress(void* context,FXuint value){
+    CSVLoadTask* task=(CSVLoadTask*)context;
+    FXScopedMutex lock(task->progressMutex);
+    task->progress=value;
+    }
+public:
+  FXString filename;
+  CSVTable table;
+  FXString error;
+  FXbool success;
+  CSVLoadTask(const FXString& path):progress(0),filename(path),success(false){ }
+  FXuint getProgress(){
+    FXScopedMutex lock(progressMutex);
+    return progress;
+    }
+  virtual FXint run() override {
+    success=readCSV(filename,table,error,reportProgress,this);
+    return success?0:1;
+    }
+  };
+
+
 class ChartDemoWindow : public FXMainWindow {
   FXDECLARE(ChartDemoWindow)
 protected:
   FXMenuBar* menubar;
   FXMenuPane* filemenu;
   FXTabBook* tabs;
+  FXStatusBar* statusbar;
+  FXProgressBar* loadingBar;
   FXFont* verticalLabelFont;
   FXLabel* welcome;
   std::vector<ChartDocument*> documents;
+  std::vector<FXString> pendingFiles;
+  CSVLoadTask* loader;
 protected:
   ChartDemoWindow(){ }
 private:
@@ -46,16 +76,20 @@ public:
   long onCmdQuit(FXObject*,FXSelector,void*);
   long onXColumn(FXObject*,FXSelector,void*);
   long onSeries(FXObject*,FXSelector,void*);
+  long onLoadPoll(FXObject*,FXSelector,void*);
   enum{
     ID_OPEN=FXMainWindow::ID_LAST,
     ID_QUIT,
     ID_XCOLUMN,
     ID_SERIES,
+    ID_LOAD_POLL,
     ID_LAST
     };
 public:
   ChartDemoWindow(FXApp* app);
   void openFile(const FXString& filename);
+  void startNextLoad();
+  void addLoadedFile(const FXString& filename,CSVTable& table);
   void rebuild(ChartDocument* document);
   virtual ~ChartDemoWindow();
   };
@@ -66,6 +100,7 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_QUIT,ChartDemoWindow::onCmdQuit),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES,ChartDemoWindow::onSeries),
+  FXMAPFUNC(SEL_TIMEOUT,ChartDemoWindow::ID_LOAD_POLL,ChartDemoWindow::onLoadPoll),
   };
 
 FXIMPLEMENT(ChartDemoWindow,FXMainWindow,ChartDemoWindowMap,ARRAYNUMBER(ChartDemoWindowMap))
@@ -97,6 +132,7 @@ static void attachConsole(){
 
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
+  loader=nullptr;
   verticalLabelFont=new FXFont(app,"helvetica",14,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
   verticalLabelFont->setAngle(90*64);
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
@@ -105,7 +141,12 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   new FXMenuCommand(filemenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   new FXMenuTitle(menubar,"&File",nullptr,filemenu);
 
-  tabs=new FXTabBook(this,nullptr,0,TABBOOK_TOPTABS|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  statusbar=new FXStatusBar(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X);
+  statusbar->getStatusLine()->setNormalText("Ready");
+  loadingBar=new FXProgressBar(statusbar,nullptr,0,PROGRESSBAR_PERCENTAGE|LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,220);
+  loadingBar->setTotal(100);
+  loadingBar->hide();
+  tabs=new FXTabBook(this,nullptr,0,TABBOOK_TOPTABS|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   new FXTabItem(tabs,"Welcome");
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,12,12,12,12);
   welcome=new FXLabel(page,"Open one or more CSV files to plot their numeric columns.\n\nThe importer detects common delimiters, quoted fields, UTF encodings and Windows-1252 text.\nDate/time columns are detected and selected as the default X axis when available.",nullptr,JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -134,19 +175,77 @@ void ChartDemoWindow::openFile(const FXString& filename){
       return;
       }
     }
+  if(loader && loader->filename==filename) return;
+  for(FXuval i=0; i<pendingFiles.size(); i++) if(pendingFiles[i]==filename) return;
+  pendingFiles.push_back(filename);
+  if(!loader) startNextLoad();
+  }
+
+
+void ChartDemoWindow::startNextLoad(){
+  if(loader || pendingFiles.empty()) return;
+  FXString filename=pendingFiles[0];
+  pendingFiles.erase(pendingFiles.begin());
+  loader=new CSVLoadTask(filename);
+  if(!loader->start()){
+    delete loader;
+    loader=nullptr;
+    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","Could not start the CSV loading thread.");
+    startNextLoad();
+    return;
+    }
+  statusbar->getStatusLine()->setText("Loading "+displayFileName(filename));
+  loadingBar->setProgress(0);
+  loadingBar->show();
+  statusbar->recalc();
+  getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL),100000000);
+  }
+
+
+long ChartDemoWindow::onLoadPoll(FXObject*,FXSelector,void*){
+  if(!loader) return 1;
+  loadingBar->setProgress(loader->getProgress());
+  if(loader->running()){
+    getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL),100000000);
+    return 1;
+    }
+  loader->join();
+  CSVLoadTask* task=loader;
+  loader=nullptr;
+  if(task->success){
+    loadingBar->setProgress(100);
+    addLoadedFile(task->filename,task->table);
+    statusbar->getStatusLine()->setNormalText("Loaded "+displayFileName(task->filename));
+    }
+  else{
+    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","%s",task->error.text());
+    statusbar->getStatusLine()->setNormalText("Ready");
+    }
+  statusbar->getStatusLine()->setText("");
+  delete task;
+  if(!pendingFiles.empty()){
+    startNextLoad();
+    }
+  else{
+    loadingBar->hide();
+    statusbar->recalc();
+    }
+  return 1;
+  }
+
+
+void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   ChartDocument* document=new ChartDocument;
   document->filename=filename;
+  document->table.columns.swap(table.columns);
+  document->table.rows=table.rows;
+  document->table.encoding=table.encoding;
+  document->table.delimiter=table.delimiter;
   document->plot=nullptr;
   document->xcolumn=nullptr;
   document->info=nullptr;
   document->series=nullptr;
   document->selectedx=-1;
-  FXString error;
-  if(!readCSV(filename,document->table,error)){
-    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","%s",error.text());
-    delete document;
-    return;
-    }
 
   for(FXint c=0; c<(FXint)document->table.columns.size(); c++){
     if(document->table.columns[c].numeric){
@@ -282,8 +381,15 @@ long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void* ptr){
 
 
 ChartDemoWindow::~ChartDemoWindow(){
+  getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL));
+  if(loader){
+    loader->join();
+    delete loader;
+    loader=nullptr;
+    }
   for(FXuval i=0; i<documents.size(); i++) delete documents[i];
   documents.clear();
+  pendingFiles.clear();
   delete tabs;
   delete verticalLabelFont;
   delete filemenu;

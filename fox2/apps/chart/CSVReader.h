@@ -20,7 +20,9 @@ struct CSVTable {
   FXString delimiter;
   };
 
-FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error);
+typedef void (*CSVProgressCallback)(void*,FXuint);
+
+FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgressCallback progress=nullptr,void* context=nullptr);
 
 }
 

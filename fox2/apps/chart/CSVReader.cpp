@@ -21,13 +21,14 @@ namespace FXCHART {
 namespace {
 
 template<typename Callback>
-static void parseRecords(const std::string& text,FXchar delimiter,Callback callback,FXint limit=-1){
+static void parseRecords(const std::string& text,FXchar delimiter,Callback callback,FXint limit=-1,CSVProgressCallback progress=nullptr,void* context=nullptr,FXuint progressStart=0,FXuint progressRange=0){
   std::vector<FXString> row;
   std::string field;
   FXbool quoted=false;
   FXbool atstart=true;
   FXint records=0;
   for(std::string::size_type i=0; i<text.size(); i++){
+    if(progress && (i&0xffff)==0 && !text.empty()) progress(context,progressStart+(FXuint)((FXulong)i*progressRange/text.size()));
     FXchar c=text[i];
     if(quoted){
       if(c=='"'){
@@ -69,6 +70,7 @@ static void parseRecords(const std::string& text,FXchar delimiter,Callback callb
     row.push_back(FXString(field.c_str(),field.size()));
     callback(row);
     }
+  if(progress) progress(context,progressStart+progressRange);
   }
 
 
@@ -265,7 +267,7 @@ static FXbool isMissing(const FXString& value){
 }
 
 
-FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error){
+FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgressCallback progress,void* context){
   FXFile file(filename,FXIO::Reading);
   if(!file.isOpen()){
     error=FXString("Cannot open file: ")+filename;
@@ -277,9 +279,15 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error){
     return false;
     }
   std::string bytes((FXuval)length,'\0');
-  if(file.readBlock(&bytes[0],bytes.size())!=(FXival)bytes.size()){
-    error="Could not read the entire CSV file";
-    return false;
+    FXuval offset=0;
+    while(offset<bytes.size()){
+      FXuval amount=FXMIN(bytes.size()-offset,(FXuval)(1<<20));
+      if(file.readBlock(&bytes[offset],amount)!=(FXival)amount){
+        error="Could not read the entire CSV file";
+        return false;
+        }
+      offset+=amount;
+      if(progress) progress(context,(FXuint)(20*offset/bytes.size()));
     }
   std::string::size_type first=0;
   while(first<bytes.size() && bytes[first]=='\0') first++;
@@ -290,6 +298,7 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error){
 
   table=CSVTable();
   FXString text=decodeCSV(bytes,table.encoding);
+  if(progress) progress(context,25);
   std::string utf8(text.text(),text.length());
   FXchar separator=detectDelimiter(utf8);
   table.delimiter=(separator=='\t')?"tab":FXString(&separator,1);
@@ -368,7 +377,7 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error){
       table.columns[c].values.push_back(value);
       }
     rownumber++;
-    });
+    },-1,progress,context,30,65);
   table.rows=FXMAX(0,rownumber-(hasheader?1:0));
 
   if(timestampColumn>=0){
@@ -377,12 +386,14 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error){
     for(FXuval i=0; i<values.size(); i++) if(Math::fpFinite(values[i])){ origin=values[i]; break; }
     for(FXuval i=0; i<values.size(); i++) if(Math::fpFinite(values[i])) values[i]-=origin;
     }
+  if(progress) progress(context,98);
   FXbool hasnumeric=false;
   for(FXint c=0; c<columns; c++) if(table.columns[c].numeric) hasnumeric=true;
   if(!hasnumeric){
     error="No numeric or date/time columns were detected";
     return false;
     }
+  if(progress) progress(context,100);
   return true;
   }
 
