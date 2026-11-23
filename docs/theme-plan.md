@@ -757,6 +757,32 @@ which is where the X11 shape puts it.  The remaining difference is
 antialiasing: X11 composites the corner through an XRender mask and Wayland
 through 4x4 coverage, while Win32 still draws a hard GDI edge.
 
+**Progress: Win32 antialiased chrome through GDI+ (2026-11-23).** GDI has no
+antialiased geometry, but GDI+ does, and it composites into the same device
+context without disturbing the GDI state the rest of FOX paints with (a Direct2D
+render target forbids GDI calls between `BeginDraw` and `EndDraw`, so it would
+mean rewriting the Win32 `FXDCWindow`). `FXStyle::drawRoundRect()` now builds the
+outline from four arcs, fills the border, then fills the face inset by the border
+width; `cutRoundedCorners()` fills the outer rectangle minus the rounded shape in
+one alternate-filled path. Both are gated on `fxgdiplus()` and fall back to the
+GDI round rectangle. The GDI+ session moved from the device context into
+`fxpriv_win32.cpp`, so the chrome and the antialiased thin lines share one
+startup.
+
+The outline needs `PixelOffsetModeHalf`. Without it GDI+ rasterizes the geometry
+on the pixel centres: a 1 px border then smears over two rows and the straight
+edges of every button turn grey. Measured on the Breeze `button` window at scale
+1.0 under Wine, the Quit button corner now reads
+`#EFF0F1, #ECECED, #D8D9DB, #D0D2D3, #C6C8C9` down the top row where the GDI
+fallback had `#EFF0F1, #EFF0F1, #EFF0F1, #C6C8C9`, and 1051 of 1111396 pixels of
+the frame differ, all of them on the rounded edges. The classic theme draws no
+rounded shape, so it stays pixel-identical (0 differing pixels), and `hello` and
+`dpi` still run. Screenshot: `screenshots/tests/fox2/win32/button-breeze-gdiplus.png`.
+
+Popups are unaffected: their outline is a window region (`SetWindowRgn`), and a
+region has no coverage to blend, so the shaped corners of a popup stay hard edged
+on X11 and Win32 until a popup can carry per-pixel alpha.
+
 **Progress: rounded tool tips (2026-11-17).** `FXToolTip` draws its rounded
 frame through `FXStyle` when the theme has a radius, but the window stayed
 square, so the corner pixels were the tip background.  It now carries the same
@@ -840,9 +866,9 @@ unchanged.
 rectangle that lies outside its rounded corners, which is the primitive a widget
 needs when it paints its own content into a rounded frame: the widget draws its
 items as usual and then cuts the corners back out.  Wayland fills it
-antialiased, blending the colour by the inverse of the corner coverage;
-`FXStyle::fillOutsideCorners()` is the hard edged version X11 and Win32 use,
-built from one span per row.  `FXList` and `FXTreeList` call it with the parent's
+antialiased, blending the colour by the inverse of the corner coverage; X11
+builds the hard edged version with `FXStyle::fillOutsideCorners()`, one span per
+row, which is also the Win32 fallback for a machine without GDI+.  `FXList` and `FXTreeList` call it with the parent's
 background and then draw the viewport hairline in `ROLE_BORDER`, because they
 paint into the scroll area window themselves and would otherwise cover the
 chrome the scroll area drew.

@@ -152,7 +152,7 @@ use the seam.
 | Win32 check marks | PARTIAL | Still uses the GDI line primitives; no GDI+ antialiasing yet. |
 | Wayland shadows | PARTIAL | Popups and tool tips carry a translucent shadow: a closed-form ring written with the surface alpha, no per-paint allocation. Buttons still use only the 1 px bottom shade, and X11/Win32 cannot composite a translucent shadow without an alpha window, so they reserve no margin. |
 | X11 rounded corners | DONE with XRender | Bitmap/mask fallback is still hard-edged. |
-| Win32 rounded corners | PARTIAL | Radii now match the other backends: the DC round-rect calls passed radii to GDI `RoundRect`, which wants the corner ellipse size, so every Win32 corner was half as round. `FXStyle_win32.cpp` still returns false from `drawRoundRect`, so the corners are hard-edged; no antialiasing. |
+| Win32 rounded corners | DONE | GDI+ path: the border outline is filled, then the face inset by the border width, both with `SmoothingModeAntiAlias` and `PixelOffsetModeHalf` (without the offset a 1 px edge smears over two rows). `cutRoundedCorners()` fills the outer rectangle minus the rounded shape through an alternate-filled path. Falls back to the GDI round rectangle when GDI+ is unavailable; the classic theme draws no rounded shape and stays pixel-identical. |
 | Win32 shadows | OPEN | Same as Wayland/X11. |
 | Popup inflation | OPEN | Needed before menus/tooltips can draw shadows outside their current window bounds. |
 | Popup rounded corners | DONE | `FXWindow::setCornerRadius()`: X11 bounding shape, Win32 window region, Wayland premultiplied corner mask, so the corners show what is behind the popup. Used by `FXPopup` and `FXToolTip`. |
