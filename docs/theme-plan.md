@@ -790,6 +790,35 @@ compute. Measured on a Breeze check box, the diagonal of each stroke now reads
 `#232629, #536169, #79909C, #97B3C2` where the GDI lines had `#232629` straight
 to the face. Screenshot: `screenshots/tests/fox2/win32/checkbox-breeze.png`.
 
+**Progress: Win32 drop shadows in a layered window (2026-11-23).** A GDI window
+has no alpha channel, so a popup cannot paint a translucent shadow into itself,
+and DXGI-style per-pixel alpha is not available to a plain GDI window either.
+The shadow therefore lives in a second window (`fxshadow_win32.cpp`): a
+`WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` popup carrying an
+`UpdateLayeredWindow` bitmap of premultiplied ARGB. `FXWindow::setCornerRadius()`
+creates it for a shell when the theme has `METRIC_SHADOW_SIZE`, and the place,
+show, raise and destroy seams keep it in step with the popup.
+
+The ring lies *outside* the popup rather than inside a reserved margin, so
+`FXStyle::shadowMargin()` still answers 0 on Win32 and none of the shared layout
+grows: the popup keeps the size the widget code gives it, and the ring is drawn
+around that rectangle with the same closed-form falloff the Wayland surface uses
+(`fxShadowRing()`, shared since the rasterizer moved out of
+`FXStyle_wayland.cpp`). The middle of the bitmap is fully transparent, so the
+popup shows through it whatever the stacking order turns out to be. The faded
+end of the ring stays at alpha 1: a layered window is hit tested per pixel, and a
+fully transparent margin would let a click on a tool tip's shadow reach the
+window below.
+
+Measured on the Breeze popup at scale 1.0 under Wine: the popup stays 89x62 and
+its shadow window 105x78, offset -8,-8, and the ring right of the popup falls
+off over 8 pixels, `#A0A1A2` at the surface edge to `#EFF0F1` (the window behind
+it) at the outer end. The classic theme has no shadow size, so no shadow window
+is created. Screenshot: `screenshots/tests/fox2/win32/popup-shadow.png` (the
+black notches at the popup corners are Wine not applying the window region, so
+the popup's own unpainted corner pixels show; on Windows the region cuts them
+and the ring shows through).
+
 **Progress: rounded tool tips (2026-11-17).** `FXToolTip` draws its rounded
 frame through `FXStyle` when the theme has a radius, but the window stayed
 square, so the corner pixels were the tip background.  It now carries the same
