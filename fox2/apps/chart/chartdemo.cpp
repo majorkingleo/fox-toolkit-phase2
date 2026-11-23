@@ -20,6 +20,8 @@ struct ChartDocument {
   FXComboBox* xcolumn;
   FXLabel* info;
   FXVerticalFrame* series;
+  FXButton* selectAll;
+  FXButton* selectNone;
   std::vector<FXint> xcolumns;
   std::vector<FXCheckButton*> checks;
   std::vector<FXbool> visible;
@@ -76,12 +78,15 @@ public:
   long onCmdQuit(FXObject*,FXSelector,void*);
   long onXColumn(FXObject*,FXSelector,void*);
   long onSeries(FXObject*,FXSelector,void*);
+  long onSeriesSelection(FXObject*,FXSelector,void*);
   long onLoadPoll(FXObject*,FXSelector,void*);
   enum{
     ID_OPEN=FXMainWindow::ID_LAST,
     ID_QUIT,
     ID_XCOLUMN,
     ID_SERIES,
+    ID_SERIES_ALL,
+    ID_SERIES_NONE,
     ID_LOAD_POLL,
     ID_LAST
     };
@@ -100,6 +105,8 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_QUIT,ChartDemoWindow::onCmdQuit),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES,ChartDemoWindow::onSeries),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_ALL,ChartDemoWindow::onSeriesSelection),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_NONE,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_TIMEOUT,ChartDemoWindow::ID_LOAD_POLL,ChartDemoWindow::onLoadPoll),
   };
 
@@ -278,7 +285,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->xcolumn->setNumVisible(FXMIN((FXint)document->xcolumns.size(),8));
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
-  FXHorizontalFrame* content=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,4,0);
+  FXSplitter* content=new FXSplitter(page,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
   document->plot=new FX2DPlot(chartarea,nullptr,0,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
   document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
@@ -287,8 +294,11 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
   document->plot->getAxis(FX2DChart::YHI)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_LEFT);
   document->plot->getAxis(FX2DChart::YHI)->setLabelOffset(40);
-  document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
+  document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
   new FXLabel(document->series,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  FXHorizontalFrame* seriesbuttons=new FXHorizontalFrame(document->series,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,3,0);
+  document->selectAll=new FXButton(seriesbuttons,"Select All\tSelect all series",nullptr,this,ID_SERIES_ALL,FRAME_RAISED|LAYOUT_FILL_X);
+  document->selectNone=new FXButton(seriesbuttons,"Select None\tSelect no series",nullptr,this,ID_SERIES_NONE,FRAME_RAISED|LAYOUT_FILL_X);
   FXComposite* listparent=document->series;
   if(document->xcolumns.size()>8) listparent=new FXScrollWindow(document->series,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON);
   FXVerticalFrame* list=new FXVerticalFrame(listparent,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
@@ -375,6 +385,19 @@ long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void* ptr){
         return 1;
         }
       }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onSeriesSelection(FXObject* sender,FXSelector sel,void*){
+  FXbool selected=FXSELID(sel)==ID_SERIES_ALL;
+  for(FXuval d=0; d<documents.size(); d++){
+    ChartDocument* document=documents[d];
+    if(sender!=document->selectAll && sender!=document->selectNone) continue;
+    for(FXuval i=0; i<document->visible.size(); i++) document->visible[i]=selected;
+    rebuild(document);
+    return 1;
     }
   return 0;
   }
