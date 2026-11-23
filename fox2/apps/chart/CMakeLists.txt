@@ -20,7 +20,3 @@ add_executable(chartdemo
   CSVReader.cpp
   chartdemo.cpp)
 target_link_libraries(chartdemo PRIVATE FOX::FOX m)
-
-if(WIN32)
-  set_target_properties(chartdemo PROPERTIES WIN32_EXECUTABLE TRUE)
-endif()

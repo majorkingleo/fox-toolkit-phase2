@@ -6,6 +6,28 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
 noinst_PROGRAMS = hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin combo colordlg colordemo fontdlg rulerdemo gaugedemo idle
 
+if COND_OSWINDOWS
+hello_LDFLAGS = -mwindows
+button_LDFLAGS = -mwindows
+dpi_LDFLAGS = -mwindows
+popup_LDFLAGS = -mwindows
+click_LDFLAGS = -mwindows
+menus_LDFLAGS = -mwindows
+tooltip_LDFLAGS = -mwindows
+clipboard_LDFLAGS = -mwindows
+dnd_LDFLAGS = -mwindows
+icon_LDFLAGS = -mwindows
+bmpicon_LDFLAGS = -mwindows
+textspin_LDFLAGS = -mwindows
+combo_LDFLAGS = -mwindows
+colordlg_LDFLAGS = -mwindows
+colordemo_LDFLAGS = -mwindows
+fontdlg_LDFLAGS = -mwindows
+rulerdemo_LDFLAGS = -mwindows
+gaugedemo_LDFLAGS = -mwindows
+idle_LDFLAGS = -mwindows
+endif
+
 # Console tests need no display
 noinst_PROGRAMS += desktop
 

@@ -7,8 +7,9 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 bin_PROGRAMS = charttest chartdemo
 
 if COND_OSWINDOWS
+charttest_LDFLAGS = -mwindows
 chartdemo_LDFLAGS = -mwindows
-endif()
+endif
 
 # icons.h and icons.cpp are checked in; they are the output of reswrap over
 # marble.bmp, as in the calculator and control panel ports.

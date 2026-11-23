@@ -6,6 +6,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la @GLU_LIBS@ -lm
 
 bin_PROGRAMS = glviewer
 
+if COND_OSWINDOWS
+glviewer_LDFLAGS = -mwindows
+endif
+
 glviewer_SOURCES = \
 FXGLCone.h FXGLCone.cpp \
 FXGLCube.h FXGLCube.cpp \

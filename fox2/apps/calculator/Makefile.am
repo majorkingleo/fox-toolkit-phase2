@@ -6,6 +6,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
 bin_PROGRAMS = calculator
 
+if COND_OSWINDOWS
+calculator_LDFLAGS = -mwindows
+endif
+
 man_MANS = calculator.1
 
 IMAGES = \
