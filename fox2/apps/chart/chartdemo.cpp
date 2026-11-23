@@ -31,6 +31,7 @@ class ChartDemoWindow : public FXMainWindow {
   FXDECLARE(ChartDemoWindow)
 protected:
   FXMenuBar* menubar;
+  FXMenuPane* filemenu;
   FXTabBook* tabs;
   FXLabel* welcome;
   std::vector<ChartDocument*> documents;
@@ -87,7 +88,7 @@ static void attachConsole(){
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
-  FXMenuPane* filemenu=new FXMenuPane(this);
+  filemenu=new FXMenuPane(this);
   new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
   new FXMenuCommand(filemenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   new FXMenuTitle(menubar,"&File",nullptr,filemenu);
@@ -261,6 +262,7 @@ long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void*){
 ChartDemoWindow::~ChartDemoWindow(){
   for(FXuval i=0; i<documents.size(); i++) delete documents[i];
   documents.clear();
+  delete filemenu;
   }
 
 

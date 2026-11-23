@@ -49,6 +49,18 @@ not contain an SVG serialiser, a spreadsheet reader or a file-format layer.
 Target order: Wayland first; Win32 thin-line antialiasing is now implemented,
 with X11 and the shared `FXRaster` rendering path still pending.
 
+Current snapshot (2026-11-23):
+
+- **Implemented:** chart data/curve model, static plotting and fit, interactive
+  zoom, `charttest` live mode, Wayland software antialiasing, Win32 thin-line
+  antialiasing, and the initial CSV-only `chartdemo` with timestamp detection
+  and one tab per file. The Win32 chartdemo now launches without a console and
+  closes cleanly.
+- **Still open:** curve fill rendering, X11 antialiasing and chart verification,
+  shared raster rendering on X11/Win32, full plot-data/tick geometry API, chart
+  legend, table preview and format overrides, XLSX/ODS, export, decimation/perf
+  gates, and cross-platform chartdemo screenshots.
+
 ### M1 — data model and static curves
 
 - [x] `FXData` storage, unlimited and ring-bounded
@@ -58,7 +70,8 @@ with X11 and the shared `FXRaster` rendering path still pending.
 - [x] `charttest` deterministic 10,000-sample series plus a marker series
 - [x] Wayland build and `FOX_WAYLAND_DUMP` frame verified
 - [ ] curve fills
-- [ ] client-side `FXImage` buffer (chart still draws through `FXDC`)
+- [ ] shared `FXRaster` rendering into the client-side `FXImage` buffer
+  (the widget has a back buffer, but chart primitives still draw through `FXDC`)
 - [x] Win32 `charttest` build and antialiased curve screenshot verified
 - [ ] X11 verification
 
@@ -78,7 +91,8 @@ with X11 and the shared `FXRaster` rendering path still pending.
 ### M6 — live mode in `charttest`
 
 - [x] `LiveSource` timer and mouse speed/acceleration series
-- [x] Linux CPU, memory and chart frame-time series (Win32 seam pending)
+- [x] Linux CPU, memory and chart frame-time series
+- [ ] Win32 CPU/memory metrics seam
 - [x] follow window and ring retention
 - [x] `charttest --live`, Wayland build and `charttest-live.png` verified on sway
 - [x] axis changes redraw the chart image without relayout; live mode stays
@@ -131,34 +145,30 @@ with X11 and the shared `FXRaster` rendering path still pending.
 - [ ] Preview/table view, explicit codec and delimiter overrides, XLSX/ODS
   import, export and cross-platform UI screenshots
 
-## What the fox2 port already provides
+## Current implementation versus remaining work
 
-The FOX 1.7.95 chart package is copied to `fox2/apps/chart` and builds
-`charttest`. The widget chrome is there:
+The FOX 1.7.95 chart package is copied to `fox2/apps/chart`; both `charttest`
+and `chartdemo` build. The current state is:
 
-- caption, margins, background fill styles and an `FXImage` back buffer
-  (`FXChart`); `onPaint` blits that image, which is the flicker-free path we
-  keep;
-- four axes with labels, ticks, grid lines, number formatting, fonts and colours
-  (`FX2DChart`, `FXAxis`);
-- a series list (`FX2DPlot`, `FXCurve`), and `FXCurve::setYAxis` already lets a
-  curve pick one of the four axes (`XLO`, `YLO`, `XHI`, `YHI`), so a right-hand
-  Y axis is a matter of choosing `YHI`.
+- **Implemented:** `FXData` sample storage, append/remove, min/max and
+  ring-bounded retention; `FXCurve` data/style/visibility and axis selection;
+  visible curve and marker drawing; `FX2DPlot::fitData`/`fitY`; four labelled
+  axes, ticks and grid; interactive wheel/rubber-band zoom and reset; and the
+  live `charttest` view with follow and scrollbar panning.
+- **Implemented, but not the final rendering target:** `FXChart` retains its
+  `FXImage` back buffer and blits it on paint. Chart primitives still use the
+  `FXDC` path; the planned shared `FXRaster` rendering path is not complete.
+- **Partially implemented application API:** callers can read curve samples,
+  labels/styles/visibility, axis data and view ranges, and the plot rectangle.
+  Data-to-device mapping and a public tick/number enumerator are still needed
+  for SVG output.
+- **Still open:** filled-area drawing, an in-plot legend, cursor readout,
+  decimation/performance work and X11 verification/antialiasing. `chartdemo`
+  currently imports CSV only; spreadsheet formats, preview, overrides and
+  export are not implemented.
 
-What is missing:
-
-- `FXData` is an empty class in `FXCurve.cpp`: no storage, no API, so no
-  samples can be handed to a curve at all;
-- curves, markers, filled areas and a legend are never drawn;
-- no autoscale, no data-range scan, no interaction, no cursor readout;
-- no read-only data and geometry API for an application that wants to render
-  or export the plot itself;
-- no file importers; these belong to the demo application, not to the widget.
-
-So the port is the widget chrome plus a paint path, not a chart. Data model,
-curve rendering, antialiasing, interaction and the data/geometry API have to be
-written; the chrome is reused. File import and SVG export are written in the
-application on top of that API.
+The widget remains independent of file formats and SVG. Those features belong
+in the demo application once the remaining read-only geometry API is available.
 
 ## Decisions
 
@@ -279,26 +289,21 @@ cheap:
 
 ### Data and geometry API for applications
 
-The application-side SVG writer must not touch widget internals, so the widget
-publishes:
+Status of the application-facing API:
 
-- `FX2DPlot::numCurves()`, `getCurve(i)`;
-- `FXCurve::getLabel()`, `isVisible()`, and getters for its `LineStyle`,
-  `Marker` and `FillStyle`;
-- `FXData::size()`, `getX(i)`, `getY(i)`, `getXMin()`, `getXMax()`,
-  `getYMin()`, `getYMax()`; indices expose logical order even when the ring
-  buffer has wrapped;
-- `FXAxis::getAxisRangeMin()`, `getAxisRangeMax()`, `getDataRangeMin()`,
-  `getDataRangeMax()`, and a tick enumerator plus the number formatter used by
-  the screen renderer, so SVG ticks and labels match;
-- `FX2DChart::getPlotRect(FXRectangle&)` and
-  `FX2DChart::mapToDevice(axisX,axisY,dataX,dataY,FXint&,FXint&)`.
+- [x] `FX2DPlot::numCurves()` and `getCurve(i)`;
+- [x] `FXCurve` label, visibility, line/marker/fill-style getters;
+- [x] `FXData` logical-order access with `no()`, `get(i)`, `getMinimum()` and
+  `getMaximum()`; ring-wrapped samples remain readable in logical order;
+- [x] `FXAxis` data-range and view-range getters;
+- [x] `FX2DChart::getPlotArea()` exposes the currently laid-out plot rectangle;
+- [ ] public data-to-device mapping and a shared plot-rectangle calculation;
+- [ ] public tick enumeration and number formatting for matching SVG labels;
+- [ ] SVG exporter using only this public API.
 
-The plot rectangle is the same one `drawSelf` uses, computed by a shared
-`calcPlotRect()` instead of duplicated local arithmetic. The mapping is the
-same affine transform the rasteriser applies, so an exporter cannot drift from
-the screen. Everything else stays private: the back buffer, clipping,
-decimation buffers and the renderer.
+The target API should share the same plot rectangle and affine mapping used by
+the screen renderer, so an exporter cannot drift from it. The back buffer,
+clipping, decimation buffers and renderer stay private.
 
 ## Rendering target and antialiasing
 
@@ -310,8 +315,9 @@ targeted backend improvement, not yet the shared chart raster path. A separate
 transparent curve layer cannot be composited over an X11 chart
 (`FXDCWindow::drawImage` is a plain `XCopyArea`).
 
-The plot is therefore rasterised by code we own, into one plain `FXColor`
-buffer, and handed to the window in one blit:
+The target rendering architecture is to rasterise the plot into one plain
+`FXColor` buffer and hand it to the window in one blit. This part is still open
+for the shared X11/Win32 chart path:
 
 - create the back buffer `FXImage` with `IMAGE_KEEP|IMAGE_OWNED` (without
   `IMAGE_KEEP`, `create()` releases the client data);
@@ -326,38 +332,22 @@ target format is already `FXColor` (`0xAARRGGBB`, alpha included), it has
 gradients, clipping and fill rules, and FreeType text through `FXGlyphs` with the
 same fontconfig match Xft uses.
 
-Add antialiasing there, not in the chart:
+Shared-raster antialiasing status:
 
-- `setAntialias(FXbool)`, default off, so every existing Wayland widget stays
-  bit-identical;
-- coverage-based antialiasing for lines, polylines, line segments, polygon
-  fills, markers and arcs: walk the major axis, compute fractional coverage in
-  the minor axis, extend to spans for widths above one, blend with `blend()`;
-- accumulate coverage per polyline into a row-span buffer and blend once per
-  pixel with the maximum coverage, not the sum, so joins and overlapping dense
-  data do not darken;
-- antialias on for series, markers, filled areas and legend swatches; off for
-  grid, ticks and 1-px rules, which stay snapped to half pixels and crisp;
-- dash handling reuses the existing dash machinery; split by dash length first,
-  then antialias each dash.
+- [x] `setAntialias(FXbool)` defaults off, preserving existing Wayland widget
+  rendering unless explicitly enabled;
+- [x] thin-line Wu coverage and segment clipping are implemented in `FXRaster`
+  for Wayland; Win32 thin solid lines currently use GDI+ instead;
+- [ ] row-span maximum-coverage accumulation for joins and dense data;
+- [ ] antialiased wide/dashed lines and filled polygons;
+- [ ] render chart series through the shared raster path on X11 and Win32;
+- [ ] provide a chart-compatible glyph cache on X11 (Wayland already exposes
+  one through `FXFont::getGlyphCache()`).
 
-The current implementation uses per-segment Wu coverage, clipped to the plot
-rectangle; the row-span maximum-coverage accumulation for dense joins, wide
-lines, dashed lines and filled polygons remains future work.
-
-Text needs an `FXGlyphs`. Wayland already provides one through
-`FXFont::getGlyphCache()`; the X11 `FXFont` returns `nullptr` because Xft draws
-the text itself. Give `FXFont_x11` a lazily created glyph cache from the same
-fontconfig pattern (the metric comments in `FXGlyphs` say the two agree), or, if
-the library should stay untouched, let the chart build its own `FXGlyphs` from
-`FXFont` family, size, weight, slant and DPI. Either way text stays antialiased.
-Prefer the `FXFont` change: other software-rendered widgets need it too.
-
-SVG is unaffected by all of this: the application emits `stroke` polylines and
-`stroke-linejoin` from the exposed data, and the viewer antialiases them. It can
-emit the full visible-range data rather than the screen-decimated geometry,
-because file size does not have the screen's per-column constraint; the axis
-ranges and mapping still come from the widget.
+SVG export is not implemented yet. Once the public geometry API and exporter
+exist, the application should emit `stroke` polylines from the full visible
+data range; screen decimation is unnecessary, while axis ranges and mapping
+must still match the widget.
 
 ### Why not supersampling
 
@@ -427,6 +417,16 @@ The demo is `chartdemo`, a new target next to `charttest`, linked against the
 same static `foxchart` library. `charttest` stays as the minimal widget/chrome
 regression application; `chartdemo` is the user-facing viewer.
 
+Current `chartdemo` status:
+
+- [x] File Open/Quit, multi-file CSV tabs, detected numeric/date-time columns,
+  X-column selection and per-series visibility controls
+- [x] Win32 GUI-subsystem launch and clean close
+- [ ] View/Help menus, status/cursor readout, preview/table view and remembered
+  last directory
+- [ ] XLSX/ODS, explicit import overrides, SVG/CSV/PNG export and UI captures
+  on X11 and Wayland
+
 ### Window
 
 - menu bar: File (Open, Export SVG, Export CSV, Save PNG, Quit), View (fit,
@@ -440,7 +440,8 @@ extension is unknown. The last directory is remembered.
 
 ### Column policy
 
-All three importers produce the same table, so the policy lives in one place:
+When CSV, XLSX and ODS readers are available, they should produce the same
+table and use this shared policy:
 
 - the first row is a header when at least one cell in it is not a number;
 - a column is numeric when at least one non-empty cell parses as a number;
@@ -456,14 +457,23 @@ All three importers produce the same table, so the policy lives in one place:
 This keeps the common case zero-configuration while making the X choice
 explicit.
 
+The initial CSV implementation currently uses a sample-based 80% threshold
+(with at least two non-empty values) to infer numeric/date-time columns. Its
+header heuristic treats the first row as a header if a non-empty field parses
+as neither a number nor a timestamp. A detected timestamp takes precedence as
+the default X axis; otherwise the first numeric column is selected. A
+non-numeric row-index X mode is not implemented.
+
 ### Formats
 
 CSV:
 
-- UTF-8, comma/semicolon/tab delimiter detection, quoted fields, doubled
-  quotes, embedded newlines and CRLF;
-- numbers use `.` as decimal separator; no locale-dependent parsing;
-- a single-column file plots against the row index.
+- comma/semicolon/tab/pipe delimiter detection, quoted fields, doubled quotes,
+  embedded newlines and CRLF;
+- BOM and heuristic UTF-8/16/32 detection, UTF-8 validation and Windows-1252
+  fallback;
+- dot decimals and detected decimal-comma input; no locale-dependent parsing;
+- [ ] row-index X for single-column files or when no numeric X column exists.
 
 XLSX:
 
@@ -584,42 +594,34 @@ One stage per commit, as in the other port plans. Each stage is accepted when
 the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
 `button` and `dpi` still run.
 
-1. Data model, static curves and the CSV demo. Implement `FXData`, curve,
-   marker and fill drawing, series colours, and the `chartdemo` window with CSV
-   import, header detection and the shared column policy. Move the chart to the
-   client-side `FXImage`+`FXRaster` buffer, still aliased. Acceptance: the same
-   CSV renders on X11, Wayland and Win32 with the expected series count and
-   axis ranges; the existing `charttest` chrome keeps its layout and colours;
-   `hello`, `button` and `dpi` are unchanged; a text hinting difference against
-   Xft, if any, is recorded explicitly.
-2. XLSX and ODS import. ZIP central directory, stored and deflated entries,
-   `FXXML` callbacks, shared strings, repeated rows and columns, and sample
-   fixtures that describe the same table as the CSV. Acceptance: all three
-   formats produce identical series names and values in the import check.
-3. Antialiasing. `FXRaster::setAntialias` with AA lines, polylines, polygons,
-   markers and arcs; glyph cache for X11 or chart-owned glyph caches;
-   `CHART_ANTIALIAS` option. Acceptance: golden screenshots on X11, Wayland and
-   Win32.
-4. Autoscale, tick refinement, axis descriptions for all four axes and the
-   legend with click-to-toggle. Acceptance: golden screenshots and the tick
-   enumerator matching the drawn ticks.
-5. Interaction. Cursor-anchored wheel zoom, drag pan, double-click fit,
-   keyboard reset, cursor readout through `SEL_CHANGED`, and the `memmove`
-   pan optimisation. Acceptance: wheel and drag gate scripts on X11 and
-   Wayland.
-6. Decimation, follow mode and the live mode in `charttest`. Per-column
-   min/max, view-range recomputation, streaming follow with hysteresis, the
-   ring-backed `FXData`, `LiveSource`, the mouse-speed/acceleration series and
-   the portable system-metric seam. Acceptance: `charttest --live` runs at
-   20 Hz and 60 Hz, follow scrolls without rescaling on a spike, memory stays
-   flat over a long run, and the perf test meets the frame budget.
-7. Application export. `ChartSVGExporter` from the public data/geometry API,
-   SVG golden files, CSV round trip, and a PNG save check. Acceptance: SVG
-   axis ranges and series colours match the screen; the widget contains no SVG
-   code.
-8. Optional. Right-hand Y axis polish; a second X column chooser; a 3D
-   rotatable view, and a GL renderer behind `FXChartRenderer` only if the perf
-   gate requires it.
+1. **Partial —** data model, static curves and the initial CSV demo. Curve
+  lines/markers, data storage, fit and CSV import are implemented; curve fills,
+  the shared `FXImage`+`FXRaster` renderer and cross-platform acceptance remain
+  open. Acceptance: the same CSV renders on X11, Wayland and Win32 with the
+  expected series count and axis ranges; `charttest` chrome and basic FOX
+  tests remain unchanged.
+2. **Open —** XLSX and ODS import. ZIP central directory, stored and deflated
+  entries, `FXXML` callbacks, shared strings, repeated rows and columns, and
+  sample fixtures. Acceptance: all three formats produce identical series
+  names and values in the import check.
+3. **Partial —** antialiasing. Thin-line Wayland and Win32 antialiasing are
+  implemented; X11, shared rendering, wide/dashed lines, polygon fills and an
+  X11 glyph cache remain open. Acceptance: golden screenshots on all platforms.
+4. **Partial —** autoscale and axis descriptions are implemented; tick
+  refinement, a chart legend and public tick enumeration remain open.
+  Acceptance: golden screenshots and the tick enumerator matching drawn ticks.
+5. **Partial —** wheel/rubber-band zoom, reset and live-view scrollbar panning
+  are implemented. General drag pan, keyboard reset and cursor readout remain
+  open. Acceptance: wheel and drag gates on X11 and Wayland.
+6. **Partial —** live mode, follow and ring-backed `FXData` are implemented.
+  Decimation/performance gates and the Win32 system-metric seam remain open.
+  Acceptance: 20/60 Hz live runs, steady follow, bounded memory and frame-time
+  budget.
+7. **Open —** application export: `ChartSVGExporter`, CSV round trip, PNG save
+  check and golden files. Acceptance: SVG axes and series colours match the
+  screen; the widget contains no SVG code.
+8. **Optional/open —** right-hand Y axis polish, second X chooser, 3D view and
+  a GL renderer behind `FXChartRenderer` only if the perf gate requires it.
 
 ## Verification
 
