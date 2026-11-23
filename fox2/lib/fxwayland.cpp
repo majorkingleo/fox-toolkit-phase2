@@ -1056,6 +1056,15 @@ FXbool fxwaylandBindWindow(FXWaylandApp* app,FXID window,FXColor*& pixels,FXint&
   FXRectangle here;
   FXRectangle above;
   FXID up;
+  if(!app) return false;
+
+  // Every window of a shell draws into one frame; a hidden window would write
+  // its pixels on top of the visible page.  X11 and Win32 drop the drawing of
+  // an unmapped window in the server, so a DC on it has nothing to draw into
+  if(!app->childmap.isVisible(window)){
+    pixels=nullptr;
+    return false;
+    }
   if((s=fxwaylandShellSurface(app,window))==nullptr) return false;
 
   // The store is as large as the shell, plus the client side title bar; every
