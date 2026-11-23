@@ -376,6 +376,12 @@ void StopWatch::create(){
   // it on the saved monitor and assigns that monitor's DPI from the start.
   loadSettings();
   FXMainWindow::create();
+#if defined(WIN32)
+  HWND hwnd=(HWND)id();
+  LONG_PTR exstyle=GetWindowLongPtrW(hwnd,GWL_EXSTYLE);
+  SetWindowLongPtrW(hwnd,GWL_EXSTYLE,(exstyle&~WS_EX_APPWINDOW)|WS_EX_TOOLWINDOW);
+  SetWindowPos(hwnd,nullptr,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE|SWP_FRAMECHANGED);
+#endif
   clientWidth=FXMIN(scaledPixels(this,2000),FXMAX(getDefaultWidth(),scaledPixels(this,clientWidth)));
   clientHeight=FXMIN(scaledPixels(this,2000),FXMAX(getDefaultHeight(),scaledPixels(this,clientHeight)));
   resize(clientWidth,clientHeight);
