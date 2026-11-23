@@ -58,6 +58,13 @@
 
 #if defined(WIN32)
 
+#define VOID void
+#define PROPID ULONG
+#include <gdiplus.h>
+#undef PROPID
+#undef VOID
+#include <vector>
+
 /*
   Notes:
 
@@ -69,6 +76,42 @@ using namespace FX;
 /*******************************************************************************/
 
 namespace FX {
+
+namespace {
+
+struct GDIPlusSession {
+  ULONG_PTR token;
+  FXbool started;
+  GDIPlusSession():token(0),started(false){
+    Gdiplus::GdiplusStartupInput input;
+    started=Gdiplus::GdiplusStartup(&token,&input,nullptr)==Gdiplus::Ok;
+    }
+  ~GDIPlusSession(){
+    if(started) Gdiplus::GdiplusShutdown(token);
+    }
+  };
+
+
+static FXbool drawAntialiasedLines(HDC hdc,const FXPoint* points,FXuint npoints,FXColor color,FXuint linewidth,FXJoinStyle join){
+  static GDIPlusSession session;
+  if(!session.started || npoints<2 || npoints>0x7fffffffU) return false;
+  std::vector<Gdiplus::Point> path;
+  path.reserve(npoints);
+  for(FXuint i=0; i<npoints; i++) path.push_back(Gdiplus::Point(points[i].x,points[i].y));
+  Gdiplus::Graphics graphics(hdc);
+  if(graphics.GetLastStatus()!=Gdiplus::Ok) return false;
+  graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+  graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+  Gdiplus::Pen pen(Gdiplus::Color(255,FXREDVAL(color),FXGREENVAL(color),FXBLUEVAL(color)),linewidth?(Gdiplus::REAL)linewidth:1.0f);
+  if(join==JOIN_ROUND) pen.SetLineJoin(Gdiplus::LineJoinRound);
+  else if(join==JOIN_BEVEL) pen.SetLineJoin(Gdiplus::LineJoinBevel);
+  else pen.SetLineJoin(Gdiplus::LineJoinMiter);
+  pen.SetStartCap(Gdiplus::LineCapFlat);
+  pen.SetEndCap(Gdiplus::LineCapFlat);
+  return graphics.DrawLines(&pen,path.data(),(INT)npoints)==Gdiplus::Ok;
+  }
+
+}
 
 /********************************************************************************
 *                                   MS-Windows                                  *
@@ -215,6 +258,10 @@ void FXDCWindow::drawPointsRel(const FXPoint* points,FXuint npoints){
 // Draw line
 void FXDCWindow::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
   if(!surface){ fxerror("FXDCWindow::drawLine: DC not connected to drawable.\n"); }
+  if(antialias && style==LINE_SOLID && width<=1 && !needsPath){
+    FXPoint points[2]={FXPoint((FXshort)x1,(FXshort)y1),FXPoint((FXshort)x2,(FXshort)y2)};
+    if(drawAntialiasedLines((HDC)ctx,points,2,fg,width,join)) return;
+    }
   if(needsNewPen) updatePen();
   if(needsPath){
     ::BeginPath((HDC)ctx);
@@ -234,6 +281,9 @@ void FXDCWindow::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
 void FXDCWindow::drawLines(const FXPoint* points,FXuint npoints){
   POINT pts[1360];      // Worst case limit according to MSDN
   if(!surface){ fxerror("FXDCWindow::drawLines: DC not connected to drawable.\n"); }
+  if(antialias && style==LINE_SOLID && width<=1 && !needsPath){
+    if(drawAntialiasedLines((HDC)ctx,points,npoints,fg,width,join)) return;
+    }
   if(needsNewPen) updatePen();
   if(needsPath){
     ::BeginPath((HDC)ctx);
@@ -1390,7 +1440,7 @@ void FXDCWindow::setLineStyle(FXLineStyle linestyle){
   }
 
 
-// Antialiasing is not available on the Win32 DC
+// Enable antialiasing for thin solid lines
 void FXDCWindow::setAntialias(FXbool aa){
   FXDC::setAntialias(aa);
   }
