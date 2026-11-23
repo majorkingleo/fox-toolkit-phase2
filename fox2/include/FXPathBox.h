@@ -63,8 +63,12 @@ protected:
   FXint               selectBeg;        // Selection begin
   FXint               selectEnd;        // Selection end
   FXColor             textColor;        // Text color
+  FXbool              textColorOverride=false; // Text color set explicitly
   FXColor             selbackColor;     // Selected background color
+  FXbool              selbackColorOverride=false; // Selection background set explicitly
   FXColor             seltextColor;     // Selected text color
+  FXbool              seltextColorOverride=false; // Selection text color set explicitly
+  FXbool              fontOverride=false; // Font set explicitly
   FXint               columns;          // Number of columns visible
   FXString            help;             // Help message
   FXString            tip;              // Tooltip
@@ -111,6 +115,9 @@ public:
 
   /// Create server-side resources
   virtual void create() override;
+
+  /// Re-apply theme colors and font
+  virtual void applyTheme(FXTheme* theme) override;
 
   /// Detach server-side resources
   virtual void detach() override;

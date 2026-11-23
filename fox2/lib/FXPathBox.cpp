@@ -200,6 +200,27 @@ void FXPathBox::create(){
   }
 
 
+// Re-apply theme colors and font unless the application overrode them
+void FXPathBox::applyTheme(FXTheme* theme){
+  FXFrame::applyTheme(theme);
+  if(!backColorOverride){
+    backColor=theme->color(ROLE_WINDOW_BG);
+    }
+  if(!textColorOverride){
+    textColor=theme->color(ROLE_TEXT);
+    }
+  if(!selbackColorOverride){
+    selbackColor=theme->color(ROLE_SELECTION_BG);
+    }
+  if(!seltextColorOverride){
+    seltextColor=theme->color(ROLE_SELECTION_TEXT);
+    }
+  if(!fontOverride){
+    font=getApp()->getRoleFont(FONT_UI,getWindowDPI());
+    }
+  }
+
+
 // Detach window
 void FXPathBox::detach(){
   FXTRACE(TOPIC_CREATION,"FXPathBox::detach %p\n",this);
@@ -431,6 +452,7 @@ FXbool FXPathBox::selectPathComponent(const FXString& base,const FXString& path,
 // Handle repaint
 long FXPathBox::onPaint(FXObject*,FXSelector,void* ptr){
   FXDCWindow dc(this,(FXEvent*)ptr);
+  FXTheme *theme=getApp()->getTheme();
   FXint rr=width-border-padright;
   FXint bb=height-border-padbottom;
   FXint ll=padleft+border;
@@ -442,14 +464,23 @@ long FXPathBox::onPaint(FXObject*,FXSelector,void* ptr){
   FXint aw=(th-6)/2;
   FXint f,t,b,e,iy,ty,ww;
 
-  // Draw frame
-  drawFrame(dc,0,0,width,height);
-
-  // Gray background if disabled
-  dc.setForeground(isEnabled() ? backColor : baseColor);
-
-  // Draw background
-  dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));
+  // Rounded entry chrome for a themed path box
+  FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  if(0<radius && (options&(FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK))){
+    FXint edge=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
+    FXColor face=isEnabled()?backColor:theme->color(ROLE_SURFACE);
+    FXColor outline=theme->color(ROLE_BORDER);
+    if(!isEnabled()) outline=theme->color(ROLE_BORDER,THEME_STATE_DISABLED);
+    dc.setForeground(getParent()?getParent()->getBackColor():face);
+    dc.fillRectangle(0,0,width,height);
+    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,outline,edge);
+    }
+  else{
+    // Classic frame and background
+    drawFrame(dc,0,0,width,height);
+    dc.setForeground(isEnabled() ? backColor : baseColor);
+    dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));
+    }
 
   // Head of path
   f=t=0;
@@ -889,6 +920,7 @@ void FXPathBox::setFont(FXFont *fnt){
   if(!fnt){ fxerror("%s::setFont: NULL font specified.\n",getClassName()); }
   if(font!=fnt){
     font=fnt;
+    fontOverride=true;
     recalc();
     update();
     }
@@ -911,6 +943,7 @@ void FXPathBox::setAssociations(FXFileAssociations* assocs,FXbool owned,FXbool n
 void FXPathBox::setTextColor(FXColor clr){
   if(clr!=textColor){
     textColor=clr;
+    textColorOverride=true;
     update();
     }
   }
@@ -920,6 +953,7 @@ void FXPathBox::setTextColor(FXColor clr){
 void FXPathBox::setSelBackColor(FXColor clr){
   if(selbackColor!=clr){
     selbackColor=clr;
+    selbackColorOverride=true;
     update();
     }
   }
@@ -929,6 +963,7 @@ void FXPathBox::setSelBackColor(FXColor clr){
 void FXPathBox::setSelTextColor(FXColor clr){
   if(seltextColor!=clr){
     seltextColor=clr;
+    seltextColorOverride=true;
     update();
     }
   }
