@@ -33,7 +33,7 @@ Priority:
 | `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; popup shadow remains. |
 | `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. | The font is `FONT_SMALL` while the theme gives that role a face.
 | `FXGroupBox` | DONE | Text color and font follow the theme, and the frame is a rounded hairline in `ROLE_BORDER` with the label cutting it open, the way GTK draws it; classic keeps the 3D frame. |
-| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; Wayland check mark is antialiased. Classic path unchanged. |
+| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; the check mark is antialiased on all three backends. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
 
 ## P0: chrome needed for a native-looking dialog
@@ -149,7 +149,7 @@ use the seam.
 | Wayland rounded corners | DONE | Software 4x4 coverage blending. |
 | Wayland check marks | DONE | 4x4 supersampled segment coverage through `FXStyle::drawCheckMark()`. |
 | X11 check marks | DONE | Cached A8 coverage pixmap composited through XRender. |
-| Win32 check marks | PARTIAL | Still uses the GDI line primitives; no GDI+ antialiasing yet. |
+| Win32 check marks | DONE | `FXStyle::drawCheckMark()` strokes the two segments of the mark as one path with a round-capped, round-joined GDI+ pen twice the coverage radius, which is the capsule the X11 mask and the `FXRaster` path build. Falls back to the GDI lines. |
 | Wayland shadows | PARTIAL | Popups and tool tips carry a translucent shadow: a closed-form ring written with the surface alpha, no per-paint allocation. Buttons still use only the 1 px bottom shade, and X11/Win32 cannot composite a translucent shadow without an alpha window, so they reserve no margin. |
 | X11 rounded corners | DONE with XRender | Bitmap/mask fallback is still hard-edged. |
 | Win32 rounded corners | DONE | GDI+ path: the border outline is filled, then the face inset by the border width, both with `SmoothingModeAntiAlias` and `PixelOffsetModeHalf` (without the offset a 1 px edge smears over two rows). `cutRoundedCorners()` fills the outer rectangle minus the rounded shape through an alternate-filled path. Falls back to the GDI round rectangle when GDI+ is unavailable; the classic theme draws no rounded shape and stays pixel-identical. |

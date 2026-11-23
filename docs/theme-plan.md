@@ -783,6 +783,13 @@ Popups are unaffected: their outline is a window region (`SetWindowRgn`), and a
 region has no coverage to blend, so the shaped corners of a popup stay hard edged
 on X11 and Win32 until a popup can carry per-pixel alpha.
 
+`FXStyle::drawCheckMark()` got the same treatment: the two segments of the mark
+are one GDI+ path stroked with a round-capped, round-joined pen of twice the
+coverage radius, which is the capsule the X11 mask and the `FXRaster` path
+compute. Measured on a Breeze check box, the diagonal of each stroke now reads
+`#232629, #536169, #79909C, #97B3C2` where the GDI lines had `#232629` straight
+to the face. Screenshot: `screenshots/tests/fox2/win32/checkbox-breeze.png`.
+
 **Progress: rounded tool tips (2026-11-17).** `FXToolTip` draws its rounded
 frame through `FXStyle` when the theme has a radius, but the window stayed
 square, so the corner pixels were the tip background.  It now carries the same
