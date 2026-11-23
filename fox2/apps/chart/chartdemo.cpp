@@ -67,6 +67,10 @@ protected:
   FXStatusBar* statusbar;
   FXProgressBar* loadingBar;
   FXFont* verticalLabelFont;
+  FXFont* numberFont;
+  FXFontDesc verticalLabelFontDesc;
+  FXint fontDPI;
+  FXdouble fontScale;
   FXLabel* welcome;
   std::vector<ChartDocument*> documents;
   std::vector<FXString> pendingFiles;
@@ -86,6 +90,7 @@ public:
   long onSeries(FXObject*,FXSelector,void*);
   long onSeriesSelection(FXObject*,FXSelector,void*);
   long onLoadPoll(FXObject*,FXSelector,void*);
+  void updateChartFonts();
   enum{
     ID_OPEN=FXMainWindow::ID_LAST,
     ID_QUIT,
@@ -102,6 +107,8 @@ public:
     };
 public:
   ChartDemoWindow(FXApp* app);
+  virtual void create() override;
+  virtual void applyTheme(FXTheme* theme) override;
   void openFile(const FXString& filename);
   void startNextLoad();
   void addLoadedFile(const FXString& filename,CSVTable& table);
@@ -134,6 +141,17 @@ static const FXColor seriesColors[]={
   };
 
 
+static FXFont* makeChartFont(FXApp* app,const FXFontDesc& desc,FXint angle,FXint dpi,FXdouble scale){
+  FXFontDesc scaled=desc;
+  scaled.size=FXint(FXdouble(desc.size)*(scale/(FXdouble(dpi)/96.0))+0.5);
+  FXFont* font=new FXFont(app,scaled);
+  if(angle) font->setAngle(angle);
+  font->setResolution(dpi);
+  font->create();
+  return font;
+  }
+
+
 static FXString displayFileName(const FXString& filename){
   FXint start=0;
   for(FXint i=0; i<filename.length(); i++){
@@ -154,8 +172,12 @@ static void attachConsole(){
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
   loader=nullptr;
+  fontDPI=0;
+  fontScale=0.0;
   verticalLabelFont=new FXFont(app,"helvetica",14,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
+  verticalLabelFontDesc=verticalLabelFont->getFontDesc();
   verticalLabelFont->setAngle(90*64);
+  numberFont=app->getNormalFont();
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   filemenu=new FXMenuPane(this);
   new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
@@ -171,6 +193,46 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   new FXTabItem(tabs,"Welcome");
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,12,12,12,12);
   welcome=new FXLabel(page,"Open one or more CSV files to plot their numeric columns.\n\nThe importer detects common delimiters, quoted fields, UTF encodings and Windows-1252 text.\nDate/time columns are detected and selected as the default X axis when available.",nullptr,JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  }
+
+
+// Create the main window and realize its chart font for the current monitor
+void ChartDemoWindow::create(){
+  FXMainWindow::create();
+  updateChartFonts();
+  }
+
+
+// Refresh chart fonts when the window moves to a monitor with another DPI
+void ChartDemoWindow::applyTheme(FXTheme* theme){
+  FXMainWindow::applyTheme(theme);
+  updateChartFonts();
+  }
+
+
+// Recreate application-owned fonts for this window's current display scale
+void ChartDemoWindow::updateChartFonts(){
+  FXint windowdpi=getWindowDPI();
+  FXdouble scale=getDisplayScale();
+  FXFont* oldfont;
+  if(windowdpi<=0) windowdpi=96;
+  if(windowdpi==fontDPI && scale==fontScale) return;
+  oldfont=verticalLabelFont;
+  verticalLabelFont=makeChartFont(getApp(),verticalLabelFontDesc,oldfont->getAngle(),windowdpi,scale);
+  numberFont=getApp()->getNormalFont(getWindowDPI());
+  for(FXuval i=0; i<documents.size(); i++){
+    documents[i]->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
+    documents[i]->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
+    documents[i]->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
+    documents[i]->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
+    documents[i]->plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
+    documents[i]->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
+    documents[i]->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
+    documents[i]->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+    }
+  delete oldfont;
+  fontDPI=windowdpi;
+  fontScale=scale;
   }
 
 
@@ -320,6 +382,12 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
   document->plot->getAxis(FX2DChart::YHI)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_LEFT);
   document->plot->getAxis(FX2DChart::YHI)->setLabelOffset(40);
+  document->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
+  document->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
+  document->plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
+  document->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
+  document->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
+  document->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
   document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
   new FXLabel(document->series,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   FXHorizontalFrame* seriesbuttons=new FXHorizontalFrame(document->series,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,3,0);
