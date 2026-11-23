@@ -128,8 +128,22 @@ FXStyle::FXCornerMask* FXStyle::getMask(FXint radius){
   }
 
 
-// Draw a check mark; GDI has no small AA primitive here, use the line primitives
+// Draw an antialiased check mark: the capsule around the two segments that the
+// X11 mask and the FXRaster path build, stroked with round caps and joins
 void FXStyle::drawCheckMark(FXDCWindow& dc,FXint x,FXint y,FXint size,FXColor color){
+  if(0<size && fxgdiplus()){
+    Gdiplus::Graphics graphics((HDC)dc.context());
+    Gdiplus::GraphicsPath path;
+    Gdiplus::Pen pen(gdiplusColor(color),(Gdiplus::REAL)(2.0*FXMAX(1.0,size/14.0)));
+    if(graphics.GetLastStatus()==Gdiplus::Ok){
+      gdiplusAntialias(graphics);
+      path.AddLine((Gdiplus::REAL)(x+size*0.22),(Gdiplus::REAL)(y+size*0.50),(Gdiplus::REAL)(x+size*0.43),(Gdiplus::REAL)(y+size*0.72));
+      path.AddLine((Gdiplus::REAL)(x+size*0.43),(Gdiplus::REAL)(y+size*0.72),(Gdiplus::REAL)(x+size*0.78),(Gdiplus::REAL)(y+size*0.28));
+      pen.SetLineCap(Gdiplus::LineCapRound,Gdiplus::LineCapRound,Gdiplus::DashCapRound);
+      pen.SetLineJoin(Gdiplus::LineJoinRound);
+      if(graphics.DrawPath(&pen,&path)==Gdiplus::Ok) return;
+      }
+    }
   dc.setForeground(color);
   dc.setLineWidth(FXMAX(1,size/7));
   dc.drawLine(x+(size*22)/100,y+(size*50)/100,x+(size*43)/100,y+(size*72)/100);
