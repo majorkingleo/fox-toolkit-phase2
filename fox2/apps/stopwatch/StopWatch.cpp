@@ -7,6 +7,53 @@
 
 #include <stdio.h>
 
+#if defined(WIN32)
+#include <windows.h>
+#include <string>
+#include <vector>
+#endif
+
+#if defined(WIN32)
+static FXbool windowsAutostartEnabled(){
+  HKEY key;
+  if(RegOpenKeyExW(HKEY_CURRENT_USER,L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",0,KEY_QUERY_VALUE,&key)!=ERROR_SUCCESS) return false;
+  DWORD type=0;
+  DWORD size=0;
+  LONG result=RegQueryValueExW(key,L"Stopwatch",nullptr,&type,nullptr,&size);
+  RegCloseKey(key);
+  return result==ERROR_SUCCESS && (type==REG_SZ || type==REG_EXPAND_SZ);
+  }
+
+
+static FXbool setWindowsAutostart(FXbool enable){
+  HKEY key;
+  const wchar_t* runKey=L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+  if(!enable){
+    LONG openResult=RegOpenKeyExW(HKEY_CURRENT_USER,runKey,0,KEY_SET_VALUE,&key);
+    if(openResult==ERROR_FILE_NOT_FOUND) return true;
+    if(openResult!=ERROR_SUCCESS) return false;
+    LONG result=RegDeleteValueW(key,L"Stopwatch");
+    RegCloseKey(key);
+    return result==ERROR_SUCCESS || result==ERROR_FILE_NOT_FOUND;
+    }
+
+  if(RegCreateKeyExW(HKEY_CURRENT_USER,runKey,0,nullptr,0,KEY_SET_VALUE,nullptr,&key,nullptr)!=ERROR_SUCCESS) return false;
+  std::vector<wchar_t> path(32768);
+  DWORD length=GetModuleFileNameW(nullptr,path.data(),(DWORD)path.size());
+  if(length==0 || length>=path.size()){
+    RegCloseKey(key);
+    return false;
+    }
+  std::wstring command=L"\"";
+  command.append(path.data(),length);
+  command+=L"\"";
+  DWORD bytes=(DWORD)((command.size()+1)*sizeof(wchar_t));
+  LONG result=RegSetValueExW(key,L"Stopwatch",0,REG_SZ,(const BYTE*)command.c_str(),bytes);
+  RegCloseKey(key);
+  return result==ERROR_SUCCESS;
+  }
+#endif
+
 FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_TIMEOUT,StopWatch::ID_TICK,StopWatch::onTick),
   FXMAPFUNC(SEL_TIMEOUT,StopWatch::ID_CONTEXT_MENU_MONITOR,StopWatch::onContextMenuMonitor),
@@ -68,6 +115,8 @@ FXDEFMAP(StopWatch) StopWatchMap[]={
   FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,StopWatch::ID_CLOCK_WIDGET,StopWatch::onRightRelease),
   FXMAPFUNC(SEL_COMMAND,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onShowTitlebar),
   FXMAPFUNC(SEL_UPDATE,StopWatch::ID_SHOW_TITLEBAR,StopWatch::onUpdShowTitlebar),
+  FXMAPFUNC(SEL_COMMAND,StopWatch::ID_AUTOSTART,StopWatch::onAutostart),
+  FXMAPFUNC(SEL_UPDATE,StopWatch::ID_AUTOSTART,StopWatch::onUpdAutostart),
   FXMAPFUNC(SEL_CONFIGURE,0,StopWatch::onConfigure),
   FXMAPFUNC(SEL_PAINT,0,StopWatch::onPaint),
   };
@@ -197,6 +246,7 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   recentCascade=nullptr;
   noRecentTimersCommand=nullptr;
   titlebarCheck=nullptr;
+  autostartCheck=nullptr;
   historyWindow=nullptr;
   for(FXint i=0;i<MAX_RECENT_TIMERS;i++){
     recentTimers[i]=0;
@@ -265,6 +315,9 @@ StopWatch::StopWatch(FXApp* a):FXMainWindow(a,"Stopwatch",nullptr,nullptr,DECOR_
   // Context menu for the clock and timer modes
   contextMenu=new FXMenuPane(this);
   titlebarCheck=new FXMenuCheck(contextMenu,"&Show title bar",this,ID_SHOW_TITLEBAR);
+#if defined(WIN32)
+  autostartCheck=new FXMenuCheck(contextMenu,"&Autostart",this,ID_AUTOSTART);
+#endif
   contextMenuBeforeAction=new FXMenuSeparator(contextMenu);
   historyCommand=new FXMenuCommand(contextMenu,"&History...",nullptr,this,ID_SHOW_HISTORY);
   historyCommand->hide();
@@ -996,6 +1049,30 @@ long StopWatch::onUpdShowTitlebar(FXObject* sender,FXSelector,void*){
   }
 
 
+long StopWatch::onAutostart(FXObject* sender,FXSelector,void*){
+#if defined(WIN32)
+  FXbool enable=((FXMenuCheck*)sender)->getCheck();
+  if(!setWindowsAutostart(enable)){
+    ((FXMenuCheck*)sender)->setCheck(windowsAutostartEnabled());
+    FXMessageBox::error(this,MBOX_OK,"Autostart","Could not update the Windows startup setting.");
+    }
+  return 1;
+#else
+  return 0;
+#endif
+  }
+
+
+long StopWatch::onUpdAutostart(FXObject* sender,FXSelector,void*){
+#if defined(WIN32)
+  ((FXMenuCheck*)sender)->setCheck(windowsAutostartEnabled());
+  return 1;
+#else
+  return 0;
+#endif
+  }
+
+
 void StopWatch::loadRecentTimers(){
   FXSettings& reg=getApp()->reg();
   recentTimerCount=0;
@@ -1059,6 +1136,9 @@ void StopWatch::updateRecentTimerMenu(){
 
 
 void StopWatch::updateContextMenu(FXuint source){
+#if defined(WIN32)
+  if(autostartCheck) autostartCheck->setCheck(windowsAutostartEnabled());
+#endif
   FXbool showHistory=(source==ID_MODE_STOPWATCH)||(source==ID_CLOCK_WIDGET && mode==MODE_STOPWATCH);
   FXbool showRecent=(source==ID_MODE_TIMER)||(source==ID_CLOCK_WIDGET && mode==MODE_TIMER);
   FXbool showAction=(showHistory || showRecent);

@@ -7,5 +7,6 @@ add_executable(stopwatch
 target_link_libraries(stopwatch PRIVATE FOX::FOX m)
 
 if(WIN32)
+  target_link_libraries(stopwatch PRIVATE advapi32)
   set_target_properties(stopwatch PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
