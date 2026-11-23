@@ -1,4 +1,4 @@
-add_executable(charttest
+set(CHART_SOURCES
   icons.cpp
   chartutils.cpp
   FXAxis.cpp
@@ -6,7 +6,17 @@ add_executable(charttest
   FXData.cpp
   FXCurve.cpp
   FX2DChart.cpp
-  FX2DPlot.cpp
+  FX2DPlot.cpp)
+
+add_executable(charttest
+  ${CHART_SOURCES}
   live/LiveSource.cpp
   charttest.cpp)
 target_link_libraries(charttest PRIVATE FOX::FOX m)
+
+add_executable(chartdemo
+  ${CHART_SOURCES}
+  CSVReader.h
+  CSVReader.cpp
+  chartdemo.cpp)
+target_link_libraries(chartdemo PRIVATE FOX::FOX m)

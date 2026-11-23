@@ -6,6 +6,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
 bin_PROGRAMS = adie
 
+if COND_OSWINDOWS
+adie_LDFLAGS = -mwindows
+endif
+
 bin_SCRIPTS = Adie.stx
 
 man_MANS = adie.1

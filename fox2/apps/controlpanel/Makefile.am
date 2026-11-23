@@ -6,6 +6,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
 bin_PROGRAMS = ControlPanel
 
+if COND_OSWINDOWS
+ControlPanel_LDFLAGS = -mwindows
+endif
+
 man_MANS = ControlPanel.1
 
 ICONS = \

@@ -68,6 +68,10 @@ using namespace FX;
 namespace FX {
 
 
+// Minimum file dialog dimensions
+enum { MINIMUM_FILE_DIALOG_WIDTH=600, MINIMUM_FILE_DIALOG_HEIGHT=400 };
+
+
 // File dialog registry section name
 const FXchar FXFileDialog::sectionName[]="File Dialog";
 
@@ -112,8 +116,8 @@ void FXFileDialog::destroy(){
 
 // Load settings from registry
 void FXFileDialog::readRegistry(){
-  setWidth(getApp()->reg().readIntEntry(sectionName,"width",getWidth()));
-  setHeight(getApp()->reg().readIntEntry(sectionName,"height",getHeight()));
+  setWidth(FXMAX(getApp()->reg().readIntEntry(sectionName,"width",getWidth()),MINIMUM_FILE_DIALOG_WIDTH));
+  setHeight(FXMAX(getApp()->reg().readIntEntry(sectionName,"height",getHeight()),MINIMUM_FILE_DIALOG_HEIGHT));
   setFileBoxStyle(getApp()->reg().readUIntEntry(sectionName,"style",getFileBoxStyle()));
   setSortOrder(getApp()->reg().readUIntEntry(sectionName,"sortorder",0));
   showHiddenFiles(getApp()->reg().readBoolEntry(sectionName,"showhidden",showHiddenFiles()));

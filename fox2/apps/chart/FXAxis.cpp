@@ -91,6 +91,86 @@ static FXbool hasNumber(const FXArray<AxisNumber>& list,const FXString& text){
   }
 
 
+// Format tick values with the precision implied by the major tick spacing
+static FXString formatAxisNumber(FXdouble value,FXdouble spacing){
+  FXString text;
+  FXint decimals=0;
+  FXdouble scaled=spacing;
+  if(!Math::fpFinite(value) || !Math::fpFinite(spacing) || spacing<=0.0 || FXABS(value)>=1.0e9 || (value!=0.0 && FXABS(value)<1.0e-6)){
+    text.format("%g",value);
+    return text;
+    }
+  while(decimals<8 && FXABS(scaled-Math::round(scaled))>1.0e-7*FXMAX(1.0,FXABS(scaled))){
+    scaled*=10.0;
+    decimals++;
+    }
+  if(decimals==8 && FXABS(scaled-Math::round(scaled))>1.0e-7*FXMAX(1.0,FXABS(scaled))){
+    text.format("%g",value);
+    return text;
+    }
+  text.format("%.*f",decimals,value);
+  return text;
+  }
+
+
+// Drop horizontal labels that do not fit beside the preceding label
+static void fitHorizontalNumbers(FXArray<AxisNumber>& numbers,FXFont* font,FXuint style,FXint fx,FXint tx){
+  FXint direction=(tx>=fx)?1:-1;
+  FXint left,right,boundary=fx;
+  FXival kept=0;
+  for(FXival i=0; i<numbers.no(); i++){
+    FXint width=textWidth(font,numbers[i].text);
+    if(style&TEXT_ATTACH_LEFT){
+      left=numbers[i].x;
+      right=left+width;
+      }
+    else if(style&TEXT_ATTACH_RIGHT){
+      right=numbers[i].x;
+      left=right-width;
+      }
+    else{
+      left=numbers[i].x-width/2;
+      right=left+width;
+      }
+    if(left<FXMIN(fx,tx) || right>FXMAX(fx,tx)) continue;
+    if(kept && (direction>0?left<boundary+2:right>boundary-2)) continue;
+    if(kept) numbers[kept]=numbers[i];
+    kept++;
+    boundary=direction>0?right:left;
+    }
+  numbers.no(kept);
+  }
+
+
+// Drop vertical labels that do not fit beside the preceding label
+static void fitVerticalNumbers(FXArray<AxisNumber>& numbers,FXFont* font,FXuint style,FXint fy,FXint ty){
+  FXint direction=(ty>=fy)?1:-1;
+  FXint top,bottom,boundary=fy;
+  FXival kept=0;
+  for(FXival i=0; i<numbers.no(); i++){
+    FXint height=textHeight(font,numbers[i].text);
+    if(style&TEXT_ATTACH_TOP){
+      top=numbers[i].y;
+      bottom=top+height;
+      }
+    else if(style&TEXT_ATTACH_BOTTOM){
+      bottom=numbers[i].y;
+      top=bottom-height;
+      }
+    else{
+      top=numbers[i].y-height/2;
+      bottom=top+height;
+      }
+    if(top<FXMIN(fy,ty) || bottom>FXMAX(fy,ty)) continue;
+    if(kept && (direction>0?top<boundary+2:bottom>boundary-2)) continue;
+    if(kept) numbers[kept]=numbers[i];
+    kept++;
+    boundary=direction>0?bottom:top;
+    }
+  numbers.no(kept);
+  }
+
+
 // Draw axis
 void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXint dy) const {
   if(style&(AXIS_LABEL|AXIS_NUMBERS|AXIS_GRID_MAJOR|AXIS_GRID_MINOR|AXIS_TICKS_MAJOR|AXIS_TICKS_MINOR|AXIS_LINE)){
@@ -184,7 +264,7 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text.format("%g",i*majorspace);
+          item.text=formatAxisNumber(i*majorspace,majorspace);
           item.x=x+tin*ex;
           item.y=y+tin*ey;
           item.born=now;
@@ -199,7 +279,7 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text.format("%g",i*majorspace);
+          item.text=formatAxisNumber(i*majorspace,majorspace);
           item.x=x-tout*ex;
           item.y=y-tout*ey;
           item.born=now;
@@ -213,6 +293,10 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
           tout+=textWidth(numberfont,"8.8");
           }
         }
+
+      // Keep labels from overlapping as the axis is zoomed or resized
+      if(dx==0 && curnums.no()>1) fitHorizontalNumbers(curnums,numberfont,numberstyle,fx,tx);
+      else if(dy==0 && curnums.no()>1) fitVerticalNumbers(curnums,numberfont,numberstyle,fy,ty);
 
       // Count the numbers that come and go
       for(i=0; i<curnums.no(); i++){

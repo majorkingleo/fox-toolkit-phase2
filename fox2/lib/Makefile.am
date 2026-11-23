@@ -10,7 +10,7 @@ libFOX_2_0_la_LDFLAGS = -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) -ex
 
 if COND_OSWINDOWS
 AM_CXXFLAGS += -DFOXDLL -DFOXDLL_EXPORTS -DWIN32 @FOX_NDEBUG@ -D_WINDOWS -DUNICODE -D_USRDLL -D_CRT_SECURE_NO_WARNINGS
-libFOX_2_0_la_LDFLAGS += -lcomctl32 -lwsock32 -limm32 -lmsimg32
+libFOX_2_0_la_LDFLAGS += -lcomctl32 -lwsock32 -limm32 -lmsimg32 -lgdiplus
 endif
 
 libFOX_2_0_la_SOURCES = \

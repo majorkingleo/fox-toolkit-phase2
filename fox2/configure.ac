@@ -132,7 +132,7 @@ AC_HEADER_SYS_WAIT
 AC_HEADER_DIRENT
 
 if test "$no_x" = yes; then
-X_BASE_LIBS="-lcomctl32 -lwsock32 -lwinspool -lmpr -lgdi32 -limm32"
+X_BASE_LIBS="-lcomctl32 -lwsock32 -lwinspool -lmpr -lgdi32 -limm32 -lgdiplus"
 LIBGLU="-lglu32"
 LIBGL="-lopengl32"
 fi

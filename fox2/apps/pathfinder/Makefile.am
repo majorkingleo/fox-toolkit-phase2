@@ -6,6 +6,10 @@ LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
 
 bin_PROGRAMS = PathFinder
 
+if COND_OSWINDOWS
+PathFinder_LDFLAGS = -mwindows
+endif
+
 man_MANS = PathFinder.1
 
 # icons.h and icons.cpp are checked in; they are the output of reswrap over

@@ -173,7 +173,7 @@ message(STATUS "FOX: platform ${FOX_PLATFORM}")
 if(WIN32)
   # WIN32 selects the Win32 backend; users of the library need it too.
   list(APPEND FOX_PUBLIC_DEFINITIONS WIN32)
-  list(APPEND FOX_PUBLIC_LIBRARIES comctl32 wsock32 winspool mpr gdi32 imm32 msimg32)
+  list(APPEND FOX_PUBLIC_LIBRARIES comctl32 wsock32 winspool mpr gdi32 imm32 msimg32 gdiplus)
   set(_fox_gl_libs opengl32)
   set(_fox_glu_libs glu32)
 else()

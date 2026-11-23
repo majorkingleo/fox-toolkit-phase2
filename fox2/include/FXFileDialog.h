@@ -50,10 +50,10 @@ private:
 public:
 
   /// Construct file dialog box
-  FXFileDialog(FXWindow* owner,const FXString& name,FXuint opts=0,FXint x=0,FXint y=0,FXint w=500,FXint h=300);
+  FXFileDialog(FXWindow* owner,const FXString& name,FXuint opts=0,FXint x=0,FXint y=0,FXint w=720,FXint h=480);
 
   /// Construct free-floating file dialog box
-  FXFileDialog(FXApp* a,const FXString& name,FXuint opts=0,FXint x=0,FXint y=0,FXint w=500,FXint h=300);
+  FXFileDialog(FXApp* a,const FXString& name,FXuint opts=0,FXint x=0,FXint y=0,FXint w=720,FXint h=480);
 
   /// Create server-side resources
   virtual void create() override;

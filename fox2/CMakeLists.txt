@@ -71,6 +71,21 @@ if(FOX_BUILD_TESTS)
   enable_testing()
   add_subdirectory(apps)
   add_subdirectory(tests)
+
+  if(WIN32)
+    set(FOX_GUI_EXECUTABLES
+      calculator ControlPanel charttest chartdemo PathFinder adie glviewer stopwatch
+      hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin
+      combo colordlg colordemo fontdlg rulerdemo gaugedemo idle hello2 layout ratio
+      header splitter foursplit gaugetest switcher tabbook groupbox dialog wizard
+      datatarget calendar dirlist iconlist table image imageviewer scribble dctest
+      mditest shutter console glcanvas bitmapviewer gltest)
+    foreach(prog ${FOX_GUI_EXECUTABLES})
+      if(TARGET ${prog})
+        set_target_properties(${prog} PROPERTIES WIN32_EXECUTABLE TRUE)
+      endif()
+    endforeach()
+  endif()
 endif()
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/fox-2.0

@@ -59,6 +59,13 @@ protected:
   FXFont       *vertLabelFont;  // Vertical font
   FXFont       *horzNumberFont; // Normal horizontal font
   FXFont       *vertNumberFont; // Vertical font
+  FXFontDesc    captionFontDesc;
+  FXFontDesc    horzLabelFontDesc;
+  FXFontDesc    vertLabelFontDesc;
+  FXFontDesc    horzNumberFontDesc;
+  FXFontDesc    vertNumberFontDesc;
+  FXint         fontDPI;
+  FXdouble      fontScale;
 protected:
   ChartWindow(){}
 private:
@@ -92,12 +99,14 @@ public:
 public:
   ChartWindow(FXApp *a);
   virtual void create() override;
+  virtual void applyTheme(FXTheme* theme) override;
   virtual void startLive();
   virtual void stopLive();
 protected:
   void updateRadios();
   void updateScroll();
   void updateZoomButton();
+  void updateChartFonts();
   void addSeriesRow(FXVerticalFrame* box,FXCurve* curve,FXint id,FXCheckButton*& check);
   void syncSeriesChecks();
   virtual ~ChartWindow();
@@ -127,9 +136,22 @@ FXDEFMAP(ChartWindow) ChartWindowMap[]={
 FXIMPLEMENT(ChartWindow,FXMainWindow,ChartWindowMap,ARRAYNUMBER(ChartWindowMap))
 
 
+static FXFont* makeChartFont(FXApp* app,const FXFontDesc& desc,FXint angle,FXint dpi,FXdouble scale){
+  FXFontDesc scaled=desc;
+  scaled.size=FXint(FXdouble(desc.size)*(scale/(FXdouble(dpi)/96.0))+0.5);
+  FXFont* font=new FXFont(app,scaled);
+  if(angle) font->setAngle(angle);
+  font->setResolution(dpi);
+  font->create();
+  return font;
+  }
+
+
 
 // Make some windows
 ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,DECOR_ALL,20,20,700,540){
+  fontDPI=0;
+  fontScale=0.0;
 
   // Menubar
   menubar=new FXMenuBar(this,FRAME_RAISED|LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
@@ -202,6 +224,11 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
   // Make caption font
   captionFont=new FXFont(getApp(),"helvetica",18,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
   //captionFont->setAngle(90*64);
+  captionFontDesc=captionFont->getFontDesc();
+  horzLabelFontDesc=horzLabelFont->getFontDesc();
+  vertLabelFontDesc=vertLabelFont->getFontDesc();
+  horzNumberFontDesc=horzNumberFont->getFontDesc();
+  vertNumberFontDesc=vertNumberFont->getFontDesc();
 
   // Fill styles follow the theme: the frame is the window background, the
   // plot area is the base color with a light gradient towards the top
@@ -332,11 +359,7 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
 void ChartWindow::create(){
   FXint panelwidth;
   FXMainWindow::create();
-  captionFont->create();
-  horzLabelFont->create();
-  vertLabelFont->create();
-  horzNumberFont->create();
-  vertNumberFont->create();
+  updateChartFonts();
 
   // Keep the sidebar wide enough for the widest series row and buffer readout
   staticseries->show();
@@ -353,6 +376,49 @@ void ChartWindow::create(){
   xscroll->hide();
   xscroll->disable();
   updateZoomButton();
+  }
+
+
+// Recreate application-owned fonts for this window's current display scale
+void ChartWindow::updateChartFonts(){
+  FXint windowdpi=getWindowDPI();
+  FXdouble scale=getDisplayScale();
+  FXFont *oldCaption,*oldHorzLabel,*oldVertLabel,*oldHorzNumber,*oldVertNumber;
+  if(windowdpi<=0) windowdpi=96;
+  if(windowdpi==fontDPI && scale==fontScale) return;
+  oldCaption=captionFont;
+  oldHorzLabel=horzLabelFont;
+  oldVertLabel=vertLabelFont;
+  oldHorzNumber=horzNumberFont;
+  oldVertNumber=vertNumberFont;
+  captionFont=makeChartFont(getApp(),captionFontDesc,oldCaption->getAngle(),windowdpi,scale);
+  horzLabelFont=makeChartFont(getApp(),horzLabelFontDesc,oldHorzLabel->getAngle(),windowdpi,scale);
+  vertLabelFont=makeChartFont(getApp(),vertLabelFontDesc,oldVertLabel->getAngle(),windowdpi,scale);
+  horzNumberFont=makeChartFont(getApp(),horzNumberFontDesc,oldHorzNumber->getAngle(),windowdpi,scale);
+  vertNumberFont=makeChartFont(getApp(),vertNumberFontDesc,oldVertNumber->getAngle(),windowdpi,scale);
+  plot->setCaptionFont(captionFont);
+  plot->getAxis(FX2DChart::XLO)->setLabelFont(horzLabelFont);
+  plot->getAxis(FX2DChart::XHI)->setLabelFont(horzLabelFont);
+  plot->getAxis(FX2DChart::YLO)->setLabelFont(vertLabelFont);
+  plot->getAxis(FX2DChart::YHI)->setLabelFont(vertLabelFont);
+  plot->getAxis(FX2DChart::XLO)->setNumberFont(horzNumberFont);
+  plot->getAxis(FX2DChart::XHI)->setNumberFont(horzNumberFont);
+  plot->getAxis(FX2DChart::YLO)->setNumberFont(vertNumberFont);
+  plot->getAxis(FX2DChart::YHI)->setNumberFont(vertNumberFont);
+  delete oldCaption;
+  delete oldHorzLabel;
+  delete oldVertLabel;
+  delete oldHorzNumber;
+  delete oldVertNumber;
+  fontDPI=windowdpi;
+  fontScale=scale;
+  }
+
+
+// Refresh chart fonts when the window moves to a monitor with another DPI
+void ChartWindow::applyTheme(FXTheme* theme){
+  FXMainWindow::applyTheme(theme);
+  updateChartFonts();
   }
 
 
