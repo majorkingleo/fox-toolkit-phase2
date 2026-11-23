@@ -63,6 +63,7 @@ private:
   FXMenuCommand* recentTimerCommands[MAX_RECENT_TIMERS];
   FXMenuCommand* noRecentTimersCommand;
   FXMenuCheck* titlebarCheck;
+  FXMenuCheck* autostartCheck;
   StopwatchHistoryWindow* historyWindow;
 private:
   StopWatch();
@@ -110,6 +111,7 @@ public:
     ID_RECENT_TIMER_2,
     ID_RECENT_TIMER_3,
     ID_RECENT_TIMER_4,
+    ID_AUTOSTART,
     ID_LAST
     };
 public:
@@ -149,6 +151,8 @@ public:
   long onRightPress(FXObject*,FXSelector,void*);
   long onShowTitlebar(FXObject*,FXSelector,void*);
   long onUpdShowTitlebar(FXObject*,FXSelector,void*);
+  long onAutostart(FXObject*,FXSelector,void*);
+  long onUpdAutostart(FXObject*,FXSelector,void*);
   void routeContextEvents();
   };
 
