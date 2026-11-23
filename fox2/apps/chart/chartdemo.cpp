@@ -18,6 +18,9 @@ struct ChartDocument {
   CSVTable table;
   FX2DPlot* plot;
   FXComboBox* xcolumn;
+  FXToggleButton* xtoggle;
+  FXToggleButton* ytoggle;
+  FXButton* resetzoom;
   FXLabel* info;
   FXVerticalFrame* series;
   FXButton* selectAll;
@@ -77,6 +80,9 @@ public:
   long onCmdOpen(FXObject*,FXSelector,void*);
   long onCmdQuit(FXObject*,FXSelector,void*);
   long onXColumn(FXObject*,FXSelector,void*);
+  long onAxisDescription(FXObject*,FXSelector,void*);
+  long onResetZoom(FXObject*,FXSelector,void*);
+  long onPlotChanged(FXObject*,FXSelector,void*);
   long onSeries(FXObject*,FXSelector,void*);
   long onSeriesSelection(FXObject*,FXSelector,void*);
   long onLoadPoll(FXObject*,FXSelector,void*);
@@ -84,6 +90,10 @@ public:
     ID_OPEN=FXMainWindow::ID_LAST,
     ID_QUIT,
     ID_XCOLUMN,
+    ID_X_DESCRIPTION,
+    ID_Y_DESCRIPTION,
+    ID_RESET_ZOOM,
+    ID_PLOT_CHANGED,
     ID_SERIES,
     ID_SERIES_ALL,
     ID_SERIES_NONE,
@@ -104,6 +114,10 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_OPEN,ChartDemoWindow::onCmdOpen),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_QUIT,ChartDemoWindow::onCmdQuit),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_DESCRIPTION,ChartDemoWindow::onAxisDescription),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_Y_DESCRIPTION,ChartDemoWindow::onAxisDescription),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_RESET_ZOOM,ChartDemoWindow::onResetZoom),
+  FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_PLOT_CHANGED,ChartDemoWindow::onPlotChanged),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES,ChartDemoWindow::onSeries),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_ALL,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_NONE,ChartDemoWindow::onSeriesSelection),
@@ -249,7 +263,6 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->table.encoding=table.encoding;
   document->table.delimiter=table.delimiter;
   document->plot=nullptr;
-  document->xcolumn=nullptr;
   document->info=nullptr;
   document->series=nullptr;
   document->selectedx=-1;
@@ -274,20 +287,33 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   FXString tabtitle=displayFileName(filename);
   FXTabItem* tabitem=new FXTabItem(tabs,tabtitle);
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,4,4,4,4);
-  FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
-  new FXLabel(controls,"X axis:",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y);
-  document->xcolumn=new FXComboBox(controls,32,this,ID_XCOLUMN,COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y);
-  for(FXuval i=0; i<document->xcolumns.size(); i++){
-    FXint col=document->xcolumns[i];
-    document->xcolumn->appendItem(document->table.columns[col].name);
-    if(col==document->selectedx) document->xcolumn->setCurrentItem((FXint)i);
-    }
+  FXDockSite* docksite=new FXDockSite(page,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
+  FXToolBarShell* axisshell=new FXToolBarShell(this,FRAME_RAISED);
+  FXToolBar* axistoolbar=new FXToolBar(docksite,axisshell,LAYOUT_DOCK_NEXT|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_RAISED);
+  new FXToolBarGrip(axistoolbar,axistoolbar,FXToolBar::ID_TOOLBARGRIP,TOOLBARGRIP_DOUBLE);
+  new FXLabel(axistoolbar,"X axis:",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y);
+  document->xcolumn=new FXComboBox(axistoolbar,32,this,ID_XCOLUMN,COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_CENTER_Y|LAYOUT_FIX_WIDTH,0,0,280);
+  for(FXuval i=0; i<document->xcolumns.size(); i++) document->xcolumn->appendItem(document->table.columns[document->xcolumns[i]].name);
+  for(FXuval i=0; i<document->xcolumns.size(); i++) if(document->xcolumns[i]==document->selectedx) document->xcolumn->setCurrentItem((FXint)i);
   document->xcolumn->setNumVisible(FXMIN((FXint)document->xcolumns.size(),8));
+
+  FXToolBarShell* charttoolshell=new FXToolBarShell(this,FRAME_RAISED);
+  FXToolBar* charttoolbar=new FXToolBar(docksite,charttoolshell,LAYOUT_DOCK_NEXT|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_RAISED);
+  new FXToolBarGrip(charttoolbar,charttoolbar,FXToolBar::ID_TOOLBARGRIP,TOOLBARGRIP_DOUBLE);
+  document->xtoggle=new FXToggleButton(charttoolbar,"X Description\tShow X axis description","X Description\tHide X axis description",nullptr,nullptr,this,ID_X_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->ytoggle=new FXToggleButton(charttoolbar,"Y Description\tShow Y axis description","Y Description\tHide Y axis description",nullptr,nullptr,this,ID_Y_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->xtoggle->setState(true);
+  document->ytoggle->setState(true);
+  document->resetzoom=new FXButton(charttoolbar,"Reset Zoom",nullptr,this,ID_RESET_ZOOM,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->resetzoom->disable();
+  FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
   FXSplitter* content=new FXSplitter(page,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
-  document->plot=new FX2DPlot(chartarea,nullptr,0,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  document->plot=new FX2DPlot(chartarea,this,ID_PLOT_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  document->plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
+  document->plot->getAxis(FX2DChart::YHI)->setStyle(AXIS_OFF);
   document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
   document->plot->getAxis(FX2DChart::YLO)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_RIGHT);
   document->plot->getAxis(FX2DChart::YLO)->setLabelOffset(40);
@@ -361,15 +387,67 @@ void ChartDemoWindow::rebuild(ChartDocument* document){
 
 
 long ChartDemoWindow::onXColumn(FXObject* sender,FXSelector,void*){
-  for(FXuval d=0; d<documents.size(); d++){
-    ChartDocument* document=documents[d];
-    if(document->xcolumn!=sender) continue;
-    FXint selected=document->xcolumn->getCurrentItem();
-    if(selected>=0 && selected<(FXint)document->xcolumns.size()){
-      document->selectedx=document->xcolumns[selected];
-      rebuild(document);
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->xcolumn==sender){
+      FXint selected=document->xcolumn->getCurrentItem();
+      if(selected>=0 && selected<(FXint)document->xcolumns.size()){
+        document->selectedx=document->xcolumns[selected];
+        rebuild(document);
+        if(document->plot->isZoomed()) document->resetzoom->enable();
+        else document->resetzoom->disable();
+        }
+      return 1;
       }
-    return 1;
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onAxisDescription(FXObject* sender,FXSelector sel,void*){
+  FXbool shown=((FXToggleButton*)sender)->getState();
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(FXSELID(sel)==ID_X_DESCRIPTION && document->xtoggle==sender){
+      FXAxis* axis=document->plot->getAxis(FX2DChart::XLO);
+      if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
+      else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
+      document->plot->invalidateChart();
+      return 1;
+      }
+    if(FXSELID(sel)==ID_Y_DESCRIPTION && document->ytoggle==sender){
+      FXAxis* axis=document->plot->getAxis(FX2DChart::YLO);
+      if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
+      else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
+      document->plot->invalidateChart();
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onResetZoom(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->resetzoom==sender){
+      document->plot->resetZoom();
+      document->resetzoom->disable();
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->plot==sender){
+      if(document->plot->isZoomed()) document->resetzoom->enable();
+      else document->resetzoom->disable();
+      return 1;
+      }
     }
   return 0;
   }
