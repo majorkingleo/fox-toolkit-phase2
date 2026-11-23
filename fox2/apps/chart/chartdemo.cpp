@@ -154,7 +154,7 @@ void ChartDemoWindow::openFile(const FXString& filename){
   if(document->selectedx<0) document->selectedx=document->xcolumns[0];
 
   FXString tabtitle=FXPath::name(filename);
-  new FXTabItem(tabs,tabtitle);
+  FXTabItem* tabitem=new FXTabItem(tabs,tabtitle);
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,4,4,4,4);
   FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
   new FXLabel(controls,"X axis:",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y);
@@ -170,7 +170,7 @@ void ChartDemoWindow::openFile(const FXString& filename){
   FXHorizontalFrame* content=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,4,0);
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
   document->plot=new FX2DPlot(chartarea,nullptr,0,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
-  document->series=new FXVerticalFrame(content,LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
+  document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
   new FXLabel(document->series,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   FXScrollWindow* scroll=new FXScrollWindow(document->series,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLER_ALWAYS|VSCROLLING_ON);
   FXVerticalFrame* list=new FXVerticalFrame(scroll,LAYOUT_FILL_X|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
@@ -183,6 +183,7 @@ void ChartDemoWindow::openFile(const FXString& filename){
     }
   documents.push_back(document);
   rebuild(document);
+  tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
   }
