@@ -120,6 +120,35 @@ static void fitHorizontalNumbers(FXArray<AxisNumber>& numbers,FXFont* font,FXuin
   }
 
 
+// Drop vertical labels that do not fit beside the preceding label
+static void fitVerticalNumbers(FXArray<AxisNumber>& numbers,FXFont* font,FXuint style,FXint fy,FXint ty){
+  FXint direction=(ty>=fy)?1:-1;
+  FXint top,bottom,boundary=fy;
+  FXival kept=0;
+  for(FXival i=0; i<numbers.no(); i++){
+    FXint height=textHeight(font,numbers[i].text);
+    if(style&TEXT_ATTACH_TOP){
+      top=numbers[i].y;
+      bottom=top+height;
+      }
+    else if(style&TEXT_ATTACH_BOTTOM){
+      bottom=numbers[i].y;
+      top=bottom-height;
+      }
+    else{
+      top=numbers[i].y-height/2;
+      bottom=top+height;
+      }
+    if(top<FXMIN(fy,ty) || bottom>FXMAX(fy,ty)) continue;
+    if(kept && (direction>0?top<boundary+2:bottom>boundary-2)) continue;
+    if(kept) numbers[kept]=numbers[i];
+    kept++;
+    boundary=direction>0?bottom:top;
+    }
+  numbers.no(kept);
+  }
+
+
 // Draw axis
 void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXint dy) const {
   if(style&(AXIS_LABEL|AXIS_NUMBERS|AXIS_GRID_MAJOR|AXIS_GRID_MINOR|AXIS_TICKS_MAJOR|AXIS_TICKS_MINOR|AXIS_LINE)){
@@ -243,8 +272,9 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
           }
         }
 
-      // Keep horizontal labels from overlapping as the axis is zoomed
+      // Keep labels from overlapping as the axis is zoomed or resized
       if(dx==0 && curnums.no()>1) fitHorizontalNumbers(curnums,numberfont,numberstyle,fx,tx);
+      else if(dy==0 && curnums.no()>1) fitVerticalNumbers(curnums,numberfont,numberstyle,fy,ty);
 
       // Count the numbers that come and go
       for(i=0; i<curnums.no(); i++){
