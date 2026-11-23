@@ -88,6 +88,9 @@ public:
   /// Return the plot area in widget coordinates
   const FXRectangle& getPlotArea() const { return plotarea; }
 
+  /// Draw the axis numbers without fading on the next draw
+  virtual void skipFades() override;
+
   /// Zoom the axes by factor around a point in the plot
   void zoomAt(FXint x,FXint y,FXdouble factor);
 

@@ -44,6 +44,7 @@ FXDEFMAP(FXChart) FXChartMap[]={
   FXMAPFUNC(SEL_CLIPBOARD_REQUEST,0,FXChart::onClipboardRequest),
   FXMAPFUNC(SEL_QUERY_TIP,0,FXChart::onQueryTip),
   FXMAPFUNC(SEL_QUERY_HELP,0,FXChart::onQueryHelp),
+  FXMAPFUNC(SEL_TIMEOUT,FXChart::ID_FADE,FXChart::onFade),
   };
 
 
@@ -58,6 +59,10 @@ FXDragType FXChart::jpgType=0;
 FXDragType FXChart::pngType=0;
 FXDragType FXChart::csvType=0;
 FXDragType FXChart::tifType=0;
+
+
+// Axis numbers fade in and out over this time
+const FXTime fadetime=150000000;
 
 
 // Default back fill style; the colors are replaced by the theme colors
@@ -75,6 +80,10 @@ FXChart::FXChart(){
   captionoffset=0;
   chart=(FXImage*)-1L;
   chartdirty=false;
+  fading=false;
+  fadestart=0;
+  fadeextern=0;
+  fadeself=false;
   lastupdatetime=0;
   margintop=0;
   marginbottom=0;
@@ -94,6 +103,10 @@ FXChart::FXChart(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x
   backstyle.forecolor=getApp()->getBackColor();
   backstyle.lower=backstyle.upper=getApp()->getBackColor();
   chartdirty=false;
+  fading=false;
+  fadestart=0;
+  fadeextern=0;
+  fadeself=false;
   lastupdatetime=0;
   target=tgt;
   message=sel;
@@ -158,8 +171,70 @@ void FXChart::updateChart(){
 void FXChart::invalidateChart(){
   if(!chartdirty){
     chartdirty=true;
+    if(!fadeself && fading) fadeextern++;
     update();
     }
+  }
+
+
+// Start fading axis numbers that changed against the new ones
+void FXChart::startFade(){
+  FXTime tick;
+  if(fading) return;
+  tick=getApp()->getAnimSpeed();
+  if(tick<=0) tick=20000000;
+  fading=true;
+  fadestart=FXThread::steadytime();
+  fadeextern=0;
+  getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_FADE),tick);
+  }
+
+
+// Return the time a number takes to fade in or out
+FXTime FXChart::getFadeTime() const {
+  return fadetime;
+  }
+
+
+// Advance the fade; the axis numbers are drawn again at the new blend.  When
+// the application redraws the chart on its own, as live data does, those
+// redraws carry the fade and this timer stays out of the way.
+long FXChart::onFade(FXObject*,FXSelector,void*){
+  FXTime tick=getApp()->getAnimSpeed();
+  if(tick<=0) tick=20000000;
+  if(fading){
+    if((FXThread::steadytime()-fadestart)>=fadetime){
+      fading=false;
+      }
+    else{
+      getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_FADE),tick);
+      }
+    if(fadeextern<2){
+      fadeself=true;
+      invalidateChart();
+      fadeself=false;
+      }
+    }
+  return 1;
+  }
+
+
+// Return the chart background color at a point
+FXColor FXChart::backColorAt(FXint x,FXint y) const {
+  FXint percent;
+  if(backstyle.style==FILLSTYLE_HORIZONTAL){
+    if(width>1){
+      percent=100*FXMAX(0,FXMIN(x,width-1))/(width-1);
+      return makeBlendColor(backstyle.lower,backstyle.upper,percent);
+      }
+    }
+  else if(backstyle.style==FILLSTYLE_VERTICAL){
+    if(height>1){
+      percent=100*FXMAX(0,FXMIN(y,height-1))/(height-1);
+      return makeBlendColor(backstyle.lower,backstyle.upper,percent);
+      }
+    }
+  return backstyle.forecolor;
   }
 
 
@@ -170,9 +245,15 @@ void FXChart::layout(){
   if((chart->getWidth()!=width) || (chart->getHeight()!=height) || dirty){
     if((chart->getWidth()!=width) || (chart->getHeight()!=height)){
       chart->resize(width,height);
+      skipFades();
       }
     updateChart();
     }
+  }
+
+
+// Draw the axis numbers without fading; subclasses pass this to their axes
+void FXChart::skipFades(){
   }
 
 

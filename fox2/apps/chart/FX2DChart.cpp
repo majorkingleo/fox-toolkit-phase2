@@ -144,6 +144,7 @@ void FX2DChart::drawSelf(FXDC& dc) const {
   // Space left after margins?
   if(plotleft<plotright && plottop<plotbottom){
     FXint caps=TEXT_ATTACH_CENTER|TEXT_JUSTIFY_CENTER;
+    FXint half=0;
     FXint capx=0;
     FXint capy=0;
     FXint capw=0;
@@ -294,6 +295,15 @@ void FX2DChart::drawSelf(FXDC& dc) const {
           }
         }
 
+      // The x numbers are centered on their ticks, so the first and the last
+      // one stick out half a number past the ends of the x axis; keep that
+      // room inside the frame so they are not clipped or run into the y numbers
+      if(axes[XLO]->getStyle()&AXIS_NUMBERS){
+        half=textWidth(axes[XLO]->getNumberFont(),"8.8")/2;
+        plotleft+=half;
+        plotright-=half;
+        }
+
       // Draw plot if there's still space for it
       if(plotleft<plotright && plottop<plotbottom){
 
@@ -333,6 +343,15 @@ void FX2DChart::drawSelf(FXDC& dc) const {
   }
 
 
+// Draw the axis numbers without fading, after a zoom or a resize
+void FX2DChart::skipFades(){
+  FXint i;
+  for(i=0; i<4; i++){
+    axes[i]->skipFade();
+    }
+  }
+
+
 // Remember the axis ranges before the first zoom
 void FX2DChart::saveZoomRanges(){
   FXint i;
@@ -352,6 +371,7 @@ void FX2DChart::setZoomRanges(FXdouble xlo,FXdouble xhi,FXdouble ylo,FXdouble yh
   axes[XHI]->setAxisRange(xlo,xhi);
   axes[YLO]->setAxisRange(ylo,yhi);
   axes[YHI]->setAxisRange(ylo,yhi);
+  skipFades();
   if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),nullptr);
   }
 
@@ -409,6 +429,7 @@ void FX2DChart::resetZoom(){
   axes[XHI]->setAxisRange(savedrange[XHI][0],savedrange[XHI][1]);
   axes[YLO]->setAxisRange(savedrange[YLO][0],savedrange[YLO][1]);
   axes[YHI]->setAxisRange(savedrange[YHI][0],savedrange[YHI][1]);
+  skipFades();
   if(target) target->tryHandle(this,FXSEL(SEL_CHANGED,message),nullptr);
   }
 

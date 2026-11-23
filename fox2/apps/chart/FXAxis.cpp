@@ -61,6 +61,8 @@ FXAxis::FXAxis(FXChart* ch,const FXString& nm,FXuint lblsty,FXuint numsty,FXuint
   numberoffset=3;
   labeloffset=6;
   precision=3;
+  fadeskip=false;
+  fadeon=true;
   }
 
 
@@ -78,12 +80,21 @@ void FXAxis::detach(){
   }
 
 
+// Return true if the list already holds a number with this text
+static FXbool hasNumber(const FXArray<AxisNumber>& list,const FXString& text){
+  FXint i;
+  for(i=0; i<list.no(); i++){
+    if(list[i].text==text) return true;
+    }
+  return false;
+  }
+
+
 // Draw axis
 void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXint dy) const {
   if(style&(AXIS_LABEL|AXIS_NUMBERS|AXIS_GRID_MAJOR|AXIS_GRID_MINOR|AXIS_TICKS_MAJOR|AXIS_TICKS_MINOR|AXIS_LINE)){
-    FXint ex,ey,tin,tout,x,y,majh,majl,minh,minl,i;
+    FXint ex,ey,tin,tout,x,y,majh,majl,minh,minl,i,j;
     FXdouble mulx,muly;
-    FXString num;
 
     // Unit direction
     ex=0; if(dx) ex=dx/FXABS(dx);
@@ -153,10 +164,16 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         }
       }
 
-    // Numbers
+    // Numbers; a number that appears fades in and one that goes fades out,
+    // each on its own clock so a change does not disturb the others
     if(style&AXIS_NUMBERS){
+      FXTime now=FXThread::steadytime();
+      FXTime fadetime=chart->getFadeTime();
+      FXdouble alpha;
+      FXbool animated=false;
+      AxisNumber item;
       dc.setFont(numberfont);
-      dc.setForeground(numbercolor);
+      curnums.clear();
       if(style&AXIS_NUMBERS_INSIDE){
         tin+=numberoffset;
         majl=(FXint)Math::ceil((axisrange.minimum+FUDGE_FACTOR*majorspace)/majorspace);
@@ -164,8 +181,12 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          num.format("%g",i*majorspace);
-          drawText(dc,num,x+tin*ex,y+tin*ey,numberstyle);
+          item.text.format("%g",i*majorspace);
+          item.x=x+tin*ex;
+          item.y=y+tin*ey;
+          item.born=now;
+          item.died=0;
+          curnums.append(item);
           }
         }
       else{
@@ -175,17 +196,80 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          num.format("%g",i*majorspace);
-          drawText(dc,num,x-tout*ex,y-tout*ey,numberstyle);
+          item.text.format("%g",i*majorspace);
+          item.x=x-tout*ex;
+          item.y=y-tout*ey;
+          item.born=now;
+          item.died=0;
+          curnums.append(item);
           }
         if(numberstyle&(TEXT_ATTACH_TOP|TEXT_ATTACH_BOTTOM)){
           tout+=textHeight(numberfont,"8.8");
           }
         else if(numberstyle&(TEXT_ATTACH_LEFT|TEXT_ATTACH_RIGHT)){
           tout+=textWidth(numberfont,"8.8");
-//fxmessage("tout+=%d\n",textWidth(numberfont,"8.8"));
           }
         }
+
+      // Numbers that stayed keep the time they appeared, the ones that are
+      // new start fading in now
+      for(i=0; i<curnums.no(); i++){
+        for(j=0; j<prevnums.no(); j++){
+          if(prevnums[j].text==curnums[i].text){
+            curnums[i].born=prevnums[j].born;
+            break;
+            }
+          }
+        }
+
+      // Numbers that went away start fading out where they were
+      for(j=0; j<prevnums.no(); j++){
+        if(!hasNumber(curnums,prevnums[j].text) && !hasNumber(oldnums,prevnums[j].text)){
+          item=prevnums[j];
+          item.died=now;
+          oldnums.append(item);
+          }
+        }
+
+      // Drop the numbers that faded out completely
+      for(j=oldnums.no()-1; j>=0; j--){
+        if((now-oldnums[j].died)>=fadetime) oldnums.erase(j);
+        }
+
+      // A first draw, a zoom or a resize shows the numbers at once
+      if(fadeskip || prevnums.no()==0){
+        for(i=0; i<curnums.no(); i++){
+          curnums[i].born=now-fadetime;
+          }
+        oldnums.clear();
+        }
+      fadeskip=false;
+
+      // Fade the numbers that went away out against the chart background
+      for(j=0; j<oldnums.no(); j++){
+        alpha=1.0-(FXdouble)(now-oldnums[j].died)/(FXdouble)fadetime;
+        dc.setForeground(makeBlendColor(numbercolor,chart->backColorAt(oldnums[j].x,oldnums[j].y),(FXint)(100.0*(1.0-alpha))));
+        drawText(dc,oldnums[j].text,oldnums[j].x,oldnums[j].y,numberstyle);
+        }
+
+      // Draw the numbers, fading in the ones that just appeared
+      for(i=0; i<curnums.no(); i++){
+        alpha=(FXdouble)(now-curnums[i].born)/(FXdouble)fadetime;
+        if(alpha<1.0){
+          animated=true;
+          dc.setForeground(makeBlendColor(chart->backColorAt(curnums[i].x,curnums[i].y),numbercolor,(FXint)(100.0*alpha)));
+          }
+        else{
+          dc.setForeground(numbercolor);
+          }
+        drawText(dc,curnums[i].text,curnums[i].x,curnums[i].y,numberstyle);
+        }
+
+      // Keep the numbers drawn now for the next comparison
+      prevnums=curnums;
+
+      // Ask for repaints while anything is still on its way in or out
+      if(animated || oldnums.no()) chart->startFade();
       }
 
     // Axis label
@@ -375,6 +459,18 @@ void FXAxis::setLabelOffset(FXint off){
     labeloffset=off;
     chart->recalc();
     }
+  }
+
+
+// Draw the numbers without fading on the next draw
+void FXAxis::skipFade(){
+  fadeskip=true;
+  }
+
+
+// Allow or disallow fading numbers that change
+void FXAxis::setFadeEnabled(FXbool on){
+  fadeon=on;
   }
 
 

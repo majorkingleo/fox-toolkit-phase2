@@ -547,6 +547,7 @@ void ChartWindow::startLive(){
   plot->setCaptionStyle(CAPTION_NONE);
   plot->setBackStyle(liveBackStyle);
   plot->setChartStyle(liveChartStyle);
+  plot->skipFades();
   plot->getAxis(FX2DChart::YLO)->setLabel("Mouse (px/ms)");
   plot->getAxis(FX2DChart::YHI)->setLabel("CPU % / MB");
   livebuffer->setText("Buffer: 0 samples");

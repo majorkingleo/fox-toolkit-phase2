@@ -55,6 +55,10 @@ protected:
   FXString  tip;                // Tooltip value
   FXString  help;               // Help value
   FXbool    chartdirty;         // Chart image needs redrawing
+  FXbool    fading;             // Axis numbers are fading
+  FXTime    fadestart;          // Start of the axis number fade
+  FXint     fadeextern;         // Redraws somebody else asked for during the fade
+  FXbool    fadeself;           // Redraw asked for by the fade itself
   mutable FXTime lastupdatetime; // Duration of the last chart update
 protected:
   FXChart();
@@ -66,10 +70,16 @@ private:
   FXChart &operator=(const FXChart&);
 public:
   long onPaint(FXObject*,FXSelector,void*);
+  long onFade(FXObject*,FXSelector,void*);
   long onQueryHelp(FXObject*,FXSelector,void*);
   long onQueryTip(FXObject*,FXSelector,void*);
   long onClipboardLost(FXObject*,FXSelector,void*);
   long onClipboardRequest(FXObject*,FXSelector,void*);
+public:
+  enum {
+    ID_FADE=FXComposite::ID_LAST, /// Fade animation step
+    ID_LAST
+    };
 public:
   static FXDragType bmpType;
   static FXDragType gifType;
@@ -93,6 +103,21 @@ public:
 
   /// Redraw the chart image on the next paint
   void invalidateChart();
+
+  /// Draw the axis numbers without fading on the next draw
+  virtual void skipFades();
+
+  /// Ask for repaints while axis numbers fade in and out
+  void startFade();
+
+  /// Return the time a number takes to fade in or out
+  FXTime getFadeTime() const;
+
+  /// Return true while a fade is running
+  FXbool isFading() const { return fading; }
+
+  /// Return the chart background color at a point
+  FXColor backColorAt(FXint x,FXint y) const;
 
   /// Change caption
   void setCaption(const FXString& cap);

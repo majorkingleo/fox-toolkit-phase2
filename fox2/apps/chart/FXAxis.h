@@ -21,11 +21,25 @@
 #ifndef FXAXIS_H
 #define FXAXIS_H
 
+#ifndef FXARRAY_H
+#include "FXArray.h"
+#endif
+
 
 namespace FXCHART {
 
 
 class FXChart;
+
+
+/// One number drawn along an axis, kept so it can fade in and out
+struct AxisNumber {
+  FXString text;                // Number as drawn
+  FXint    x;                   // Baseline anchor x
+  FXint    y;                   // Baseline anchor y
+  FXTime   born;                // Time the number appeared
+  FXTime   died;                // Time the number went away
+  };
 
 
 /// Axis styles
@@ -76,6 +90,11 @@ protected:
   FXuchar     labelstyle;       // Label style flags
   FXuchar     numberstyle;      // Number style flags
   FXuint      style;            // Axis style flags
+  mutable FXbool fadeskip;      // Draw the numbers without fading
+  FXbool      fadeon;           // Numbers fade in and out when they change
+  mutable FXArray<AxisNumber> curnums;  // Numbers of the current draw
+  mutable FXArray<AxisNumber> prevnums; // Numbers of the last committed draw
+  mutable FXArray<AxisNumber> oldnums;  // Numbers fading out
 private:
   FXAxis(const FXAxis&);
   FXAxis &operator=(const FXAxis&);
@@ -194,6 +213,15 @@ public:
 
   /// Get label offset
   FXint getLabelOffset() const { return labeloffset; }
+
+  /// Draw the numbers without fading on the next draw
+  void skipFade();
+
+  /// Allow or disallow fading numbers that change
+  void setFadeEnabled(FXbool on);
+
+  /// Return true if numbers that change fade
+  FXbool isFadeEnabled() const { return fadeon; }
 
   /// Reset axis to data range
   void resetAxisRange();

@@ -100,6 +100,13 @@ Target order: Wayland first, then X11 and Win32.
       and the grid a contrasting shade; series colors are lifted on a dark
       background.  `charttest` shows the result with the classic and the dark
       theme
+- [x] Axis numbers that come and go fade over 150 ms: a number entering the
+      range fades in and one leaving it fades out where it was, while the
+      numbers that stay are drawn at once.  Each number carries its own appear
+      and disappear time, so a change does not disturb the others and the fade
+      looks the same when the sample rate drops.  The first draw, a zoom and a
+      resize show the numbers at once, and the live view only fades the time
+      axis because its y axis is refitted on every sample
 
 ## What the fox2 port already provides
 
@@ -366,7 +373,9 @@ deterministic dataset mode, and adds a live sheet. The sheet is a small
   pointer, the left button opens a rubber band that is dragged into a
   rectangle, and a double click restores the pre-zoom ranges.  In live mode
   the x range of a zoom becomes the viewport length, so the zoom is a
-  viewport reduction and leaves the following window;
+  viewport reduction and leaves the following window.  The x numbers are
+  centered on their ticks, so the plot leaves half a number of room at both
+  ends instead of letting the end numbers run into the y numbers;
 - series:
   - mouse x and y speed (pixels/s) and acceleration (pixels/s²), derived from
     `SEL_MOTION` events and `FXThread::steadytime()`;
@@ -597,6 +606,7 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
   `charttest-zoom-wheel.png`, `charttest-zoom-band.png`,
   `charttest-zoom-rect.png`, `charttest-live-zoom.png`,
   `charttest-reset-zoom.png`, `charttest-dark.png`, `charttest-dark-live.png`,
+  `charttest-axis-fade.png`,
   `chartdemo-csv.png`, `chartdemo-xlsx.png`,
   `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and

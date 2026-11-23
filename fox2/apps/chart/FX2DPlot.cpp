@@ -127,6 +127,7 @@ void FX2DPlot::fitData(){
   FXdouble lo,hi;
   FXint axis;
   clearZoom();
+  skipFades();
   for(axis=0; axis<4; axis++){
     rangeX(axis,lo,hi);
     if(lo<=hi){

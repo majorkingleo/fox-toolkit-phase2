@@ -227,6 +227,10 @@ void LiveSource::start(){
   running=true;
   follow=true;
   viewleft=0.0;
+  // Y is refitted on every sample, so its numbers would flicker; only the
+  // time axis fades the numbers that come and go
+  plot->getAxis(FX2DChart::YLO)->setFadeEnabled(false);
+  plot->getAxis(FX2DChart::YHI)->setFadeEnabled(false);
   showCurves(true);
   plot->getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT),interval);
   }
@@ -237,6 +241,8 @@ void LiveSource::stop(){
   if(!running) return;
   plot->getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_TIMEOUT));
   running=false;
+  plot->getAxis(FX2DChart::YLO)->setFadeEnabled(true);
+  plot->getAxis(FX2DChart::YHI)->setFadeEnabled(true);
   showCurves(false);
   }
 
