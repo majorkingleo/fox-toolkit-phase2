@@ -91,6 +91,35 @@ static FXbool hasNumber(const FXArray<AxisNumber>& list,const FXString& text){
   }
 
 
+// Drop horizontal labels that do not fit beside the preceding label
+static void fitHorizontalNumbers(FXArray<AxisNumber>& numbers,FXFont* font,FXuint style,FXint fx,FXint tx){
+  FXint direction=(tx>=fx)?1:-1;
+  FXint left,right,boundary=fx;
+  FXival kept=0;
+  for(FXival i=0; i<numbers.no(); i++){
+    FXint width=textWidth(font,numbers[i].text);
+    if(style&TEXT_ATTACH_LEFT){
+      left=numbers[i].x;
+      right=left+width;
+      }
+    else if(style&TEXT_ATTACH_RIGHT){
+      right=numbers[i].x;
+      left=right-width;
+      }
+    else{
+      left=numbers[i].x-width/2;
+      right=left+width;
+      }
+    if(left<FXMIN(fx,tx) || right>FXMAX(fx,tx)) continue;
+    if(kept && (direction>0?left<boundary+2:right>boundary-2)) continue;
+    if(kept) numbers[kept]=numbers[i];
+    kept++;
+    boundary=direction>0?right:left;
+    }
+  numbers.no(kept);
+  }
+
+
 // Draw axis
 void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXint dy) const {
   if(style&(AXIS_LABEL|AXIS_NUMBERS|AXIS_GRID_MAJOR|AXIS_GRID_MINOR|AXIS_TICKS_MAJOR|AXIS_TICKS_MINOR|AXIS_LINE)){
@@ -213,6 +242,9 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
           tout+=textWidth(numberfont,"8.8");
           }
         }
+
+      // Keep horizontal labels from overlapping as the axis is zoomed
+      if(dx==0 && curnums.no()>1) fitHorizontalNumbers(curnums,numberfont,numberstyle,fx,tx);
 
       // Count the numbers that come and go
       for(i=0; i<curnums.no(); i++){
