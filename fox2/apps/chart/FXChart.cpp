@@ -209,7 +209,9 @@ long FXChart::onFade(FXObject*,FXSelector,void*){
     else{
       getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_FADE),tick);
       }
-    if(fadeextern<2){
+    // A finished fade always needs one last draw; while it runs, stand back
+    // when the application is redrawing the chart on its own
+    if(!fading || fadeextern<2){
       fadeself=true;
       invalidateChart();
       fadeself=false;

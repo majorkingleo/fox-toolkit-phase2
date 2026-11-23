@@ -91,6 +91,7 @@ protected:
   FXuchar     numberstyle;      // Number style flags
   FXuint      style;            // Axis style flags
   mutable FXbool fadeskip;      // Draw the numbers without fading
+  mutable FXTime fadehold;      // No number fades before this time
   FXbool      fadeon;           // Numbers fade in and out when they change
   mutable FXArray<AxisNumber> curnums;  // Numbers of the current draw
   mutable FXArray<AxisNumber> prevnums; // Numbers of the last committed draw

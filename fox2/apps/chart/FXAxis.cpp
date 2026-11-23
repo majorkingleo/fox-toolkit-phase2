@@ -62,6 +62,7 @@ FXAxis::FXAxis(FXChart* ch,const FXString& nm,FXuint lblsty,FXuint numsty,FXuint
   labeloffset=6;
   precision=3;
   fadeskip=false;
+  fadehold=0;
   fadeon=true;
   }
 
@@ -171,6 +172,8 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
       FXTime fadetime=chart->getFadeTime();
       FXdouble alpha;
       FXbool animated=false;
+      FXint entering=0;
+      FXint leaving=0;
       AxisNumber item;
       dc.setFont(numberfont);
       curnums.clear();
@@ -211,39 +214,50 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
           }
         }
 
-      // Numbers that stayed keep the time they appeared, the ones that are
-      // new start fading in now
+      // Count the numbers that come and go
       for(i=0; i<curnums.no(); i++){
+        if(!hasNumber(prevnums,curnums[i].text)) entering++;
+        }
+      for(j=0; j<prevnums.no(); j++){
+        if(!hasNumber(curnums,prevnums[j].text)) leaving++;
+        }
+
+      // A first draw, a zoom or a resize shows the numbers at once, and so
+      // does a change too large or too quick to fade: a dragged viewport
+      // moves the numbers faster than one can fade out
+      if(fadeskip || prevnums.no()==0 || entering>1 || leaving>1 || ((entering || leaving) && (now<fadehold || oldnums.no()))){
+        oldnums.clear();
+        for(i=0; i<curnums.no(); i++){
+          curnums[i].born=now-fadetime;
+          }
+        fadehold=now+fadetime;
+        }
+      else{
+
+        // Numbers that stayed keep the time they appeared; numbers that went
+        // away start fading out where they were
+        for(i=0; i<curnums.no(); i++){
+          for(j=0; j<prevnums.no(); j++){
+            if(prevnums[j].text==curnums[i].text){
+              curnums[i].born=prevnums[j].born;
+              break;
+              }
+            }
+          }
         for(j=0; j<prevnums.no(); j++){
-          if(prevnums[j].text==curnums[i].text){
-            curnums[i].born=prevnums[j].born;
-            break;
+          if(!hasNumber(curnums,prevnums[j].text) && !hasNumber(oldnums,prevnums[j].text)){
+            item=prevnums[j];
+            item.died=now;
+            oldnums.append(item);
             }
           }
         }
-
-      // Numbers that went away start fading out where they were
-      for(j=0; j<prevnums.no(); j++){
-        if(!hasNumber(curnums,prevnums[j].text) && !hasNumber(oldnums,prevnums[j].text)){
-          item=prevnums[j];
-          item.died=now;
-          oldnums.append(item);
-          }
-        }
+      fadeskip=false;
 
       // Drop the numbers that faded out completely
       for(j=oldnums.no()-1; j>=0; j--){
         if((now-oldnums[j].died)>=fadetime) oldnums.erase(j);
         }
-
-      // A first draw, a zoom or a resize shows the numbers at once
-      if(fadeskip || prevnums.no()==0){
-        for(i=0; i<curnums.no(); i++){
-          curnums[i].born=now-fadetime;
-          }
-        oldnums.clear();
-        }
-      fadeskip=false;
 
       // Fade the numbers that went away out against the chart background
       for(j=0; j<oldnums.no(); j++){

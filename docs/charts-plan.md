@@ -106,7 +106,9 @@ Target order: Wayland first, then X11 and Win32.
       and disappear time, so a change does not disturb the others and the fade
       looks the same when the sample rate drops.  The first draw, a zoom and a
       resize show the numbers at once, and the live view only fades the time
-      axis because its y axis is refitted on every sample
+      axis because its y axis is refitted on every sample.  A change that is
+      too large or comes while the previous one is still fading, as when the
+      viewport is dragged, drops the fades instead of piling numbers up
 
 ## What the fox2 port already provides
 
