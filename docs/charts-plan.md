@@ -46,7 +46,8 @@ not contain an SVG serialiser, a spreadsheet reader or a file-format layer.
 
 ## Progress
 
-Target order: Wayland first, then X11 and Win32.
+Target order: Wayland first; Win32 thin-line antialiasing is now implemented,
+with X11 and the shared `FXRaster` rendering path still pending.
 
 ### M1 — data model and static curves
 
@@ -57,9 +58,9 @@ Target order: Wayland first, then X11 and Win32.
 - [x] `charttest` deterministic 10,000-sample series plus a marker series
 - [x] Wayland build and `FOX_WAYLAND_DUMP` frame verified
 - [ ] curve fills
-- [ ] client-side `FXImage` buffer (chart still draws through `FXDC`; AA is
-      Wayland-only)
-- [ ] X11 and Win32 verification
+- [ ] client-side `FXImage` buffer (chart still draws through `FXDC`)
+- [x] Win32 `charttest` build and antialiased curve screenshot verified
+- [ ] X11 verification
 
 ### M3 — antialiasing
 
@@ -67,9 +68,12 @@ Target order: Wayland first, then X11 and Win32.
 - [x] segment clipping so off-screen live samples stay cheap
 - [x] `FXDC`/`FXDCWindow` seam; Wayland forwards it, X11 and Win32 accept it
 - [x] chart curves and marker outlines antialiased on Wayland
+- [x] thin solid Win32 lines and polylines antialiased through GDI+
 - [x] live mode stays around 12% CPU at 20 Hz with AA
 - [ ] polygon fills, wide lines and dashed lines
-- [ ] X11 and Win32 antialiasing
+- [ ] X11 antialiasing
+- [ ] shared `FXRaster` chart rendering on X11 and Win32; Win32 currently uses
+  the native GDI+ line path instead
 
 ### M6 — live mode in `charttest`
 
@@ -109,6 +113,9 @@ Target order: Wayland first, then X11 and Win32.
       axis because its y axis is refitted on every sample.  A change that is
       too large or comes while the previous one is still fading, as when the
       viewport is dragged, drops the fades instead of piling numbers up
+- [x] Horizontal tick labels are measured and skipped when they would overlap
+      or extend past the axis during zoom; tick marks and grid lines remain
+      unchanged
 
 ## What the fox2 port already provides
 
@@ -281,12 +288,13 @@ decimation buffers and the renderer.
 
 ## Rendering target and antialiasing
 
-`FXDC` cannot antialias: X11 uses `XDrawLines`/`XFillPolygon`, Win32 uses GDI,
-and the Wayland `FXRaster` plots whole pixels on purpose because X11 is the
-visual reference. `FXDC` also has no alpha or coverage blending, so an
-antialiased curve cannot be drawn through it, and a separate transparent curve
-layer cannot be composited over an X11 chart (`FXDCWindow::drawImage` is a plain
-`XCopyArea`).
+`FXDC` has no cross-platform coverage-blending API. X11 uses
+`XDrawLines`/`XFillPolygon`; Win32's thin, solid `drawLine()` and `drawLines()`
+now use GDI+ when antialiasing is enabled, with GDI fallback; the Wayland
+`FXRaster` path provides software Wu antialiasing. Win32's GDI+ support is a
+targeted backend improvement, not yet the shared chart raster path. A separate
+transparent curve layer cannot be composited over an X11 chart
+(`FXDCWindow::drawImage` is a plain `XCopyArea`).
 
 The plot is therefore rasterised by code we own, into one plain `FXColor`
 buffer, and handed to the window in one blit:
@@ -611,6 +619,7 @@ the X11 build, the Win32 cross build and the Wayland build pass, and `hello`,
   `charttest-axis-fade.png`,
   `chartdemo-csv.png`, `chartdemo-xlsx.png`,
   `chartdemo-ods.png`, `chart-aa.png`, `chart-legend.png`, `chart-zoomed.png`).
+- Win32 antialiased curve capture: `screenshots/tests/fox2/win32/charttest-antialias.png`.
 - Import fixtures `fox2/apps/chart/data/sample.csv`, `sample.xlsx` and
   `sample.ods` with the same columns and values, plus an import check mode that
   prints or asserts the table shape, headers and numeric columns without a
