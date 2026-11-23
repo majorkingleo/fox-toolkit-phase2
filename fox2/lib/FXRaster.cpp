@@ -1777,4 +1777,39 @@ void FXRaster::clearClipMask(){
   my=0;
   }
 
+
+// Distance from a point to a rounded rectangle, negative inside it
+static FXdouble roundRectDistance(FXdouble px,FXdouble py,FXint x,FXint y,FXint w,FXint h,FXint r){
+  FXdouble cx=x+w*0.5;
+  FXdouble cy=y+h*0.5;
+  FXdouble dx=FXABS(px-cx)-(w*0.5-r);
+  FXdouble dy=FXABS(py-cy)-(h*0.5-r);
+  if(dx<0.0) dx=0.0;
+  if(dy<0.0) dy=0.0;
+  return sqrt(dx*dx+dy*dy)-r;
+  }
+
+
+// Write the drop shadow ring of a rounded rectangle.  The area is the perimeter
+// times the margin, which is a few thousand pixels, and the cost is flat in the
+// size of the surface.  The ring is written even where the shadow is fully
+// faded, because the margin may hold the widget's own fill
+void fxShadowRing(FXRaster& raster,FXint x,FXint y,FXint w,FXint h,FXint radius,FXint margin,FXuint minalpha){
+  FXint px,py,r;
+  if(w<=0 || h<=0 || margin<=0) return;
+  r=(radius>0)?FXMIN(radius,FXMIN(w,h)/2):0;
+  for(py=y-margin; py<y+h+margin; py++){
+    for(px=x-margin; px<x+w+margin; px++){
+      FXdouble d=roundRectDistance(px+0.5,py+0.5,x,y,w,h,r);
+      FXuint a=0;
+      if(d<=0.0) continue;
+      if(d<(FXdouble)margin){
+        d=1.0-d/(FXdouble)margin;
+        a=(FXuint)(d*d*96.0+0.5);
+        }
+      raster.plotAlpha(px,py,FXRGB(0,0,0),FXMAX(a,minalpha));
+      }
+    }
+  }
+
 }

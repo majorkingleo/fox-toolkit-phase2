@@ -367,6 +367,13 @@ public:
  ~FXRaster();
   };
 
+
+/// Write the drop shadow of a rounded rectangle: a black ring around the
+/// surface at (x,y,w,h) that fades out over margin pixels.  The surface itself
+/// is not touched, and minalpha keeps the faded ring visible to the platform's
+/// hit testing where it would otherwise be fully transparent
+extern void fxShadowRing(FXRaster& raster,FXint x,FXint y,FXint w,FXint h,FXint radius,FXint margin,FXuint minalpha=0);
+
 }
 
 #endif
