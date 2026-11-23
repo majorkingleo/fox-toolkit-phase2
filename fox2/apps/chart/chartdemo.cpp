@@ -76,6 +76,15 @@ static const FXColor seriesColors[]={
   FXRGB(88,110,117),FXRGB(0,121,107),FXRGB(156,39,176),FXRGB(63,81,181)
   };
 
+
+static FXString displayFileName(const FXString& filename){
+  FXint start=0;
+  for(FXint i=0; i<filename.length(); i++){
+    if(filename[i]=='/' || filename[i]=='\\') start=i+1;
+    }
+  return filename.mid(start,filename.length()-start);
+  }
+
 #if defined(WIN32)
 static void attachConsole(){
   if(AttachConsole(ATTACH_PARENT_PROCESS)){
@@ -153,7 +162,7 @@ void ChartDemoWindow::openFile(const FXString& filename){
     }
   if(document->selectedx<0) document->selectedx=document->xcolumns[0];
 
-  FXString tabtitle=FXPath::name(filename);
+  FXString tabtitle=displayFileName(filename);
   FXTabItem* tabitem=new FXTabItem(tabs,tabtitle);
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,4,4,4,4);
   FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
@@ -172,8 +181,9 @@ void ChartDemoWindow::openFile(const FXString& filename){
   document->plot=new FX2DPlot(chartarea,nullptr,0,CAPTION_ABOVE|CAPTION_SHOWN|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
   document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
   new FXLabel(document->series,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  FXScrollWindow* scroll=new FXScrollWindow(document->series,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLER_ALWAYS|VSCROLLING_ON);
-  FXVerticalFrame* list=new FXVerticalFrame(scroll,LAYOUT_FILL_X|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
+  FXComposite* listparent=document->series;
+  if(document->xcolumns.size()>8) listparent=new FXScrollWindow(document->series,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON);
+  FXVerticalFrame* list=new FXVerticalFrame(listparent,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
     FXCheckButton* check=new FXCheckButton(list,document->table.columns[col].name,this,ID_SERIES,JUSTIFY_LEFT|ICON_BEFORE_TEXT|LAYOUT_FILL_X);
@@ -219,7 +229,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document){
     document->plot->appendCurve(curve);
     visiblecount++;
     }
-  document->plot->setCaption(FXPath::name(document->filename));
+  document->plot->setCaption(displayFileName(document->filename));
   document->plot->getAxis(FX2DChart::XLO)->setLabel(document->table.columns[xcol].name+(document->table.columns[xcol].timestamp?" (seconds from start)":""));
   document->plot->getAxis(FX2DChart::YLO)->setLabel("Value");
   document->plot->fitData();
