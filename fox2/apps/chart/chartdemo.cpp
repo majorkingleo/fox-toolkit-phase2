@@ -327,6 +327,27 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->serieswidth=205;
   document->seriesshown=true;
   document->filtertext="";
+  document->selectedx=-1;
+  for(FXint column=0; column<(FXint)document->table.columns.size(); column++){
+    if(document->table.columns[column].numeric){
+      document->xcolumns.push_back(column);
+      document->seriesKeys.push_back(chartColumnKey(document->table,column));
+      document->visible.push_back(true);
+      }
+    }
+  if(document->xcolumns.empty()){
+    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","No plottable columns were found.");
+    delete document;
+    return;
+    }
+  for(FXuval i=0; i<document->xcolumns.size(); i++){
+    FXint column=document->xcolumns[i];
+    if(document->table.columns[column].timestamp){
+      document->selectedx=column;
+      break;
+      }
+    }
+  if(document->selectedx<0) document->selectedx=document->xcolumns[0];
   document->settingsSection=chartSchemaKey(document->seriesKeys);
   loadDocumentSettings(document);
 
@@ -411,6 +432,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
     }
   scaleDocumentWidgets(document,this);
   documents.push_back(document);
+  rebuild(document);
   document->tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
