@@ -57,7 +57,15 @@ FX2DPlot.h \
 FX2DPlot.cpp \
 CSVReader.h \
 CSVReader.cpp \
-chartdemo.cpp
+ChartDemoWindow.h \
+ChartDetachedWindow.h \
+ChartDetachedWindow.cpp \
+ChartDemoUtils.h \
+ChartDemoUtils.cpp \
+ChartTabItem.h \
+ChartTabItem.cpp \
+chartdemo.cpp \
+chartdemo_main.cpp
 
 EXTRA_DIST = \
 marble.bmp

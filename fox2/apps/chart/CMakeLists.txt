@@ -18,5 +18,13 @@ add_executable(chartdemo
   ${CHART_SOURCES}
   CSVReader.h
   CSVReader.cpp
-  chartdemo.cpp)
+  ChartDemoWindow.h
+  ChartDetachedWindow.h
+  ChartDetachedWindow.cpp
+  ChartDemoUtils.h
+  ChartDemoUtils.cpp
+  ChartTabItem.h
+  ChartTabItem.cpp
+  chartdemo.cpp
+  chartdemo_main.cpp)
 target_link_libraries(chartdemo PRIVATE FOX::FOX m)

@@ -2,6 +2,10 @@
 #include "FXSVGIcon.h"
 #include "chart.h"
 #include "CSVReader.h"
+#include "ChartDemoWindow.h"
+#include "ChartDemoUtils.h"
+#include "ChartTabItem.h"
+#include "ChartDetachedWindow.h"
 #include <algorithm>
 #include <vector>
 #include <cstdio>
@@ -11,171 +15,10 @@
 #include <windows.h>
 #endif
 
+namespace FXCHARTDEMO {
+
 using namespace FX;
 using namespace FXCHART;
-
-
-struct ChartDocument {
-  FXString filename;
-  CSVTable table;
-  FXTabItem* tabitem;
-  FXVerticalFrame* page;
-  FXVerticalFrame* placeholder;
-  FXMainWindow* detachWindow;
-  FXVerticalFrame* detachHost;
-  FXFont* detachedVerticalFont;
-  FXFont* detachedNumberFont;
-  FXint detachedFontDPI;
-  FXdouble detachedFontScale;
-  FXdouble detachedPixelScale;
-  FX2DPlot* plot;
-  FXComboBox* xcolumn;
-  FXToggleButton* xtoggle;
-  FXToggleButton* ytoggle;
-  FXButton* resetzoom;
-  FXLabel* info;
-  FXVerticalFrame* series;
-  FXTextField* seriesfilter;
-  FXVerticalFrame* serieslist;
-  FXSplitter* splitter;
-  FXToggleButton* seriesshow;
-  FXButton* seriesclose;
-  FXButton* selectAll;
-  FXButton* selectNone;
-  std::vector<FXint> xcolumns;
-  std::vector<FXString> seriesKeys;
-  std::vector<FXCheckButton*> checks;
-  std::vector<FXHorizontalFrame*> seriesrows;
-  std::vector<FXbool> visible;
-  FXint selectedx;
-  FXint serieswidth;
-  FXbool seriesshown;
-  FXString filtertext;
-  FXString settingsSection;
-  };
-
-
-class ChartTabItem : public FXTabItem {
-  FXDECLARE(ChartTabItem)
-protected:
-  FXIcon* normalIcon;
-  FXIcon* hoverIcon;
-  FXIcon* pressedIcon;
-  FXbool iconHot;
-  FXbool iconPressed;
-protected:
-  ChartTabItem(){ }
-  FXbool overDetachIcon(FXint x,FXint y) const;
-  void updateDetachIcon();
-private:
-  ChartTabItem(const ChartTabItem&);
-  ChartTabItem& operator=(const ChartTabItem&);
-public:
-  long onEnter(FXObject*,FXSelector,void*);
-  long onLeave(FXObject*,FXSelector,void*);
-  long onUngrabbed(FXObject*,FXSelector,void*);
-  long onMotion(FXObject*,FXSelector,void*);
-  long onLeftBtnPress(FXObject*,FXSelector,void*);
-  long onLeftBtnRelease(FXObject*,FXSelector,void*);
-  ChartTabItem(FXTabBar* p,const FXString& text,FXIcon* normal,FXIcon* hover,FXIcon* pressed,FXObject* target,FXSelector selector);
-  };
-
-
-FXDEFMAP(ChartTabItem) ChartTabItemMap[]={
-  FXMAPFUNC(SEL_ENTER,0,ChartTabItem::onEnter),
-  FXMAPFUNC(SEL_LEAVE,0,ChartTabItem::onLeave),
-  FXMAPFUNC(SEL_UNGRABBED,0,ChartTabItem::onUngrabbed),
-  FXMAPFUNC(SEL_MOTION,0,ChartTabItem::onMotion),
-  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,ChartTabItem::onLeftBtnPress),
-  FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,ChartTabItem::onLeftBtnRelease),
-  };
-
-FXIMPLEMENT(ChartTabItem,FXTabItem,ChartTabItemMap,ARRAYNUMBER(ChartTabItemMap))
-
-
-ChartTabItem::ChartTabItem(FXTabBar* p,const FXString& text,FXIcon* normal,FXIcon* hover,FXIcon* pressed,FXObject* tgt,FXSelector selector):FXTabItem(p,text,normal,(TAB_TOP_NORMAL&~ICON_BEFORE_TEXT)|ICON_AFTER_TEXT){
-  normalIcon=normal;
-  hoverIcon=hover;
-  pressedIcon=pressed;
-  iconHot=false;
-  iconPressed=false;
-  setTarget(tgt);
-  setSelector(selector);
-  setTipText("Detach chart into a new window; close it to return to tabs");
-  }
-
-
-FXbool ChartTabItem::overDetachIcon(FXint x,FXint y) const {
-  return x>=width-scale(22) && x<width && y>=0 && y<height;
-  }
-
-
-void ChartTabItem::updateDetachIcon(){
-  FXIcon* nextIcon=iconPressed?pressedIcon:(iconHot?hoverIcon:normalIcon);
-  if(getIcon()!=nextIcon) setIcon(nextIcon);
-  }
-
-
-long ChartTabItem::onEnter(FXObject*,FXSelector,void* ptr){
-  FXEvent* event=(FXEvent*)ptr;
-  iconHot=overDetachIcon(event->win_x,event->win_y);
-  updateDetachIcon();
-  return 1;
-  }
-
-
-long ChartTabItem::onLeave(FXObject*,FXSelector,void*){
-  iconHot=false;
-  updateDetachIcon();
-  return 1;
-  }
-
-
-long ChartTabItem::onUngrabbed(FXObject* sender,FXSelector sel,void* ptr){
-  if(iconPressed){
-    iconPressed=false;
-    iconHot=false;
-    updateDetachIcon();
-    return 1;
-    }
-  return FXTabItem::onUngrabbed(sender,sel,ptr);
-  }
-
-
-long ChartTabItem::onMotion(FXObject*,FXSelector,void* ptr){
-  FXEvent* event=(FXEvent*)ptr;
-  iconHot=overDetachIcon(event->win_x,event->win_y);
-  updateDetachIcon();
-  return iconHot || iconPressed;
-  }
-
-
-long ChartTabItem::onLeftBtnPress(FXObject* sender,FXSelector sel,void* ptr){
-  FXEvent* event=(FXEvent*)ptr;
-  if(isEnabled() && overDetachIcon(event->win_x,event->win_y)){
-    grab();
-    iconHot=true;
-    iconPressed=true;
-    updateDetachIcon();
-    return 1;
-    }
-  return FXTabItem::onLeftBtnPress(sender,sel,ptr);
-  }
-
-
-long ChartTabItem::onLeftBtnRelease(FXObject* sender,FXSelector sel,void* ptr){
-  if(iconPressed){
-    FXEvent* event=(FXEvent*)ptr;
-    FXbool click=overDetachIcon(event->win_x,event->win_y);
-    ungrab();
-    iconPressed=false;
-    iconHot=click;
-    updateDetachIcon();
-    if(click && target) target->tryHandle(this,FXSEL(SEL_COMMAND,message),nullptr);
-    return 1;
-    }
-  return FXTabItem::onLeftBtnRelease(sender,sel,ptr);
-  }
 
 
 class CSVLoadTask : public FXThread {
@@ -204,111 +47,6 @@ public:
   };
 
 
-class ChartDemoWindow;
-
-
-class ChartDetachedWindow : public FXMainWindow {
-  FXDECLARE(ChartDetachedWindow)
-protected:
-  ChartDemoWindow* chartWindow;
-  ChartDocument* document;
-protected:
-  ChartDetachedWindow(){ }
-private:
-  ChartDetachedWindow(const ChartDetachedWindow&);
-  ChartDetachedWindow& operator=(const ChartDetachedWindow&);
-public:
-  ChartDetachedWindow(FXApp* app,const FXString& title,ChartDemoWindow* owner,ChartDocument* chart);
-  virtual void create() override;
-  virtual void applyTheme(FXTheme* theme) override;
-  };
-
-
-FXIMPLEMENT(ChartDetachedWindow,FXMainWindow,nullptr,0)
-
-
-class ChartDemoWindow : public FXMainWindow {
-  FXDECLARE(ChartDemoWindow)
-protected:
-  FXMenuBar* menubar;
-  FXMenuPane* filemenu;
-  FXTabBook* tabs;
-  FXStatusBar* statusbar;
-  FXProgressBar* loadingBar;
-  FXFont* verticalLabelFont;
-  FXFont* numberFont;
-  FXSVGIcon* detachIcon;
-  FXSVGIcon* detachHoverIcon;
-  FXSVGIcon* detachPressedIcon;
-  FXFontDesc verticalLabelFontDesc;
-  FXint fontDPI;
-  FXdouble fontScale;
-  FXdouble pixelScale;
-  FXLabel* welcome;
-  std::vector<ChartDocument*> documents;
-  std::vector<FXString> pendingFiles;
-  CSVLoadTask* loader;
-protected:
-  ChartDemoWindow(){ }
-private:
-  ChartDemoWindow(const ChartDemoWindow&);
-  ChartDemoWindow& operator=(const ChartDemoWindow&);
-public:
-  long onCmdOpen(FXObject*,FXSelector,void*);
-  long onCmdQuit(FXObject*,FXSelector,void*);
-  long onXColumn(FXObject*,FXSelector,void*);
-  long onAxisDescription(FXObject*,FXSelector,void*);
-  long onResetZoom(FXObject*,FXSelector,void*);
-  long onPlotChanged(FXObject*,FXSelector,void*);
-  long onSeries(FXObject*,FXSelector,void*);
-  long onSeriesSelection(FXObject*,FXSelector,void*);
-  long onLoadPoll(FXObject*,FXSelector,void*);
-  long onSplitterChanged(FXObject*,FXSelector,void*);
-  long onSeriesFilter(FXObject*,FXSelector,void*);
-  long onSeriesPanel(FXObject*,FXSelector,void*);
-  long onDetach(FXObject*,FXSelector,void*);
-  long onDetachedClose(FXObject*,FXSelector,void*);
-  long onMainClose(FXObject*,FXSelector,void*);
-  void updateChartFonts();
-  void scaleDocumentWidgets(ChartDocument* document,FXWindow* view);
-  void updateDetachedChartFonts(ChartDocument* document,FXTopWindow* view);
-  void detachDocument(ChartDocument* document);
-  void attachDocument(ChartDocument* document,FXbool select=true);
-  void applySeriesFilter(ChartDocument* document);
-  void loadDocumentSettings(ChartDocument* document);
-  void saveDocumentSettings(ChartDocument* document);
-  enum{
-    ID_OPEN=FXMainWindow::ID_LAST,
-    ID_QUIT,
-    ID_XCOLUMN,
-    ID_X_DESCRIPTION,
-    ID_Y_DESCRIPTION,
-    ID_RESET_ZOOM,
-    ID_PLOT_CHANGED,
-    ID_SERIES,
-    ID_SERIES_ALL,
-    ID_SERIES_NONE,
-    ID_LOAD_POLL,
-    ID_SPLITTER_CHANGED,
-    ID_SERIES_FILTER,
-    ID_SERIES_PANEL,
-    ID_DETACH,
-    ID_DETACHED_CLOSE,
-    ID_MAIN_CLOSE,
-    ID_LAST
-    };
-public:
-  ChartDemoWindow(FXApp* app);
-  virtual void create() override;
-  virtual void applyTheme(FXTheme* theme) override;
-  void openFile(const FXString& filename);
-  void startNextLoad();
-  void addLoadedFile(const FXString& filename,CSVTable& table);
-  void rebuild(ChartDocument* document,FXbool keepView=false);
-  virtual ~ChartDemoWindow();
-  };
-
-
 FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_OPEN,ChartDemoWindow::onCmdOpen),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_QUIT,ChartDemoWindow::onCmdQuit),
@@ -332,24 +70,6 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
 FXIMPLEMENT(ChartDemoWindow,FXMainWindow,ChartDemoWindowMap,ARRAYNUMBER(ChartDemoWindowMap))
 
 
-ChartDetachedWindow::ChartDetachedWindow(FXApp* app,const FXString& windowTitle,ChartDemoWindow* owner,ChartDocument* chart):FXMainWindow(app,windowTitle,nullptr,nullptr,DECOR_ALL,40,40,1000,700){
-  chartWindow=owner;
-  document=chart;
-  }
-
-
-void ChartDetachedWindow::create(){
-  FXMainWindow::create();
-  chartWindow->updateDetachedChartFonts(document,this);
-  }
-
-
-void ChartDetachedWindow::applyTheme(FXTheme* theme){
-  FXMainWindow::applyTheme(theme);
-  chartWindow->updateDetachedChartFonts(document,this);
-  }
-
-
 static const FXColor seriesColors[]={
   FXRGB(220,50,47),FXRGB(38,139,210),FXRGB(133,153,0),FXRGB(211,54,130),
   FXRGB(42,161,152),FXRGB(203,75,22),FXRGB(108,113,196),FXRGB(181,137,0),
@@ -360,63 +80,6 @@ static const FXColor seriesColors[]={
 static const FXchar detach_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><g fill=\"none\" stroke=\"#555555\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 static const FXchar detach_hover_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#dbeafe\" stroke=\"#60a5fa\"/><g fill=\"none\" stroke=\"#1d4ed8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 static const FXchar detach_pressed_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#bfdbfe\" stroke=\"#2563eb\"/><g fill=\"none\" stroke=\"#1e40af\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
-
-
-static FXString chartHash(const FXString& text){
-  FXulong hash=14695981039346656037ULL;
-  for(FXint i=0; i<text.length(); i++){
-    hash^=(FXuchar)text[i];
-    hash*=1099511628211ULL;
-    }
-  return FXString::value(hash,16);
-  }
-
-
-static FXString chartColumnKey(const CSVTable& table,FXint column){
-  FXint occurrence=0;
-  for(FXint i=0; i<column; i++){
-    if(table.columns[i].numeric && table.columns[i].name==table.columns[column].name && table.columns[i].timestamp==table.columns[column].timestamp) occurrence++;
-    }
-  return table.columns[column].name+"|"+(table.columns[column].timestamp?"T":"N")+"|"+FXString::value(occurrence);
-  }
-
-
-static FXString chartSchemaKey(const std::vector<FXString>& keys){
-  std::vector<FXString> sorted=keys;
-  FXString signature;
-  std::sort(sorted.begin(),sorted.end());
-  for(FXuval i=0; i<sorted.size(); i++) signature+=FXString::value(sorted[i].length())+":"+sorted[i]+";";
-  return "Schema-"+chartHash(signature);
-  }
-
-
-static FXFont* makeChartFont(FXApp* app,const FXFontDesc& desc,FXint angle,FXint dpi,FXdouble scale){
-  FXFontDesc scaled=desc;
-  scaled.size=FXint(FXdouble(desc.size)*(scale/(FXdouble(dpi)/96.0))+0.5);
-  FXFont* font=new FXFont(app,scaled);
-  if(angle) font->setAngle(angle);
-  font->setResolution(dpi);
-  font->create();
-  return font;
-  }
-
-
-static FXString displayFileName(const FXString& filename){
-  FXint start=0;
-  for(FXint i=0; i<filename.length(); i++){
-    if(filename[i]=='/' || filename[i]=='\\') start=i+1;
-    }
-  return filename.mid(start,filename.length()-start);
-  }
-
-#if defined(WIN32)
-static void attachConsole(){
-  if(AttachConsole(ATTACH_PARENT_PROCESS)){
-    std::freopen("CONOUT$","w",stdout);
-    std::freopen("CONOUT$","w",stderr);
-    }
-  }
-#endif
 
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
@@ -664,25 +327,6 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->serieswidth=205;
   document->seriesshown=true;
   document->filtertext="";
-  document->selectedx=-1;
-
-  for(FXint c=0; c<(FXint)document->table.columns.size(); c++){
-    if(document->table.columns[c].numeric){
-      document->xcolumns.push_back(c);
-      document->seriesKeys.push_back(chartColumnKey(document->table,c));
-      document->visible.push_back(true);
-      }
-    }
-  if(document->xcolumns.empty()){
-    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","No plottable columns were found.");
-    delete document;
-    return;
-    }
-  for(FXint i=0; i<(FXint)document->xcolumns.size(); i++){
-    FXint col=document->xcolumns[i];
-    if(document->table.columns[col].timestamp){ document->selectedx=col; break; }
-    }
-  if(document->selectedx<0) document->selectedx=document->xcolumns[0];
   document->settingsSection=chartSchemaKey(document->seriesKeys);
   loadDocumentSettings(document);
 
@@ -767,7 +411,6 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
     }
   scaleDocumentWidgets(document,this);
   documents.push_back(document);
-  rebuild(document);
   document->tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
@@ -1007,10 +650,10 @@ long ChartDemoWindow::onSplitterChanged(FXObject* sender,FXSelector,void*){
     if(documents[i]->splitter==sender){
       saveDocumentSettings(documents[i]);
       return 1;
-      }
     }
-  return 0;
   }
+  return 0;
+}
 
 
 long ChartDemoWindow::onSeriesFilter(FXObject* sender,FXSelector,void*){
@@ -1019,10 +662,10 @@ long ChartDemoWindow::onSeriesFilter(FXObject* sender,FXSelector,void*){
       applySeriesFilter(documents[i]);
       saveDocumentSettings(documents[i]);
       return 1;
-      }
     }
-  return 0;
   }
+  return 0;
+}
 
 
 long ChartDemoWindow::onSeriesPanel(FXObject* sender,FXSelector,void*){
@@ -1050,7 +693,7 @@ long ChartDemoWindow::onSeriesPanel(FXObject* sender,FXSelector,void*){
     return 1;
     }
   return 0;
-  }
+}
 
 
 long ChartDemoWindow::onDetach(FXObject* sender,FXSelector,void*){
@@ -1058,10 +701,10 @@ long ChartDemoWindow::onDetach(FXObject* sender,FXSelector,void*){
     if(documents[i]->tabitem==(FXTabItem*)sender){
       detachDocument(documents[i]);
       return 1;
-      }
     }
-  return 0;
   }
+  return 0;
+}
 
 
 void ChartDemoWindow::detachDocument(ChartDocument* document){
@@ -1092,7 +735,7 @@ void ChartDemoWindow::detachDocument(ChartDocument* document){
   tabs->recalc();
   tabs->layout();
   saveDocumentSettings(document);
-  }
+}
 
 
 void ChartDemoWindow::attachDocument(ChartDocument* document,FXbool select){
@@ -1131,7 +774,7 @@ void ChartDemoWindow::attachDocument(ChartDocument* document,FXbool select){
   tabs->getParent()->recalc();
   tabs->getParent()->layout();
   saveDocumentSettings(document);
-  }
+}
 
 
 long ChartDemoWindow::onDetachedClose(FXObject* sender,FXSelector,void*){
@@ -1142,7 +785,7 @@ long ChartDemoWindow::onDetachedClose(FXObject* sender,FXSelector,void*){
       }
     }
   return 0;
-  }
+}
 
 
 long ChartDemoWindow::onMainClose(FXObject*,FXSelector,void*){
@@ -1154,7 +797,7 @@ long ChartDemoWindow::onMainClose(FXObject*,FXSelector,void*){
       }
     }
   return 0;
-  }
+}
 
 
 ChartDemoWindow::~ChartDemoWindow(){
@@ -1182,41 +825,21 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete detachHoverIcon;
   delete detachIcon;
   delete filemenu;
-  }
+}
+
+}
 
 
-int main(int argc,char* argv[]){
-  FXint out=1;
-  for(FXint i=1; i<argc; i++){
-    if(std::strcmp(argv[i],"--no-dialogs")!=0) argv[out++]=argv[i];
-    }
-  argc=out;
-  argv[argc]=nullptr;
-  for(FXint i=1; i+1<argc; i++){
-    if(std::strcmp(argv[i],"--check-import")==0){
-#if defined(WIN32)
-      attachConsole();
-#endif
-      CSVTable table;
-      FXString error;
-      if(!readCSV(argv[i+1],table,error)){
-        std::fprintf(stderr,"%s\n",error.text());
-        return 1;
-        }
-      FXint numeric=0,timestamps=0;
-      for(FXuval c=0; c<table.columns.size(); c++){
-        if(table.columns[c].numeric) numeric++;
-        if(table.columns[c].timestamp) timestamps++;
-        }
-      std::printf("%d rows, %d columns, %d numeric, %d timestamp; delimiter=%s; encoding=%s\n",table.rows,(FXint)table.columns.size(),numeric,timestamps,table.delimiter.text(),table.encoding.text());
-      return 0;
-      }
-    }
-  FXApp application("ChartDemo","FOX Chart Demo");
-  application.init(argc,argv);
-  ChartDemoWindow* window=new ChartDemoWindow(&application);
-  application.create();
-  window->show(PLACEMENT_SCREEN);
-  for(FXint i=1; i<argc; i++) window->openFile(argv[i]);
-  return application.run();
-  }
+
+
+
+
+
+
+
+
+
+
+
+
+
