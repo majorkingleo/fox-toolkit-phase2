@@ -100,6 +100,9 @@ public:
   /// Return to the ranges in effect before the first zoom
   void resetZoom();
 
+  /// Set view ranges while retaining the current ranges for reset
+  void setViewRange(FXdouble xlo,FXdouble xhi,FXdouble ylo,FXdouble yhi);
+
   /// Return true if the axes are zoomed away from the data range
   FXbool isZoomed() const { return zoomed; }
 

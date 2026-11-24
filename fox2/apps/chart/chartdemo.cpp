@@ -1,6 +1,7 @@
 #include "fx.h"
 #include "chart.h"
 #include "CSVReader.h"
+#include <algorithm>
 #include <vector>
 #include <cstdio>
 #include <cstring>
@@ -23,12 +24,23 @@ struct ChartDocument {
   FXButton* resetzoom;
   FXLabel* info;
   FXVerticalFrame* series;
+  FXTextField* seriesfilter;
+  FXVerticalFrame* serieslist;
+  FXSplitter* splitter;
+  FXToggleButton* seriesshow;
+  FXButton* seriesclose;
   FXButton* selectAll;
   FXButton* selectNone;
   std::vector<FXint> xcolumns;
+  std::vector<FXString> seriesKeys;
   std::vector<FXCheckButton*> checks;
+  std::vector<FXHorizontalFrame*> seriesrows;
   std::vector<FXbool> visible;
   FXint selectedx;
+  FXint serieswidth;
+  FXbool seriesshown;
+  FXString filtertext;
+  FXString settingsSection;
   };
 
 
@@ -90,7 +102,13 @@ public:
   long onSeries(FXObject*,FXSelector,void*);
   long onSeriesSelection(FXObject*,FXSelector,void*);
   long onLoadPoll(FXObject*,FXSelector,void*);
+  long onSplitterChanged(FXObject*,FXSelector,void*);
+  long onSeriesFilter(FXObject*,FXSelector,void*);
+  long onSeriesPanel(FXObject*,FXSelector,void*);
   void updateChartFonts();
+  void applySeriesFilter(ChartDocument* document);
+  void loadDocumentSettings(ChartDocument* document);
+  void saveDocumentSettings(ChartDocument* document);
   enum{
     ID_OPEN=FXMainWindow::ID_LAST,
     ID_QUIT,
@@ -103,6 +121,9 @@ public:
     ID_SERIES_ALL,
     ID_SERIES_NONE,
     ID_LOAD_POLL,
+    ID_SPLITTER_CHANGED,
+    ID_SERIES_FILTER,
+    ID_SERIES_PANEL,
     ID_LAST
     };
 public:
@@ -112,7 +133,7 @@ public:
   void openFile(const FXString& filename);
   void startNextLoad();
   void addLoadedFile(const FXString& filename,CSVTable& table);
-  void rebuild(ChartDocument* document);
+  void rebuild(ChartDocument* document,FXbool keepView=false);
   virtual ~ChartDemoWindow();
   };
 
@@ -129,6 +150,9 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_ALL,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_NONE,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_TIMEOUT,ChartDemoWindow::ID_LOAD_POLL,ChartDemoWindow::onLoadPoll),
+  FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SPLITTER_CHANGED,ChartDemoWindow::onSplitterChanged),
+  FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SERIES_FILTER,ChartDemoWindow::onSeriesFilter),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_PANEL,ChartDemoWindow::onSeriesPanel),
   };
 
 FXIMPLEMENT(ChartDemoWindow,FXMainWindow,ChartDemoWindowMap,ARRAYNUMBER(ChartDemoWindowMap))
@@ -139,6 +163,34 @@ static const FXColor seriesColors[]={
   FXRGB(42,161,152),FXRGB(203,75,22),FXRGB(108,113,196),FXRGB(181,137,0),
   FXRGB(88,110,117),FXRGB(0,121,107),FXRGB(156,39,176),FXRGB(63,81,181)
   };
+
+
+static FXString chartHash(const FXString& text){
+  FXulong hash=14695981039346656037ULL;
+  for(FXint i=0; i<text.length(); i++){
+    hash^=(FXuchar)text[i];
+    hash*=1099511628211ULL;
+    }
+  return FXString::value(hash,16);
+  }
+
+
+static FXString chartColumnKey(const CSVTable& table,FXint column){
+  FXint occurrence=0;
+  for(FXint i=0; i<column; i++){
+    if(table.columns[i].numeric && table.columns[i].name==table.columns[column].name && table.columns[i].timestamp==table.columns[column].timestamp) occurrence++;
+    }
+  return table.columns[column].name+"|"+(table.columns[column].timestamp?"T":"N")+"|"+FXString::value(occurrence);
+  }
+
+
+static FXString chartSchemaKey(const std::vector<FXString>& keys){
+  std::vector<FXString> sorted=keys;
+  FXString signature;
+  std::sort(sorted.begin(),sorted.end());
+  for(FXuval i=0; i<sorted.size(); i++) signature+=FXString::value(sorted[i].length())+":"+sorted[i]+";";
+  return "Schema-"+chartHash(signature);
+  }
 
 
 static FXFont* makeChartFont(FXApp* app,const FXFontDesc& desc,FXint angle,FXint dpi,FXdouble scale){
@@ -214,6 +266,7 @@ void ChartDemoWindow::applyTheme(FXTheme* theme){
 void ChartDemoWindow::updateChartFonts(){
   FXint windowdpi=getWindowDPI();
   FXdouble scale=getDisplayScale();
+  FXbool scalechanged=fontDPI>0 && windowdpi>0 && windowdpi!=fontDPI;
   FXFont* oldfont;
   if(windowdpi<=0) windowdpi=96;
   if(windowdpi==fontDPI && scale==fontScale) return;
@@ -229,6 +282,11 @@ void ChartDemoWindow::updateChartFonts(){
     documents[i]->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
     documents[i]->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
     documents[i]->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+    if(scalechanged && documents[i]->series->shown()){
+      documents[i]->splitter->setSplit(1,this->scale(documents[i]->serieswidth));
+      documents[i]->splitter->recalc();
+      documents[i]->splitter->layout();
+      }
     }
   delete oldfont;
   fontDPI=windowdpi;
@@ -327,11 +385,20 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->plot=nullptr;
   document->info=nullptr;
   document->series=nullptr;
+  document->seriesfilter=nullptr;
+  document->serieslist=nullptr;
+  document->splitter=nullptr;
+  document->seriesshow=nullptr;
+  document->seriesclose=nullptr;
+  document->serieswidth=205;
+  document->seriesshown=true;
+  document->filtertext="";
   document->selectedx=-1;
 
   for(FXint c=0; c<(FXint)document->table.columns.size(); c++){
     if(document->table.columns[c].numeric){
       document->xcolumns.push_back(c);
+      document->seriesKeys.push_back(chartColumnKey(document->table,c));
       document->visible.push_back(true);
       }
     }
@@ -345,6 +412,8 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
     if(document->table.columns[col].timestamp){ document->selectedx=col; break; }
     }
   if(document->selectedx<0) document->selectedx=document->xcolumns[0];
+  document->settingsSection=chartSchemaKey(document->seriesKeys);
+  loadDocumentSettings(document);
 
   FXString tabtitle=displayFileName(filename);
   FXTabItem* tabitem=new FXTabItem(tabs,tabtitle);
@@ -368,10 +437,12 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->ytoggle->setState(true);
   document->resetzoom=new FXButton(charttoolbar,"Reset Zoom",nullptr,this,ID_RESET_ZOOM,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
   document->resetzoom->disable();
+  document->seriesshow=new FXToggleButton(charttoolbar,"Series","Series",nullptr,nullptr,this,ID_SERIES_PANEL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
   FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
-  FXSplitter* content=new FXSplitter(page,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
+  FXSplitter* content=new FXSplitter(page,this,ID_SPLITTER_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
+  document->splitter=content;
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
   document->plot=new FX2DPlot(chartarea,this,ID_PLOT_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
   document->plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
@@ -388,35 +459,135 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
   document->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
   document->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+  FXSettings& settings=getApp()->reg();
+  FXbool xdescription=FXString(settings.readStringEntry(document->settingsSection.text(),"xdescription","1"))!="0";
+  FXbool ydescription=FXString(settings.readStringEntry(document->settingsSection.text(),"ydescription","1"))!="0";
+  document->xtoggle->setState(xdescription);
+  document->ytoggle->setState(ydescription);
+  document->filtertext=settings.readStringEntry(document->settingsSection.text(),"seriesfilter","");
+  document->seriesshown=FXString(settings.readStringEntry(document->settingsSection.text(),"seriesshown","1"))!="0";
+  if(!xdescription) document->plot->getAxis(FX2DChart::XLO)->setStyle(document->plot->getAxis(FX2DChart::XLO)->getStyle()&~AXIS_LABEL);
+  if(!ydescription) document->plot->getAxis(FX2DChart::YLO)->setStyle(document->plot->getAxis(FX2DChart::YLO)->getStyle()&~AXIS_LABEL);
   document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
-  new FXLabel(document->series,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  FXHorizontalFrame* seriesheader=new FXHorizontalFrame(document->series,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,2,2,2,0,0);
+  new FXLabel(seriesheader,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
+  document->seriesclose=new FXButton(seriesheader,"x",nullptr,this,ID_SERIES_PANEL,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
+  FXHorizontalFrame* filterframe=new FXHorizontalFrame(document->series,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,2,2,2,0,0);
+  document->seriesfilter=new FXTextField(filterframe,18,this,ID_SERIES_FILTER,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X);
+  document->seriesfilter->setText(document->filtertext);
+  document->seriesfilter->setHelpText("Filter series by name");
   FXHorizontalFrame* seriesbuttons=new FXHorizontalFrame(document->series,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,3,0);
   document->selectAll=new FXButton(seriesbuttons,"Select All\tSelect all series",nullptr,this,ID_SERIES_ALL,FRAME_RAISED|LAYOUT_FILL_X);
   document->selectNone=new FXButton(seriesbuttons,"Select None\tSelect no series",nullptr,this,ID_SERIES_NONE,FRAME_RAISED|LAYOUT_FILL_X);
   FXComposite* listparent=document->series;
   if(document->xcolumns.size()>8) listparent=new FXScrollWindow(document->series,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON);
-  FXVerticalFrame* list=new FXVerticalFrame(listparent,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
+  document->serieslist=new FXVerticalFrame(listparent,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_TOP|FRAME_NONE,0,0,0,0,2,2,2,2,0,0);
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
-    FXHorizontalFrame* row=new FXHorizontalFrame(list,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,1,2,1,4,0);
+    FXHorizontalFrame* row=new FXHorizontalFrame(document->serieslist,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,1,2,1,4,0);
     FXFrame* swatch=new FXFrame(row,FRAME_SUNKEN|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT|LAYOUT_CENTER_Y,0,0,12,12);
     swatch->setBackColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))]);
     FXCheckButton* check=new FXCheckButton(row,document->table.columns[col].name,this,ID_SERIES,JUSTIFY_LEFT|ICON_BEFORE_TEXT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
     check->setCheck(true);
     if(col==document->selectedx) check->disable();
     document->checks.push_back(check);
+    document->seriesrows.push_back(row);
     }
   documents.push_back(document);
   rebuild(document);
   tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
+  if(getApp()->reg().existingEntry(document->settingsSection.text(),"split")){
+    FXint split=getApp()->reg().readIntEntry(document->settingsSection.text(),"split",205);
+    if(split>0) document->serieswidth=FXCLAMP(180,split,400);
+    }
+  if(!document->seriesshown) document->series->hide();
+  else content->setSplit(1,scale(document->serieswidth));
+  document->seriesshow->setState(document->series->shown());
+  applySeriesFilter(document);
+  if(FXString(settings.readStringEntry(document->settingsSection.text(),"zoomed","0"))=="1" && settings.existingEntry(document->settingsSection.text(),"xminimum")){
+    document->plot->setViewRange(settings.readRealEntry(document->settingsSection.text(),"xminimum"),settings.readRealEntry(document->settingsSection.text(),"xmaximum"),settings.readRealEntry(document->settingsSection.text(),"yminimum"),settings.readRealEntry(document->settingsSection.text(),"ymaximum"));
+    document->resetzoom->enable();
+    }
+  saveDocumentSettings(document);
   }
 
 
-void ChartDemoWindow::rebuild(ChartDocument* document){
+void ChartDemoWindow::loadDocumentSettings(ChartDocument* document){
+  FXSettings& settings=getApp()->reg();
+  FXString xkey=settings.readStringEntry(document->settingsSection.text(),"xaxis","");
+  if(!xkey.empty()){
+    for(FXuval i=0; i<document->xcolumns.size(); i++){
+      if(document->seriesKeys[i]==xkey){
+        document->selectedx=document->xcolumns[i];
+        break;
+        }
+      }
+    }
+  for(FXuval i=0; i<document->seriesKeys.size(); i++){
+    FXString entry="series-"+chartHash(document->seriesKeys[i]);
+    document->visible[i]=FXString(settings.readStringEntry(document->settingsSection.text(),entry,"1")).toInt()!=0;
+    }
+  }
+
+
+void ChartDemoWindow::saveDocumentSettings(ChartDocument* document){
+  FXSettings& settings=getApp()->reg();
+  settings.writeStringEntry(document->settingsSection.text(),"xaxis",chartColumnKey(document->table,document->selectedx).text());
+  for(FXuval i=0; i<document->seriesKeys.size(); i++){
+    FXString entry="series-"+chartHash(document->seriesKeys[i]);
+    settings.writeStringEntry(document->settingsSection.text(),entry,document->visible[i]?"1":"0");
+    }
+  settings.writeStringEntry(document->settingsSection.text(),"xdescription",document->xtoggle && document->xtoggle->getState()?"1":"0");
+  settings.writeStringEntry(document->settingsSection.text(),"ydescription",document->ytoggle && document->ytoggle->getState()?"1":"0");
+  settings.writeStringEntry(document->settingsSection.text(),"seriesfilter",document->seriesfilter?document->seriesfilter->getText().text():document->filtertext.text());
+  settings.writeStringEntry(document->settingsSection.text(),"seriesshown",document->series && document->series->shown()?"1":"0");
+  if(document->plot){
+    FXAxis* xaxis=document->plot->getAxis(FX2DChart::XLO);
+    FXAxis* yaxis=document->plot->getAxis(FX2DChart::YLO);
+    settings.writeStringEntry(document->settingsSection.text(),"zoomed",document->plot->isZoomed()?"1":"0");
+    settings.writeRealEntry(document->settingsSection.text(),"xminimum",xaxis->getAxisRangeMin());
+    settings.writeRealEntry(document->settingsSection.text(),"xmaximum",xaxis->getAxisRangeMax());
+    settings.writeRealEntry(document->settingsSection.text(),"yminimum",yaxis->getAxisRangeMin());
+    settings.writeRealEntry(document->settingsSection.text(),"ymaximum",yaxis->getAxisRangeMax());
+    }
+  if(document->splitter && document->series && document->series->shown()){
+    FXint width=document->splitter->getSplit(1);
+    if(width>0) document->serieswidth=(FXint)(width/getScale()+0.5);
+    }
+  settings.writeIntEntry(document->settingsSection.text(),"split",document->serieswidth);
+  }
+
+
+void ChartDemoWindow::applySeriesFilter(ChartDocument* document){
+  FXString filter=document->seriesfilter?document->seriesfilter->getText():document->filtertext;
+  filter.lower();
+  document->filtertext=document->seriesfilter?document->seriesfilter->getText():document->filtertext;
+  for(FXuval i=0; i<document->seriesrows.size(); i++){
+    FXint column=document->xcolumns[i];
+    FXString name=document->table.columns[column].name;
+    name.lower();
+    if(filter.empty() || name.find(filter)>=0) document->seriesrows[i]->show();
+    else document->seriesrows[i]->hide();
+    }
+  if(document->serieslist){
+    document->serieslist->recalc();
+    document->serieslist->layout();
+    document->serieslist->getParent()->recalc();
+    document->serieslist->getParent()->layout();
+    }
+  }
+
+
+void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
   FXint xcol=document->selectedx;
   FXint xindex=-1;
+  FXbool waszoomed=keepView && document->plot->isZoomed();
+  FXdouble xminimum=document->plot->getAxis(FX2DChart::XLO)->getAxisRangeMin();
+  FXdouble xmaximum=document->plot->getAxis(FX2DChart::XLO)->getAxisRangeMax();
+  FXdouble yminimum=document->plot->getAxis(FX2DChart::YLO)->getAxisRangeMin();
+  FXdouble ymaximum=document->plot->getAxis(FX2DChart::YLO)->getAxisRangeMax();
   for(FXuval i=0; i<document->xcolumns.size(); i++) if(document->xcolumns[i]==xcol) xindex=(FXint)i;
   if(xindex<0) return;
   document->plot->clearCurves();
@@ -447,6 +618,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document){
   document->plot->getAxis(FX2DChart::XLO)->setLabel(document->table.columns[xcol].name+(document->table.columns[xcol].timestamp?" (seconds from start)":""));
   document->plot->getAxis(FX2DChart::YLO)->setLabel("Value");
   document->plot->fitData();
+  if(waszoomed) document->plot->setViewRange(xminimum,xmaximum,yminimum,ymaximum);
   document->plot->invalidateChart();
   FXint ycount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++) if((FXint)i!=xindex) ycount++;
@@ -464,6 +636,7 @@ long ChartDemoWindow::onXColumn(FXObject* sender,FXSelector,void*){
         rebuild(document);
         if(document->plot->isZoomed()) document->resetzoom->enable();
         else document->resetzoom->disable();
+        saveDocumentSettings(document);
         }
       return 1;
       }
@@ -481,6 +654,7 @@ long ChartDemoWindow::onAxisDescription(FXObject* sender,FXSelector sel,void*){
       if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
       else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
       document->plot->invalidateChart();
+      saveDocumentSettings(document);
       return 1;
       }
     if(FXSELID(sel)==ID_Y_DESCRIPTION && document->ytoggle==sender){
@@ -488,6 +662,7 @@ long ChartDemoWindow::onAxisDescription(FXObject* sender,FXSelector sel,void*){
       if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
       else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
       document->plot->invalidateChart();
+      saveDocumentSettings(document);
       return 1;
       }
     }
@@ -501,6 +676,7 @@ long ChartDemoWindow::onResetZoom(FXObject* sender,FXSelector,void*){
     if(document->resetzoom==sender){
       document->plot->resetZoom();
       document->resetzoom->disable();
+      saveDocumentSettings(document);
       return 1;
       }
     }
@@ -514,6 +690,7 @@ long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void*){
     if(document->plot==sender){
       if(document->plot->isZoomed()) document->resetzoom->enable();
       else document->resetzoom->disable();
+      saveDocumentSettings(document);
       return 1;
       }
     }
@@ -527,7 +704,8 @@ long ChartDemoWindow::onSeries(FXObject* sender,FXSelector,void* ptr){
     for(FXuval i=0; i<document->checks.size(); i++){
       if(document->checks[i]==sender){
         document->visible[i]=(FXbool)(FXuval)ptr;
-        rebuild(document);
+        rebuild(document,true);
+        saveDocumentSettings(document);
         return 1;
         }
       }
@@ -542,7 +720,57 @@ long ChartDemoWindow::onSeriesSelection(FXObject* sender,FXSelector sel,void*){
     ChartDocument* document=documents[d];
     if(sender!=document->selectAll && sender!=document->selectNone) continue;
     for(FXuval i=0; i<document->visible.size(); i++) document->visible[i]=selected;
-    rebuild(document);
+    rebuild(document,true);
+    saveDocumentSettings(document);
+    return 1;
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onSplitterChanged(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->splitter==sender){
+      saveDocumentSettings(documents[i]);
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onSeriesFilter(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->seriesfilter==sender){
+      applySeriesFilter(documents[i]);
+      saveDocumentSettings(documents[i]);
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onSeriesPanel(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(sender!=document->seriesshow && sender!=document->seriesclose) continue;
+    FXbool shown=sender==document->seriesclose?false:document->seriesshow->getState();
+    if(shown && !document->series->shown()){
+      document->series->show();
+      document->splitter->setSplit(1,scale(document->serieswidth));
+      }
+    else if(!shown && document->series->shown()){
+      FXint width=document->splitter->getSplit(1);
+      if(width>0) document->serieswidth=(FXint)(width/getScale()+0.5);
+      document->series->hide();
+      }
+    document->seriesshow->setState(shown);
+    document->splitter->recalc();
+    document->splitter->layout();
+    document->series->getParent()->recalc();
+    document->series->getParent()->layout();
+    saveDocumentSettings(document);
     return 1;
     }
   return 0;
@@ -556,10 +784,14 @@ ChartDemoWindow::~ChartDemoWindow(){
     delete loader;
     loader=nullptr;
     }
-  for(FXuval i=0; i<documents.size(); i++) delete documents[i];
+  for(FXuval i=0; i<documents.size(); i++){
+    saveDocumentSettings(documents[i]);
+    delete documents[i];
+    }
   documents.clear();
   pendingFiles.clear();
   delete tabs;
+  getApp()->reg().write();
   delete verticalLabelFont;
   delete filemenu;
   }

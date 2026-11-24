@@ -434,6 +434,15 @@ void FX2DChart::resetZoom(){
   }
 
 
+// Set view ranges while retaining current ranges for reset
+void FX2DChart::setViewRange(FXdouble xlo,FXdouble xhi,FXdouble ylo,FXdouble yhi){
+  if(!(xlo<xhi) || !(ylo<yhi)) return;
+  saveZoomRanges();
+  zoomed=true;
+  setZoomRanges(xlo,xhi,ylo,yhi);
+  }
+
+
 // Repaint the area covered by two band rectangles
 static void updateBand(FXWindow* window,const FXRectangle& a,const FXRectangle& b){
   FXint x0=a.x;
