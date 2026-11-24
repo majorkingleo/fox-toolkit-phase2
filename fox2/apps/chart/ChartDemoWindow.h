@@ -27,10 +27,14 @@ struct ChartDocument {
   FXdouble detachedFontScale;
   FXdouble detachedPixelScale;
   FX2DPlot* plot;
+  FXScrollBar* xscroll;
   FXComboBox* xcolumn;
   FXToggleButton* xtoggle;
   FXToggleButton* ytoggle;
   FXButton* resetzoom;
+  FXButton* detachbutton;
+  FXToggleButton* cropbutton;
+  FXToggleButton* dragbutton;
   FXLabel* info;
   FXVerticalFrame* series;
   FXTextField* seriesfilter;
@@ -69,6 +73,12 @@ protected:
   FXSVGIcon* detachIcon;
   FXSVGIcon* detachHoverIcon;
   FXSVGIcon* detachPressedIcon;
+  FXSVGIcon* resetZoomIcon;
+  FXSVGIcon* xAxisIcon;
+  FXSVGIcon* yAxisIcon;
+  FXSVGIcon* seriesIcon;
+  FXSVGIcon* cropIcon;
+  FXSVGIcon* dragIcon;
   FXFontDesc verticalLabelFontDesc;
   FXint fontDPI;
   FXdouble fontScale;
@@ -88,7 +98,9 @@ public:
   long onXColumn(FXObject*,FXSelector,void*);
   long onAxisDescription(FXObject*,FXSelector,void*);
   long onResetZoom(FXObject*,FXSelector,void*);
+  long onPlotTool(FXObject* sender,FXSelector,void*);
   long onPlotChanged(FXObject*,FXSelector,void*);
+  long onXScroll(FXObject* sender,FXSelector,void* ptr);
   long onSeries(FXObject*,FXSelector,void*);
   long onSeriesSelection(FXObject*,FXSelector,void*);
   long onLoadPoll(FXObject*,FXSelector,void*);
@@ -104,6 +116,7 @@ public:
   void detachDocument(ChartDocument* document);
   void attachDocument(ChartDocument* document,FXbool select=true);
   void applySeriesFilter(ChartDocument* document);
+  void updateXScroll(ChartDocument* document);
   void loadDocumentSettings(ChartDocument* document);
   void saveDocumentSettings(ChartDocument* document);
   enum{
@@ -118,10 +131,12 @@ public:
     ID_SERIES_ALL,
     ID_SERIES_NONE,
     ID_LOAD_POLL,
+    ID_XSCROLL,
     ID_SPLITTER_CHANGED,
     ID_SERIES_FILTER,
     ID_SERIES_PANEL,
     ID_DETACH,
+    ID_PLOT_TOOL,
     ID_DETACHED_CLOSE,
     ID_MAIN_CLOSE,
     ID_LAST

@@ -6,6 +6,7 @@
 #include "ChartDemoUtils.h"
 #include "ChartTabItem.h"
 #include "ChartDetachedWindow.h"
+#include "icons.h"
 #include <algorithm>
 #include <vector>
 #include <cstdio>
@@ -55,6 +56,8 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_Y_DESCRIPTION,ChartDemoWindow::onAxisDescription),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_RESET_ZOOM,ChartDemoWindow::onResetZoom),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_PLOT_CHANGED,ChartDemoWindow::onPlotChanged),
+  FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_XSCROLL,ChartDemoWindow::onXScroll),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XSCROLL,ChartDemoWindow::onXScroll),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES,ChartDemoWindow::onSeries),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_ALL,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_NONE,ChartDemoWindow::onSeriesSelection),
@@ -63,11 +66,93 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SERIES_FILTER,ChartDemoWindow::onSeriesFilter),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_PANEL,ChartDemoWindow::onSeriesPanel),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_DETACH,ChartDemoWindow::onDetach),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_PLOT_TOOL,ChartDemoWindow::onPlotTool),
   FXMAPFUNC(SEL_CLOSE,ChartDemoWindow::ID_DETACHED_CLOSE,ChartDemoWindow::onDetachedClose),
   FXMAPFUNC(SEL_CLOSE,ChartDemoWindow::ID_MAIN_CLOSE,ChartDemoWindow::onMainClose),
   };
 
 FXIMPLEMENT(ChartDemoWindow,FXMainWindow,ChartDemoWindowMap,ARRAYNUMBER(ChartDemoWindowMap))
+
+
+class ChartDemoPlot : public FX2DPlot {
+  FXDECLARE(ChartDemoPlot)
+protected:
+  FXbool panmode;
+  FXbool panning;
+  FXint pananchorx;
+  FXint pananchory;
+  FXdouble panrange[4];
+protected:
+  ChartDemoPlot():panmode(false),panning(false),pananchorx(0),pananchory(0){ }
+private:
+  ChartDemoPlot(const ChartDemoPlot&);
+  ChartDemoPlot& operator=(const ChartDemoPlot&);
+public:
+  long onLeftBtnPress(FXObject*,FXSelector,void*);
+  long onMotion(FXObject*,FXSelector,void*);
+  long onLeftBtnRelease(FXObject*,FXSelector,void*);
+  long onUngrabbed(FXObject*,FXSelector,void*);
+  ChartDemoPlot(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FX2DPlot(p,tgt,sel,opts,x,y,w,h,pl,pr,pt,pb),panmode(false),panning(false),pananchorx(0),pananchory(0){ }
+  void setPanMode(FXbool mode){ panmode=mode; }
+  };
+
+
+FXDEFMAP(ChartDemoPlot) ChartDemoPlotMap[]={
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,ChartDemoPlot::onLeftBtnPress),
+  FXMAPFUNC(SEL_MOTION,0,ChartDemoPlot::onMotion),
+  FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,ChartDemoPlot::onLeftBtnRelease),
+  FXMAPFUNC(SEL_UNGRABBED,0,ChartDemoPlot::onUngrabbed),
+  };
+
+FXIMPLEMENT(ChartDemoPlot,FX2DPlot,ChartDemoPlotMap,ARRAYNUMBER(ChartDemoPlotMap))
+
+
+long ChartDemoPlot::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
+  if(!panmode) return FX2DChart::onLeftBtnPress(nullptr,0,ptr);
+  FXEvent* event=(FXEvent*)ptr;
+  const FXRectangle& area=getPlotArea();
+  if(!isEnabled() || event->win_x<area.x || event->win_x>=area.x+area.w || event->win_y<area.y || event->win_y>=area.y+area.h) return 0;
+  if(event->click_count>1){
+    resetZoom();
+    return 1;
+    }
+  pananchorx=event->win_x;
+  pananchory=event->win_y;
+  panrange[0]=getAxis(FX2DChart::XLO)->getAxisRangeMin();
+  panrange[1]=getAxis(FX2DChart::XLO)->getAxisRangeMax();
+  panrange[2]=getAxis(FX2DChart::YLO)->getAxisRangeMin();
+  panrange[3]=getAxis(FX2DChart::YLO)->getAxisRangeMax();
+  panning=true;
+  grab();
+  return 1;
+  }
+
+
+long ChartDemoPlot::onMotion(FXObject*,FXSelector,void* ptr){
+  if(!panmode || !panning) return panmode?0:FX2DChart::onMotion(nullptr,0,ptr);
+  FXEvent* event=(FXEvent*)ptr;
+  const FXRectangle& area=getPlotArea();
+  if(area.w<=0 || area.h<=0) return 1;
+  FXdouble dx=(event->win_x-pananchorx)*(panrange[1]-panrange[0])/area.w;
+  FXdouble dy=(event->win_y-pananchory)*(panrange[3]-panrange[2])/area.h;
+  setViewRange(panrange[0]-dx,panrange[1]-dx,panrange[2]+dy,panrange[3]+dy);
+  return 1;
+  }
+
+
+long ChartDemoPlot::onLeftBtnRelease(FXObject*,FXSelector,void*){
+  if(!panmode || !panning) return panmode?0:FX2DChart::onLeftBtnRelease(nullptr,0,nullptr);
+  panning=false;
+  ungrab();
+  return 1;
+  }
+
+
+long ChartDemoPlot::onUngrabbed(FXObject*,FXSelector,void* ptr){
+  if(!panmode || !panning) return panmode?0:FX2DChart::onUngrabbed(nullptr,0,ptr);
+  panning=false;
+  return 1;
+  }
 
 
 static const FXColor seriesColors[]={
@@ -77,7 +162,6 @@ static const FXColor seriesColors[]={
   };
 
 
-static const FXchar detach_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><g fill=\"none\" stroke=\"#555555\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 static const FXchar detach_hover_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#dbeafe\" stroke=\"#60a5fa\"/><g fill=\"none\" stroke=\"#1d4ed8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 static const FXchar detach_pressed_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#bfdbfe\" stroke=\"#2563eb\"/><g fill=\"none\" stroke=\"#1e40af\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 
@@ -91,9 +175,17 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   verticalLabelFontDesc=verticalLabelFont->getFontDesc();
   verticalLabelFont->setAngle(90*64);
   numberFont=app->getNormalFont();
-  detachIcon=new FXSVGIcon(app,(const FXuchar*)detach_svg,FXRGB(192,192,192),0,16,16);
+  FXColor background=app->getTheme()->color(ROLE_WINDOW_BG);
+  FXbool dark=(FXREDVAL(background)*299+FXGREENVAL(background)*587+FXBLUEVAL(background)*114)<128000;
+  detachIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_detach:chart_detach),FXRGB(192,192,192),0,16,16);
   detachHoverIcon=new FXSVGIcon(app,(const FXuchar*)detach_hover_svg,FXRGB(192,192,192),0,16,16);
   detachPressedIcon=new FXSVGIcon(app,(const FXuchar*)detach_pressed_svg,FXRGB(192,192,192),0,16,16);
+  resetZoomIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
+  xAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
+  yAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
+  seriesIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
+  cropIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_crop:chart_crop),FXRGB(192,192,192),0,20,20);
+  dragIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_drag:chart_drag),FXRGB(192,192,192),0,20,20);
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   filemenu=new FXMenuPane(this);
   new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
@@ -120,6 +212,12 @@ void ChartDemoWindow::create(){
   detachIcon->create();
   detachHoverIcon->create();
   detachPressedIcon->create();
+  resetZoomIcon->create();
+  xAxisIcon->create();
+  yAxisIcon->create();
+  seriesIcon->create();
+  cropIcon->create();
+  dragIcon->create();
   updateChartFonts();
   }
 
@@ -317,6 +415,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->detachedFontScale=0.0;
   document->detachedPixelScale=0.0;
   document->plot=nullptr;
+  document->xscroll=nullptr;
   document->info=nullptr;
   document->series=nullptr;
   document->seriesfilter=nullptr;
@@ -368,20 +467,35 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   FXToolBarShell* charttoolshell=new FXToolBarShell(this,FRAME_RAISED);
   FXToolBar* charttoolbar=new FXToolBar(docksite,charttoolshell,LAYOUT_DOCK_NEXT|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_RAISED);
   new FXToolBarGrip(charttoolbar,charttoolbar,FXToolBar::ID_TOOLBARGRIP,TOOLBARGRIP_DOUBLE);
-  document->xtoggle=new FXToggleButton(charttoolbar,"X Description\tShow X axis description","X Description\tHide X axis description",nullptr,nullptr,this,ID_X_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
-  document->ytoggle=new FXToggleButton(charttoolbar,"Y Description\tShow Y axis description","Y Description\tHide Y axis description",nullptr,nullptr,this,ID_Y_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->xtoggle=new FXToggleButton(charttoolbar,"","",xAxisIcon,xAxisIcon,this,ID_X_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->xtoggle->setTipText("X Description");
+  document->xtoggle->setAltTipText("X Description");
+  document->ytoggle=new FXToggleButton(charttoolbar,"","",yAxisIcon,yAxisIcon,this,ID_Y_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->ytoggle->setTipText("Y Description");
+  document->ytoggle->setAltTipText("Y Description");
   document->xtoggle->setState(true);
   document->ytoggle->setState(true);
-  document->resetzoom=new FXButton(charttoolbar,"Reset Zoom",nullptr,this,ID_RESET_ZOOM,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->resetzoom=new FXButton(charttoolbar,"",resetZoomIcon,this,ID_RESET_ZOOM,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->resetzoom->setTipText("Reset zoom");
   document->resetzoom->disable();
-  document->seriesshow=new FXToggleButton(charttoolbar,"Series","Series",nullptr,nullptr,this,ID_SERIES_PANEL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
+  document->seriesshow=new FXToggleButton(charttoolbar,"Series","Series",seriesIcon,seriesIcon,this,ID_SERIES_PANEL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
+  document->detachbutton=new FXButton(charttoolbar,"",detachIcon,this,ID_DETACH,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
+  document->detachbutton->setTipText("Detach chart into a new window");
+  document->cropbutton=new FXToggleButton(charttoolbar,"","",cropIcon,cropIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
+  document->cropbutton->setTipText("Crop to a rectangular plot selection");
+  document->dragbutton=new FXToggleButton(charttoolbar,"","",dragIcon,dragIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
+  document->dragbutton->setTipText("Drag to pan the plot");
+  document->cropbutton->setState(true);
   FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
   FXSplitter* content=new FXSplitter(page,this,ID_SPLITTER_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
   document->splitter=content;
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
-  document->plot=new FX2DPlot(chartarea,this,ID_PLOT_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  FXVerticalFrame* chartcolumn=new FXVerticalFrame(chartarea,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
+  document->plot=new ChartDemoPlot(chartcolumn,this,ID_PLOT_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  document->xscroll=new FXScrollBar(chartcolumn,this,ID_XSCROLL,SCROLLBAR_HORIZONTAL|LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM);
+  document->xscroll->setLine(1000);
   document->plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
   document->plot->getAxis(FX2DChart::YHI)->setStyle(AXIS_OFF);
   document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
@@ -562,6 +676,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
   FXint ycount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++) if((FXint)i!=xindex) ycount++;
   document->info->setText(FXString::value(document->table.rows)+" rows; "+FXString::value(visiblecount)+" plotted / "+FXString::value(ycount)+" numeric series; "+document->table.delimiter+"; "+document->table.encoding);
+  updateXScroll(document);
   }
 
 
@@ -623,15 +738,75 @@ long ChartDemoWindow::onResetZoom(FXObject* sender,FXSelector,void*){
   }
 
 
+long ChartDemoWindow::onPlotTool(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(sender!=document->cropbutton && sender!=document->dragbutton) continue;
+    FXbool panmode=sender==document->dragbutton && document->dragbutton->getState();
+    document->cropbutton->setState(!panmode);
+    document->dragbutton->setState(panmode);
+    static_cast<ChartDemoPlot*>(document->plot)->setPanMode(panmode);
+    return 1;
+    }
+  return 0;
+  }
+
+
 long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void*){
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
     if(document->plot==sender){
       if(document->plot->isZoomed()) document->resetzoom->enable();
       else document->resetzoom->disable();
+      updateXScroll(document);
       saveDocumentSettings(document);
       return 1;
       }
+    }
+  return 0;
+  }
+
+
+void ChartDemoWindow::updateXScroll(ChartDocument* document){
+  FXAxis* axis=document->plot->getAxis(FX2DChart::XLO);
+  FXdouble datamin=axis->getDataRangeMin();
+  FXdouble datamax=axis->getDataRangeMax();
+  FXdouble viewmin=axis->getAxisRangeMin();
+  FXdouble viewmax=axis->getAxisRangeMax();
+  FXdouble datarange=datamax-datamin;
+  FXdouble viewrange=viewmax-viewmin;
+  FXint range=1000000;
+  FXint page=range;
+  FXint position=0;
+  if(datarange>0.0 && viewrange>0.0){
+    page=FXCLAMP(1,(FXint)(viewrange/datarange*range+0.5),range);
+    position=(FXint)((viewmin-datamin)/datarange*range+0.5);
+    position=FXCLAMP(0,position,range-page);
+    }
+  document->xscroll->setRange(range,false);
+  document->xscroll->setPage(page,false);
+  document->xscroll->setPosition(position,false);
+  }
+
+
+long ChartDemoWindow::onXScroll(FXObject* sender,FXSelector,void* ptr){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->xscroll!=sender) continue;
+    FXAxis* axis=document->plot->getAxis(FX2DChart::XLO);
+    FXdouble datamin=axis->getDataRangeMin();
+    FXdouble datamax=axis->getDataRangeMax();
+    FXdouble datarange=datamax-datamin;
+    FXdouble viewrange=axis->getAxisRangeMax()-axis->getAxisRangeMin();
+    if(datarange<=0.0 || viewrange<=0.0) return 1;
+    FXint position=(FXint)(FXival)ptr;
+    FXdouble xminimum=datamin+datarange*(FXdouble)position/document->xscroll->getRange();
+    FXdouble xmaximum=xminimum+viewrange;
+    FXAxis* yaxis=document->plot->getAxis(FX2DChart::YLO);
+    document->plot->setViewRange(xminimum,xmaximum,yaxis->getAxisRangeMin(),yaxis->getAxisRangeMax());
+    updateXScroll(document);
+    saveDocumentSettings(document);
+    return 1;
     }
   return 0;
   }
@@ -724,6 +899,11 @@ long ChartDemoWindow::onDetach(FXObject* sender,FXSelector,void*){
       detachDocument(documents[i]);
       return 1;
     }
+    if(documents[i]->detachbutton==sender){
+      if(documents[i]->detachWindow) attachDocument(documents[i]);
+      else detachDocument(documents[i]);
+      return 1;
+      }
   }
   return 0;
 }
@@ -751,6 +931,7 @@ void ChartDemoWindow::detachDocument(ChartDocument* document){
   document->page->show();
   document->tabitem->hide();
   document->placeholder->hide();
+  document->detachbutton->setTipText("Return chart to tabs");
   host->recalc();
   host->layout();
   window->show(PLACEMENT_SCREEN);
@@ -769,6 +950,7 @@ void ChartDemoWindow::attachDocument(ChartDocument* document,FXbool select){
   document->detachWindow=nullptr;
   document->detachHost=nullptr;
   document->tabitem->show();
+  document->detachbutton->setTipText("Detach chart into a new window");
   document->page->show();
   document->splitter->setSplit(1,scale(document->serieswidth));
   document->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
@@ -846,6 +1028,12 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete detachPressedIcon;
   delete detachHoverIcon;
   delete detachIcon;
+  delete resetZoomIcon;
+  delete xAxisIcon;
+  delete yAxisIcon;
+  delete seriesIcon;
+  delete cropIcon;
+  delete dragIcon;
   delete filemenu;
 }
 

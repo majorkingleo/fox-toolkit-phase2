@@ -37,6 +37,12 @@ The recommended foreground colors are:
 - Disabled state: derive a 40–50% opacity foreground from the theme,
   rather than changing the icon geometry.
 
+Chartdemo embeds both variants with `reswrap` and chooses the light or dark
+resource from the current window-background luminance when its icons are
+created. The toolbar uses the X/Y label, reset zoom, data series, crop, drag,
+and detach icons. Crop selects the chart's rectangular zoom gesture; Drag
+switches the plot to left-button panning.
+
 A FOX implementation can select variants like this:
 
 ```cpp
