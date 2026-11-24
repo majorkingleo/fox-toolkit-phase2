@@ -172,6 +172,19 @@ void FXDC::drawLine(FXint,FXint,FXint,FXint){ }
 void FXDC::drawLines(const FXPoint*,FXuint){ }
 
 
+// Draw multiple lines with floating-point coordinates
+void FXDC::drawLinesF(const FXPointF* points,FXuint npoints){
+  if(npoints==1){
+    drawPoint((FXint)Math::lrint(points[0].x),(FXint)Math::lrint(points[0].y));
+    }
+  else{
+    for(FXuint i=1; i<npoints; i++){
+      drawLine((FXint)Math::lrint(points[i-1].x),(FXint)Math::lrint(points[i-1].y),(FXint)Math::lrint(points[i].x),(FXint)Math::lrint(points[i].y));
+      }
+    }
+  }
+
+
 
 // Draw multiple lines. All points are drawn connected.
 // First point's coordinate is relative to drawable's origin, but

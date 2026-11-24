@@ -25,6 +25,9 @@
 namespace FX {
 
 
+class FXPointF;
+
+
 /// Drawing (BITBLT) functions
 enum FXFunction {
   BLT_CLR,                        /// D := 0
@@ -205,6 +208,7 @@ public:
   /// Draw lines
   virtual void drawLine(FXint x1,FXint y1,FXint x2,FXint y2);
   virtual void drawLines(const FXPoint* points,FXuint npoints);
+  virtual void drawLinesF(const FXPointF* points,FXuint npoints);
   virtual void drawLinesRel(const FXPoint* points,FXuint npoints);
   virtual void drawLineSegments(const FXSegment* segments,FXuint nsegments);
 

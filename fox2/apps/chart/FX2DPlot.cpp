@@ -178,6 +178,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
   FXint i,j,px,py;
   FXdouble xmin,xmax,ymin,ymax,xscale,yscale;
   FXdouble x,y;
+  FXfloat fx,fy;
   FXTime start;
   if(plotleft>=plotright || plottop>=plotbottom) return;
   start=FXThread::steadytime();
@@ -189,7 +190,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
     FXAxis *yaxis;
     FXData *xdata;
     FXData *ydata;
-    FXArray<FXPoint> points;
+    FXArray<FXPointF> points;
     FXint count;
     if(!curve->isVisible()) continue;
     xaxis=getAxis(curve->getXAxis());
@@ -206,7 +207,6 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
     if(count<=0) continue;
     xscale=((FXdouble)(plotright-plotleft))/(xmax-xmin);
     yscale=((FXdouble)(plotbottom-plottop))/(ymax-ymin);
-
     // Curves
     if(curve->getLineStyle().style!=LINESTYLE_NONE){
       dc.setForeground(curve->getLineStyle().color);
@@ -216,16 +216,16 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
         x=xdata->get(j);
         y=ydata->get(j);
         if(!Math::fpFinite(x) || !Math::fpFinite(y)){
-          if(points.no()>1) dc.drawLines(points.data(),points.no());
+          if(points.no()>1) dc.drawLinesF(points.data(),points.no());
           points.clear();
           continue;
           }
-        px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
-        py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
-        if(points.no() && points.tail().x==px && points.tail().y==py) continue;
-        points.append(FXPoint((FXshort)px,(FXshort)py));
+        fx=(FXfloat)(plotleft+(x-xmin)*xscale);
+        fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
+        if(points.no() && points.tail().x==fx && points.tail().y==fy) continue;
+        points.append(FXPointF(fx,fy));
         }
-      if(points.no()>1) dc.drawLines(points.data(),points.no());
+      if(points.no()>1) dc.drawLinesF(points.data(),points.no());
       }
 
     // Markers

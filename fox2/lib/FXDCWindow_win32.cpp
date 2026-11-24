@@ -98,6 +98,25 @@ static FXbool drawAntialiasedLines(HDC hdc,const FXPoint* points,FXuint npoints,
   return graphics.DrawLines(&pen,path.data(),(INT)npoints)==Gdiplus::Ok;
   }
 
+
+static FXbool drawAntialiasedLines(HDC hdc,const FXPointF* points,FXuint npoints,FXColor color,FXuint linewidth,FXJoinStyle join){
+  if(!fxgdiplus() || npoints<2 || npoints>0x7fffffffU) return false;
+  std::vector<Gdiplus::PointF> path;
+  path.reserve(npoints);
+  for(FXuint i=0; i<npoints; i++) path.push_back(Gdiplus::PointF(points[i].x,points[i].y));
+  Gdiplus::Graphics graphics(hdc);
+  if(graphics.GetLastStatus()!=Gdiplus::Ok) return false;
+  graphics.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+  graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+  Gdiplus::Pen pen(Gdiplus::Color(255,FXREDVAL(color),FXGREENVAL(color),FXBLUEVAL(color)),linewidth?(Gdiplus::REAL)linewidth:1.0f);
+  if(join==JOIN_ROUND) pen.SetLineJoin(Gdiplus::LineJoinRound);
+  else if(join==JOIN_BEVEL) pen.SetLineJoin(Gdiplus::LineJoinBevel);
+  else pen.SetLineJoin(Gdiplus::LineJoinMiter);
+  pen.SetStartCap(Gdiplus::LineCapFlat);
+  pen.SetEndCap(Gdiplus::LineCapFlat);
+  return graphics.DrawLines(&pen,path.data(),(INT)npoints)==Gdiplus::Ok;
+  }
+
 }
 
 /********************************************************************************
@@ -292,6 +311,19 @@ void FXDCWindow::drawLines(const FXPoint* points,FXuint npoints){
     ::EndPath((HDC)ctx);
     ::StrokePath((HDC)ctx);
     }
+  }
+
+
+// Draw lines with floating-point coordinates
+void FXDCWindow::drawLinesF(const FXPointF* points,FXuint npoints){
+  if(!surface){ fxerror("FXDCWindow::drawLines: DC not connected to drawable.\n"); }
+  if(antialias && style==LINE_SOLID && width<=1 && !needsPath){
+    if(drawAntialiasedLines((HDC)ctx,points,npoints,fg,width,join)) return;
+    }
+  std::vector<FXPoint> rounded;
+  rounded.reserve(npoints);
+  for(FXuint i=0; i<npoints; i++) rounded.push_back(FXPoint((FXshort)Math::lrint(points[i].x),(FXshort)Math::lrint(points[i].y)));
+  drawLines(rounded.data(),npoints);
   }
 
 

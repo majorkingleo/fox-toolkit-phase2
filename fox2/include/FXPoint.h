@@ -71,6 +71,20 @@ public:
   };
 
 
+/// Floating-point point
+class FXAPI FXPointF {
+public:
+  FXfloat x;
+  FXfloat y;
+public:
+
+  /// Constructors
+  FXPointF(){ }
+  FXPointF(const FXPointF& p):x(p.x),y(p.y){ }
+  FXPointF(FXfloat xx,FXfloat yy):x(xx),y(yy){ }
+  };
+
+
 /// Scale operators
 inline FXPoint operator*(const FXPoint& p,FXshort c){ return FXPoint(p.x*c,p.y*c); }
 inline FXPoint operator*(FXshort c,const FXPoint& p){ return FXPoint(c*p.x,c*p.y); }

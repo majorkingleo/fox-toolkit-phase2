@@ -98,6 +98,7 @@ public:
   /// Draw lines
   virtual void drawLine(FXint x1,FXint y1,FXint x2,FXint y2) override;
   virtual void drawLines(const FXPoint* points,FXuint npoints) override;
+  virtual void drawLinesF(const FXPointF* points,FXuint npoints) override;
   virtual void drawLinesRel(const FXPoint* points,FXuint npoints) override;
   virtual void drawLineSegments(const FXSegment* segments,FXuint nsegments) override;
 
