@@ -1,4 +1,5 @@
 #include "fx.h"
+#include "FXSVGIcon.h"
 #include "chart.h"
 #include "CSVReader.h"
 #include <algorithm>
@@ -17,6 +18,16 @@ using namespace FXCHART;
 struct ChartDocument {
   FXString filename;
   CSVTable table;
+  FXTabItem* tabitem;
+  FXVerticalFrame* page;
+  FXVerticalFrame* placeholder;
+  FXMainWindow* detachWindow;
+  FXVerticalFrame* detachHost;
+  FXFont* detachedVerticalFont;
+  FXFont* detachedNumberFont;
+  FXint detachedFontDPI;
+  FXdouble detachedFontScale;
+  FXdouble detachedPixelScale;
   FX2DPlot* plot;
   FXComboBox* xcolumn;
   FXToggleButton* xtoggle;
@@ -42,6 +53,129 @@ struct ChartDocument {
   FXString filtertext;
   FXString settingsSection;
   };
+
+
+class ChartTabItem : public FXTabItem {
+  FXDECLARE(ChartTabItem)
+protected:
+  FXIcon* normalIcon;
+  FXIcon* hoverIcon;
+  FXIcon* pressedIcon;
+  FXbool iconHot;
+  FXbool iconPressed;
+protected:
+  ChartTabItem(){ }
+  FXbool overDetachIcon(FXint x,FXint y) const;
+  void updateDetachIcon();
+private:
+  ChartTabItem(const ChartTabItem&);
+  ChartTabItem& operator=(const ChartTabItem&);
+public:
+  long onEnter(FXObject*,FXSelector,void*);
+  long onLeave(FXObject*,FXSelector,void*);
+  long onUngrabbed(FXObject*,FXSelector,void*);
+  long onMotion(FXObject*,FXSelector,void*);
+  long onLeftBtnPress(FXObject*,FXSelector,void*);
+  long onLeftBtnRelease(FXObject*,FXSelector,void*);
+  ChartTabItem(FXTabBar* p,const FXString& text,FXIcon* normal,FXIcon* hover,FXIcon* pressed,FXObject* target,FXSelector selector);
+  };
+
+
+FXDEFMAP(ChartTabItem) ChartTabItemMap[]={
+  FXMAPFUNC(SEL_ENTER,0,ChartTabItem::onEnter),
+  FXMAPFUNC(SEL_LEAVE,0,ChartTabItem::onLeave),
+  FXMAPFUNC(SEL_UNGRABBED,0,ChartTabItem::onUngrabbed),
+  FXMAPFUNC(SEL_MOTION,0,ChartTabItem::onMotion),
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,ChartTabItem::onLeftBtnPress),
+  FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,ChartTabItem::onLeftBtnRelease),
+  };
+
+FXIMPLEMENT(ChartTabItem,FXTabItem,ChartTabItemMap,ARRAYNUMBER(ChartTabItemMap))
+
+
+ChartTabItem::ChartTabItem(FXTabBar* p,const FXString& text,FXIcon* normal,FXIcon* hover,FXIcon* pressed,FXObject* tgt,FXSelector selector):FXTabItem(p,text,normal,(TAB_TOP_NORMAL&~ICON_BEFORE_TEXT)|ICON_AFTER_TEXT){
+  normalIcon=normal;
+  hoverIcon=hover;
+  pressedIcon=pressed;
+  iconHot=false;
+  iconPressed=false;
+  setTarget(tgt);
+  setSelector(selector);
+  setTipText("Detach chart into a new window; close it to return to tabs");
+  }
+
+
+FXbool ChartTabItem::overDetachIcon(FXint x,FXint y) const {
+  return x>=width-scale(22) && x<width && y>=0 && y<height;
+  }
+
+
+void ChartTabItem::updateDetachIcon(){
+  FXIcon* nextIcon=iconPressed?pressedIcon:(iconHot?hoverIcon:normalIcon);
+  if(getIcon()!=nextIcon) setIcon(nextIcon);
+  }
+
+
+long ChartTabItem::onEnter(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  iconHot=overDetachIcon(event->win_x,event->win_y);
+  updateDetachIcon();
+  return 1;
+  }
+
+
+long ChartTabItem::onLeave(FXObject*,FXSelector,void*){
+  iconHot=false;
+  updateDetachIcon();
+  return 1;
+  }
+
+
+long ChartTabItem::onUngrabbed(FXObject* sender,FXSelector sel,void* ptr){
+  if(iconPressed){
+    iconPressed=false;
+    iconHot=false;
+    updateDetachIcon();
+    return 1;
+    }
+  return FXTabItem::onUngrabbed(sender,sel,ptr);
+  }
+
+
+long ChartTabItem::onMotion(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  iconHot=overDetachIcon(event->win_x,event->win_y);
+  updateDetachIcon();
+  return iconHot || iconPressed;
+  }
+
+
+long ChartTabItem::onLeftBtnPress(FXObject* sender,FXSelector sel,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if(isEnabled() && overDetachIcon(event->win_x,event->win_y)){
+    grab();
+    iconHot=true;
+    iconPressed=true;
+    updateDetachIcon();
+    return 1;
+    }
+  return FXTabItem::onLeftBtnPress(sender,sel,ptr);
+  }
+
+
+long ChartTabItem::onLeftBtnRelease(FXObject* sender,FXSelector sel,void* ptr){
+  if(iconPressed){
+    FXEvent* event=(FXEvent*)ptr;
+    FXbool click=overDetachIcon(event->win_x,event->win_y);
+    ungrab();
+    iconPressed=false;
+    iconHot=click;
+    updateDetachIcon();
+    if(click && target) target->tryHandle(this,FXSEL(SEL_COMMAND,message),nullptr);
+    return 1;
+    }
+  return FXTabItem::onLeftBtnRelease(sender,sel,ptr);
+  }
 
 
 class CSVLoadTask : public FXThread {
@@ -70,6 +204,29 @@ public:
   };
 
 
+class ChartDemoWindow;
+
+
+class ChartDetachedWindow : public FXMainWindow {
+  FXDECLARE(ChartDetachedWindow)
+protected:
+  ChartDemoWindow* chartWindow;
+  ChartDocument* document;
+protected:
+  ChartDetachedWindow(){ }
+private:
+  ChartDetachedWindow(const ChartDetachedWindow&);
+  ChartDetachedWindow& operator=(const ChartDetachedWindow&);
+public:
+  ChartDetachedWindow(FXApp* app,const FXString& title,ChartDemoWindow* owner,ChartDocument* chart);
+  virtual void create() override;
+  virtual void applyTheme(FXTheme* theme) override;
+  };
+
+
+FXIMPLEMENT(ChartDetachedWindow,FXMainWindow,nullptr,0)
+
+
 class ChartDemoWindow : public FXMainWindow {
   FXDECLARE(ChartDemoWindow)
 protected:
@@ -80,9 +237,13 @@ protected:
   FXProgressBar* loadingBar;
   FXFont* verticalLabelFont;
   FXFont* numberFont;
+  FXSVGIcon* detachIcon;
+  FXSVGIcon* detachHoverIcon;
+  FXSVGIcon* detachPressedIcon;
   FXFontDesc verticalLabelFontDesc;
   FXint fontDPI;
   FXdouble fontScale;
+  FXdouble pixelScale;
   FXLabel* welcome;
   std::vector<ChartDocument*> documents;
   std::vector<FXString> pendingFiles;
@@ -105,7 +266,14 @@ public:
   long onSplitterChanged(FXObject*,FXSelector,void*);
   long onSeriesFilter(FXObject*,FXSelector,void*);
   long onSeriesPanel(FXObject*,FXSelector,void*);
+  long onDetach(FXObject*,FXSelector,void*);
+  long onDetachedClose(FXObject*,FXSelector,void*);
+  long onMainClose(FXObject*,FXSelector,void*);
   void updateChartFonts();
+  void scaleDocumentWidgets(ChartDocument* document,FXWindow* view);
+  void updateDetachedChartFonts(ChartDocument* document,FXTopWindow* view);
+  void detachDocument(ChartDocument* document);
+  void attachDocument(ChartDocument* document,FXbool select=true);
   void applySeriesFilter(ChartDocument* document);
   void loadDocumentSettings(ChartDocument* document);
   void saveDocumentSettings(ChartDocument* document);
@@ -124,6 +292,9 @@ public:
     ID_SPLITTER_CHANGED,
     ID_SERIES_FILTER,
     ID_SERIES_PANEL,
+    ID_DETACH,
+    ID_DETACHED_CLOSE,
+    ID_MAIN_CLOSE,
     ID_LAST
     };
 public:
@@ -153,9 +324,30 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SPLITTER_CHANGED,ChartDemoWindow::onSplitterChanged),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SERIES_FILTER,ChartDemoWindow::onSeriesFilter),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_PANEL,ChartDemoWindow::onSeriesPanel),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_DETACH,ChartDemoWindow::onDetach),
+  FXMAPFUNC(SEL_CLOSE,ChartDemoWindow::ID_DETACHED_CLOSE,ChartDemoWindow::onDetachedClose),
+  FXMAPFUNC(SEL_CLOSE,ChartDemoWindow::ID_MAIN_CLOSE,ChartDemoWindow::onMainClose),
   };
 
 FXIMPLEMENT(ChartDemoWindow,FXMainWindow,ChartDemoWindowMap,ARRAYNUMBER(ChartDemoWindowMap))
+
+
+ChartDetachedWindow::ChartDetachedWindow(FXApp* app,const FXString& windowTitle,ChartDemoWindow* owner,ChartDocument* chart):FXMainWindow(app,windowTitle,nullptr,nullptr,DECOR_ALL,40,40,1000,700){
+  chartWindow=owner;
+  document=chart;
+  }
+
+
+void ChartDetachedWindow::create(){
+  FXMainWindow::create();
+  chartWindow->updateDetachedChartFonts(document,this);
+  }
+
+
+void ChartDetachedWindow::applyTheme(FXTheme* theme){
+  FXMainWindow::applyTheme(theme);
+  chartWindow->updateDetachedChartFonts(document,this);
+  }
 
 
 static const FXColor seriesColors[]={
@@ -163,6 +355,11 @@ static const FXColor seriesColors[]={
   FXRGB(42,161,152),FXRGB(203,75,22),FXRGB(108,113,196),FXRGB(181,137,0),
   FXRGB(88,110,117),FXRGB(0,121,107),FXRGB(156,39,176),FXRGB(63,81,181)
   };
+
+
+static const FXchar detach_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><g fill=\"none\" stroke=\"#555555\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
+static const FXchar detach_hover_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#dbeafe\" stroke=\"#60a5fa\"/><g fill=\"none\" stroke=\"#1d4ed8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
+static const FXchar detach_pressed_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#bfdbfe\" stroke=\"#2563eb\"/><g fill=\"none\" stroke=\"#1e40af\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 
 
 static FXString chartHash(const FXString& text){
@@ -226,10 +423,14 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   loader=nullptr;
   fontDPI=0;
   fontScale=0.0;
+  pixelScale=0.0;
   verticalLabelFont=new FXFont(app,"helvetica",14,FXFont::Normal,FXFont::Straight,FONTENCODING_DEFAULT,FXFont::NonExpanded,FXFont::Scalable|FXFont::Rotatable);
   verticalLabelFontDesc=verticalLabelFont->getFontDesc();
   verticalLabelFont->setAngle(90*64);
   numberFont=app->getNormalFont();
+  detachIcon=new FXSVGIcon(app,(const FXuchar*)detach_svg,FXRGB(192,192,192),0,16,16);
+  detachHoverIcon=new FXSVGIcon(app,(const FXuchar*)detach_hover_svg,FXRGB(192,192,192),0,16,16);
+  detachPressedIcon=new FXSVGIcon(app,(const FXuchar*)detach_pressed_svg,FXRGB(192,192,192),0,16,16);
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   filemenu=new FXMenuPane(this);
   new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
@@ -245,12 +446,17 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   new FXTabItem(tabs,"Welcome");
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,12,12,12,12);
   welcome=new FXLabel(page,"Open one or more CSV files to plot their numeric columns.\n\nThe importer detects common delimiters, quoted fields, UTF encodings and Windows-1252 text.\nDate/time columns are detected and selected as the default X axis when available.",nullptr,JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  setTarget(this);
+  setSelector(ID_MAIN_CLOSE);
   }
 
 
 // Create the main window and realize its chart font for the current monitor
 void ChartDemoWindow::create(){
   FXMainWindow::create();
+  detachIcon->create();
+  detachHoverIcon->create();
+  detachPressedIcon->create();
   updateChartFonts();
   }
 
@@ -266,14 +472,16 @@ void ChartDemoWindow::applyTheme(FXTheme* theme){
 void ChartDemoWindow::updateChartFonts(){
   FXint windowdpi=getWindowDPI();
   FXdouble scale=getDisplayScale();
-  FXbool scalechanged=fontDPI>0 && windowdpi>0 && windowdpi!=fontDPI;
+  FXdouble pixelscale=getScale();
   FXFont* oldfont;
   if(windowdpi<=0) windowdpi=96;
-  if(windowdpi==fontDPI && scale==fontScale) return;
+  if(windowdpi==fontDPI && scale==fontScale && pixelscale==pixelScale) return;
+  FXbool scalechanged=fontDPI>0 && (windowdpi!=fontDPI || pixelscale!=pixelScale);
   oldfont=verticalLabelFont;
   verticalLabelFont=makeChartFont(getApp(),verticalLabelFontDesc,oldfont->getAngle(),windowdpi,scale);
   numberFont=getApp()->getNormalFont(getWindowDPI());
   for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->detachWindow) continue;
     documents[i]->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
     documents[i]->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
     documents[i]->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
@@ -282,6 +490,7 @@ void ChartDemoWindow::updateChartFonts(){
     documents[i]->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
     documents[i]->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
     documents[i]->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+    scaleDocumentWidgets(documents[i],this);
     if(scalechanged && documents[i]->series->shown()){
       documents[i]->splitter->setSplit(1,this->scale(documents[i]->serieswidth));
       documents[i]->splitter->recalc();
@@ -291,6 +500,58 @@ void ChartDemoWindow::updateChartFonts(){
   delete oldfont;
   fontDPI=windowdpi;
   fontScale=scale;
+  pixelScale=pixelscale;
+  }
+
+
+void ChartDemoWindow::scaleDocumentWidgets(ChartDocument* document,FXWindow* view){
+  document->plot->setMarginLeft(view->scale(12));
+  document->plot->setMarginRight(view->scale(12));
+  document->plot->setMarginTop(view->scale(12));
+  document->plot->setMarginBottom(view->scale(12));
+  document->plot->getAxis(FX2DChart::YLO)->setLabelOffset(view->scale(40));
+  document->plot->getAxis(FX2DChart::YHI)->setLabelOffset(view->scale(40));
+  document->xcolumn->setWidth(view->scale(280));
+  document->series->setPadLeft(view->scale(5));
+  document->series->setPadRight(view->scale(5));
+  document->series->setPadTop(view->scale(5));
+  document->series->setPadBottom(view->scale(5));
+  for(FXuval i=0; i<document->seriesrows.size(); i++){
+    FXWindow* swatch=document->seriesrows[i]->getFirst();
+    if(swatch){
+      swatch->setWidth(view->scale(12));
+      swatch->setHeight(view->scale(12));
+      }
+    }
+  }
+
+
+void ChartDemoWindow::updateDetachedChartFonts(ChartDocument* document,FXTopWindow* view){
+  FXint windowdpi=view->getWindowDPI();
+  FXdouble scale=view->getDisplayScale();
+  FXdouble pixelscale=view->getScale();
+  FXFont* oldfont;
+  if(windowdpi<=0) windowdpi=96;
+  if(windowdpi==document->detachedFontDPI && scale==document->detachedFontScale && pixelscale==document->detachedPixelScale) return;
+  oldfont=document->detachedVerticalFont;
+  document->detachedVerticalFont=makeChartFont(getApp(),verticalLabelFontDesc,90*64,windowdpi,scale);
+  document->detachedNumberFont=getApp()->getNormalFont(windowdpi);
+  document->plot->getAxis(FX2DChart::XLO)->setLabelFont(document->detachedNumberFont);
+  document->plot->getAxis(FX2DChart::XHI)->setLabelFont(document->detachedNumberFont);
+  document->plot->getAxis(FX2DChart::YLO)->setLabelFont(document->detachedVerticalFont);
+  document->plot->getAxis(FX2DChart::YHI)->setLabelFont(document->detachedVerticalFont);
+  document->plot->getAxis(FX2DChart::XLO)->setNumberFont(document->detachedNumberFont);
+  document->plot->getAxis(FX2DChart::XHI)->setNumberFont(document->detachedNumberFont);
+  document->plot->getAxis(FX2DChart::YLO)->setNumberFont(document->detachedNumberFont);
+  document->plot->getAxis(FX2DChart::YHI)->setNumberFont(document->detachedNumberFont);
+  scaleDocumentWidgets(document,view);
+  if(document->series->shown()) document->splitter->setSplit(1,view->scale(document->serieswidth));
+  document->splitter->recalc();
+  document->splitter->layout();
+  delete oldfont;
+  document->detachedFontDPI=windowdpi;
+  document->detachedFontScale=scale;
+  document->detachedPixelScale=pixelscale;
   }
 
 
@@ -382,6 +643,16 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->table.rows=table.rows;
   document->table.encoding=table.encoding;
   document->table.delimiter=table.delimiter;
+  document->tabitem=nullptr;
+  document->page=nullptr;
+  document->placeholder=nullptr;
+  document->detachWindow=nullptr;
+  document->detachHost=nullptr;
+  document->detachedVerticalFont=nullptr;
+  document->detachedNumberFont=nullptr;
+  document->detachedFontDPI=0;
+  document->detachedFontScale=0.0;
+  document->detachedPixelScale=0.0;
   document->plot=nullptr;
   document->info=nullptr;
   document->series=nullptr;
@@ -416,8 +687,9 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   loadDocumentSettings(document);
 
   FXString tabtitle=displayFileName(filename);
-  FXTabItem* tabitem=new FXTabItem(tabs,tabtitle);
+  document->tabitem=new ChartTabItem(tabs,tabtitle,detachIcon,detachHoverIcon,detachPressedIcon,this,ID_DETACH);
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,4,4,4,4);
+  document->page=page;
   FXDockSite* docksite=new FXDockSite(page,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   FXToolBarShell* axisshell=new FXToolBarShell(this,FRAME_RAISED);
   FXToolBar* axistoolbar=new FXToolBar(docksite,axisshell,LAYOUT_DOCK_NEXT|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|FRAME_RAISED);
@@ -493,9 +765,10 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
     document->checks.push_back(check);
     document->seriesrows.push_back(row);
     }
+  scaleDocumentWidgets(document,this);
   documents.push_back(document);
   rebuild(document);
-  tabitem->create();
+  document->tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
   if(getApp()->reg().existingEntry(document->settingsSection.text(),"split")){
@@ -554,7 +827,8 @@ void ChartDemoWindow::saveDocumentSettings(ChartDocument* document){
     }
   if(document->splitter && document->series && document->series->shown()){
     FXint width=document->splitter->getSplit(1);
-    if(width>0) document->serieswidth=(FXint)(width/getScale()+0.5);
+    FXdouble viewscale=document->detachWindow?document->detachWindow->getScale():getScale();
+    if(width>0) document->serieswidth=(FXint)(width/viewscale+0.5);
     }
   settings.writeIntEntry(document->settingsSection.text(),"split",document->serieswidth);
   }
@@ -758,11 +1032,13 @@ long ChartDemoWindow::onSeriesPanel(FXObject* sender,FXSelector,void*){
     FXbool shown=sender==document->seriesclose?false:document->seriesshow->getState();
     if(shown && !document->series->shown()){
       document->series->show();
-      document->splitter->setSplit(1,scale(document->serieswidth));
+      FXMainWindow* view=document->detachWindow?document->detachWindow:this;
+      document->splitter->setSplit(1,view->scale(document->serieswidth));
       }
     else if(!shown && document->series->shown()){
       FXint width=document->splitter->getSplit(1);
-      if(width>0) document->serieswidth=(FXint)(width/getScale()+0.5);
+      FXdouble viewscale=document->detachWindow?document->detachWindow->getScale():getScale();
+      if(width>0) document->serieswidth=(FXint)(width/viewscale+0.5);
       document->series->hide();
       }
     document->seriesshow->setState(shown);
@@ -777,6 +1053,110 @@ long ChartDemoWindow::onSeriesPanel(FXObject* sender,FXSelector,void*){
   }
 
 
+long ChartDemoWindow::onDetach(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->tabitem==(FXTabItem*)sender){
+      detachDocument(documents[i]);
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+void ChartDemoWindow::detachDocument(ChartDocument* document){
+  if(!document || document->detachWindow) return;
+  for(FXuval i=0; i<documents.size(); i++) if(documents[i]==document){
+    tabs->setCurrent((FXint)i+1);
+    break;
+    }
+  document->placeholder=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,4,4,4,4);
+  document->placeholder->create();
+  document->placeholder->reparent(tabs,document->page);
+  FXString windowTitle="FOX Chart Demo - "+displayFileName(document->filename);
+  ChartDetachedWindow* window=new ChartDetachedWindow(getApp(),windowTitle,this,document);
+  FXVerticalFrame* host=new FXVerticalFrame(window,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_NONE);
+  window->setTarget(this);
+  window->setSelector(ID_DETACHED_CLOSE);
+  window->create();
+  document->detachWindow=window;
+  document->detachHost=host;
+  document->page->reparent(host);
+  document->splitter->setSplit(1,window->scale(document->serieswidth));
+  document->page->show();
+  document->tabitem->hide();
+  document->placeholder->hide();
+  host->recalc();
+  host->layout();
+  window->show(PLACEMENT_SCREEN);
+  tabs->recalc();
+  tabs->layout();
+  saveDocumentSettings(document);
+  }
+
+
+void ChartDemoWindow::attachDocument(ChartDocument* document,FXbool select){
+  if(!document || !document->detachWindow) return;
+  saveDocumentSettings(document);
+  document->page->reparent(tabs,document->placeholder);
+  delete document->placeholder;
+  document->placeholder=nullptr;
+  document->detachWindow=nullptr;
+  document->detachHost=nullptr;
+  document->tabitem->show();
+  document->page->show();
+  document->splitter->setSplit(1,scale(document->serieswidth));
+  document->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
+  document->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
+  document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
+  document->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
+  document->plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
+  document->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
+  document->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
+  document->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+  delete document->detachedVerticalFont;
+  document->detachedVerticalFont=nullptr;
+  document->detachedNumberFont=nullptr;
+  document->detachedFontDPI=0;
+  document->detachedFontScale=0.0;
+  document->detachedPixelScale=0.0;
+  if(select){
+    for(FXuval i=0; i<documents.size(); i++) if(documents[i]==document){
+      tabs->setCurrent((FXint)i+1);
+      break;
+      }
+    }
+  tabs->recalc();
+  tabs->layout();
+  tabs->getParent()->recalc();
+  tabs->getParent()->layout();
+  saveDocumentSettings(document);
+  }
+
+
+long ChartDemoWindow::onDetachedClose(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->detachWindow==(FXMainWindow*)sender){
+      attachDocument(documents[i]);
+      return 0;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onMainClose(FXObject*,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->detachWindow){
+      FXMainWindow* window=documents[i]->detachWindow;
+      attachDocument(documents[i],false);
+      window->close(false);
+      }
+    }
+  return 0;
+  }
+
+
 ChartDemoWindow::~ChartDemoWindow(){
   getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL));
   if(loader){
@@ -785,6 +1165,11 @@ ChartDemoWindow::~ChartDemoWindow(){
     loader=nullptr;
     }
   for(FXuval i=0; i<documents.size(); i++){
+    if(documents[i]->detachWindow){
+      FXMainWindow* window=documents[i]->detachWindow;
+      attachDocument(documents[i],false);
+      delete window;
+      }
     saveDocumentSettings(documents[i]);
     delete documents[i];
     }
@@ -793,6 +1178,9 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete tabs;
   getApp()->reg().write();
   delete verticalLabelFont;
+  delete detachPressedIcon;
+  delete detachHoverIcon;
+  delete detachIcon;
   delete filemenu;
   }
 
