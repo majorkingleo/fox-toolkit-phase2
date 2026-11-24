@@ -398,6 +398,25 @@ any external file:
 - `fox-dark` — dark counterparts derived by inverting lightness on the classic
   palette, keeping the same role structure.
 
+Also ship the imported Breeze presets as compiled FOX theme data:
+
+- `breeze` / `breeze-light` — Breeze GTK 6.8.3 light role colors and metrics.
+- `breeze-dark` — Breeze GTK 6.8.3 dark role colors and metrics.
+
+The upstream GTK payload is vendored under `fox2/themes/breeze/{light,dark}`;
+`import-breeze.sh` refreshes those folders from a Linux theme installation.
+Only the semantic role values used by FOX are compiled into the FOX library;
+GTK stylesheets and GTK-specific assets remain source/reference material and
+are not runtime dependencies of a FOX executable.
+
+Applications may call `FXApp::setAllowedThemes(mask,defaultPreset)` before
+`init()` to restrict registry-selected startup themes to a mask of the built-in
+preset IDs. A disallowed saved choice (including a custom file or external GTK
+path) falls back to the requested allowed preset. With no restriction, the
+existing global `SETTINGS/theme` behavior remains available. This controls the
+startup selection path; an application that deliberately calls `setTheme()`
+still owns that runtime decision.
+
 ## Phases
 
 | Phase | Example | Work | Acceptance |
@@ -413,6 +432,7 @@ any external file:
 | T6 | `hello` | `fxthemeimport` for **GTK only**: GTK 3/4 CSS subset first, then GTK 2 `gtkrc`. One parser shared by the CLI tool and the runtime loader. Includes radius/border/gradient/shadow values | Importing Breeze and Adwaita GTK CSS produces valid theme files with a summary |
 | T7 | `hello` | Theme cache: serialize resolved themes via `FXStream`, key on source path+size+mtime+importer version, re-import on mismatch or corruption | Second startup loads the theme without parsing CSS; stale or corrupt cache regenerates silently |
 | T8 | `hello` | Portal/`gsettings` detection for light/dark selection | `prefer-dark` selects `fox-dark` without configuration |
+| B1 | `hello`, `button` | Vendor Breeze GTK source/license, compile Breeze light/dark role presets, and add an application-level built-in theme allowlist | Both Breeze variants work without GTK files at runtime; a restricted app ignores disallowed global theme settings |
 | KDE | `hello` | `.colors` importer (`[Colors:*]` sections, `r,g,b` triplets, QFont strings) | Breeze Light/Dark and Emerald convert with no warnings and render correctly |
 | — | — | **Left open: Qt QSS and Xresources importers** | Not started; see the status list below |
 
@@ -1730,6 +1750,31 @@ runtime on both the X11 and Wayland builds: the dialog resizes from 659x513 to
 699x663, all widgets repaint once at their final geometry, the footer note
 remains at the bottom, and the preview shows rounded buttons with radius 5.
 
+
+**Progress: compiled Breeze presets and app theme allowlists (2026-11-24).**
+The installed Breeze GTK 6.8.3 light and dark payloads are copied to
+`fox2/themes/breeze/light` and `fox2/themes/breeze/dark`, with the upstream
+BSD-3-Clause and CC0 license texts and attribution notice. The Linux helper
+`fox2/themes/breeze/import-breeze.sh` refreshes those payloads from
+`~/.local/share/themes`, `~/.themes` or `/usr/share/themes`, or from an explicit
+source directory.
+
+`FXTheme::setBreezeLight()` and `setBreezeDark()` provide the imported semantic
+colors and metrics as compiled code, requiring no theme files or GTK libraries
+at runtime. `FXApp::init()` recognizes `breeze`/`breeze-light` and
+`breeze-dark`. Applications can call
+`setAllowedThemes(THEME_PRESET_...,defaultPreset)` before `init()`; a saved
+global selection outside that set is ignored and the allowed default is used.
+When no allowlist is configured, external theme imports and existing settings
+continue to work.
+
+The importer was run against both vendored GTK 3 themes: each reported 837 CSS
+rules and zero warnings. Breeze light resolved surface `#EFF0F1`, text
+`#232629`, accent `#3DAEE9`, radius 5; Breeze dark resolved surface `#202326`,
+text `#FCFCFC`, accent `#3DAEE9`, radius 5. The FOX 2 Win32 CMake build passes;
+a focused linked test verifies both preset colors/metrics and that the
+application allowlist validates and falls back when its requested default is
+not allowed.
 
 ## Validation
 

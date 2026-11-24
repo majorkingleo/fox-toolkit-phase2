@@ -329,6 +329,9 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
   updatebatch=0;                          // No update batch in progress
   windowCount=0;                          // Number of windows
   initialized=false;                      // Not yet initialized
+  allowedThemes=THEME_PRESET_ALL;          // All built-in themes available
+  defaultTheme=THEME_PRESET_CLASSIC;       // Classic fallback
+  restrictThemes=false;                   // Preserve unrestricted selection
   dpiawareness=DPIAWARENESS_UNKNOWN;      // DPI awareness not established
   dpi=0;                                  // DPI not determined
   dpiautoscale=false;                     // Do not follow the DPI yet
@@ -1221,21 +1224,53 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
   // Refresh theme from the palette
   refreshTheme();
 
-  // Load theme selection: "classic", "dark", a .foxtheme file, or a GTK
-  // theme directory/style sheet which is imported on the spot and cached.
-  // "auto" or no selection at all follows the desktop's light/dark preference
+  // Load theme selection: built-in presets, a .foxtheme file, or a GTK theme
+  // directory/style sheet which is imported on the spot and cached.  An
+  // application may restrict selection to a set of built-in presets.
   FXString themename=registry.readStringEntry("SETTINGS","theme",nullptr);
-  if(themename.empty() || themename=="auto"){
+  if(restrictThemes){
+    FXuint selected=0;
+    if(themename.empty() || themename=="auto"){
+      if(FXDesktopSettings::getColorScheme()==SCHEME_DARK){
+        if(allowedThemes&THEME_PRESET_BREEZE_DARK) selected=THEME_PRESET_BREEZE_DARK;
+        else if(allowedThemes&THEME_PRESET_DARK) selected=THEME_PRESET_DARK;
+        }
+      else{
+        if(allowedThemes&THEME_PRESET_BREEZE) selected=THEME_PRESET_BREEZE;
+        else if(allowedThemes&THEME_PRESET_CLASSIC) selected=THEME_PRESET_CLASSIC;
+        }
+      }
+    else if(FXString::comparecase(themename,"classic")==0) selected=THEME_PRESET_CLASSIC;
+    else if(FXString::comparecase(themename,"dark")==0) selected=THEME_PRESET_DARK;
+    else if(FXString::comparecase(themename,"breeze")==0 || FXString::comparecase(themename,"breeze-light")==0) selected=THEME_PRESET_BREEZE;
+    else if(FXString::comparecase(themename,"breeze-dark")==0) selected=THEME_PRESET_BREEZE_DARK;
+    if(!(allowedThemes&selected)) selected=defaultTheme;
+    switch(selected){
+      case THEME_PRESET_DARK: theme.setDark(); setTheme(theme); break;
+      case THEME_PRESET_BREEZE: theme.setBreezeLight(); setTheme(theme); break;
+      case THEME_PRESET_BREEZE_DARK: theme.setBreezeDark(); setTheme(theme); break;
+      default: theme.setClassic(); setTheme(theme); break;
+      }
+    }
+  else if(themename.empty() || themename=="auto"){
     if(FXDesktopSettings::getColorScheme()==SCHEME_DARK){
       theme.setDark();
       setTheme(theme);
       }
     }
-  else if(themename=="dark"){
+  else if(FXString::comparecase(themename,"dark")==0){
     theme.setDark();
     setTheme(theme);
     }
-  else if(themename!="classic"){
+  else if(FXString::comparecase(themename,"breeze")==0 || FXString::comparecase(themename,"breeze-light")==0){
+    theme.setBreezeLight();
+    setTheme(theme);
+    }
+  else if(FXString::comparecase(themename,"breeze-dark")==0){
+    theme.setBreezeDark();
+    setTheme(theme);
+    }
+  else if(FXString::comparecase(themename,"classic")!=0){
     FXTheme loaded;
 
     // A .foxtheme file is read directly; anything else is an external source
@@ -1868,6 +1903,24 @@ static void applyThemeNoUpdate(FXWindow* win,FXTheme* theme){
     if(win->getFirst()) applyThemeNoUpdate(win->getFirst(),theme);
     win=win->getNext();
     }
+  }
+
+
+// Restrict startup theme selection to built-in presets
+FXbool FXApp::setAllowedThemes(FXuint themes,FXuint defaultPreset){
+  if(initialized) return false;
+  themes&=THEME_PRESET_ALL;
+  if(!themes) return false;
+  if((defaultPreset&themes)==0 || (defaultPreset&(defaultPreset-1))!=0){
+    if(themes&THEME_PRESET_CLASSIC) defaultPreset=THEME_PRESET_CLASSIC;
+    else if(themes&THEME_PRESET_DARK) defaultPreset=THEME_PRESET_DARK;
+    else if(themes&THEME_PRESET_BREEZE) defaultPreset=THEME_PRESET_BREEZE;
+    else defaultPreset=THEME_PRESET_BREEZE_DARK;
+    }
+  allowedThemes=themes;
+  defaultTheme=defaultPreset;
+  restrictThemes=true;
+  return true;
   }
 
 

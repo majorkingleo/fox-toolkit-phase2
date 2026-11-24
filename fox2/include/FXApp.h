@@ -248,6 +248,9 @@ private:
   FXColor          selMenuBackColor;    // Select background color in menus
   FXTheme          theme;               // Semantic colors and metrics
   FXStyle          style;               // Chrome renderer for the theme
+  FXuint           allowedThemes;       // Built-in themes permitted by this application
+  FXuint           defaultTheme;        // Fallback built-in theme when selection is disallowed
+  FXbool           restrictThemes;      // Restrict registry theme selection to built-ins
   FXCursor        *waitCursor;          // Current wait cursor
   FXuint           waitCount;           // Number of times wait cursor was called
   FXint            updatebatch;         // Nested beginUpdate()/endUpdate() calls
@@ -936,6 +939,13 @@ public:
 
   /// Change theme; updates the default palette colors
   void setTheme(const FXTheme& thm);
+
+  /// Restrict startup theme selection to built-in preset mask; call before init()
+  /// A disallowed registry theme falls back to defaultPreset
+  FXbool setAllowedThemes(FXuint themes,FXuint defaultPreset=THEME_PRESET_CLASSIC);
+
+  /// Return the built-in theme presets allowed by this application
+  FXuint getAllowedThemes() const { return allowedThemes; }
 
   /// Refresh theme colors from the default palette
   void refreshTheme();

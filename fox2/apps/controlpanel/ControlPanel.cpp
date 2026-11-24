@@ -1137,6 +1137,16 @@ long FXDesktopSetup::onColorTheme(FXObject*,FXSelector,void* ptr){
     return 1;
     }
 
+  // Compiled FOX theme presets
+  if(entry->kind==THEME_ENTRY_BUILTIN){
+    themesource=entry->source;
+    if(entry->preset==THEME_PRESET_BREEZE) theme.setBreezeLight();
+    else theme.setBreezeDark();
+    applyThemeColors(theme);
+    updateThemeStatus(tr("Built-in theme: ")+entry->name);
+    return 1;
+    }
+
   // Installed GTK, KDE or FOX theme.  Force a fresh import when the theme is
   // being chosen explicitly so we do not reuse a stale cached result.
   if(loadTheme(entry->source,theme,summary,true)){
@@ -1287,7 +1297,7 @@ FXbool FXDesktopSetup::matchesThemeFilter(const ThemeEntry* entry) const {
 // Return the index of the entry for a source path, or -1
 FXint FXDesktopSetup::findThemeEntry(const FXString& source) const {
   for(FXival i=0; i<themeentries.no(); ++i){
-    if(themeentries[i]->kind==THEME_ENTRY_SOURCE && themeentries[i]->source==source) return (FXint)i;
+    if((themeentries[i]->kind==THEME_ENTRY_SOURCE || themeentries[i]->kind==THEME_ENTRY_BUILTIN) && themeentries[i]->source==source) return (FXint)i;
     }
   return -1;
   }
@@ -1358,10 +1368,20 @@ void FXDesktopSetup::discoverThemes(){
   }
 
 
-// Load a .foxtheme file or import a GTK/KDE source, using the cache unless
+// Load a built-in preset, .foxtheme file or GTK/KDE source; use the cache unless
 // a fresh import is explicitly requested by the UI.
 FXbool FXDesktopSetup::loadTheme(const FXString& source,FXTheme& theme,FXString& summary,FXbool refreshcache){
   FXCSS css;
+  if(source=="breeze-light"){
+    theme.setBreezeLight();
+    summary=tr("Built-in Breeze Light theme");
+    return true;
+    }
+  if(source=="breeze-dark"){
+    theme.setBreezeDark();
+    summary=tr("Built-in Breeze Dark theme");
+    return true;
+    }
   if(source.right(9)==".foxtheme"){
     if(!theme.load(source)) return false;
     summary=tr("Theme file: ")+source;
@@ -1408,6 +1428,10 @@ void FXDesktopSetup::initColors(){
   // Built-in presets first
   for(i=0; i<numThemes; i++){
     addThemeEntry(tr(ColorThemes[i].name),FXString::null,i,THEME_ENTRY_PRESET,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+    if(i==0){
+      addThemeEntry(tr("Breeze-Light"),"breeze-light",THEME_PRESET_BREEZE,THEME_ENTRY_BUILTIN,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+      addThemeEntry(tr("Breeze-Dark"),"breeze-dark",THEME_PRESET_BREEZE_DARK,THEME_ENTRY_BUILTIN,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+      }
     }
 
   // Installed themes, sorted by name
@@ -1446,7 +1470,9 @@ void FXDesktopSetup::initColors(){
          (theme_current.menuback==ColorThemes[i].menuback) &&
          (theme_current.tipfore==ColorThemes[i].tipfore) &&
          (theme_current.tipback==ColorThemes[i].tipback)){
-        selected=i;
+        for(FXival j=0; j<themeentries.no(); ++j){
+          if(themeentries[j]->kind==THEME_ENTRY_PRESET && themeentries[j]->preset==i){ selected=(FXint)j; break; }
+          }
         break;
         }
       }
@@ -1478,6 +1504,7 @@ void FXDesktopSetup::initColors(){
     ThemeEntry *entry=themeentries[selected];
     switch(entry->kind){
       case THEME_ENTRY_SOURCE:  updateThemeStatus(tr("Source: ")+entry->source); break;
+      case THEME_ENTRY_BUILTIN: updateThemeStatus(tr("Built-in theme: ")+entry->name); break;
       case THEME_ENTRY_CURRENT: updateThemeStatus(tr("Colors from the current settings")); break;
       case THEME_ENTRY_USER:    updateThemeStatus(tr("Custom colors")); break;
       default:                  updateThemeStatus(tr("Built-in color theme: ")+entry->name); break;
@@ -1827,8 +1854,8 @@ int main(int argc,char **argv){
     fxmessage("Usage: Controlpanel [applicationname [vendorname]]\n"
               "       Controlpanel --list-themes\n"
               "\n"
-              "--list-themes prints the installed themes the chooser offers, one\n"
-              "name and source path per line, and exits.\n");
+              "--list-themes prints the themes the chooser offers, one name and\n"
+              "source identifier per line (empty for built-in presets), and exits.\n");
     return 1;
     }
 
@@ -1841,12 +1868,10 @@ int main(int argc,char **argv){
   // Set application and vendor names
   main->setApplicationAndVendor(appnm,vndnm);
 
-  // Option that lists the installed themes the chooser offers; the discovery
-  // is what a packager, or a test on another platform, needs to check without
-  // clicking through the dialog
+  // List all themes the chooser offers; this lets a test or packager verify
+  // built-in presets and installed sources without clicking through the dialog
   if(appnm=="--list-themes"){
     for(FXint i=0; i<main->getThemeCount(); i++){
-      if(main->getThemeSource(i).empty()) continue;
       fxmessage("%s\t%s\n",main->getThemeName(i).text(),main->getThemeSource(i).text());
       }
     return 0;

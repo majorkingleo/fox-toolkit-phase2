@@ -103,6 +103,16 @@ enum {
   };
 
 
+/// Built-in theme presets which may be allowed for an application
+enum {
+  THEME_PRESET_CLASSIC=1,
+  THEME_PRESET_DARK=2,
+  THEME_PRESET_BREEZE=4,
+  THEME_PRESET_BREEZE_DARK=8,
+  THEME_PRESET_ALL=15
+  };
+
+
 /**
 * A theme holds semantic colors, metrics and font roles, resolved centrally
 * by the application so that widgets do not repeat palette assumptions.  The
@@ -154,6 +164,12 @@ public:
 
   /// Switch to the dark preset
   void setDark();
+
+  /// Switch to the built-in Breeze light preset
+  void setBreezeLight();
+
+  /// Switch to the built-in Breeze dark preset
+  void setBreezeDark();
 
   /// Load theme from an INI file; returns true if the file parsed
   FXbool load(const FXString& path);

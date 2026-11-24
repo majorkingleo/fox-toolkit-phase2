@@ -41,6 +41,7 @@ struct ColorTheme {
 // Kinds of entries in the theme chooser
 enum {
   THEME_ENTRY_PRESET,   // One of the built-in FOX color themes
+  THEME_ENTRY_BUILTIN,  // A built-in FXTheme preset
   THEME_ENTRY_SOURCE,   // A theme imported from a file or directory
   THEME_ENTRY_CURRENT,  // Colors found in the settings file, no known source
   THEME_ENTRY_USER      // Colors edited by hand

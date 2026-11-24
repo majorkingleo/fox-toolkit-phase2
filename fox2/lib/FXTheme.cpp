@@ -128,6 +128,64 @@ void FXTheme::setDark(){
   }
 
 
+// Switch to the built-in Breeze light preset, imported from Breeze GTK 6.8.3
+void FXTheme::setBreezeLight(){
+  setClassic();
+  colors[ROLE_WINDOW_BG]=FXRGB(255,255,255);
+  colors[ROLE_SURFACE]=FXRGB(239,240,241);
+  colors[ROLE_SURFACE_HILITE]=FXRGB(244,245,246);
+  colors[ROLE_SURFACE_SHADOW]=FXRGB(160,161,161);
+  colors[ROLE_TEXT]=FXRGB(35,38,41);
+  colors[ROLE_TEXT_DISABLED]=FXRGB(126,128,131);
+  colors[ROLE_BORDER]=FXRGB(198,200,201);
+  colors[ROLE_SELECTION_BG]=FXRGB(61,174,233);
+  colors[ROLE_SELECTION_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_MENU_SEL_BG]=FXRGB(61,174,233);
+  colors[ROLE_MENU_SEL_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_TOOLTIP_BG]=FXRGB(247,247,247);
+  colors[ROLE_TOOLTIP_TEXT]=FXRGB(35,38,41);
+  colors[ROLE_ACCENT]=FXRGB(61,174,233);
+  colors[ROLE_FOCUS_RING]=FXRGB(61,174,233);
+  colors[ROLE_BUTTON]=FXRGB(252,252,252);
+  colors[ROLE_HOVER_RING]=FXRGB(61,174,233);
+  metrics[METRIC_PADDING]=6;
+  metrics[METRIC_ROW_HEIGHT]=15;
+  metrics[METRIC_CORNER_RADIUS]=5;
+  metrics[METRIC_CHECK_SIZE]=14;
+  metrics[METRIC_SCROLLBAR_WIDTH]=14;
+  metrics[METRIC_SHADOW_SIZE]=8;
+  }
+
+
+// Switch to the built-in Breeze dark preset, imported from Breeze GTK 6.8.3
+void FXTheme::setBreezeDark(){
+  setClassic();
+  colors[ROLE_WINDOW_BG]=FXRGB(20,22,24);
+  colors[ROLE_SURFACE]=FXRGB(32,35,38);
+  colors[ROLE_SURFACE_HILITE]=FXRGB(106,108,110);
+  colors[ROLE_SURFACE_SHADOW]=FXRGB(21,23,25);
+  colors[ROLE_TEXT]=FXRGB(252,252,252);
+  colors[ROLE_TEXT_DISABLED]=FXRGB(153,155,156);
+  colors[ROLE_BORDER]=FXRGB(76,78,81);
+  colors[ROLE_SELECTION_BG]=FXRGB(61,174,233);
+  colors[ROLE_SELECTION_TEXT]=FXRGB(252,252,252);
+  colors[ROLE_MENU_SEL_BG]=FXRGB(61,174,233);
+  colors[ROLE_MENU_SEL_TEXT]=FXRGB(252,252,252);
+  colors[ROLE_TOOLTIP_BG]=FXRGB(41,44,48);
+  colors[ROLE_TOOLTIP_TEXT]=FXRGB(252,252,252);
+  colors[ROLE_ACCENT]=FXRGB(61,174,233);
+  colors[ROLE_FOCUS_RING]=FXRGB(61,174,233);
+  colors[ROLE_BUTTON]=FXRGB(41,44,48);
+  colors[ROLE_HOVER_RING]=FXRGB(61,174,233);
+  metrics[METRIC_PADDING]=6;
+  metrics[METRIC_ROW_HEIGHT]=15;
+  metrics[METRIC_CORNER_RADIUS]=5;
+  metrics[METRIC_CHECK_SIZE]=14;
+  metrics[METRIC_SCROLLBAR_WIDTH]=14;
+  metrics[METRIC_SHADOW_SIZE]=8;
+  }
+
+
 // Load theme from an INI file
 FXbool FXTheme::load(const FXString& path){
   static const FXchar *colorkeys[ROLE_LAST]={
