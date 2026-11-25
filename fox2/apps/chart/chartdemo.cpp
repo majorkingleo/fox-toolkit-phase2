@@ -480,8 +480,6 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->resetzoom->disable();
   document->seriesshow=new FXToggleButton(charttoolbar,"","",seriesIcon,seriesIcon,this,ID_SERIES_PANEL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
   document->seriesshow->setTipText("Show/hide the series panel");
-  document->detachbutton=new FXButton(charttoolbar,"",detachIcon,this,ID_DETACH,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
-  document->detachbutton->setTipText("Detach chart into a new window");
   document->cropbutton=new FXToggleButton(charttoolbar,"","",cropIcon,cropIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
   document->cropbutton->setTipText("Crop to a rectangular plot selection");
   document->dragbutton=new FXToggleButton(charttoolbar,"","",dragIcon,dragIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
@@ -900,11 +898,6 @@ long ChartDemoWindow::onDetach(FXObject* sender,FXSelector,void*){
       detachDocument(documents[i]);
       return 1;
     }
-    if(documents[i]->detachbutton==sender){
-      if(documents[i]->detachWindow) attachDocument(documents[i]);
-      else detachDocument(documents[i]);
-      return 1;
-      }
   }
   return 0;
 }
@@ -932,7 +925,6 @@ void ChartDemoWindow::detachDocument(ChartDocument* document){
   document->page->show();
   document->tabitem->hide();
   document->placeholder->hide();
-  document->detachbutton->setTipText("Return chart to tabs");
   host->recalc();
   host->layout();
   window->show(PLACEMENT_SCREEN);
@@ -951,7 +943,6 @@ void ChartDemoWindow::attachDocument(ChartDocument* document,FXbool select){
   document->detachWindow=nullptr;
   document->detachHost=nullptr;
   document->tabitem->show();
-  document->detachbutton->setTipText("Detach chart into a new window");
   document->page->show();
   document->splitter->setSplit(1,scale(document->serieswidth));
   document->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);

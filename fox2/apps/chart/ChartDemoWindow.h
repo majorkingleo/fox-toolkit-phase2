@@ -32,7 +32,6 @@ struct ChartDocument {
   FXToggleButton* xtoggle;
   FXToggleButton* ytoggle;
   FXButton* resetzoom;
-  FXButton* detachbutton;
   FXToggleButton* cropbutton;
   FXToggleButton* dragbutton;
   FXLabel* info;
