@@ -57,13 +57,13 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
   new FXButton(buttons,"&Cancel",nullptr,this,FXDialogBox::ID_CANCEL,BUTTON_DEFAULT|FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y,0,0,0,0,8,8,4,4);
   new FXHorizontalSeparator(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|SEPARATOR_GROOVE);
   FXVerticalFrame* body=new FXVerticalFrame(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,2,2,2,2,6,6);
-  new FXLabel(body,"Drag a series onto a chart to assign it. Drag it to another chart to reassign it.",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  new FXLabel(body,"Drag series to assign them. Ctrl-click toggles selection; Shift-click selects a range.",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   FXHorizontalFrame* workspace=new FXHorizontalFrame(body,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,8,0);
   FXVerticalFrame* seriesPane=new FXVerticalFrame(workspace,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_GROOVE,0,0,280,0,6,6,6,6,4,4);
   new FXLabel(seriesPane,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   seriesFilter=new FXTextField(seriesPane,18,this,ID_SERIES_FILTER,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X);
   seriesFilter->setHelpText("Filter series by name");
-  series=new FXList(seriesPane,this,ID_SERIES_LIST,LIST_MULTIPLESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
+  series=new FXList(seriesPane,this,ID_SERIES_LIST,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
   series->setNumVisible(20);
   FXVerticalFrame* chartPane=new FXVerticalFrame(workspace,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,4,4);
   FXHorizontalFrame* chartHeader=new FXHorizontalFrame(chartPane,LAYOUT_SIDE_TOP|LAYOUT_FILL_X,0,0,0,0,0,0,0,0,4,0);
@@ -99,7 +99,7 @@ void ChartAssignmentDialog::ensureChartViews(){
     remove->setUserData((FXptr)(FXuval)(index+1));
     FXTextField* filter=new FXTextField(group,18,this,ID_CHART_FILTER,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X);
     filter->setHelpText("Filter chart series by name");
-    FXList* list=new FXList(group,this,ID_CHART_LIST,LIST_MULTIPLESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
+    FXList* list=new FXList(group,this,ID_CHART_LIST,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
     list->setNumVisible(6);
     list->dropEnable();
     if(chartContainer->id()) group->create();
