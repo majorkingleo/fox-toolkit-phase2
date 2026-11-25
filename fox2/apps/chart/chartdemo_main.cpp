@@ -49,6 +49,7 @@ int run(int argc,char* argv[]){
     }
   FXApp application("ChartDemo","FOX Chart Demo");
   application.init(argc,argv);
+  new FXToolTip(&application,0);
   ChartDemoWindow* window=new ChartDemoWindow(&application);
   application.create();
   window->show(PLACEMENT_SCREEN);
