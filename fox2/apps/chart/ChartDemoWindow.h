@@ -121,6 +121,7 @@ public:
   long onMainClose(FXObject*,FXSelector,void*);
   void updateChartFonts();
     void updateChartIcons(FXbool dark);
+    void updateChartColors(FXTheme* theme);
   void scaleDocumentWidgets(ChartDocument* document,FXWindow* view);
   void updateDetachedChartFonts(ChartDocument* document,FXTopWindow* view);
   void detachDocument(ChartDocument* document);

@@ -251,6 +251,7 @@ void ChartDemoWindow::applyTheme(FXTheme* theme){
   FXbool dark=(FXREDVAL(theme->color(ROLE_WINDOW_BG))*299+FXGREENVAL(theme->color(ROLE_WINDOW_BG))*587+FXBLUEVAL(theme->color(ROLE_WINDOW_BG))*114)<128000;
   if(dark!=iconsDark) updateChartIcons(dark);
   updateChartFonts();
+  updateChartColors(theme);
   }
 
 
@@ -304,6 +305,44 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   delete oldZoom;
   delete oldDrag;
   iconsDark=dark;
+  }
+
+
+void ChartDemoWindow::updateChartColors(FXTheme* theme){
+  FXColor background=theme->color(ROLE_WINDOW_BG);
+  FXColor surface=theme->color(ROLE_SURFACE);
+  FXColor foreground=theme->color(ROLE_TEXT);
+  FXColor majorgrid=contrastColor(surface,20);
+  FXColor minorgrid=contrastColor(surface,10);
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    for(FXuval j=0; j<document->seriesrows.size(); j++){
+      FXWindow* swatch=document->seriesrows[j]->getFirst();
+      if(swatch) swatch->setBackColor(readableColor(seriesColors[j%(sizeof(seriesColors)/sizeof(seriesColors[0]))],background));
+      }
+    FillStyle back=document->plot->getBackStyle();
+    back.forecolor=background;
+    back.backcolor=background;
+    back.lower=background;
+    back.upper=background;
+    document->plot->setBackStyle(back);
+    FillStyle chart=document->plot->getChartStyle();
+    chart.forecolor=background;
+    chart.backcolor=background;
+    chart.lower=background;
+    chart.upper=background;
+    document->plot->setChartStyle(chart);
+    document->plot->setCaptionColor(foreground);
+    for(FXint axis=0; axis<4; axis++){
+      FXAxis* item=document->plot->getAxis(axis);
+      item->setAxisColor(foreground);
+      item->setTickColors(foreground,foreground);
+      item->setGridColors(majorgrid,minorgrid);
+      item->setLabelColor(foreground);
+      item->setNumberColor(foreground);
+      }
+    rebuild(document,true);
+    }
   }
 
 
@@ -651,7 +690,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
     FXint col=document->xcolumns[i];
     FXHorizontalFrame* row=new FXHorizontalFrame(document->serieslist,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,1,2,1,4,0);
     FXFrame* swatch=new FXFrame(row,FRAME_SUNKEN|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT|LAYOUT_CENTER_Y,0,0,12,12);
-    swatch->setBackColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))]);
+    swatch->setBackColor(readableColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],getApp()->getTheme()->color(ROLE_WINDOW_BG)));
     FXCheckButton* check=new FXCheckButton(row,document->table.columns[col].name,this,ID_SERIES,JUSTIFY_LEFT|ICON_BEFORE_TEXT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
     check->setCheck(true);
     if(col==document->selectedx) check->disable();
@@ -777,7 +816,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
       }
     curve->setXData(xdata);
     curve->setYData(ydata);
-    LineStyle line={seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],1,LINESTYLE_SOLID};
+    LineStyle line={readableColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],getApp()->getTheme()->color(ROLE_WINDOW_BG)),1,LINESTYLE_SOLID};
     curve->setLineStyle(line);
     document->plot->appendCurve(curve);
     visiblecount++;

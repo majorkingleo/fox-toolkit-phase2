@@ -134,6 +134,15 @@ public:
   /// Change label text color
   void setLabelColor(FXColor clr);
 
+  /// Change axis line color
+  void setAxisColor(FXColor clr);
+
+  /// Change major and minor tick colors
+  void setTickColors(FXColor major,FXColor minor);
+
+  /// Change major and minor grid colors
+  void setGridColors(FXColor major,FXColor minor);
+
   /// Get label text color
   FXColor getLabelColor() const { return labelcolor; }
 

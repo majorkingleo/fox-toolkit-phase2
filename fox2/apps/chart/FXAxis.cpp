@@ -431,6 +431,35 @@ void FXAxis::setLabelColor(FXColor clr){
   }
 
 
+// Change axis line color
+void FXAxis::setAxisColor(FXColor clr){
+  if(axiscolor!=clr){
+    axiscolor=clr;
+    chart->invalidateChart();
+    }
+  }
+
+
+// Change tickmark colors
+void FXAxis::setTickColors(FXColor major,FXColor minor){
+  if(majortickcolor!=major || minortickcolor!=minor){
+    majortickcolor=major;
+    minortickcolor=minor;
+    chart->invalidateChart();
+    }
+  }
+
+
+// Change gridline colors
+void FXAxis::setGridColors(FXColor major,FXColor minor){
+  if(majorgridcolor!=major || minorgridcolor!=minor){
+    majorgridcolor=major;
+    minorgridcolor=minor;
+    chart->invalidateChart();
+    }
+  }
+
+
 // Change label text style
 void FXAxis::setLabelFont(FXFont* font){
   if(!font){ fxerror("FXAxis::setLabelFont: NULL font specified.\n"); }
