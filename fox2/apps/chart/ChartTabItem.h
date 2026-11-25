@@ -31,6 +31,7 @@ public:
   long onLeftBtnPress(FXObject*,FXSelector,void*);
   long onLeftBtnRelease(FXObject*,FXSelector,void*);
   ChartTabItem(FXTabBar* p,const FXString& text,FXIcon* normal,FXIcon* hover,FXIcon* pressed,FXObject* target,FXSelector selector);
+    void setDetachIcons(FXIcon* normal,FXIcon* hover,FXIcon* pressed);
   };
 
 }

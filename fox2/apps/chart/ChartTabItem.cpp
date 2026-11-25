@@ -29,6 +29,14 @@ ChartTabItem::ChartTabItem(FXTabBar* p,const FXString& text,FXIcon* normal,FXIco
   }
 
 
+void ChartTabItem::setDetachIcons(FXIcon* normal,FXIcon* hover,FXIcon* pressed){
+  normalIcon=normal;
+  hoverIcon=hover;
+  pressedIcon=pressed;
+  updateDetachIcon();
+  }
+
+
 FXbool ChartTabItem::overDetachIcon(FXint x,FXint y) const {
   return x>=width-scale(22) && x<width && y>=0 && y<height;
   }

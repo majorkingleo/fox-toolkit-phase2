@@ -48,6 +48,7 @@ int run(int argc,char* argv[]){
       }
     }
   FXApp application("ChartDemo","FOX Chart Demo");
+  application.setAllowedThemes(THEME_PRESET_ALL,THEME_PRESET_CLASSIC);
   application.init(argc,argv);
   new FXToolTip(&application,0);
   ChartDemoWindow* window=new ChartDemoWindow(&application);

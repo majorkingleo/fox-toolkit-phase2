@@ -51,6 +51,10 @@ public:
 FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_OPEN,ChartDemoWindow::onCmdOpen),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_QUIT,ChartDemoWindow::onCmdQuit),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_CLASSIC,ChartDemoWindow::onTheme),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_DARK,ChartDemoWindow::onTheme),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE,ChartDemoWindow::onTheme),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE_DARK,ChartDemoWindow::onTheme),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_DESCRIPTION,ChartDemoWindow::onAxisDescription),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_Y_DESCRIPTION,ChartDemoWindow::onAxisDescription),
@@ -178,6 +182,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   numberFont=app->getNormalFont();
   FXColor background=app->getTheme()->color(ROLE_WINDOW_BG);
   FXbool dark=(FXREDVAL(background)*299+FXGREENVAL(background)*587+FXBLUEVAL(background)*114)<128000;
+    iconsDark=dark;
   detachIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_detach:chart_detach),FXRGB(192,192,192),0,16,16);
   detachHoverIcon=new FXSVGIcon(app,(const FXuchar*)detach_hover_svg,FXRGB(192,192,192),0,16,16);
   detachPressedIcon=new FXSVGIcon(app,(const FXuchar*)detach_pressed_svg,FXRGB(192,192,192),0,16,16);
@@ -193,6 +198,21 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
   new FXMenuCommand(filemenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   new FXMenuTitle(menubar,"&File",nullptr,filemenu);
+  FXMenuPane* thememenu=new FXMenuPane(this);
+  classicTheme=new FXMenuRadio(thememenu,"FOX default",this,ID_THEME_CLASSIC);
+  darkTheme=new FXMenuRadio(thememenu,"FOX dark",this,ID_THEME_DARK);
+  breezeTheme=new FXMenuRadio(thememenu,"FOX Breeze Light",this,ID_THEME_BREEZE);
+  breezeDarkTheme=new FXMenuRadio(thememenu,"FOX Breeze Dark",this,ID_THEME_BREEZE_DARK);
+  FXColor surface=app->getTheme()->color(ROLE_SURFACE);
+  if(surface==FXRGB(45,45,45)) themePreset=THEME_PRESET_DARK;
+  else if(surface==FXRGB(239,240,241)) themePreset=THEME_PRESET_BREEZE;
+  else if(surface==FXRGB(32,35,38)) themePreset=THEME_PRESET_BREEZE_DARK;
+  else themePreset=THEME_PRESET_CLASSIC;
+  classicTheme->setCheck(themePreset==THEME_PRESET_CLASSIC);
+  darkTheme->setCheck(themePreset==THEME_PRESET_DARK);
+  breezeTheme->setCheck(themePreset==THEME_PRESET_BREEZE);
+  breezeDarkTheme->setCheck(themePreset==THEME_PRESET_BREEZE_DARK);
+  new FXMenuTitle(menubar,"&Theme",nullptr,thememenu);
 
   statusbar=new FXStatusBar(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X);
   statusbar->getStatusLine()->setNormalText("Ready");
@@ -228,7 +248,62 @@ void ChartDemoWindow::create(){
 // Refresh chart fonts when the window moves to a monitor with another DPI
 void ChartDemoWindow::applyTheme(FXTheme* theme){
   FXMainWindow::applyTheme(theme);
+  FXbool dark=(FXREDVAL(theme->color(ROLE_WINDOW_BG))*299+FXGREENVAL(theme->color(ROLE_WINDOW_BG))*587+FXBLUEVAL(theme->color(ROLE_WINDOW_BG))*114)<128000;
+  if(dark!=iconsDark) updateChartIcons(dark);
   updateChartFonts();
+  }
+
+
+void ChartDemoWindow::updateChartIcons(FXbool dark){
+  FXSVGIcon* oldDetach=detachIcon;
+  FXSVGIcon* oldAutoFitY=autoFitYIcon;
+  FXSVGIcon* oldResetZoom=resetZoomIcon;
+  FXSVGIcon* oldXAxis=xAxisIcon;
+  FXSVGIcon* oldYAxis=yAxisIcon;
+  FXSVGIcon* oldSeries=seriesIcon;
+  FXSVGIcon* oldZoom=zoomIcon;
+  FXSVGIcon* oldDrag=dragIcon;
+  detachIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_detach:chart_detach),FXRGB(192,192,192),0,16,16);
+  autoFitYIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_autofix_y_axis:chart_autofix_y_axis),FXRGB(192,192,192),0,20,20);
+  resetZoomIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
+  xAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
+  yAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
+  seriesIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
+  zoomIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_zoom:chart_zoom),FXRGB(192,192,192),0,20,20);
+  dragIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_drag:chart_drag),FXRGB(192,192,192),0,20,20);
+  detachIcon->create();
+  autoFitYIcon->create();
+  resetZoomIcon->create();
+  xAxisIcon->create();
+  yAxisIcon->create();
+  seriesIcon->create();
+  zoomIcon->create();
+  dragIcon->create();
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    ((ChartTabItem*)document->tabitem)->setDetachIcons(detachIcon,detachHoverIcon,detachPressedIcon);
+    document->xtoggle->setIcon(xAxisIcon);
+    document->xtoggle->setAltIcon(xAxisIcon);
+    document->ytoggle->setIcon(yAxisIcon);
+    document->ytoggle->setAltIcon(yAxisIcon);
+    document->autofity->setIcon(autoFitYIcon);
+    document->resetzoom->setIcon(resetZoomIcon);
+    document->seriesshow->setIcon(seriesIcon);
+    document->seriesshow->setAltIcon(seriesIcon);
+    document->zoombutton->setIcon(zoomIcon);
+    document->zoombutton->setAltIcon(zoomIcon);
+    document->dragbutton->setIcon(dragIcon);
+    document->dragbutton->setAltIcon(dragIcon);
+    }
+  delete oldDetach;
+  delete oldAutoFitY;
+  delete oldResetZoom;
+  delete oldXAxis;
+  delete oldYAxis;
+  delete oldSeries;
+  delete oldZoom;
+  delete oldDrag;
+  iconsDark=dark;
   }
 
 
@@ -330,6 +405,41 @@ long ChartDemoWindow::onCmdOpen(FXObject*,FXSelector,void*){
 
 long ChartDemoWindow::onCmdQuit(FXObject*,FXSelector,void*){
   getApp()->exit(0);
+  return 1;
+  }
+
+
+long ChartDemoWindow::onTheme(FXObject*,FXSelector sel,void*){
+  FXTheme theme=*getApp()->getTheme();
+  FXString name;
+  switch(FXSELID(sel)){
+    case ID_THEME_DARK:
+      theme.setDark();
+      themePreset=THEME_PRESET_DARK;
+      name="dark";
+      break;
+    case ID_THEME_BREEZE:
+      theme.setBreezeLight();
+      themePreset=THEME_PRESET_BREEZE;
+      name="breeze";
+      break;
+    case ID_THEME_BREEZE_DARK:
+      theme.setBreezeDark();
+      themePreset=THEME_PRESET_BREEZE_DARK;
+      name="breeze-dark";
+      break;
+    default:
+      theme.setClassic();
+      themePreset=THEME_PRESET_CLASSIC;
+      name="classic";
+      break;
+    }
+  classicTheme->setCheck(themePreset==THEME_PRESET_CLASSIC);
+  darkTheme->setCheck(themePreset==THEME_PRESET_DARK);
+  breezeTheme->setCheck(themePreset==THEME_PRESET_BREEZE);
+  breezeDarkTheme->setCheck(themePreset==THEME_PRESET_BREEZE_DARK);
+  getApp()->reg().writeStringEntry("SETTINGS","theme",name.text());
+  getApp()->setTheme(theme);
   return 1;
   }
 

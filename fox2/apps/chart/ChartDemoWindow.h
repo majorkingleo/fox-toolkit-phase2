@@ -80,6 +80,12 @@ protected:
   FXSVGIcon* seriesIcon;
   FXSVGIcon* zoomIcon;
   FXSVGIcon* dragIcon;
+  FXMenuRadio* classicTheme;
+  FXMenuRadio* darkTheme;
+  FXMenuRadio* breezeTheme;
+  FXMenuRadio* breezeDarkTheme;
+  FXuint themePreset;
+  FXbool iconsDark;
   FXFontDesc verticalLabelFontDesc;
   FXint fontDPI;
   FXdouble fontScale;
@@ -96,6 +102,7 @@ private:
 public:
   long onCmdOpen(FXObject*,FXSelector,void*);
   long onCmdQuit(FXObject*,FXSelector,void*);
+  long onTheme(FXObject*,FXSelector sel,void*);
   long onXColumn(FXObject*,FXSelector,void*);
   long onAxisDescription(FXObject*,FXSelector,void*);
   long onAutoFitY(FXObject* sender,FXSelector,void*);
@@ -113,6 +120,7 @@ public:
   long onDetachedClose(FXObject*,FXSelector,void*);
   long onMainClose(FXObject*,FXSelector,void*);
   void updateChartFonts();
+    void updateChartIcons(FXbool dark);
   void scaleDocumentWidgets(ChartDocument* document,FXWindow* view);
   void updateDetachedChartFonts(ChartDocument* document,FXTopWindow* view);
   void detachDocument(ChartDocument* document);
@@ -124,6 +132,10 @@ public:
   enum{
     ID_OPEN=FXMainWindow::ID_LAST,
     ID_QUIT,
+    ID_THEME_CLASSIC,
+    ID_THEME_DARK,
+    ID_THEME_BREEZE,
+    ID_THEME_BREEZE_DARK,
     ID_XCOLUMN,
     ID_X_DESCRIPTION,
     ID_Y_DESCRIPTION,
