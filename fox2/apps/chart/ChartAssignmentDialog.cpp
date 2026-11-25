@@ -5,7 +5,17 @@ namespace FXCHARTDEMO {
 
 
 FXDEFMAP(ChartAssignmentDialog) ChartAssignmentDialogMap[]={
-  FXMAPFUNC(SEL_COMMAND,ChartAssignmentDialog::ID_ASSIGN,ChartAssignmentDialog::onAssign),
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onListPress),
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onListPress),
+  FXMAPFUNC(SEL_BEGINDRAG,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onBeginDrag),
+  FXMAPFUNC(SEL_BEGINDRAG,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onBeginDrag),
+  FXMAPFUNC(SEL_ENDDRAG,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onEndDrag),
+  FXMAPFUNC(SEL_ENDDRAG,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onEndDrag),
+  FXMAPFUNC(SEL_DND_REQUEST,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onDNDRequest),
+  FXMAPFUNC(SEL_DND_REQUEST,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onDNDRequest),
+  FXMAPFUNC(SEL_DND_ENTER,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onDNDEnter),
+  FXMAPFUNC(SEL_DND_MOTION,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onDNDMotion),
+  FXMAPFUNC(SEL_DND_DROP,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onDNDDrop),
   FXMAPFUNC(SEL_COMMAND,ChartAssignmentDialog::ID_ADD_PLOT,ChartAssignmentDialog::onAddPlot),
   FXMAPFUNC(SEL_COMMAND,ChartAssignmentDialog::ID_REMOVE_PLOT,ChartAssignmentDialog::onRemovePlot),
   FXMAPFUNC(SEL_COMMAND,FXDialogBox::ID_ACCEPT,ChartAssignmentDialog::onAccept),
@@ -14,58 +24,144 @@ FXDEFMAP(ChartAssignmentDialog) ChartAssignmentDialogMap[]={
 FXIMPLEMENT(ChartAssignmentDialog,FXDialogBox,ChartAssignmentDialogMap,ARRAYNUMBER(ChartAssignmentDialogMap))
 
 
-ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& source,const std::vector<FXint>& seriesColumns,FXint xaxis,const std::vector<FXint>& currentAssignment):FXDialogBox(owner,"Assign Series to Charts",DECOR_TITLE|DECOR_BORDER|DECOR_RESIZE|DECOR_CLOSE,0,0,620,440,12,12,12,12,8,6),columns(seriesColumns),assignment(currentAssignment),table(&source),xcolumn(xaxis),plotCount(1){
+ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& source,const std::vector<FXint>& seriesColumns,FXint xaxis,const std::vector<FXint>& currentAssignment):FXDialogBox(owner,"Assign Series to Charts",DECOR_TITLE|DECOR_BORDER|DECOR_RESIZE|DECOR_CLOSE,0,0,900,600,12,12,12,12,8,6),series(nullptr),chartContainer(nullptr),chartScroll(nullptr),columns(seriesColumns),assignment(currentAssignment),table(&source),seriesDragType(0),xcolumn(xaxis),plotCount(1),draggedSeries(-1){
+  seriesDragType=getApp()->registerDragType("application/x-fox-chart-series");
   for(FXuval i=0; i<columns.size(); i++){
     if(columns[i]==xcolumn) continue;
     if(i<assignment.size()) plotCount=FXMAX(plotCount,assignment[i]+1);
     }
   FXVerticalFrame* body=new FXVerticalFrame(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,2,2,2,2,6,6);
-  new FXLabel(body,"Select one or more series, choose a chart, then assign them.",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
-  FXHorizontalFrame* targetrow=new FXHorizontalFrame(body,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,0,0,0,0,6,0);
-  new FXLabel(targetrow,"Assign to:",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y);
-  destination=new FXComboBox(targetrow,16,nullptr,0,COMBOBOX_STATIC|FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_CENTER_Y);
-  FXHorizontalFrame* plotbuttons=new FXHorizontalFrame(targetrow,LAYOUT_SIDE_RIGHT|LAYOUT_CENTER_Y,0,0,0,0,0,0,0,0,4,0);
-  new FXButton(plotbuttons,"Remove subplot",nullptr,this,ID_REMOVE_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
-  new FXButton(plotbuttons,"Add subplot",nullptr,this,ID_ADD_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
-  series=new FXList(body,nullptr,0,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
-  series->setNumVisible(18);
+  new FXLabel(body,"Drag a series onto a chart to assign it. Drag it to another chart to reassign it.",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  FXHorizontalFrame* workspace=new FXHorizontalFrame(body,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,8,0);
+  FXVerticalFrame* seriesPane=new FXVerticalFrame(workspace,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|FRAME_GROOVE,0,0,280,0,6,6,6,6,4,4);
+  new FXLabel(seriesPane,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
+  series=new FXList(seriesPane,this,ID_SERIES_LIST,LIST_SINGLESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
+  series->setNumVisible(20);
+  FXVerticalFrame* chartPane=new FXVerticalFrame(workspace,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,4,4);
+  FXHorizontalFrame* chartHeader=new FXHorizontalFrame(chartPane,LAYOUT_SIDE_TOP|LAYOUT_FILL_X,0,0,0,0,0,0,0,0,4,0);
+  new FXLabel(chartHeader,"Charts (drop series here)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X|LAYOUT_CENTER_Y);
+  new FXButton(chartHeader,"Remove last",nullptr,this,ID_REMOVE_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
+  new FXButton(chartHeader,"Add chart",nullptr,this,ID_ADD_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
+  chartScroll=new FXScrollWindow(chartPane,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON|FRAME_SUNKEN|FRAME_THICK);
+  chartContainer=new FXVerticalFrame(chartScroll,LAYOUT_FILL_X|LAYOUT_TOP,0,0,0,0,4,4,4,4,4,4);
   FXHorizontalFrame* buttons=new FXHorizontalFrame(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,0,0,0,0,0,0,0,0,6,0);
-  new FXButton(buttons,"&Assign",nullptr,this,ID_ASSIGN,FRAME_RAISED|LAYOUT_RIGHT|LAYOUT_CENTER_Y);
   new FXButton(buttons,"&Apply",nullptr,this,ID_ACCEPT,BUTTON_DEFAULT|BUTTON_INITIAL|FRAME_RAISED|LAYOUT_RIGHT|LAYOUT_CENTER_Y);
   new FXButton(buttons,"&Cancel",nullptr,this,ID_CANCEL,BUTTON_DEFAULT|FRAME_RAISED|LAYOUT_RIGHT|LAYOUT_CENTER_Y);
-  updatePlotChoices();
+  ensureChartViews();
   refreshSeries();
   }
 
 
-void ChartAssignmentDialog::updatePlotChoices(){
-  FXint current=destination->getCurrentItem();
-  destination->clearItems();
-  for(FXint i=0; i<plotCount; i++) destination->appendItem(FXString::value("Chart %d",i+1));
-  destination->setCurrentItem(FXCLAMP(0,current,plotCount-1));
+void ChartAssignmentDialog::ensureChartViews(){
+  while((FXint)chartGroups.size()>plotCount){
+    chartLists.pop_back();
+    delete chartGroups.back();
+    chartGroups.pop_back();
+    }
+  while((FXint)chartGroups.size()<plotCount){
+    FXint index=(FXint)chartGroups.size();
+    FXGroupBox* group=new FXGroupBox(chartContainer,FXString::value("Chart %d",index+1),FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,160,6,6,14,6,4,4);
+    FXList* list=new FXList(group,this,ID_CHART_LIST,LIST_SINGLESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
+    list->setNumVisible(6);
+    list->dropEnable();
+    chartGroups.push_back(group);
+    chartLists.push_back(list);
+    }
+  chartContainer->recalc();
+  chartContainer->layout();
+  chartScroll->recalc();
+  chartScroll->layout();
   }
 
 
 void ChartAssignmentDialog::refreshSeries(){
   series->clearItems();
+  for(FXuval p=0; p<chartLists.size(); p++) chartLists[p]->clearItems();
+  if(assignment.size()<columns.size()) assignment.resize(columns.size(),0);
   for(FXuval i=0; i<columns.size(); i++){
     FXint column=columns[i];
     if(column==xcolumn) continue;
-    FXint plot=(i<assignment.size())?FXCLAMP(0,assignment[i],plotCount-1):0;
-    series->appendItem(table->columns[column].name+FXString::value("    [Chart %d]",plot+1),nullptr,(FXptr)(FXuval)(i+1));
+    series->appendItem(table->columns[column].name,nullptr,(FXptr)(FXuval)(i+1));
+    series->getItem(series->getNumItems()-1)->setDraggable(true);
+    FXint plot=FXCLAMP(0,assignment[i],plotCount-1);
+    chartLists[plot]->appendItem(table->columns[column].name,nullptr,(FXptr)(FXuval)(i+1));
+    chartLists[plot]->getItem(chartLists[plot]->getNumItems()-1)->setDraggable(true);
+    }
+  series->recalc();
+  series->update();
+  for(FXuval p=0; p<chartLists.size(); p++){
+    chartLists[p]->recalc();
+    chartLists[p]->update();
     }
   }
 
 
-long ChartAssignmentDialog::onAssign(FXObject*,FXSelector,void*){
-  FXint plot=destination->getCurrentItem();
-  if(plot<0 || plot>=plotCount) return 1;
-  if(assignment.size()<columns.size()) assignment.resize(columns.size(),0);
-  for(FXint i=0; i<series->getNumItems(); i++){
-    if(!series->isItemSelected(i)) continue;
-    FXuval index=(FXuval)series->getItemData(i);
-    if(index>0 && index<=assignment.size()) assignment[index-1]=plot;
+long ChartAssignmentDialog::onListPress(FXObject* sender,FXSelector,void* ptr){
+  FXList* list=(FXList*)sender;
+  FXEvent* event=(FXEvent*)ptr;
+  FXint index=list->getItemAt(event->win_x,event->win_y);
+  if(index>=0 && index<list->getNumItems() && !list->isItemSelected(index)){
+    list->killSelection(false);
+    list->selectItem(index,false);
     }
+  return 0;
+  }
+
+
+long ChartAssignmentDialog::onBeginDrag(FXObject* sender,FXSelector,void*){
+  FXList* list=(FXList*)sender;
+  FXint current=list->getCurrentItem();
+  if(current<0 || current>=list->getNumItems()) return 0;
+  FXuval index=(FXuval)list->getItemData(current);
+  if(index==0 || index>columns.size()) return 0;
+  draggedSeries=(FXint)index-1;
+  FXDragType types[1]={seriesDragType};
+  return list->beginDrag(types,1)?1:0;
+  }
+
+
+long ChartAssignmentDialog::onEndDrag(FXObject* sender,FXSelector,void*){
+  ((FXList*)sender)->endDrag(true);
+  return 1;
+  }
+
+
+long ChartAssignmentDialog::onDNDRequest(FXObject* sender,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if(event->target!=seriesDragType || draggedSeries<0) return 0;
+  return ((FXWindow*)sender)->setDNDData(FROM_DRAGNDROP,seriesDragType,FXString::value("%d",draggedSeries))?1:0;
+  }
+
+
+long ChartAssignmentDialog::onDNDEnter(FXObject* sender,FXSelector,void* ptr){
+  FXWindow* target=(FXWindow*)sender;
+  if(!target->offeredDNDType(FROM_DRAGNDROP,seriesDragType)) return 0;
+  ((FXEvent*)ptr)->target=seriesDragType;
+  target->acceptDrop(DRAG_MOVE);
+  return 1;
+  }
+
+
+long ChartAssignmentDialog::onDNDMotion(FXObject* sender,FXSelector,void*){
+  FXWindow* target=(FXWindow*)sender;
+  if(!target->offeredDNDType(FROM_DRAGNDROP,seriesDragType)) return 0;
+  target->acceptDrop(DRAG_MOVE);
+  return 1;
+  }
+
+
+long ChartAssignmentDialog::onDNDDrop(FXObject* sender,FXSelector,void*){
+  FXList* target=(FXList*)sender;
+  FXint destination=-1;
+  for(FXuval i=0; i<chartLists.size(); i++) if(chartLists[i]==target) destination=(FXint)i;
+  if(destination<0) return 0;
+  target->acceptDrop(DRAG_MOVE);
+  FXString text;
+  if(!target->getDNDData(FROM_DRAGNDROP,seriesDragType,text)) return 0;
+  FXint index=text.toInt();
+  if(index<0 || index>=(FXint)assignment.size()) return 0;
+  assignment[index]=destination;
+  target->dropFinished(DRAG_MOVE);
   refreshSeries();
   return 1;
   }
@@ -73,8 +169,8 @@ long ChartAssignmentDialog::onAssign(FXObject*,FXSelector,void*){
 
 long ChartAssignmentDialog::onAddPlot(FXObject*,FXSelector,void*){
   plotCount++;
-  updatePlotChoices();
-  destination->setCurrentItem(plotCount-1);
+  ensureChartViews();
+  refreshSeries();
   return 1;
   }
 
@@ -84,7 +180,7 @@ long ChartAssignmentDialog::onRemovePlot(FXObject*,FXSelector,void*){
   FXint removed=plotCount-1;
   for(FXuval i=0; i<assignment.size(); i++) if(assignment[i]>=removed) assignment[i]=0;
   plotCount--;
-  updatePlotChoices();
+  ensureChartViews();
   refreshSeries();
   return 1;
   }
@@ -92,11 +188,7 @@ long ChartAssignmentDialog::onRemovePlot(FXObject*,FXSelector,void*){
 
 long ChartAssignmentDialog::onAccept(FXObject*,FXSelector,void*){
   for(FXint plot=0; plot<plotCount; plot++){
-    FXbool found=false;
-    for(FXuval i=0; i<columns.size(); i++){
-      if(columns[i]!=xcolumn && i<assignment.size() && assignment[i]==plot){ found=true; break; }
-      }
-    if(!found){
+    if(chartLists[plot]->getNumItems()==0){
       FXMessageBox::error(this,MBOX_OK,"Chart Assignment","Assign at least one series to each chart, or remove the empty subplot.");
       return 1;
       }
