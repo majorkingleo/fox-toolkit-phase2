@@ -134,6 +134,7 @@
 #include "FXThemeCache.h"
 #include "FXDesktopSettings.h"
 #include "FXApp.h"
+#include "FXMessageChannel.h"
 #include "FXGIFIcon.h"
 #include "FXBMPIcon.h"
 #include "FXBMPImage.h"

@@ -320,6 +320,7 @@ FXJSONString.cpp \
 FXKOI8RCodec.cpp \
 FXLFQueue.cpp \
 FXMappedFile.cpp \
+FXMessageChannel.cpp \
 FXMatrix.cpp \
 FXParseBuffer.cpp \
 FXPtrList.cpp \
