@@ -11,8 +11,51 @@ charttest_LDFLAGS = -mwindows
 chartdemo_LDFLAGS = -mwindows
 endif
 
-# icons.h and icons.cpp are checked in; they are the output of reswrap over
-# marble.bmp, as in the calculator and control panel ports.
+# reswrap embeds the chart bitmap and light/dark SVG toolbar icons.
+BUILT_SOURCES = icons.h icons.cpp
+CLEANFILES = icons.h icons.cpp
+
+ICON_SVGS = \
+icons/x-axis-label.svg \
+icons/y-axis-label.svg \
+icons/reset-zoom.svg \
+icons/data-series.svg \
+icons/crop.svg \
+icons/drag.svg \
+icons/detach.svg \
+icons/dark/x-axis-label.svg \
+icons/dark/y-axis-label.svg \
+icons/dark/reset-zoom.svg \
+icons/dark/data-series.svg \
+icons/dark/crop.svg \
+icons/dark/drag.svg \
+icons/dark/detach.svg
+CHART_ICON_INPUTS = $(addprefix $(srcdir)/,$(ICON_SVGS))
+
+ICON_RESOURCES = \
+-r chart_x_axis_label $(srcdir)/icons/x-axis-label.svg \
+-r chart_y_axis_label $(srcdir)/icons/y-axis-label.svg \
+-r chart_reset_zoom $(srcdir)/icons/reset-zoom.svg \
+-r chart_data_series $(srcdir)/icons/data-series.svg \
+-r chart_crop $(srcdir)/icons/crop.svg \
+-r chart_drag $(srcdir)/icons/drag.svg \
+-r chart_detach $(srcdir)/icons/detach.svg \
+-r chart_dark_x_axis_label $(srcdir)/icons/dark/x-axis-label.svg \
+-r chart_dark_y_axis_label $(srcdir)/icons/dark/y-axis-label.svg \
+-r chart_dark_reset_zoom $(srcdir)/icons/dark/reset-zoom.svg \
+-r chart_dark_data_series $(srcdir)/icons/dark/data-series.svg \
+-r chart_dark_crop $(srcdir)/icons/dark/crop.svg \
+-r chart_dark_drag $(srcdir)/icons/dark/drag.svg \
+-r chart_dark_detach $(srcdir)/icons/dark/detach.svg
+
+icons.h: $(srcdir)/marble.bmp $(CHART_ICON_INPUTS) $(top_builddir)/utils/reswrap$(EXEEXT)
+	$(top_builddir)/utils/reswrap$(EXEEXT) -h -o $@ -r marble $(srcdir)/marble.bmp
+	$(top_builddir)/utils/reswrap$(EXEEXT) -h -a -oa $@ $(ICON_RESOURCES)
+
+icons.cpp: $(srcdir)/marble.bmp $(CHART_ICON_INPUTS) $(top_builddir)/utils/reswrap$(EXEEXT) icons.h
+	$(top_builddir)/utils/reswrap$(EXEEXT) -s -i icons.h -o $@ -r marble $(srcdir)/marble.bmp
+	$(top_builddir)/utils/reswrap$(EXEEXT) -s -a -oa $@ $(ICON_RESOURCES)
+
 charttest_SOURCES = \
 icons.h \
 icons.cpp \
@@ -68,4 +111,19 @@ chartdemo.cpp \
 chartdemo_main.cpp
 
 EXTRA_DIST = \
-marble.bmp
+marble.bmp \
+icons/README.md \
+icons/x-axis-label.svg \
+icons/y-axis-label.svg \
+icons/reset-zoom.svg \
+icons/data-series.svg \
+icons/crop.svg \
+icons/drag.svg \
+icons/detach.svg \
+icons/dark/x-axis-label.svg \
+icons/dark/y-axis-label.svg \
+icons/dark/reset-zoom.svg \
+icons/dark/data-series.svg \
+icons/dark/crop.svg \
+icons/dark/drag.svg \
+icons/dark/detach.svg

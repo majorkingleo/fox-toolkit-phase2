@@ -26,6 +26,8 @@
 /apps/controlpanel/Makefile.in
 /apps/controlpanel/ControlPanel
 /apps/chart/Makefile.in
+/apps/chart/icons.h
+/apps/chart/icons.cpp
 /apps/chart/charttest
 /apps/chart/chartdemo
 /apps/pathfinder/Makefile.in
