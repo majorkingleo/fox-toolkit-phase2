@@ -2,6 +2,7 @@ set(CHART_ICON_SVGS
   icons/x-axis-label.svg
   icons/y-axis-label.svg
   icons/reset-zoom.svg
+  icons/zoom.svg
   icons/data-series.svg
   icons/crop.svg
   icons/drag.svg
@@ -9,6 +10,7 @@ set(CHART_ICON_SVGS
   icons/dark/x-axis-label.svg
   icons/dark/y-axis-label.svg
   icons/dark/reset-zoom.svg
+  icons/dark/zoom.svg
   icons/dark/data-series.svg
   icons/dark/crop.svg
   icons/dark/drag.svg
@@ -23,6 +25,7 @@ set(CHART_ICON_RESOURCES
   -r chart_x_axis_label icons/x-axis-label.svg
   -r chart_y_axis_label icons/y-axis-label.svg
   -r chart_reset_zoom icons/reset-zoom.svg
+  -r chart_zoom icons/zoom.svg
   -r chart_data_series icons/data-series.svg
   -r chart_crop icons/crop.svg
   -r chart_drag icons/drag.svg
@@ -30,6 +33,7 @@ set(CHART_ICON_RESOURCES
   -r chart_dark_x_axis_label icons/dark/x-axis-label.svg
   -r chart_dark_y_axis_label icons/dark/y-axis-label.svg
   -r chart_dark_reset_zoom icons/dark/reset-zoom.svg
+  -r chart_dark_zoom icons/dark/zoom.svg
   -r chart_dark_data_series icons/dark/data-series.svg
   -r chart_dark_crop icons/dark/crop.svg
   -r chart_dark_drag icons/dark/drag.svg

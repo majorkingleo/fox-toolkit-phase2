@@ -19,6 +19,7 @@ ICON_SVGS = \
 icons/x-axis-label.svg \
 icons/y-axis-label.svg \
 icons/reset-zoom.svg \
+icons/zoom.svg \
 icons/data-series.svg \
 icons/crop.svg \
 icons/drag.svg \
@@ -26,6 +27,7 @@ icons/detach.svg \
 icons/dark/x-axis-label.svg \
 icons/dark/y-axis-label.svg \
 icons/dark/reset-zoom.svg \
+icons/dark/zoom.svg \
 icons/dark/data-series.svg \
 icons/dark/crop.svg \
 icons/dark/drag.svg \
@@ -36,6 +38,7 @@ ICON_RESOURCES = \
 -r chart_x_axis_label $(srcdir)/icons/x-axis-label.svg \
 -r chart_y_axis_label $(srcdir)/icons/y-axis-label.svg \
 -r chart_reset_zoom $(srcdir)/icons/reset-zoom.svg \
+-r chart_zoom $(srcdir)/icons/zoom.svg \
 -r chart_data_series $(srcdir)/icons/data-series.svg \
 -r chart_crop $(srcdir)/icons/crop.svg \
 -r chart_drag $(srcdir)/icons/drag.svg \
@@ -43,6 +46,7 @@ ICON_RESOURCES = \
 -r chart_dark_x_axis_label $(srcdir)/icons/dark/x-axis-label.svg \
 -r chart_dark_y_axis_label $(srcdir)/icons/dark/y-axis-label.svg \
 -r chart_dark_reset_zoom $(srcdir)/icons/dark/reset-zoom.svg \
+-r chart_dark_zoom $(srcdir)/icons/dark/zoom.svg \
 -r chart_dark_data_series $(srcdir)/icons/dark/data-series.svg \
 -r chart_dark_crop $(srcdir)/icons/dark/crop.svg \
 -r chart_dark_drag $(srcdir)/icons/dark/drag.svg \
@@ -116,6 +120,7 @@ icons/README.md \
 icons/x-axis-label.svg \
 icons/y-axis-label.svg \
 icons/reset-zoom.svg \
+icons/zoom.svg \
 icons/data-series.svg \
 icons/crop.svg \
 icons/drag.svg \
@@ -123,6 +128,7 @@ icons/detach.svg \
 icons/dark/x-axis-label.svg \
 icons/dark/y-axis-label.svg \
 icons/dark/reset-zoom.svg \
+icons/dark/zoom.svg \
 icons/dark/data-series.svg \
 icons/dark/crop.svg \
 icons/dark/drag.svg \

@@ -8,6 +8,7 @@ extra emphasis.
 - `x-axis-label.svg`: horizontal axis and crossing series.
 - `y-axis-label.svg`: vertical axis and Y-oriented series.
 - `reset-zoom.svg`: return arrow around a reset/magnifier action.
+- `zoom.svg`: magnifier with a centered plus sign.
 - `data-series.svg`: axes with a multi-point series line.
 - `crop.svg`: zoom/crop rectangle with the selection bracket.
 - `drag.svg`: pan control with directional arrows and center handle.
