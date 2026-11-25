@@ -89,6 +89,7 @@ FXChart::FXChart(){
   marginbottom=0;
   marginleft=0;
   marginright=0;
+  plotleftanchor=-1;
   }
 
 
@@ -114,6 +115,7 @@ FXChart::FXChart(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x
   marginbottom=pb;
   marginleft=pl;
   marginright=pr;
+  plotleftanchor=-1;
   }
 
 
@@ -444,6 +446,15 @@ void FXChart::setMarginRight(FXint mr){
     marginright=mr;
     recalc();
     update();
+    }
+  }
+
+
+// Anchor left edge of plot area
+void FXChart::setPlotLeftAnchor(FXint x){
+  if(plotleftanchor!=x){
+    plotleftanchor=x;
+    invalidateChart();
     }
   }
 

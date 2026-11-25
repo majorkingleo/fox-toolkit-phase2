@@ -88,6 +88,9 @@ public:
   /// Return the plot area in widget coordinates
   const FXRectangle& getPlotArea() const { return plotarea; }
 
+  /// Return the left edge of the plot area without anchoring, independent of widget size
+  FXint getNaturalPlotLeft() const;
+
   /// Draw the axis numbers without fading on the next draw
   virtual void skipFades() override;
 

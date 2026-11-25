@@ -192,6 +192,9 @@ static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSel
   }
 
 
+static void alignPlotAreas(ChartDocument* document);
+
+
 static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* verticalFont,FXFont* numberFont,FXint plotHeight){
   FXObject* target=document->plot->getTarget();
   FXSelector selector=document->plot->getSelector();
@@ -216,6 +219,16 @@ static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* vertical
   }
 
 
+static void alignPlotAreas(ChartDocument* document){
+  FXint anchor=-1;
+  for(FXuval p=0; p<document->plots.size(); p++){
+    document->plots[p]->setPlotLeftAnchor(-1);
+    anchor=FXMAX(anchor,document->plots[p]->getNaturalPlotLeft());
+    }
+  for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->setPlotLeftAnchor(anchor);
+  }
+
+
 static void updateSplitChartLayout(ChartDocument* document){
   FXint count=(FXint)document->plots.size();
   for(FXint i=0; i<count; i++){
@@ -236,6 +249,7 @@ static void updateSplitChartLayout(ChartDocument* document){
   document->plotStack->layout();
   document->plotScroll->recalc();
   document->plotScroll->layout();
+  alignPlotAreas(document);
   }
 
 
@@ -482,13 +496,14 @@ void ChartDemoWindow::scaleDocumentWidgets(ChartDocument* document,FXWindow* vie
     }
   for(FXuval p=0; p<document->plots.size(); p++){
     FX2DPlot* plot=document->plots[p];
-    plot->setMarginLeft(view->scale(12));
+    plot->setMarginLeft(view->scale(48));
     plot->setMarginRight(view->scale(12));
     plot->setMarginTop(view->scale(12));
     plot->setMarginBottom(view->scale(12));
     plot->getAxis(FX2DChart::YLO)->setLabelOffset(view->scale(40));
     plot->getAxis(FX2DChart::YHI)->setLabelOffset(view->scale(40));
     }
+  alignPlotAreas(document);
   document->xcolumn->setWidth(view->scale(280));
   document->series->setPadLeft(view->scale(5));
   document->series->setPadRight(view->scale(5));
@@ -829,6 +844,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   tabs->setCurrent((FXint)documents.size());
   document->plotStack->layout();
   document->plotScroll->layout();
+  alignPlotAreas(document);
   if(getApp()->reg().existingEntry(document->settingsSection.text(),"split")){
     FXint split=getApp()->reg().readIntEntry(document->settingsSection.text(),"split",205);
     if(split>0) document->serieswidth=FXCLAMP(180,split,400);
@@ -997,6 +1013,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     if(zoomed[p]) plot->setViewRange(xmin[p],xmax[p],ymin[p],ymax[p]);
     }
   updateSplitChartLayout(document);
+  alignPlotAreas(document);
   FXbool anyzoomed=false;
   for(FXuval p=0; p<document->plots.size(); p++){
     document->plots[p]->invalidateChart();
@@ -1052,6 +1069,7 @@ long ChartDemoWindow::onAxisDescription(FXObject* sender,FXSelector sel,void*){
         else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
         document->plots[p]->invalidateChart();
         }
+      alignPlotAreas(document);
       saveDocumentSettings(document);
       return 1;
       }

@@ -304,6 +304,9 @@ void FX2DChart::drawSelf(FXDC& dc) const {
         plotright-=half;
         }
 
+      // Use the shared plot origin when one is specified
+      if(plotleftanchor>=0) plotleft=dc.getClipX()+plotleftanchor;
+
       // Draw plot if there's still space for it
       if(plotleft<plotright && plottop<plotbottom){
 
@@ -340,6 +343,32 @@ void FX2DChart::drawSelf(FXDC& dc) const {
         }
       }
     }
+  }
+
+
+// Left edge of the plot area from margin, caption, lower y-axis and x number overhang
+FXint FX2DChart::getNaturalPlotLeft() const {
+  FXint left=marginleft;
+  FXint ss;
+  if((options&CAPTION_SHOWN) && (options&CAPTION_LEFT)) left+=textWidth(captionfont,caption)+captionoffset;
+  if(axes[YLO]->getStyle()&(AXIS_LABEL|AXIS_NUMBERS|AXIS_TICKS_MAJOR)){
+    if(axes[YLO]->getStyle()&AXIS_TICKS_OUTSIDE){
+      ss=0;
+      if(axes[YLO]->getStyle()&AXIS_TICKS_MINOR) ss=axes[YLO]->getMinorTickSize();
+      if(axes[YLO]->getStyle()&AXIS_TICKS_MAJOR) ss=axes[YLO]->getMajorTickSize();
+      left+=ss;
+      }
+    if((axes[YLO]->getStyle()&AXIS_NUMBERS) && !(axes[YLO]->getStyle()&AXIS_NUMBERS_INSIDE)){
+      if(axes[YLO]->getNumberStyle()&(TEXT_ATTACH_TOP|TEXT_ATTACH_BOTTOM)) left+=textHeight(axes[YLO]->getNumberFont(),"8.8")+axes[YLO]->getNumberOffset();
+      else if(axes[YLO]->getNumberStyle()&(TEXT_ATTACH_LEFT|TEXT_ATTACH_RIGHT)) left+=textWidth(axes[YLO]->getNumberFont(),"8.8")+axes[YLO]->getNumberOffset();
+      }
+    if(axes[YLO]->getStyle()&AXIS_LABEL){
+      if(axes[YLO]->getLabelStyle()&(TEXT_ATTACH_TOP|TEXT_ATTACH_BOTTOM)) left+=textHeight(axes[YLO]->getLabelFont(),axes[YLO]->getLabel())+axes[YLO]->getLabelOffset();
+      else if(axes[YLO]->getLabelStyle()&(TEXT_ATTACH_LEFT|TEXT_ATTACH_RIGHT)) left+=textWidth(axes[YLO]->getLabelFont(),axes[YLO]->getLabel())+axes[YLO]->getLabelOffset();
+      }
+    }
+  if(axes[XLO]->getStyle()&AXIS_NUMBERS) left+=textWidth(axes[XLO]->getNumberFont(),"8.8")/2;
+  return left;
   }
 
 

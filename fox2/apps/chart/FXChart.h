@@ -52,6 +52,7 @@ protected:
   FXint     marginbottom;       // Margin bottom
   FXint     marginleft;         // Margin left
   FXint     marginright;        // Margin right
+  FXint     plotleftanchor;     // Anchored left edge of plot area
   FXString  tip;                // Tooltip value
   FXString  help;               // Help value
   FXbool    chartdirty;         // Chart image needs redrawing
@@ -172,6 +173,12 @@ public:
 
   /// Return right margin
   FXint getMarginRight() const { return marginright; }
+
+  /// Anchor the left edge of the plot area, or -1 for automatic positioning
+  void setPlotLeftAnchor(FXint x);
+
+  /// Return the left plot-area anchor, or -1 when automatic
+  FXint getPlotLeftAnchor() const { return plotleftanchor; }
 
   /// Change caption offset
   void setCaptionOffset(FXint off);
