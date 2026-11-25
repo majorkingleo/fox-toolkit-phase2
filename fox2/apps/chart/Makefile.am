@@ -71,22 +71,6 @@ icons.cpp: $(srcdir)/marble.bmp $(CHART_ICON_INPUTS) $(top_builddir)/utils/reswr
 charttest_SOURCES = \
 icons.h \
 icons.cpp \
-chartdefs.h \
-chart.h \
-chartutils.h \
-chartutils.cpp \
-FXAxis.h \
-FXAxis.cpp \
-FXChart.h \
-FXChart.cpp \
-FXData.h \
-FXData.cpp \
-FXCurve.h \
-FXCurve.cpp \
-FX2DChart.h \
-FX2DChart.cpp \
-FX2DPlot.h \
-FX2DPlot.cpp \
 live/LiveSource.h \
 live/LiveSource.cpp \
 charttest.cpp
@@ -94,22 +78,6 @@ charttest.cpp
 chartdemo_SOURCES = \
 icons.h \
 icons.cpp \
-chartdefs.h \
-chart.h \
-chartutils.h \
-chartutils.cpp \
-FXAxis.h \
-FXAxis.cpp \
-FXChart.h \
-FXChart.cpp \
-FXData.h \
-FXData.cpp \
-FXCurve.h \
-FXCurve.cpp \
-FX2DChart.h \
-FX2DChart.cpp \
-FX2DPlot.h \
-FX2DPlot.cpp \
 CSVReader.h \
 CSVReader.cpp \
 ChartDemoWindow.h \

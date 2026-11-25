@@ -6,7 +6,7 @@
 * Copyright (C) 2003,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
 ********************************************************************************/
 #include "fx.h"
-#include "chart.h"
+#include "FXCharts.h"
 #include "live/LiveSource.h"
 
 /*

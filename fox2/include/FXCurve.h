@@ -21,8 +21,8 @@
 #ifndef FXCURVE_H
 #define FXCURVE_H
 
-#ifndef CHARTDEFS_H
-#include "chartdefs.h"
+#ifndef FXCHARTDEFS_H
+#include "FXChartDefs.h"
 #endif
 
 namespace FXCHART {

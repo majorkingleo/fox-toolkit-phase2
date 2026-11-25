@@ -3,7 +3,7 @@
 
 #include "fx.h"
 #include "FXSVGIcon.h"
-#include "chart.h"
+#include "FXCharts.h"
 #include "CSVReader.h"
 #include <vector>
 

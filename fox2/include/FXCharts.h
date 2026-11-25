@@ -1,6 +1,6 @@
 /********************************************************************************
 *                                                                               *
-*                          U t i l i t y - F u n c t i o n s                    *
+*                   M a i n   C h a r t   I n c l u d e   F i l e               *
 *                                                                               *
 *********************************************************************************
 * Copyright (C) 2003,2026 by Jeroen van der Zijp.   All Rights Reserved.        *
@@ -18,22 +18,21 @@
 * You should have received a copy of the GNU Lesser General Public License      *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>          *
 ********************************************************************************/
-#ifndef CHARTUTILS_H
-#define CHARTUTILS_H
+#ifndef FXCHARTS_H
+#define FXCHARTS_H
 
+// Chart includes
+#include "FXChartDefs.h"
+#include "FXChartUtils.h"
+#include "FXAxis.h"
+#include "FXChart.h"
+#include "FXData.h"
+#include "FXCurve.h"
+#include "FX2DChart.h"
+#include "FX2DPlot.h"
 
-namespace FXCHART {
-
-// Helper functions
-extern FXCHARTAPI FXint textWidth(FXFont *font,const FXString& string);
-extern FXCHARTAPI FXint textHeight(FXFont *font,const FXString& string);
-extern FXCHARTAPI void drawText(FXDC& dc,const FXString& string,FXint x,FXint y,FXuint style);
-extern FXCHARTAPI void drawRectangle(FXDC& dc,const FillStyle& fs,FXint x,FXint y,FXint w,FXint h);
-extern FXCHARTAPI void drawMarker(FXDC& dc,const Marker& ms,FXint x,FXint y);
-extern FXCHARTAPI void getTickSpacing(FXdouble& major,FXdouble& minor,FXdouble min,FXdouble max);
-extern FXCHARTAPI FXColor readableColor(FXColor color,FXColor background);
-extern FXCHARTAPI FXColor contrastColor(FXColor background,FXint percent);
-
-}
+#ifndef FX_NO_GLOBAL_NAMESPACE
+using namespace FXCHART;
+#endif
 
 #endif

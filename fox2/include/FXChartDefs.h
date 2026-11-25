@@ -18,22 +18,14 @@
 * You should have received a copy of the GNU Lesser General Public License      *
 * along with this program.  If not, see <http://www.gnu.org/licenses/>          *
 ********************************************************************************/
-#ifndef CHARTDEFS_H
-#define CHARTDEFS_H
+#ifndef FXCHARTDEFS_H
+#define FXCHARTDEFS_H
 
 
 /********************************  Definitions  ********************************/
 
-// Define FXCHARTAPI for DLL builds
-#ifdef FOXDLL
-#ifdef CHARTDLL_EXPORTS
-#define FXCHARTAPI FXEXPORT
-#else
-#define FXCHARTAPI FXIMPORT
-#endif
-#else
-#define FXCHARTAPI
-#endif
+// The chart classes are part of libFOX, so they share its export macro
+#define FXCHARTAPI FXAPI
 
 
 namespace FXCHART {

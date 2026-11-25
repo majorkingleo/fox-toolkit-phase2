@@ -306,6 +306,15 @@ fxver.h \
 FXVerticalFrame.h \
 FXVisual.h \
 FXWindow.h \
+FXAxis.h \
+FXChart.h \
+FXChartDefs.h \
+FXChartUtils.h \
+FXCharts.h \
+FXCurve.h \
+FXData.h \
+FX2DChart.h \
+FX2DPlot.h \
 xincs.h
 
 EXTRA_DIST = fxver.h.in

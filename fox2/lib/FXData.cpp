@@ -19,7 +19,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>          *
 ********************************************************************************/
 #include "fx.h"
-#include "chartdefs.h"
+#include "FXChartDefs.h"
 #include "FXData.h"
 
 /*

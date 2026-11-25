@@ -19,8 +19,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>          *
 ********************************************************************************/
 #include "fx.h"
-#include "chartdefs.h"
-#include "chartutils.h"
+#include "FXChartDefs.h"
+#include "FXChartUtils.h"
 #include "FXAxis.h"
 #include "FXChart.h"
 #include "FXData.h"

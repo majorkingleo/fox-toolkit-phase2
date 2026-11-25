@@ -57,15 +57,9 @@ add_custom_command(
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   VERBATIM)
 
+# The chart widgets (FXAxis, FXChart, FXData, FXCurve, FX2DChart, FX2DPlot) are part of libFOX
 set(CHART_SOURCES
-  "${CHART_ICONS_CPP}"
-  chartutils.cpp
-  FXAxis.cpp
-  FXChart.cpp
-  FXData.cpp
-  FXCurve.cpp
-  FX2DChart.cpp
-  FX2DPlot.cpp)
+  "${CHART_ICONS_CPP}")
 
 add_executable(charttest
   ${CHART_SOURCES}

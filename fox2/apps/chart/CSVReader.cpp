@@ -1,5 +1,5 @@
 #include "fx.h"
-#include "chartdefs.h"
+#include "FXChartDefs.h"
 #include "CSVReader.h"
 #include "FXDate.h"
 #include "FXUTF8Codec.h"
