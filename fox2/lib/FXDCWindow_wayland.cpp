@@ -23,6 +23,7 @@
 #include "fxdefs.h"
 #include "fxmath.h"
 #include "FXElement.h"
+#include "FXArray.h"
 #include "FXMetaClass.h"
 #include "FXHash.h"
 #include "FXMutex.h"
@@ -250,6 +251,16 @@ void FXDCWindow::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
 
 void FXDCWindow::drawLines(const FXPoint* points,FXuint npoints){
   if(ctx) raster(ctx)->drawLines(points,npoints);
+  }
+
+void FXDCWindow::drawLinesF(const FXPointF* points,FXuint npoints){
+  FXArray<FXPoint> rounded(npoints);
+  if(!ctx || !rounded.no()) return;
+  for(FXuint i=0; i<npoints; i++){
+    rounded[i].x=(FXshort)Math::lrint(points[i].x);
+    rounded[i].y=(FXshort)Math::lrint(points[i].y);
+    }
+  raster(ctx)->drawLines(rounded.data(),npoints);
   }
 
 void FXDCWindow::drawLinesRel(const FXPoint* points,FXuint npoints){

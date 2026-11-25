@@ -418,6 +418,26 @@ FXDragAction FXWindow::endDrag(FXbool drop){
   }
 
 
+// The drop target has chosen the action; the data device finishes the drop
+// with it once the handler that called this returns
+void FXWindow::dropFinished(FXDragAction action) const {
+  if(action==DRAG_ACCEPT) action=getApp()->ansAction;
+  getApp()->ansAction=action;
+  }
+
+
+// Convert a logical length to device pixels
+FXint FXWindow::scale(FXint value) const {
+  return dpi?FXint(Math::lrint(FXdouble(value)*dpi/96.0)):value;
+  }
+
+
+// Convert a device length to logical units
+FXint FXWindow::unscale(FXint value) const {
+  return dpi?FXint(Math::lrint(FXdouble(value)*96.0/dpi)):value;
+  }
+
+
 // Acquire the PRIMARY selection; the data is offered through the data source of
 // the connection, which asks this window when a peer wants it
 FXbool FXWindow::acquireSelection(const FXDragType* types,FXuint numtypes){
