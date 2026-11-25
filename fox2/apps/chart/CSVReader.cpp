@@ -259,6 +259,43 @@ static FXbool parseDateTime(const FXString& input,FXdouble& value){
   }
 
 
+static FXbool parseDateOnly(const FXString& input,FXdouble& value){
+  FXString trimmed=trimField(input);
+  if(trimmed.find(':')>=0) return false;
+  return parseDateTime(trimmed,value);
+  }
+
+
+static FXbool parseTimeOnly(const FXString& input,FXdouble& value){
+  FXString trimmed=trimField(input);
+  if(trimmed.length()<4) return false;
+  std::string s=trimmed.text();
+  FXint hour=0,minute=0,secondOfMinute=0,pos=0;
+  if(std::sscanf(s.c_str(),"%d:%d:%d%n",&hour,&minute,&secondOfMinute,&pos)!=3){
+    pos=0;
+    if(std::sscanf(s.c_str(),"%d:%d%n",&hour,&minute,&pos)!=2) return false;
+    secondOfMinute=0;
+    }
+  FXdouble fraction=0.0;
+  if(s[pos]=='.' || s[pos]==','){
+    FXdouble place=0.1;
+    pos++;
+    while(std::isdigit((FXuchar)s[pos])){
+      fraction+=(s[pos]-'0')*place;
+      place*=0.1;
+      pos++;
+      }
+    }
+  while(s[pos]==' ' || s[pos]=='\t') pos++;
+  if(s[pos]=='Z' || s[pos]=='z') pos++;
+  while(s[pos]==' ' || s[pos]=='\t') pos++;
+  if(s[pos]) return false;
+  if(hour>23 || minute>59 || secondOfMinute>60) return false;
+  value=hour*3600.0+minute*60.0+secondOfMinute+fraction;
+  return true;
+  }
+
+
 static FXbool isMissing(const FXString& value){
   FXString s=trimField(value).lower();
   return s.empty() || s=="null" || s=="na" || s=="n/a" || s=="missing" || s=="-";
@@ -338,17 +375,30 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
     }
   FXint firstdata=hasheader?1:0;
   std::vector<FXbool> numeric(columns,false),timestamps(columns,false);
+  std::vector<FXbool> dates(columns,false),times(columns,false);
   for(FXint c=0; c<columns; c++){
-    FXint tested=0,numericok=0,dateok=0;
+    FXint tested=0,numericok=0,dateok=0,dateonlyok=0,timeonlyok=0;
     for(FXuval r=firstdata; r<samples.size(); r++){
       if(c>=samples[r].size() || isMissing(samples[r][c])) continue;
       FXdouble value;
       tested++;
       if(parseDateTime(samples[r][c],value)) dateok++;
+      if(parseDateOnly(samples[r][c],value)) dateonlyok++;
+      if(parseTimeOnly(samples[r][c],value)) timeonlyok++;
       if(parseNumber(samples[r][c],value,decimalComma)) numericok++;
       }
+    if(tested>=2 && dateonlyok*5>=tested*4) dates[c]=true;
+    else if(tested>=2 && timeonlyok*5>=tested*4) times[c]=true;
     if(tested>=2 && dateok*5>=tested*4) timestamps[c]=true;
-    else if(tested>=2 && numericok*5>=tested*4) numeric[c]=true;
+    else if(tested>=2 && !dates[c] && !times[c] && numericok*5>=tested*4) numeric[c]=true;
+    }
+
+  // A date in one column and a time in the next are one timestamp; combine
+  // them so a CSV exported as "date;time;value" gets a usable x-axis
+  FXint dateColumn=-1,timeColumn=-1;
+  for(FXint c=0; c+1<columns; c++){
+    if(dates[c] && times[c+1]){ dateColumn=c; timeColumn=c+1; break; }
+    if(times[c] && dates[c+1]){ dateColumn=c+1; timeColumn=c; break; }
     }
 
   FXint timestampColumn=-1;
@@ -368,7 +418,12 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
       if(!table.columns[c].numeric) continue;
       FXdouble value=0.0;
       if(c<row.size()){
-        if(timestamps[c]){
+        if(c==dateColumn && timeColumn>=0){
+          FXdouble datevalue,timevalue;
+          if(timeColumn<row.size() && parseDateOnly(row[c],datevalue) && parseTimeOnly(row[timeColumn],timevalue)) value=datevalue+timevalue;
+          else value=std::numeric_limits<FXdouble>::quiet_NaN();
+          }
+        else if(timestamps[c]){
           if(!parseDateTime(row[c],value)) value=std::numeric_limits<FXdouble>::quiet_NaN();
           }
         else if(!parseNumber(row[c],value,decimalComma)) value=std::numeric_limits<FXdouble>::quiet_NaN();
