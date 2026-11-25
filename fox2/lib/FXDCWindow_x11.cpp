@@ -821,6 +821,25 @@ void FXDCWindow::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
   if(!icon || !icon->id() || !icon->shape){ fxerror("FXDCWindow::drawIcon: illegal icon specified.\n"); }
   FXRectangle d=clip*FXRectangle(dx,dy,icon->width,icon->height);
   if(d.w>0 && d.h>0){
+#if defined(HAVE_XRENDER_H)
+    if(getApp()->xrender && icon->alphapicture && !(icon->getOptions()&IMAGE_OPAQUE)){
+      Display* display=(Display*)getApp()->getDisplay();
+      FXVisual* visual=surface->getVisual();
+      XRenderPictFormat* vf=visual?XRenderFindVisualFormat(display,(Visual*)visual->getVisual()):nullptr;
+      if(vf){
+        Picture src=XRenderCreatePicture(display,icon->id(),vf,0,nullptr);
+        Picture dst=XRenderCreatePicture(display,surface->id(),vf,0,nullptr);
+        if(src && dst){
+          XRenderComposite(display,PictOpOver,src,icon->alphapicture,dst,d.x-dx,d.y-dy,d.x-dx,d.y-dy,d.x,d.y,d.w,d.h);
+          XRenderFreePicture(display,src);
+          XRenderFreePicture(display,dst);
+          return;
+          }
+        if(src) XRenderFreePicture(display,src);
+        if(dst) XRenderFreePicture(display,dst);
+        }
+      }
+#endif
     if(icon->getOptions()&IMAGE_OPAQUE){
       XCopyArea((Display*)getApp()->getDisplay(),icon->id(),surface->id(),(GC)ctx,d.x-dx,d.y-dy,d.w,d.h,d.x,d.y);
       }

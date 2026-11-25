@@ -76,6 +76,10 @@ FXIcon::FXIcon():shape(0),etch(0),transp(0),thresh(382),master(nullptr),scaled(n
 #if defined(WIN32)
   alphabmp=0;
 #endif
+#if defined(FOX_X11)
+  alphamask=0;
+  alphapicture=0;
+#endif
   }
 
 
@@ -83,6 +87,10 @@ FXIcon::FXIcon():shape(0),etch(0),transp(0),thresh(382),master(nullptr),scaled(n
 FXIcon::FXIcon(FXApp* a,const FXColor *pix,FXColor clr,FXuint opts,FXint w,FXint h):FXImage(a,pix,opts,w,h),shape(0),etch(0),transp(clr),thresh(382),master(nullptr),scaled(nullptr),sibling(nullptr),percent(0){
 #if defined(WIN32)
   alphabmp=0;
+#endif
+#if defined(FOX_X11)
+  alphamask=0;
+  alphapicture=0;
 #endif
   FXTRACE(TOPIC_CONSTRUCT,"FXIcon::FXIcon %p\n",this);
   }
