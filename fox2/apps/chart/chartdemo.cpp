@@ -86,11 +86,14 @@ class ChartDemoPlot : public FX2DPlot {
 protected:
   FXbool panmode;
   FXbool panning;
+  FXbool cursorinside;
+  FXint cursorx;
+  FXint cursory;
   FXint pananchorx;
   FXint pananchory;
   FXdouble panrange[4];
 protected:
-  ChartDemoPlot():panmode(false),panning(false),pananchorx(0),pananchory(0){ }
+  ChartDemoPlot():panmode(false),panning(false),cursorinside(false),cursorx(0),cursory(0),pananchorx(0),pananchory(0){ }
 private:
   ChartDemoPlot(const ChartDemoPlot&);
   ChartDemoPlot& operator=(const ChartDemoPlot&);
@@ -99,7 +102,9 @@ public:
   long onMotion(FXObject*,FXSelector,void*);
   long onLeftBtnRelease(FXObject*,FXSelector,void*);
   long onUngrabbed(FXObject*,FXSelector,void*);
-  ChartDemoPlot(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FX2DPlot(p,tgt,sel,opts,x,y,w,h,pl,pr,pt,pb),panmode(false),panning(false),pananchorx(0),pananchory(0){ }
+  long onLeave(FXObject*,FXSelector,void*);
+  virtual void drawOverlay(FXDC& dc) const override;
+  ChartDemoPlot(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FX2DPlot(p,tgt,sel,opts,x,y,w,h,pl,pr,pt,pb),panmode(false),panning(false),cursorinside(false),cursorx(0),cursory(0),pananchorx(0),pananchory(0){ }
   void setPanMode(FXbool mode){ panmode=mode; }
   };
 
@@ -109,6 +114,7 @@ FXDEFMAP(ChartDemoPlot) ChartDemoPlotMap[]={
   FXMAPFUNC(SEL_MOTION,0,ChartDemoPlot::onMotion),
   FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,ChartDemoPlot::onLeftBtnRelease),
   FXMAPFUNC(SEL_UNGRABBED,0,ChartDemoPlot::onUngrabbed),
+  FXMAPFUNC(SEL_LEAVE,0,ChartDemoPlot::onLeave),
   };
 
 FXIMPLEMENT(ChartDemoPlot,FX2DPlot,ChartDemoPlotMap,ARRAYNUMBER(ChartDemoPlotMap))
@@ -136,14 +142,25 @@ long ChartDemoPlot::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
 
 
 long ChartDemoPlot::onMotion(FXObject*,FXSelector,void* ptr){
-  if(!panmode || !panning) return panmode?0:FX2DChart::onMotion(nullptr,0,ptr);
   FXEvent* event=(FXEvent*)ptr;
+  if(panmode && panning){
+    const FXRectangle& area=getPlotArea();
+    if(area.w<=0 || area.h<=0) return 1;
+    FXdouble dx=(event->win_x-pananchorx)*(panrange[1]-panrange[0])/area.w;
+    FXdouble dy=(event->win_y-pananchory)*(panrange[3]-panrange[2])/area.h;
+    setViewRange(panrange[0]-dx,panrange[1]-dx,panrange[2]+dy,panrange[3]+dy);
+    return 1;
+    }
   const FXRectangle& area=getPlotArea();
-  if(area.w<=0 || area.h<=0) return 1;
-  FXdouble dx=(event->win_x-pananchorx)*(panrange[1]-panrange[0])/area.w;
-  FXdouble dy=(event->win_y-pananchory)*(panrange[3]-panrange[2])/area.h;
-  setViewRange(panrange[0]-dx,panrange[1]-dx,panrange[2]+dy,panrange[3]+dy);
-  return 1;
+  FXbool inside=event->win_x>=area.x && event->win_x<area.x+area.w && event->win_y>=area.y && event->win_y<area.y+area.h;
+  if(cursorinside!=inside || (inside && (cursorx!=event->win_x || cursory!=event->win_y))){
+    cursorinside=inside;
+    cursorx=event->win_x;
+    cursory=event->win_y;
+    update();
+    }
+  if(panmode) return 0;
+  return FX2DChart::onMotion(nullptr,0,ptr);
   }
 
 
@@ -159,6 +176,79 @@ long ChartDemoPlot::onUngrabbed(FXObject*,FXSelector,void* ptr){
   if(!panmode || !panning) return panmode?0:FX2DChart::onUngrabbed(nullptr,0,ptr);
   panning=false;
   return 1;
+  }
+
+
+long ChartDemoPlot::onLeave(FXObject*,FXSelector,void*){
+  if(cursorinside && !panning){
+    cursorinside=false;
+    update();
+    }
+  return 1;
+  }
+
+
+void ChartDemoPlot::drawOverlay(FXDC& dc) const {
+  FX2DChart::drawOverlay(dc);
+  if(!cursorinside) return;
+  const FXRectangle& area=getPlotArea();
+  if(area.w<=0 || area.h<=0) return;
+  FXdouble xmin=getAxis(FX2DChart::XLO)->getAxisRangeMin();
+  FXdouble xmax=getAxis(FX2DChart::XLO)->getAxisRangeMax();
+  if(!(xmax>xmin)) return;
+  FXdouble xvalue=xmin+(xmax-xmin)*(cursorx-area.x)/area.w;
+  FXColor crosshair=readableColor(FXRGB(150,150,150),getChartStyle().forecolor);
+  dc.setForeground(crosshair);
+  dc.setLineWidth(1);
+  dc.setLineStyle(LINE_ONOFF_DASH);
+  dc.drawLine(cursorx,area.y,cursorx,area.y+area.h);
+  dc.drawLine(area.x,cursory,area.x+area.w,cursory);
+  dc.setLineStyle(LINE_SOLID);
+  FXFont* font=getAxis(FX2DChart::XLO)->getNumberFont();
+  dc.setFont(font);
+  FXint textheight=font->getFontHeight();
+  FXint textx=area.x+4;
+  FXint texty=area.y+textheight+3;
+  FXint rowheight=textheight+3;
+  for(FXint i=0; i<numCurves(); i++){
+    FXCurve* curve=getCurve(i);
+    if(!curve->isVisible()) continue;
+    FXData* xs=curve->getXData();
+    FXData* ys=curve->getYData();
+    if(!xs || !ys) continue;
+    FXint count=FXMIN(xs->no(),ys->no());
+    if(count<=0) continue;
+    FXint index=xs->findIndexAt(xvalue);
+    if(index<0) continue;
+    FXdouble samplex=xs->get(index);
+    FXdouble sampley=ys->get(index);
+    if(index+1<count){
+      FXdouble nextx=xs->get(index+1);
+      FXdouble nexty=ys->get(index+1);
+      if(Math::fpFinite(samplex) && Math::fpFinite(sampley) && Math::fpFinite(nextx) && Math::fpFinite(nexty) && nextx>samplex && xvalue>=samplex && xvalue<=nextx){
+        sampley+=(nexty-sampley)*(xvalue-samplex)/(nextx-samplex);
+        }
+      }
+    if(!Math::fpFinite(sampley)) continue;
+    FXAxis* yaxis=getAxis(curve->getYAxis());
+    FXdouble ymin=yaxis->getAxisRangeMin();
+    FXdouble ymax=yaxis->getAxisRangeMax();
+    if(!(ymax>ymin) || sampley<ymin || sampley>ymax) continue;
+    FXint pointx=area.x+(FXint)Math::lrint((xvalue-xmin)*area.w/(xmax-xmin));
+    FXint pointy=area.y+area.h-(FXint)Math::lrint((sampley-ymin)*area.h/(ymax-ymin));
+    dc.setForeground(curve->getLineStyle().color);
+    dc.fillEllipse(pointx-3,pointy-3,7,7);
+    FXString text=FXString::value("%s: %.6g",curve->getLabel().text(),sampley);
+    FXint width=textWidth(font,text);
+    if(textx+width>area.x+area.w-4){
+      textx=area.x+4;
+      texty+=rowheight;
+      }
+    if(texty>area.y+area.h) break;
+    dc.setForeground(curve->getLineStyle().color);
+    drawText(dc,text,textx,texty,TEXT_ATTACH_LEFT|TEXT_ATTACH_BOTTOM);
+    textx+=width+12;
+    }
   }
 
 
