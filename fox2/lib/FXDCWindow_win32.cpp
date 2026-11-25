@@ -1043,6 +1043,20 @@ void FXDCWindow::drawBitmap(const FXBitmap* bitmap,FXint dx,FXint dy) {
 void FXDCWindow::drawIcon(const FXIcon* icon,FXint dx,FXint dy){
   if(!surface){ fxerror("FXDCWindow::drawIcon: DC not connected to drawable.\n"); }
   if(!icon || !icon->id() || !icon->shape){ fxerror("FXDCWindow::drawIcon: illegal icon specified.\n"); }
+  FXbool keyed=(icon->getOptions()&(IMAGE_ALPHACOLOR|IMAGE_ALPHAGUESS))!=0;
+  if(!(icon->getOptions()&IMAGE_OPAQUE) && !keyed && icon->alphabmp){
+    HDC hdcalpha=::CreateCompatibleDC((HDC)ctx);
+    HBITMAP holdbmp=(HBITMAP)::SelectObject(hdcalpha,(HBITMAP)icon->alphabmp);
+    BLENDFUNCTION blend;
+    blend.BlendOp=AC_SRC_OVER;
+    blend.BlendFlags=0;
+    blend.SourceConstantAlpha=255;
+    blend.AlphaFormat=AC_SRC_ALPHA;
+    BOOL blended=::AlphaBlend((HDC)ctx,dx,dy,icon->getWidth(),icon->getHeight(),hdcalpha,0,0,icon->getWidth(),icon->getHeight(),blend);
+    ::SelectObject(hdcalpha,holdbmp);
+    ::DeleteDC(hdcalpha);
+    if(blended) return;
+    }
   HDC hdcsrc=(HDC)icon->GetDC();
   if(icon->getOptions()&IMAGE_OPAQUE){
     ::BitBlt((HDC)ctx,dx,dy,icon->getWidth(),icon->getHeight(),hdcsrc,0,0,SRCCOPY);
