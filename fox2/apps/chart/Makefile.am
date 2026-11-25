@@ -19,6 +19,7 @@ ICON_SVGS = \
 icons/x-axis-label.svg \
 icons/y-axis-label.svg \
 icons/autofix-y-axis.svg \
+icons/split-chart.svg \
 icons/reset-zoom.svg \
 icons/zoom.svg \
 icons/data-series.svg \
@@ -28,6 +29,7 @@ icons/detach.svg \
 icons/dark/x-axis-label.svg \
 icons/dark/y-axis-label.svg \
 icons/dark/autofix-y-axis.svg \
+icons/dark/split-chart.svg \
 icons/dark/reset-zoom.svg \
 icons/dark/zoom.svg \
 icons/dark/data-series.svg \
@@ -40,6 +42,7 @@ ICON_RESOURCES = \
 -r chart_x_axis_label $(srcdir)/icons/x-axis-label.svg \
 -r chart_y_axis_label $(srcdir)/icons/y-axis-label.svg \
 -r chart_autofix_y_axis $(srcdir)/icons/autofix-y-axis.svg \
+-r chart_split_chart $(srcdir)/icons/split-chart.svg \
 -r chart_reset_zoom $(srcdir)/icons/reset-zoom.svg \
 -r chart_zoom $(srcdir)/icons/zoom.svg \
 -r chart_data_series $(srcdir)/icons/data-series.svg \
@@ -49,6 +52,7 @@ ICON_RESOURCES = \
 -r chart_dark_x_axis_label $(srcdir)/icons/dark/x-axis-label.svg \
 -r chart_dark_y_axis_label $(srcdir)/icons/dark/y-axis-label.svg \
 -r chart_dark_autofix_y_axis $(srcdir)/icons/dark/autofix-y-axis.svg \
+-r chart_dark_split_chart $(srcdir)/icons/dark/split-chart.svg \
 -r chart_dark_reset_zoom $(srcdir)/icons/dark/reset-zoom.svg \
 -r chart_dark_zoom $(srcdir)/icons/dark/zoom.svg \
 -r chart_dark_data_series $(srcdir)/icons/dark/data-series.svg \
@@ -109,6 +113,8 @@ FX2DPlot.cpp \
 CSVReader.h \
 CSVReader.cpp \
 ChartDemoWindow.h \
+ChartAssignmentDialog.h \
+ChartAssignmentDialog.cpp \
 ChartDetachedWindow.h \
 ChartDetachedWindow.cpp \
 ChartDemoUtils.h \
@@ -124,6 +130,7 @@ icons/README.md \
 icons/x-axis-label.svg \
 icons/y-axis-label.svg \
 icons/autofix-y-axis.svg \
+icons/split-chart.svg \
 icons/reset-zoom.svg \
 icons/zoom.svg \
 icons/data-series.svg \
@@ -133,6 +140,7 @@ icons/detach.svg \
 icons/dark/x-axis-label.svg \
 icons/dark/y-axis-label.svg \
 icons/dark/autofix-y-axis.svg \
+icons/dark/split-chart.svg \
 icons/dark/reset-zoom.svg \
 icons/dark/zoom.svg \
 icons/dark/data-series.svg \

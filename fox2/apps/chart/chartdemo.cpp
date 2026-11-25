@@ -3,6 +3,7 @@
 #include "chart.h"
 #include "CSVReader.h"
 #include "ChartDemoWindow.h"
+#include "ChartAssignmentDialog.h"
 #include "ChartDemoUtils.h"
 #include "ChartTabItem.h"
 #include "ChartDetachedWindow.h"
@@ -60,6 +61,7 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_Y_DESCRIPTION,ChartDemoWindow::onAxisDescription),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_AUTOFIT_Y,ChartDemoWindow::onAutoFitY),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_RESET_ZOOM,ChartDemoWindow::onResetZoom),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SPLIT_CHART,ChartDemoWindow::onSplitChart),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_PLOT_CHANGED,ChartDemoWindow::onPlotChanged),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_XSCROLL,ChartDemoWindow::onXScroll),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XSCROLL,ChartDemoWindow::onXScroll),
@@ -167,11 +169,99 @@ static const FXColor seriesColors[]={
   };
 
 
+static void applyPlotColors(FX2DPlot* plot,FXColor background,FXColor foreground,FXColor majorgrid,FXColor minorgrid);
+
+
+static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSelector selector,FXFont* verticalFont,FXFont* numberFont){
+  ChartDemoPlot* plot=new ChartDemoPlot(parent,target,selector,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
+  plot->getAxis(FX2DChart::YHI)->setStyle(AXIS_OFF);
+  plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalFont);
+  plot->getAxis(FX2DChart::YLO)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_RIGHT);
+  plot->getAxis(FX2DChart::YLO)->setLabelOffset(40);
+  plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalFont);
+  plot->getAxis(FX2DChart::YHI)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_LEFT);
+  plot->getAxis(FX2DChart::YHI)->setLabelOffset(40);
+  plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
+  plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
+  plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
+  plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
+  plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
+  plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+  return plot;
+  }
+
+
+static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* verticalFont,FXFont* numberFont){
+  FXObject* target=document->plot->getTarget();
+  FXSelector selector=document->plot->getSelector();
+  while((FXint)document->plots.size()>count){
+    delete document->plots.back();
+    document->plots.pop_back();
+    }
+  while((FXint)document->plots.size()<count){
+    ChartDemoPlot* plot=createChartPlot(document->plotsplit,target,selector,verticalFont,numberFont);
+    document->plots.push_back(plot);
+    FXTheme* theme=document->plot->getApp()->getTheme();
+    FXColor surface=theme->color(ROLE_SURFACE);
+    applyPlotColors(plot,theme->color(ROLE_WINDOW_BG),theme->color(ROLE_TEXT),contrastColor(surface,20),contrastColor(surface,10));
+    }
+  document->plot=document->plots[0];
+  }
+
+
+static void updateSplitChartLayout(ChartDocument* document){
+  FXint count=(FXint)document->plots.size();
+  for(FXint i=0; i<count; i++){
+    FX2DPlot* plot=document->plots[i];
+    FXAxis* xaxis=plot->getAxis(FX2DChart::XLO);
+    FXuint xstyle=xaxis->getStyle()|AXIS_NUMBERS;
+    if(i==count-1){
+      if(document->xtoggle->getState()) xstyle|=AXIS_LABEL;
+      else xstyle&=~AXIS_LABEL;
+      }
+    else xstyle&=~(AXIS_LABEL|AXIS_NUMBERS);
+    xaxis->setStyle(xstyle);
+    FXAxis* yaxis=plot->getAxis(FX2DChart::YLO);
+    if(document->ytoggle->getState()) yaxis->setStyle(yaxis->getStyle()|AXIS_LABEL);
+    else yaxis->setStyle(yaxis->getStyle()&~AXIS_LABEL);
+    }
+  document->plotsplit->recalc();
+  document->plotsplit->layout();
+  }
+
+
+static void applyPlotColors(FX2DPlot* plot,FXColor background,FXColor foreground,FXColor majorgrid,FXColor minorgrid){
+  FillStyle back=plot->getBackStyle();
+  back.forecolor=background;
+  back.backcolor=background;
+  back.lower=background;
+  back.upper=background;
+  plot->setBackStyle(back);
+  FillStyle chart=plot->getChartStyle();
+  chart.forecolor=background;
+  chart.backcolor=background;
+  chart.lower=background;
+  chart.upper=background;
+  plot->setChartStyle(chart);
+  plot->setCaptionColor(foreground);
+  for(FXint axis=0; axis<4; axis++){
+    FXAxis* item=plot->getAxis(axis);
+    item->setAxisColor(foreground);
+    item->setTickColors(foreground,foreground);
+    item->setGridColors(majorgrid,minorgrid);
+    item->setLabelColor(foreground);
+    item->setNumberColor(foreground);
+    }
+  }
+
+
 static const FXchar detach_hover_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#dbeafe\" stroke=\"#60a5fa\"/><g fill=\"none\" stroke=\"#1d4ed8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 static const FXchar detach_pressed_svg[]="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\"><rect x=\"0.5\" y=\"0.5\" width=\"15\" height=\"15\" rx=\"3\" fill=\"#bfdbfe\" stroke=\"#2563eb\"/><g fill=\"none\" stroke=\"#1e40af\" stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"1.4\"><path d=\"M9 3H4.5A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5V7\"/><path d=\"M8 8l5-5m-4 0h4v4\"/></g></svg>";
 
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
+    syncingPlots=false;
   fontDPI=0;
   fontScale=0.0;
   pixelScale=0.0;
@@ -187,6 +277,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   detachPressedIcon=new FXSVGIcon(app,(const FXuchar*)detach_pressed_svg,FXRGB(192,192,192),0,16,16);
   autoFitYIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_autofix_y_axis:chart_autofix_y_axis),FXRGB(192,192,192),0,20,20);
   resetZoomIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
+  splitChartIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_split_chart:chart_split_chart),FXRGB(192,192,192),0,20,20);
   xAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
   yAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
   seriesIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
@@ -235,6 +326,7 @@ void ChartDemoWindow::create(){
   detachPressedIcon->create();
   autoFitYIcon->create();
   resetZoomIcon->create();
+  splitChartIcon->create();
   xAxisIcon->create();
   yAxisIcon->create();
   seriesIcon->create();
@@ -258,6 +350,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   FXSVGIcon* oldDetach=detachIcon;
   FXSVGIcon* oldAutoFitY=autoFitYIcon;
   FXSVGIcon* oldResetZoom=resetZoomIcon;
+  FXSVGIcon* oldSplitChart=splitChartIcon;
   FXSVGIcon* oldXAxis=xAxisIcon;
   FXSVGIcon* oldYAxis=yAxisIcon;
   FXSVGIcon* oldSeries=seriesIcon;
@@ -266,6 +359,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   detachIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_detach:chart_detach),FXRGB(192,192,192),0,16,16);
   autoFitYIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_autofix_y_axis:chart_autofix_y_axis),FXRGB(192,192,192),0,20,20);
   resetZoomIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
+  splitChartIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_split_chart:chart_split_chart),FXRGB(192,192,192),0,20,20);
   xAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
   yAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
   seriesIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
@@ -274,6 +368,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   detachIcon->create();
   autoFitYIcon->create();
   resetZoomIcon->create();
+  splitChartIcon->create();
   xAxisIcon->create();
   yAxisIcon->create();
   seriesIcon->create();
@@ -288,6 +383,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
     document->ytoggle->setAltIcon(yAxisIcon);
     document->autofity->setIcon(autoFitYIcon);
     document->resetzoom->setIcon(resetZoomIcon);
+    document->splitbutton->setIcon(splitChartIcon);
     document->seriesshow->setIcon(seriesIcon);
     document->seriesshow->setAltIcon(seriesIcon);
     document->zoombutton->setIcon(zoomIcon);
@@ -298,6 +394,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   delete oldDetach;
   delete oldAutoFitY;
   delete oldResetZoom;
+  delete oldSplitChart;
   delete oldXAxis;
   delete oldYAxis;
   delete oldSeries;
@@ -319,27 +416,7 @@ void ChartDemoWindow::updateChartColors(FXTheme* theme){
       FXWindow* swatch=document->seriesrows[j]->getFirst();
       if(swatch) swatch->setBackColor(readableColor(seriesColors[j%(sizeof(seriesColors)/sizeof(seriesColors[0]))],background));
       }
-    FillStyle back=document->plot->getBackStyle();
-    back.forecolor=background;
-    back.backcolor=background;
-    back.lower=background;
-    back.upper=background;
-    document->plot->setBackStyle(back);
-    FillStyle chart=document->plot->getChartStyle();
-    chart.forecolor=background;
-    chart.backcolor=background;
-    chart.lower=background;
-    chart.upper=background;
-    document->plot->setChartStyle(chart);
-    document->plot->setCaptionColor(foreground);
-    for(FXint axis=0; axis<4; axis++){
-      FXAxis* item=document->plot->getAxis(axis);
-      item->setAxisColor(foreground);
-      item->setTickColors(foreground,foreground);
-      item->setGridColors(majorgrid,minorgrid);
-      item->setLabelColor(foreground);
-      item->setNumberColor(foreground);
-      }
+    for(FXuval p=0; p<document->plots.size(); p++) applyPlotColors(document->plots[p],background,foreground,majorgrid,minorgrid);
     rebuild(document,true);
     }
   }
@@ -359,14 +436,17 @@ void ChartDemoWindow::updateChartFonts(){
   numberFont=getApp()->getNormalFont(getWindowDPI());
   for(FXuval i=0; i<documents.size(); i++){
     if(documents[i]->detachWindow) continue;
-    documents[i]->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
-    documents[i]->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
-    documents[i]->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
-    documents[i]->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
-    documents[i]->plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
-    documents[i]->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
-    documents[i]->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
-    documents[i]->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+    for(FXuval p=0; p<documents[i]->plots.size(); p++){
+      FX2DPlot* plot=documents[i]->plots[p];
+      plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
+      plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
+      plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
+      plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
+      plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
+      plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
+      plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
+      plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+      }
     scaleDocumentWidgets(documents[i],this);
     if(scalechanged && documents[i]->series->shown()){
       documents[i]->splitter->setSplit(1,this->scale(documents[i]->serieswidth));
@@ -382,12 +462,15 @@ void ChartDemoWindow::updateChartFonts(){
 
 
 void ChartDemoWindow::scaleDocumentWidgets(ChartDocument* document,FXWindow* view){
-  document->plot->setMarginLeft(view->scale(12));
-  document->plot->setMarginRight(view->scale(12));
-  document->plot->setMarginTop(view->scale(12));
-  document->plot->setMarginBottom(view->scale(12));
-  document->plot->getAxis(FX2DChart::YLO)->setLabelOffset(view->scale(40));
-  document->plot->getAxis(FX2DChart::YHI)->setLabelOffset(view->scale(40));
+  for(FXuval p=0; p<document->plots.size(); p++){
+    FX2DPlot* plot=document->plots[p];
+    plot->setMarginLeft(view->scale(12));
+    plot->setMarginRight(view->scale(12));
+    plot->setMarginTop(view->scale(12));
+    plot->setMarginBottom(view->scale(12));
+    plot->getAxis(FX2DChart::YLO)->setLabelOffset(view->scale(40));
+    plot->getAxis(FX2DChart::YHI)->setLabelOffset(view->scale(40));
+    }
   document->xcolumn->setWidth(view->scale(280));
   document->series->setPadLeft(view->scale(5));
   document->series->setPadRight(view->scale(5));
@@ -413,14 +496,17 @@ void ChartDemoWindow::updateDetachedChartFonts(ChartDocument* document,FXTopWind
   oldfont=document->detachedVerticalFont;
   document->detachedVerticalFont=makeChartFont(getApp(),verticalLabelFontDesc,90*64,windowdpi,scale);
   document->detachedNumberFont=getApp()->getNormalFont(windowdpi);
-  document->plot->getAxis(FX2DChart::XLO)->setLabelFont(document->detachedNumberFont);
-  document->plot->getAxis(FX2DChart::XHI)->setLabelFont(document->detachedNumberFont);
-  document->plot->getAxis(FX2DChart::YLO)->setLabelFont(document->detachedVerticalFont);
-  document->plot->getAxis(FX2DChart::YHI)->setLabelFont(document->detachedVerticalFont);
-  document->plot->getAxis(FX2DChart::XLO)->setNumberFont(document->detachedNumberFont);
-  document->plot->getAxis(FX2DChart::XHI)->setNumberFont(document->detachedNumberFont);
-  document->plot->getAxis(FX2DChart::YLO)->setNumberFont(document->detachedNumberFont);
-  document->plot->getAxis(FX2DChart::YHI)->setNumberFont(document->detachedNumberFont);
+  for(FXuval p=0; p<document->plots.size(); p++){
+    FX2DPlot* plot=document->plots[p];
+    plot->getAxis(FX2DChart::XLO)->setLabelFont(document->detachedNumberFont);
+    plot->getAxis(FX2DChart::XHI)->setLabelFont(document->detachedNumberFont);
+    plot->getAxis(FX2DChart::YLO)->setLabelFont(document->detachedVerticalFont);
+    plot->getAxis(FX2DChart::YHI)->setLabelFont(document->detachedVerticalFont);
+    plot->getAxis(FX2DChart::XLO)->setNumberFont(document->detachedNumberFont);
+    plot->getAxis(FX2DChart::XHI)->setNumberFont(document->detachedNumberFont);
+    plot->getAxis(FX2DChart::YLO)->setNumberFont(document->detachedNumberFont);
+    plot->getAxis(FX2DChart::YHI)->setNumberFont(document->detachedNumberFont);
+    }
   scaleDocumentWidgets(document,view);
   if(document->series->shown()) document->splitter->setSplit(1,view->scale(document->serieswidth));
   document->splitter->recalc();
@@ -581,12 +667,15 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->detachedFontScale=0.0;
   document->detachedPixelScale=0.0;
   document->plot=nullptr;
+  document->plots.clear();
+  document->plotsplit=nullptr;
   document->xscroll=nullptr;
   document->info=nullptr;
   document->series=nullptr;
   document->seriesfilter=nullptr;
   document->serieslist=nullptr;
   document->splitter=nullptr;
+  document->splitbutton=nullptr;
   document->seriesshow=nullptr;
   document->seriesclose=nullptr;
   document->serieswidth=205;
@@ -598,6 +687,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
       document->xcolumns.push_back(column);
       document->seriesKeys.push_back(chartColumnKey(document->table,column));
       document->visible.push_back(true);
+      document->seriesPlot.push_back(0);
       }
     }
   if(document->xcolumns.empty()){
@@ -646,6 +736,9 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->resetzoom=new FXButton(charttoolbar,"",resetZoomIcon,this,ID_RESET_ZOOM,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
   document->resetzoom->setTipText("Reset zoom");
   document->resetzoom->disable();
+  document->splitbutton=new FXButton(charttoolbar,"",splitChartIcon,this,ID_SPLIT_CHART,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->splitbutton->setTipText("Assign series to subplots");
+  if(document->xcolumns.size()<3) document->splitbutton->disable();
   document->seriesshow=new FXToggleButton(charttoolbar,"","",seriesIcon,seriesIcon,this,ID_SERIES_PANEL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
   document->seriesshow->setTipText("Show/hide the series panel");
   document->zoombutton=new FXToggleButton(charttoolbar,"","",zoomIcon,zoomIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
@@ -660,23 +753,14 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->splitter=content;
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
   FXVerticalFrame* chartcolumn=new FXVerticalFrame(chartarea,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
-  document->plot=new ChartDemoPlot(chartcolumn,this,ID_PLOT_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+  document->plotsplit=new FXSplitter(chartcolumn,SPLITTER_VERTICAL|SPLITTER_REVERSED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  document->plot=createChartPlot(document->plotsplit,this,ID_PLOT_CHANGED,verticalLabelFont,numberFont);
+  document->plots.push_back(document->plot);
+  FXint plotcount=1;
+  for(FXuval i=0; i<document->seriesPlot.size(); i++) plotcount=FXMAX(plotcount,document->seriesPlot[i]+1);
+  ensurePlotCount(document,plotcount,verticalLabelFont,numberFont);
   document->xscroll=new FXScrollBar(chartcolumn,this,ID_XSCROLL,SCROLLBAR_HORIZONTAL|LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM);
   document->xscroll->setLine(1000);
-  document->plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
-  document->plot->getAxis(FX2DChart::YHI)->setStyle(AXIS_OFF);
-  document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
-  document->plot->getAxis(FX2DChart::YLO)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_RIGHT);
-  document->plot->getAxis(FX2DChart::YLO)->setLabelOffset(40);
-  document->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
-  document->plot->getAxis(FX2DChart::YHI)->setLabelStyle(TEXT_JUSTIFY_CENTER|TEXT_ATTACH_LEFT);
-  document->plot->getAxis(FX2DChart::YHI)->setLabelOffset(40);
-  document->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
-  document->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
-  document->plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
-  document->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
-  document->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
-  document->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
   FXSettings& settings=getApp()->reg();
   FXbool xdescription=FXString(settings.readStringEntry(document->settingsSection.text(),"xdescription","1"))!="0";
   FXbool ydescription=FXString(settings.readStringEntry(document->settingsSection.text(),"ydescription","1"))!="0";
@@ -684,8 +768,12 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->ytoggle->setState(ydescription);
   document->filtertext=settings.readStringEntry(document->settingsSection.text(),"seriesfilter","");
   document->seriesshown=FXString(settings.readStringEntry(document->settingsSection.text(),"seriesshown","1"))!="0";
-  if(!xdescription) document->plot->getAxis(FX2DChart::XLO)->setStyle(document->plot->getAxis(FX2DChart::XLO)->getStyle()&~AXIS_LABEL);
-  if(!ydescription) document->plot->getAxis(FX2DChart::YLO)->setStyle(document->plot->getAxis(FX2DChart::YLO)->getStyle()&~AXIS_LABEL);
+  updateSplitChartLayout(document);
+  FXTheme* currentTheme=getApp()->getTheme();
+  FXColor chartbackground=currentTheme->color(ROLE_WINDOW_BG);
+  FXColor chartforeground=currentTheme->color(ROLE_TEXT);
+  FXColor chartsurface=currentTheme->color(ROLE_SURFACE);
+  for(FXuval p=0; p<document->plots.size(); p++) applyPlotColors(document->plots[p],chartbackground,chartforeground,contrastColor(chartsurface,20),contrastColor(chartsurface,10));
   document->series=new FXVerticalFrame(content,LAYOUT_FIX_WIDTH|LAYOUT_FILL_Y|LAYOUT_FILL_X|FRAME_SUNKEN|FRAME_THICK,0,0,205,0,5,5,5,5,1,1);
   FXHorizontalFrame* seriesheader=new FXHorizontalFrame(document->series,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,2,2,2,2,0,0);
   new FXLabel(seriesheader,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
@@ -717,6 +805,8 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
+  for(FXint p=1; p<(FXint)document->plots.size(); p++) document->plotsplit->setSplit(p,FXMAX(1,document->plotsplit->getHeight()/(FXint)document->plots.size()));
+  document->plotsplit->layout();
   if(getApp()->reg().existingEntry(document->settingsSection.text(),"split")){
     FXint split=getApp()->reg().readIntEntry(document->settingsSection.text(),"split",205);
     if(split>0) document->serieswidth=FXCLAMP(180,split,400);
@@ -726,7 +816,17 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->seriesshow->setState(document->series->shown());
   applySeriesFilter(document);
   if(FXString(settings.readStringEntry(document->settingsSection.text(),"zoomed","0"))=="1" && settings.existingEntry(document->settingsSection.text(),"xminimum")){
-    document->plot->setViewRange(settings.readRealEntry(document->settingsSection.text(),"xminimum"),settings.readRealEntry(document->settingsSection.text(),"xmaximum"),settings.readRealEntry(document->settingsSection.text(),"yminimum"),settings.readRealEntry(document->settingsSection.text(),"ymaximum"));
+    for(FXuval p=0; p<document->plots.size(); p++){
+      FXString prefix=FXString::value("plot-%d-",(FXint)p);
+      FXString zoomkey=prefix+"zoomed";
+      FXString zoomdefault=p==0?"1":(p==1?settings.readStringEntry(document->settingsSection.text(),"lowerzoomed","0"):"0");
+      if(FXString(settings.readStringEntry(document->settingsSection.text(),zoomkey.text(),zoomdefault.text()))!="1") continue;
+      FXString ymin=prefix+"yminimum";
+      FXString ymax=prefix+"ymaximum";
+      const FXchar* oldymin=p==1?"loweryminimum":"yminimum";
+      const FXchar* oldymax=p==1?"lowerymaximum":"ymaximum";
+      document->plots[p]->setViewRange(settings.readRealEntry(document->settingsSection.text(),"xminimum"),settings.readRealEntry(document->settingsSection.text(),"xmaximum"),settings.readRealEntry(document->settingsSection.text(),ymin.text(),settings.readRealEntry(document->settingsSection.text(),oldymin)),settings.readRealEntry(document->settingsSection.text(),ymax.text(),settings.readRealEntry(document->settingsSection.text(),oldymax)));
+      }
     document->resetzoom->enable();
     }
   saveDocumentSettings(document);
@@ -747,6 +847,10 @@ void ChartDemoWindow::loadDocumentSettings(ChartDocument* document){
   for(FXuval i=0; i<document->seriesKeys.size(); i++){
     FXString entry="series-"+chartHash(document->seriesKeys[i]);
     document->visible[i]=FXString(settings.readStringEntry(document->settingsSection.text(),entry,"1")).toInt()!=0;
+    entry="plot-"+chartHash(document->seriesKeys[i]);
+    FXString legacy="lower-"+chartHash(document->seriesKeys[i]);
+    FXint defaultplot=FXString(settings.readStringEntry(document->settingsSection.text(),legacy.text(),"0")).toInt()!=0?1:0;
+    document->seriesPlot[i]=FXMAX(0,FXString(settings.readStringEntry(document->settingsSection.text(),entry.text(),FXString::value("%d",defaultplot).text())).toInt());
     }
   }
 
@@ -757,15 +861,31 @@ void ChartDemoWindow::saveDocumentSettings(ChartDocument* document){
   for(FXuval i=0; i<document->seriesKeys.size(); i++){
     FXString entry="series-"+chartHash(document->seriesKeys[i]);
     settings.writeStringEntry(document->settingsSection.text(),entry,document->visible[i]?"1":"0");
+    entry="plot-"+chartHash(document->seriesKeys[i]);
+    settings.writeIntEntry(document->settingsSection.text(),entry,document->seriesPlot[i]);
     }
   settings.writeStringEntry(document->settingsSection.text(),"xdescription",document->xtoggle && document->xtoggle->getState()?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"ydescription",document->ytoggle && document->ytoggle->getState()?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"seriesfilter",document->seriesfilter?document->seriesfilter->getText().text():document->filtertext.text());
   settings.writeStringEntry(document->settingsSection.text(),"seriesshown",document->series && document->series->shown()?"1":"0");
   if(document->plot){
-    FXAxis* xaxis=document->plot->getAxis(FX2DChart::XLO);
+    FX2DPlot* reference=document->plot;
+    for(FXuval p=0; p<document->plots.size(); p++) if(document->plots[p]->numCurves()>0){ reference=document->plots[p]; break; }
+    FXAxis* xaxis=reference->getAxis(FX2DChart::XLO);
     FXAxis* yaxis=document->plot->getAxis(FX2DChart::YLO);
-    settings.writeStringEntry(document->settingsSection.text(),"zoomed",document->plot->isZoomed()?"1":"0");
+    FXbool zoomed=false;
+    for(FXuval p=0; p<document->plots.size(); p++){
+      FX2DPlot* plot=document->plots[p];
+      FXString prefix=FXString::value("plot-%d-",(FXint)p);
+      FXString zoomkey=prefix+"zoomed";
+      FXString ymin=prefix+"yminimum";
+      FXString ymax=prefix+"ymaximum";
+      settings.writeStringEntry(document->settingsSection.text(),zoomkey.text(),plot->isZoomed()?"1":"0");
+      settings.writeRealEntry(document->settingsSection.text(),ymin.text(),plot->getAxis(FX2DChart::YLO)->getAxisRangeMin());
+      settings.writeRealEntry(document->settingsSection.text(),ymax.text(),plot->getAxis(FX2DChart::YLO)->getAxisRangeMax());
+      if(plot->isZoomed()) zoomed=true;
+      }
+    settings.writeStringEntry(document->settingsSection.text(),"zoomed",zoomed?"1":"0");
     settings.writeRealEntry(document->settingsSection.text(),"xminimum",xaxis->getAxisRangeMin());
     settings.writeRealEntry(document->settingsSection.text(),"xmaximum",xaxis->getAxisRangeMax());
     settings.writeRealEntry(document->settingsSection.text(),"yminimum",yaxis->getAxisRangeMin());
@@ -803,14 +923,19 @@ void ChartDemoWindow::applySeriesFilter(ChartDocument* document){
 void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
   FXint xcol=document->selectedx;
   FXint xindex=-1;
-  FXbool waszoomed=keepView && document->plot->isZoomed();
-  FXdouble xminimum=document->plot->getAxis(FX2DChart::XLO)->getAxisRangeMin();
-  FXdouble xmaximum=document->plot->getAxis(FX2DChart::XLO)->getAxisRangeMax();
-  FXdouble yminimum=document->plot->getAxis(FX2DChart::YLO)->getAxisRangeMin();
-  FXdouble ymaximum=document->plot->getAxis(FX2DChart::YLO)->getAxisRangeMax();
+  std::vector<FXbool> zoomed(document->plots.size(),false);
+  std::vector<FXdouble> xmin(document->plots.size()),xmax(document->plots.size()),ymin(document->plots.size()),ymax(document->plots.size());
+  for(FXuval p=0; p<document->plots.size(); p++){
+    FX2DPlot* plot=document->plots[p];
+    zoomed[p]=keepView && plot->isZoomed();
+    xmin[p]=plot->getAxis(FX2DChart::XLO)->getAxisRangeMin();
+    xmax[p]=plot->getAxis(FX2DChart::XLO)->getAxisRangeMax();
+    ymin[p]=plot->getAxis(FX2DChart::YLO)->getAxisRangeMin();
+    ymax[p]=plot->getAxis(FX2DChart::YLO)->getAxisRangeMax();
+    }
   for(FXuval i=0; i<document->xcolumns.size(); i++) if(document->xcolumns[i]==xcol) xindex=(FXint)i;
   if(xindex<0) return;
-  document->plot->clearCurves();
+  for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->clearCurves();
   FXint visiblecount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
@@ -819,7 +944,9 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     else document->checks[i]->enable();
     if(col==xcol) continue;
     if(!document->visible[i]) continue;
-    FXCurve* curve=new FXCurve(document->plot,document->table.columns[col].name);
+    FXint plotindex=FXCLAMP(0,document->seriesPlot[i],(FXint)document->plots.size()-1);
+    FX2DPlot* target=document->plots[plotindex];
+    FXCurve* curve=new FXCurve(target,document->table.columns[col].name);
     FXData* xdata=new FXData;
     FXData* ydata=new FXData;
     xdata->reserve(document->table.rows);
@@ -832,14 +959,25 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     curve->setYData(ydata);
     LineStyle line={readableColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],getApp()->getTheme()->color(ROLE_WINDOW_BG)),1,LINESTYLE_SOLID};
     curve->setLineStyle(line);
-    document->plot->appendCurve(curve);
+    target->appendCurve(curve);
     visiblecount++;
     }
-  document->plot->getAxis(FX2DChart::XLO)->setLabel(document->table.columns[xcol].name+(document->table.columns[xcol].timestamp?" (seconds from start)":""));
-  document->plot->getAxis(FX2DChart::YLO)->setLabel("Value");
-  document->plot->fitData();
-  if(waszoomed) document->plot->setViewRange(xminimum,xmaximum,yminimum,ymaximum);
-  document->plot->invalidateChart();
+  FXString xlabel=document->table.columns[xcol].name+(document->table.columns[xcol].timestamp?" (seconds from start)":"");
+  for(FXuval p=0; p<document->plots.size(); p++){
+    FX2DPlot* plot=document->plots[p];
+    plot->getAxis(FX2DChart::XLO)->setLabel(xlabel);
+    plot->getAxis(FX2DChart::YLO)->setLabel("Value");
+    plot->fitData();
+    if(zoomed[p]) plot->setViewRange(xmin[p],xmax[p],ymin[p],ymax[p]);
+    }
+  updateSplitChartLayout(document);
+  FXbool anyzoomed=false;
+  for(FXuval p=0; p<document->plots.size(); p++){
+    document->plots[p]->invalidateChart();
+    if(document->plots[p]->isZoomed()) anyzoomed=true;
+    }
+  if(anyzoomed) document->resetzoom->enable();
+  else document->resetzoom->disable();
   FXint ycount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++) if((FXint)i!=xindex) ycount++;
   document->info->setText(FXString::value(document->table.rows)+" rows; "+FXString::value(visiblecount)+" plotted / "+FXString::value(ycount)+" numeric series; "+document->table.delimiter+"; "+document->table.encoding);
@@ -855,7 +993,9 @@ long ChartDemoWindow::onXColumn(FXObject* sender,FXSelector,void*){
       if(selected>=0 && selected<(FXint)document->xcolumns.size()){
         document->selectedx=document->xcolumns[selected];
         rebuild(document);
-        if(document->plot->isZoomed()) document->resetzoom->enable();
+        FXbool zoomed=false;
+        for(FXuval p=0; p<document->plots.size(); p++) if(document->plots[p]->isZoomed()) zoomed=true;
+        if(zoomed) document->resetzoom->enable();
         else document->resetzoom->disable();
         saveDocumentSettings(document);
         }
@@ -874,15 +1014,18 @@ long ChartDemoWindow::onAxisDescription(FXObject* sender,FXSelector sel,void*){
       FXAxis* axis=document->plot->getAxis(FX2DChart::XLO);
       if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
       else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
-      document->plot->invalidateChart();
+      updateSplitChartLayout(document);
+      for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->invalidateChart();
       saveDocumentSettings(document);
       return 1;
       }
     if(FXSELID(sel)==ID_Y_DESCRIPTION && document->ytoggle==sender){
-      FXAxis* axis=document->plot->getAxis(FX2DChart::YLO);
-      if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
-      else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
-      document->plot->invalidateChart();
+      for(FXuval p=0; p<document->plots.size(); p++){
+        FXAxis* axis=document->plots[p]->getAxis(FX2DChart::YLO);
+        if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
+        else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
+        document->plots[p]->invalidateChart();
+        }
       saveDocumentSettings(document);
       return 1;
       }
@@ -895,11 +1038,35 @@ long ChartDemoWindow::onAutoFitY(FXObject* sender,FXSelector,void*){
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
     if(document->autofity==sender){
-      document->plot->fitY();
-      document->plot->invalidateChart();
+      for(FXuval p=0; p<document->plots.size(); p++){
+        document->plots[p]->fitY();
+        document->plots[p]->invalidateChart();
+        }
       saveDocumentSettings(document);
       return 1;
       }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onSplitChart(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->splitbutton!=sender) continue;
+    ChartAssignmentDialog dialog(this,document->table,document->xcolumns,document->selectedx,document->seriesPlot);
+    if(!dialog.execute(PLACEMENT_OWNER)) return 1;
+    FXint count=1;
+    dialog.getAssignment(document->seriesPlot,count);
+    ensurePlotCount(document,count,document->detachWindow?document->detachedVerticalFont:verticalLabelFont,document->detachWindow?document->detachedNumberFont:numberFont);
+    scaleDocumentWidgets(document,document->detachWindow?static_cast<FXWindow*>(document->detachWindow):this);
+    updateSplitChartLayout(document);
+    rebuild(document,false);
+    for(FXint p=1; p<count; p++) document->plotsplit->setSplit(p,FXMAX(1,document->plotsplit->getHeight()/count));
+    document->plotsplit->layout();
+    document->resetzoom->disable();
+    saveDocumentSettings(document);
+    return 1;
     }
   return 0;
   }
@@ -909,8 +1076,11 @@ long ChartDemoWindow::onResetZoom(FXObject* sender,FXSelector,void*){
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
     if(document->resetzoom==sender){
-      document->plot->resetZoom();
+      syncingPlots=true;
+      for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->resetZoom();
+      syncingPlots=false;
       document->resetzoom->disable();
+      updateXScroll(document);
       saveDocumentSettings(document);
       return 1;
       }
@@ -926,7 +1096,7 @@ long ChartDemoWindow::onPlotTool(FXObject* sender,FXSelector,void*){
     FXbool panmode=sender==document->dragbutton && document->dragbutton->getState();
     document->zoombutton->setState(!panmode);
     document->dragbutton->setState(panmode);
-    static_cast<ChartDemoPlot*>(document->plot)->setPanMode(panmode);
+    for(FXuval p=0; p<document->plots.size(); p++) static_cast<ChartDemoPlot*>(document->plots[p])->setPanMode(panmode);
     return 1;
     }
   return 0;
@@ -934,10 +1104,28 @@ long ChartDemoWindow::onPlotTool(FXObject* sender,FXSelector,void*){
 
 
 long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void*){
+  if(syncingPlots) return 1;
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
-    if(document->plot==sender){
-      if(document->plot->isZoomed()) document->resetzoom->enable();
+    FX2DPlot* source=nullptr;
+    for(FXuval p=0; p<document->plots.size(); p++) if(document->plots[p]==sender) source=document->plots[p];
+    if(source){
+      syncingPlots=true;
+      for(FXuval p=0; p<document->plots.size(); p++){
+        FX2DPlot* other=document->plots[p];
+        if(other==source) continue;
+        if(source->isZoomed()){
+          FXdouble yminimum=other->getAxis(FX2DChart::YLO)->getAxisRangeMin();
+          FXdouble ymaximum=other->getAxis(FX2DChart::YLO)->getAxisRangeMax();
+          other->setViewRange(source->getAxis(FX2DChart::XLO)->getAxisRangeMin(),source->getAxis(FX2DChart::XLO)->getAxisRangeMax(),yminimum,ymaximum);
+          }
+        else other->resetZoom();
+        other->invalidateChart();
+        }
+      syncingPlots=false;
+      FXbool zoomed=false;
+      for(FXuval p=0; p<document->plots.size(); p++) if(document->plots[p]->isZoomed()) zoomed=true;
+      if(zoomed) document->resetzoom->enable();
       else document->resetzoom->disable();
       updateXScroll(document);
       saveDocumentSettings(document);
@@ -949,7 +1137,9 @@ long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void*){
 
 
 void ChartDemoWindow::updateXScroll(ChartDocument* document){
-  FXAxis* axis=document->plot->getAxis(FX2DChart::XLO);
+  FX2DPlot* reference=document->plot;
+  for(FXuval p=0; p<document->plots.size(); p++) if(document->plots[p]->numCurves()>0){ reference=document->plots[p]; break; }
+  FXAxis* axis=reference->getAxis(FX2DChart::XLO);
   FXdouble datamin=axis->getDataRangeMin();
   FXdouble datamax=axis->getDataRangeMax();
   FXdouble viewmin=axis->getAxisRangeMin();
@@ -974,7 +1164,9 @@ long ChartDemoWindow::onXScroll(FXObject* sender,FXSelector,void* ptr){
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
     if(document->xscroll!=sender) continue;
-    FXAxis* axis=document->plot->getAxis(FX2DChart::XLO);
+    FX2DPlot* reference=document->plot;
+    for(FXuval p=0; p<document->plots.size(); p++) if(document->plots[p]->numCurves()>0){ reference=document->plots[p]; break; }
+    FXAxis* axis=reference->getAxis(FX2DChart::XLO);
     FXdouble datamin=axis->getDataRangeMin();
     FXdouble datamax=axis->getDataRangeMax();
     FXdouble datarange=datamax-datamin;
@@ -983,8 +1175,12 @@ long ChartDemoWindow::onXScroll(FXObject* sender,FXSelector,void* ptr){
     FXint position=(FXint)(FXival)ptr;
     FXdouble xminimum=datamin+datarange*(FXdouble)position/document->xscroll->getRange();
     FXdouble xmaximum=xminimum+viewrange;
-    FXAxis* yaxis=document->plot->getAxis(FX2DChart::YLO);
-    document->plot->setViewRange(xminimum,xmaximum,yaxis->getAxisRangeMin(),yaxis->getAxisRangeMax());
+    syncingPlots=true;
+    for(FXuval p=0; p<document->plots.size(); p++){
+      FXAxis* yaxis=document->plots[p]->getAxis(FX2DChart::YLO);
+      document->plots[p]->setViewRange(xminimum,xmaximum,yaxis->getAxisRangeMin(),yaxis->getAxisRangeMax());
+      }
+    syncingPlots=false;
     updateXScroll(document);
     saveDocumentSettings(document);
     return 1;
@@ -1127,14 +1323,17 @@ void ChartDemoWindow::attachDocument(ChartDocument* document,FXbool select){
   document->tabitem->show();
   document->page->show();
   document->splitter->setSplit(1,scale(document->serieswidth));
-  document->plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
-  document->plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
-  document->plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
-  document->plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
-  document->plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
-  document->plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
-  document->plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
-  document->plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+  for(FXuval p=0; p<document->plots.size(); p++){
+    FX2DPlot* plot=document->plots[p];
+    plot->getAxis(FX2DChart::XLO)->setLabelFont(numberFont);
+    plot->getAxis(FX2DChart::XHI)->setLabelFont(numberFont);
+    plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalLabelFont);
+    plot->getAxis(FX2DChart::YHI)->setLabelFont(verticalLabelFont);
+    plot->getAxis(FX2DChart::XLO)->setNumberFont(numberFont);
+    plot->getAxis(FX2DChart::XHI)->setNumberFont(numberFont);
+    plot->getAxis(FX2DChart::YLO)->setNumberFont(numberFont);
+    plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
+    }
   delete document->detachedVerticalFont;
   document->detachedVerticalFont=nullptr;
   document->detachedNumberFont=nullptr;
@@ -1204,6 +1403,7 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete detachIcon;
   delete autoFitYIcon;
   delete resetZoomIcon;
+  delete splitChartIcon;
   delete xAxisIcon;
   delete yAxisIcon;
   delete seriesIcon;

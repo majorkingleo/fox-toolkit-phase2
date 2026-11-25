@@ -8,6 +8,7 @@ extra emphasis.
 - `x-axis-label.svg`: horizontal axis and crossing series.
 - `y-axis-label.svg`: vertical axis and Y-oriented series.
 - `autofix-y-axis.svg`: Y axis with fit/arrows indicating automatic range fitting.
+- `split-chart.svg`: chart frame divided into vertically stacked plotting areas.
 - `zoom.svg`: magnifier with a centered plus sign.
 - `reset-zoom.svg`: return arrow around a reset/magnifier action.
 - `data-series.svg`: axes with a multi-point series line.

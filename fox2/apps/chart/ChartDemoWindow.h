@@ -27,12 +27,15 @@ struct ChartDocument {
   FXdouble detachedFontScale;
   FXdouble detachedPixelScale;
   FX2DPlot* plot;
+  std::vector<FX2DPlot*> plots;
+  FXSplitter* plotsplit;
   FXScrollBar* xscroll;
   FXComboBox* xcolumn;
   FXToggleButton* xtoggle;
   FXToggleButton* ytoggle;
   FXButton* autofity;
   FXButton* resetzoom;
+  FXButton* splitbutton;
   FXToggleButton* zoombutton;
   FXToggleButton* dragbutton;
   FXLabel* info;
@@ -49,6 +52,7 @@ struct ChartDocument {
   std::vector<FXCheckButton*> checks;
   std::vector<FXHorizontalFrame*> seriesrows;
   std::vector<FXbool> visible;
+  std::vector<FXint> seriesPlot;
   FXint selectedx;
   FXint serieswidth;
   FXbool seriesshown;
@@ -75,6 +79,7 @@ protected:
   FXSVGIcon* detachPressedIcon;
   FXSVGIcon* autoFitYIcon;
   FXSVGIcon* resetZoomIcon;
+  FXSVGIcon* splitChartIcon;
   FXSVGIcon* xAxisIcon;
   FXSVGIcon* yAxisIcon;
   FXSVGIcon* seriesIcon;
@@ -86,6 +91,7 @@ protected:
   FXMenuRadio* breezeDarkTheme;
   FXuint themePreset;
   FXbool iconsDark;
+  FXbool syncingPlots;
   FXFontDesc verticalLabelFontDesc;
   FXint fontDPI;
   FXdouble fontScale;
@@ -107,6 +113,7 @@ public:
   long onAxisDescription(FXObject*,FXSelector,void*);
   long onAutoFitY(FXObject* sender,FXSelector,void*);
   long onResetZoom(FXObject*,FXSelector,void*);
+  long onSplitChart(FXObject* sender,FXSelector,void*);
   long onPlotTool(FXObject* sender,FXSelector,void*);
   long onPlotChanged(FXObject*,FXSelector,void*);
   long onXScroll(FXObject* sender,FXSelector,void* ptr);
@@ -142,6 +149,7 @@ public:
     ID_Y_DESCRIPTION,
     ID_AUTOFIT_Y,
     ID_RESET_ZOOM,
+    ID_SPLIT_CHART,
     ID_PLOT_CHANGED,
     ID_SERIES,
     ID_SERIES_ALL,
