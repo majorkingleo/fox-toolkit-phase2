@@ -4,6 +4,24 @@
 namespace FXCHARTDEMO {
 
 
+class ChartAssignmentContent : public FXVerticalFrame {
+  FXDECLARE(ChartAssignmentContent)
+public:
+  ChartAssignmentContent(){ }
+  ChartAssignmentContent(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs):FXVerticalFrame(p,opts,x,y,w,h,pl,pr,pt,pb,hs,vs){ }
+  virtual void applyTheme(FXTheme* theme) override;
+  };
+
+
+FXIMPLEMENT(ChartAssignmentContent,FXVerticalFrame,nullptr,0)
+
+
+void ChartAssignmentContent::applyTheme(FXTheme* theme){
+  FXVerticalFrame::applyTheme(theme);
+  setBackColor(theme->color(ROLE_SURFACE));
+  }
+
+
 FXDEFMAP(ChartAssignmentDialog) ChartAssignmentDialogMap[]={
   FXMAPFUNC(SEL_CHANGED,ChartAssignmentDialog::ID_SERIES_FILTER,ChartAssignmentDialog::onSeriesFilter),
   FXMAPFUNC(SEL_CHANGED,ChartAssignmentDialog::ID_CHART_FILTER,ChartAssignmentDialog::onChartFilter),
@@ -52,7 +70,7 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
   new FXLabel(chartHeader,"Charts (drop series here)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X|LAYOUT_CENTER_Y);
   new FXButton(chartHeader,"Add chart",nullptr,this,ID_ADD_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
   chartScroll=new FXScrollWindow(chartPane,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON|FRAME_SUNKEN|FRAME_THICK);
-  chartContainer=new FXVerticalFrame(chartScroll,LAYOUT_FILL_X|LAYOUT_TOP,0,0,0,0,4,4,4,4,4,4);
+  chartContainer=new ChartAssignmentContent(chartScroll,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,4,4,4,4,4,4);
   ensureChartViews();
   refreshSeries();
   }
@@ -308,5 +326,6 @@ void ChartAssignmentDialog::getAssignment(std::vector<FXint>& result,FXint& coun
   if(result.size()<columns.size()) result.resize(columns.size(),0);
   count=plotCount;
   }
+
 
 }
