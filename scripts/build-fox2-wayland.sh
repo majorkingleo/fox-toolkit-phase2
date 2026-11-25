@@ -231,7 +231,7 @@ foxtrace=OFF
 pgopts=()
 if [ "$with_pg" = yes ]; then
   echo "==> profiling: -pg"
-  pgopts=(-DCMAKE_C_FLAGS=-pg -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg -DCMAKE_SHARED_LINKER_FLAGS=-pg -DCMAKE_MODULE_LINKER_FLAGS=-pg)
+  pgopts=(-DFOX_WITH_PG=ON)
   fi
 run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF \
   -DFOX_WITH_OPENGL=$opengl -DFOX_FOXTRACE=$foxtrace \
