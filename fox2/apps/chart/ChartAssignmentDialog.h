@@ -64,7 +64,7 @@ public:
     ID_CHART_LIST,
     ID_LAST
     };
-  ChartAssignmentDialog(FXWindow* owner,const CSVTable& source,const std::vector<FXint>& seriesColumns,FXint xaxis,const std::vector<FXint>& currentAssignment);
+  ChartAssignmentDialog(FXWindow* owner,const CSVTable& source,const std::vector<FXint>& seriesColumns,FXint xaxis,const std::vector<FXint>& currentAssignment,FXint currentPlotCount);
   void getAssignment(std::vector<FXint>& result,FXint& count) const;
   };
 

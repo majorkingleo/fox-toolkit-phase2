@@ -28,7 +28,8 @@ struct ChartDocument {
   FXdouble detachedPixelScale;
   FX2DPlot* plot;
   std::vector<FX2DPlot*> plots;
-  FXSplitter* plotsplit;
+  FXScrollWindow* plotScroll;
+  FXVerticalFrame* plotStack;
   FXScrollBar* xscroll;
   FXComboBox* xcolumn;
   FXToggleButton* xtoggle;
@@ -53,6 +54,7 @@ struct ChartDocument {
   std::vector<FXHorizontalFrame*> seriesrows;
   std::vector<FXbool> visible;
   std::vector<FXint> seriesPlot;
+  FXint plotCount;
   FXint selectedx;
   FXint serieswidth;
   FXbool seriesshown;

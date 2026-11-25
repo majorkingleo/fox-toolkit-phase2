@@ -69,7 +69,7 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_ALL,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_NONE,ChartDemoWindow::onSeriesSelection),
   FXMAPFUNC(SEL_TIMEOUT,ChartDemoWindow::ID_LOAD_POLL,ChartDemoWindow::onLoadPoll),
-  FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SPLITTER_CHANGED,ChartDemoWindow::onSplitterChanged),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SPLITTER_CHANGED,ChartDemoWindow::onSplitterChanged),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_SERIES_FILTER,ChartDemoWindow::onSeriesFilter),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_SERIES_PANEL,ChartDemoWindow::onSeriesPanel),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_DETACH,ChartDemoWindow::onDetach),
@@ -172,8 +172,8 @@ static const FXColor seriesColors[]={
 static void applyPlotColors(FX2DPlot* plot,FXColor background,FXColor foreground,FXColor majorgrid,FXColor minorgrid);
 
 
-static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSelector selector,FXFont* verticalFont,FXFont* numberFont){
-  ChartDemoPlot* plot=new ChartDemoPlot(parent,target,selector,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,12,12,12,12);
+static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSelector selector,FXFont* verticalFont,FXFont* numberFont,FXint plotHeight){
+  ChartDemoPlot* plot=new ChartDemoPlot(parent,target,selector,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,plotHeight,12,12,12,12);
   plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
   plot->getAxis(FX2DChart::YHI)->setStyle(AXIS_OFF);
   plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalFont);
@@ -192,7 +192,7 @@ static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSel
   }
 
 
-static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* verticalFont,FXFont* numberFont){
+static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* verticalFont,FXFont* numberFont,FXint plotHeight){
   FXObject* target=document->plot->getTarget();
   FXSelector selector=document->plot->getSelector();
   while((FXint)document->plots.size()>count){
@@ -200,13 +200,19 @@ static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* vertical
     document->plots.pop_back();
     }
   while((FXint)document->plots.size()<count){
-    ChartDemoPlot* plot=createChartPlot(document->plotsplit,target,selector,verticalFont,numberFont);
+    ChartDemoPlot* plot=createChartPlot(document->plotStack,target,selector,verticalFont,numberFont,plotHeight);
     document->plots.push_back(plot);
+    if(document->plotStack->id()) plot->create();
     FXTheme* theme=document->plot->getApp()->getTheme();
     FXColor surface=theme->color(ROLE_SURFACE);
     applyPlotColors(plot,theme->color(ROLE_WINDOW_BG),theme->color(ROLE_TEXT),contrastColor(surface,20),contrastColor(surface,10));
     }
+  document->plotCount=(FXint)document->plots.size();
   document->plot=document->plots[0];
+  document->plotStack->recalc();
+  document->plotStack->layout();
+  document->plotScroll->recalc();
+  document->plotScroll->layout();
   }
 
 
@@ -226,8 +232,10 @@ static void updateSplitChartLayout(ChartDocument* document){
     if(document->ytoggle->getState()) yaxis->setStyle(yaxis->getStyle()|AXIS_LABEL);
     else yaxis->setStyle(yaxis->getStyle()&~AXIS_LABEL);
     }
-  document->plotsplit->recalc();
-  document->plotsplit->layout();
+  document->plotStack->recalc();
+  document->plotStack->layout();
+  document->plotScroll->recalc();
+  document->plotScroll->layout();
   }
 
 
@@ -448,6 +456,7 @@ void ChartDemoWindow::updateChartFonts(){
       plot->getAxis(FX2DChart::YHI)->setNumberFont(numberFont);
       }
     scaleDocumentWidgets(documents[i],this);
+    if(documents[i]->splitter) documents[i]->splitter->setBarSize(this->scale(4));
     if(scalechanged && documents[i]->series->shown()){
       documents[i]->splitter->setSplit(1,this->scale(documents[i]->serieswidth));
       documents[i]->splitter->recalc();
@@ -462,6 +471,15 @@ void ChartDemoWindow::updateChartFonts(){
 
 
 void ChartDemoWindow::scaleDocumentWidgets(ChartDocument* document,FXWindow* view){
+  if(document->splitter) document->splitter->setBarSize(view->scale(4));
+  for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->setHeight(view->scale(280));
+  if(document->plotStack){
+    document->plotStack->setVSpacing(view->scale(4));
+    document->plotStack->recalc();
+    document->plotStack->layout();
+    document->plotScroll->recalc();
+    document->plotScroll->layout();
+    }
   for(FXuval p=0; p<document->plots.size(); p++){
     FX2DPlot* plot=document->plots[p];
     plot->setMarginLeft(view->scale(12));
@@ -667,8 +685,10 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->detachedFontScale=0.0;
   document->detachedPixelScale=0.0;
   document->plot=nullptr;
+  document->plotCount=1;
   document->plots.clear();
-  document->plotsplit=nullptr;
+  document->plotScroll=nullptr;
+  document->plotStack=nullptr;
   document->xscroll=nullptr;
   document->info=nullptr;
   document->series=nullptr;
@@ -750,15 +770,17 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
   FXSplitter* content=new FXSplitter(page,this,ID_SPLITTER_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
+  content->setBarSize(scale(4));
   document->splitter=content;
   FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
   FXVerticalFrame* chartcolumn=new FXVerticalFrame(chartarea,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
-  document->plotsplit=new FXSplitter(chartcolumn,SPLITTER_VERTICAL|SPLITTER_REVERSED|LAYOUT_FILL_X|LAYOUT_FILL_Y);
-  document->plot=createChartPlot(document->plotsplit,this,ID_PLOT_CHANGED,verticalLabelFont,numberFont);
+  document->plotScroll=new FXScrollWindow(chartcolumn,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y|HSCROLLING_OFF);
+  document->plotStack=new FXVerticalFrame(document->plotScroll,LAYOUT_FILL_X|LAYOUT_TOP|FRAME_NONE,0,0,0,0,0,0,0,0,0,scale(4));
+  document->plot=createChartPlot(document->plotStack,this,ID_PLOT_CHANGED,verticalLabelFont,numberFont,scale(280));
   document->plots.push_back(document->plot);
-  FXint plotcount=1;
+  FXint plotcount=document->plotCount;
   for(FXuval i=0; i<document->seriesPlot.size(); i++) plotcount=FXMAX(plotcount,document->seriesPlot[i]+1);
-  ensurePlotCount(document,plotcount,verticalLabelFont,numberFont);
+  ensurePlotCount(document,plotcount,verticalLabelFont,numberFont,scale(280));
   document->xscroll=new FXScrollBar(chartcolumn,this,ID_XSCROLL,SCROLLBAR_HORIZONTAL|LAYOUT_FILL_X|LAYOUT_SIDE_BOTTOM);
   document->xscroll->setLine(1000);
   FXSettings& settings=getApp()->reg();
@@ -805,8 +827,8 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->tabitem->create();
   page->create();
   tabs->setCurrent((FXint)documents.size());
-  for(FXint p=1; p<(FXint)document->plots.size(); p++) document->plotsplit->setSplit(p,FXMAX(1,document->plotsplit->getHeight()/(FXint)document->plots.size()));
-  document->plotsplit->layout();
+  document->plotStack->layout();
+  document->plotScroll->layout();
   if(getApp()->reg().existingEntry(document->settingsSection.text(),"split")){
     FXint split=getApp()->reg().readIntEntry(document->settingsSection.text(),"split",205);
     if(split>0) document->serieswidth=FXCLAMP(180,split,400);
@@ -852,6 +874,8 @@ void ChartDemoWindow::loadDocumentSettings(ChartDocument* document){
     FXint defaultplot=FXString(settings.readStringEntry(document->settingsSection.text(),legacy.text(),"0")).toInt()!=0?1:0;
     document->seriesPlot[i]=FXString(settings.readStringEntry(document->settingsSection.text(),entry.text(),FXString::value("%d",defaultplot).text())).toInt();
     }
+  document->plotCount=FXMAX(1,settings.readIntEntry(document->settingsSection.text(),"plotcount",1));
+  for(FXuval i=0; i<document->seriesPlot.size(); i++) document->plotCount=FXMAX(document->plotCount,document->seriesPlot[i]+1);
   }
 
 
@@ -864,6 +888,7 @@ void ChartDemoWindow::saveDocumentSettings(ChartDocument* document){
     entry="plot-"+chartHash(document->seriesKeys[i]);
     settings.writeIntEntry(document->settingsSection.text(),entry,document->seriesPlot[i]);
     }
+  settings.writeIntEntry(document->settingsSection.text(),"plotcount",document->plotCount);
   settings.writeStringEntry(document->settingsSection.text(),"xdescription",document->xtoggle && document->xtoggle->getState()?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"ydescription",document->ytoggle && document->ytoggle->getState()?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"seriesfilter",document->seriesfilter?document->seriesfilter->getText().text():document->filtertext.text());
@@ -1055,18 +1080,20 @@ long ChartDemoWindow::onSplitChart(FXObject* sender,FXSelector,void*){
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
     if(document->splitbutton!=sender) continue;
-    ChartAssignmentDialog dialog(this,document->table,document->xcolumns,document->selectedx,document->seriesPlot);
+    ChartAssignmentDialog dialog(this,document->table,document->xcolumns,document->selectedx,document->seriesPlot,document->plotCount);
     if(!dialog.execute(PLACEMENT_OWNER)) return 1;
     FXint count=1;
     dialog.getAssignment(document->seriesPlot,count);
-    ensurePlotCount(document,count,document->detachWindow?document->detachedVerticalFont:verticalLabelFont,document->detachWindow?document->detachedNumberFont:numberFont);
+    FXWindow* view=document->detachWindow?static_cast<FXWindow*>(document->detachWindow):this;
+    ensurePlotCount(document,count,document->detachWindow?document->detachedVerticalFont:verticalLabelFont,document->detachWindow?document->detachedNumberFont:numberFont,view->scale(280));
     scaleDocumentWidgets(document,document->detachWindow?static_cast<FXWindow*>(document->detachWindow):this);
     updateSplitChartLayout(document);
     rebuild(document,false);
-    for(FXint p=1; p<count; p++) document->plotsplit->setSplit(p,FXMAX(1,document->plotsplit->getHeight()/count));
-    document->plotsplit->layout();
+    document->plotStack->layout();
+    document->plotScroll->layout();
     document->resetzoom->disable();
     saveDocumentSettings(document);
+    getApp()->reg().write();
     return 1;
     }
   return 0;
@@ -1220,10 +1247,11 @@ long ChartDemoWindow::onSeriesSelection(FXObject* sender,FXSelector sel,void*){
   }
 
 
-long ChartDemoWindow::onSplitterChanged(FXObject* sender,FXSelector,void*){
+long ChartDemoWindow::onSplitterChanged(FXObject* sender,FXSelector sel,void*){
   for(FXuval i=0; i<documents.size(); i++){
     if(documents[i]->splitter==sender){
       saveDocumentSettings(documents[i]);
+      if(FXSELTYPE(sel)==SEL_COMMAND) getApp()->reg().write();
       return 1;
     }
   }

@@ -46,7 +46,7 @@ FXDEFMAP(ChartAssignmentDialog) ChartAssignmentDialogMap[]={
 FXIMPLEMENT(ChartAssignmentDialog,FXDialogBox,ChartAssignmentDialogMap,ARRAYNUMBER(ChartAssignmentDialogMap))
 
 
-ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& source,const std::vector<FXint>& seriesColumns,FXint xaxis,const std::vector<FXint>& currentAssignment):FXDialogBox(owner,"Assign Series to Charts",DECOR_TITLE|DECOR_BORDER|DECOR_RESIZE|DECOR_CLOSE,0,0,900,600,12,12,12,12,8,6),series(nullptr),seriesFilter(nullptr),chartContainer(nullptr),chartScroll(nullptr),columns(seriesColumns),assignment(currentAssignment),table(&source),seriesDragType(0),xcolumn(xaxis),plotCount(1){
+ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& source,const std::vector<FXint>& seriesColumns,FXint xaxis,const std::vector<FXint>& currentAssignment,FXint currentPlotCount):FXDialogBox(owner,"Assign Series to Charts",DECOR_TITLE|DECOR_BORDER|DECOR_RESIZE|DECOR_CLOSE,0,0,900,600,12,12,12,12,8,6),series(nullptr),seriesFilter(nullptr),chartContainer(nullptr),chartScroll(nullptr),columns(seriesColumns),assignment(currentAssignment),table(&source),seriesDragType(0),xcolumn(xaxis),plotCount(FXMAX(1,currentPlotCount)){
   seriesDragType=getApp()->registerDragType("application/x-fox-chart-series");
   for(FXuval i=0; i<columns.size(); i++){
     if(columns[i]==xcolumn) continue;
