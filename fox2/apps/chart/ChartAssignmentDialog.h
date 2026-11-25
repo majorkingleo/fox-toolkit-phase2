@@ -15,10 +15,12 @@ class ChartAssignmentDialog : public FXDialogBox {
   FXDECLARE(ChartAssignmentDialog)
 protected:
   FXList* series;
+  FXTextField* seriesFilter;
   FXVerticalFrame* chartContainer;
   FXScrollWindow* chartScroll;
   std::vector<FXGroupBox*> chartGroups;
   std::vector<FXList*> chartLists;
+  std::vector<FXButton*> chartClearButtons;
   std::vector<FXButton*> chartRemoveButtons;
   std::vector<FXint> columns;
   std::vector<FXint> assignment;
@@ -36,6 +38,7 @@ private:
   ChartAssignmentDialog& operator=(const ChartAssignmentDialog&);
 public:
   long onListPress(FXObject*,FXSelector,void*);
+  long onSeriesFilter(FXObject*,FXSelector,void*);
   long onBeginDrag(FXObject*,FXSelector,void*);
   long onEndDrag(FXObject*,FXSelector,void*);
   long onDNDRequest(FXObject*,FXSelector,void*);
@@ -43,11 +46,14 @@ public:
   long onDNDMotion(FXObject*,FXSelector,void*);
   long onDNDDrop(FXObject*,FXSelector,void*);
   long onAddPlot(FXObject*,FXSelector,void*);
+  long onClearPlot(FXObject*,FXSelector,void*);
   long onRemovePlot(FXObject*,FXSelector,void*);
   long onAccept(FXObject*,FXSelector,void*);
   enum{
     ID_ADD_PLOT=FXDialogBox::ID_LAST,
     ID_REMOVE_PLOT,
+    ID_CLEAR_PLOT,
+    ID_SERIES_FILTER,
     ID_SERIES_LIST,
     ID_CHART_LIST,
     ID_LAST
