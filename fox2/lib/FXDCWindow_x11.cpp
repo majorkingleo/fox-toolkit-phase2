@@ -29,6 +29,7 @@
 #include "FXPoint.h"
 #include "FXRectangle.h"
 #include "FXElement.h"
+#include "FXArray.h"
 #include "FXMetaClass.h"
 #include "FXHash.h"
 #include "FXStream.h"
@@ -213,6 +214,19 @@ void FXDCWindow::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
 void FXDCWindow::drawLines(const FXPoint* points,FXuint npoints){
   if(!surface){ fxerror("FXDCWindow::drawLines: DC not connected to drawable.\n"); }
   XDrawLines((Display*)getApp()->getDisplay(),surface->id(),(GC)ctx,const_cast<XPoint*>((const XPoint*)points),npoints,CoordModeOrigin);
+  }
+
+
+// Draw lines with floating-point coordinates
+void FXDCWindow::drawLinesF(const FXPointF* points,FXuint npoints){
+  FXArray<FXPoint> rounded(npoints);
+  if(!surface){ fxerror("FXDCWindow::drawLinesF: DC not connected to drawable.\n"); }
+  if(!rounded.no()) return;
+  for(FXuint i=0; i<npoints; i++){
+    rounded[i].x=(FXshort)Math::lrint(points[i].x);
+    rounded[i].y=(FXshort)Math::lrint(points[i].y);
+    }
+  XDrawLines((Display*)getApp()->getDisplay(),surface->id(),(GC)ctx,const_cast<XPoint*>((const XPoint*)rounded.data()),npoints,CoordModeOrigin);
   }
 
 
