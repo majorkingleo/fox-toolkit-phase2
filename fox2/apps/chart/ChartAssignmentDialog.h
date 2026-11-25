@@ -19,7 +19,9 @@ protected:
   FXVerticalFrame* chartContainer;
   FXScrollWindow* chartScroll;
   std::vector<FXGroupBox*> chartGroups;
+  std::vector<FXTextField*> chartFilters;
   std::vector<FXList*> chartLists;
+  std::vector<FXButton*> chartAddButtons;
   std::vector<FXButton*> chartClearButtons;
   std::vector<FXButton*> chartRemoveButtons;
   std::vector<FXint> columns;
@@ -28,7 +30,7 @@ protected:
   FXDragType seriesDragType;
   FXint xcolumn;
   FXint plotCount;
-  FXint draggedSeries;
+  std::vector<FXint> draggedSeries;
   void refreshSeries();
   void updateChartLists();
   void ensureChartViews();
@@ -37,8 +39,8 @@ private:
   ChartAssignmentDialog(const ChartAssignmentDialog&);
   ChartAssignmentDialog& operator=(const ChartAssignmentDialog&);
 public:
-  long onListPress(FXObject*,FXSelector,void*);
   long onSeriesFilter(FXObject*,FXSelector,void*);
+  long onChartFilter(FXObject*,FXSelector,void*);
   long onBeginDrag(FXObject*,FXSelector,void*);
   long onDragged(FXObject*,FXSelector,void*);
   long onEndDrag(FXObject*,FXSelector,void*);
@@ -47,6 +49,7 @@ public:
   long onDNDMotion(FXObject*,FXSelector,void*);
   long onDNDDrop(FXObject*,FXSelector,void*);
   long onAddPlot(FXObject*,FXSelector,void*);
+  long onAddAll(FXObject*,FXSelector,void*);
   long onClearPlot(FXObject*,FXSelector,void*);
   long onRemovePlot(FXObject*,FXSelector,void*);
   long onAccept(FXObject*,FXSelector,void*);
@@ -54,7 +57,9 @@ public:
     ID_ADD_PLOT=FXDialogBox::ID_LAST,
     ID_REMOVE_PLOT,
     ID_CLEAR_PLOT,
+    ID_ADD_ALL,
     ID_SERIES_FILTER,
+    ID_CHART_FILTER,
     ID_SERIES_LIST,
     ID_CHART_LIST,
     ID_LAST

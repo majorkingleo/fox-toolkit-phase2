@@ -850,7 +850,7 @@ void ChartDemoWindow::loadDocumentSettings(ChartDocument* document){
     entry="plot-"+chartHash(document->seriesKeys[i]);
     FXString legacy="lower-"+chartHash(document->seriesKeys[i]);
     FXint defaultplot=FXString(settings.readStringEntry(document->settingsSection.text(),legacy.text(),"0")).toInt()!=0?1:0;
-    document->seriesPlot[i]=FXMAX(0,FXString(settings.readStringEntry(document->settingsSection.text(),entry.text(),FXString::value("%d",defaultplot).text())).toInt());
+    document->seriesPlot[i]=FXString(settings.readStringEntry(document->settingsSection.text(),entry.text(),FXString::value("%d",defaultplot).text())).toInt();
     }
   }
 
@@ -943,6 +943,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     if(col==xcol) document->checks[i]->disable();
     else document->checks[i]->enable();
     if(col==xcol) continue;
+    if(document->seriesPlot[i]<0) continue;
     if(!document->visible[i]) continue;
     FXint plotindex=FXCLAMP(0,document->seriesPlot[i],(FXint)document->plots.size()-1);
     FX2DPlot* target=document->plots[plotindex];
