@@ -35,6 +35,23 @@ FXString chartSchemaKey(const std::vector<FXString>& keys){
   }
 
 
+FXulong chartDataBufferBytes(const FXCHART::CSVTable& table){
+  FXulong bytes=0;
+  for(FXuval i=0; i<table.columns.size(); i++){
+    bytes+=(FXulong)table.columns[i].values.capacity()*sizeof(FXdouble);
+    }
+  return bytes;
+  }
+
+
+FXString chartMemorySize(FXulong bytes){
+  if(bytes>=1024ULL*1024ULL*1024ULL) return FXString::value("%.1f GB",FXdouble(bytes)/(1024.0*1024.0*1024.0));
+  if(bytes>=1024ULL*1024ULL) return FXString::value("%.1f MB",FXdouble(bytes)/(1024.0*1024.0));
+  if(bytes>=1024ULL) return FXString::value("%.1f KB",FXdouble(bytes)/1024.0);
+  return FXString::value("%llu B",(unsigned long long)bytes);
+  }
+
+
 FXFont* makeChartFont(FXApp* app,const FXFontDesc& desc,FXint angle,FXint dpi,FXdouble scale){
   FXFontDesc scaled=desc;
   scaled.size=FXint(FXdouble(desc.size)*(scale/(FXdouble(dpi)/96.0))+0.5);

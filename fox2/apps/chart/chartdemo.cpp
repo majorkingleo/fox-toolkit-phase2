@@ -1225,7 +1225,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
   else document->resetzoom->disable();
   FXint ycount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++) if((FXint)i!=xindex) ycount++;
-  document->info->setText(FXString::value(document->table.rows)+" rows; "+FXString::value(visiblecount)+" plotted / "+FXString::value(ycount)+" numeric series; "+document->table.delimiter+"; "+document->table.encoding);
+  document->info->setText(FXString::value(document->table.rows)+" rows; "+chartMemorySize(chartDataBufferBytes(document->table))+"; "+FXString::value(visiblecount)+" plotted / "+FXString::value(ycount)+" numeric series; "+document->table.delimiter+"; "+document->table.encoding);
   updateXScroll(document);
   }
 

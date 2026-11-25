@@ -49,17 +49,19 @@ not contain an SVG serialiser, a spreadsheet reader or a file-format layer.
 Target order: Wayland first; Win32 thin-line antialiasing is now implemented,
 with X11 and the shared `FXRaster` rendering path still pending.
 
-Current snapshot (2026-11-23):
+Current snapshot (2026-11-25):
 
 - **Implemented:** chart data/curve model, static plotting and fit, interactive
   zoom, `charttest` live mode, Wayland software antialiasing, Win32 thin-line
-  antialiasing, and the initial CSV-only `chartdemo` with timestamp detection
-  and one tab per file. The Win32 chartdemo now launches without a console and
-  closes cleanly.
+  antialiasing, and `chartdemo` with CSV/ODS/XLSX import, timestamp detection,
+  elapsed/date X axes and one tab per file. The Win32 chartdemo now launches
+  without a console and closes cleanly.
+- **Implemented:** dense curves are drawn with per-pixel-column min/max
+  decimation, without changing the retained sample data.
 - **Still open:** curve fill rendering, X11 antialiasing and chart verification,
   shared raster rendering on X11/Win32, full plot-data/tick geometry API, chart
-  legend, table preview and format overrides, XLSX/ODS, export, decimation/perf
-  gates, and cross-platform chartdemo screenshots.
+  legend, table preview and format overrides, export, performance gates, and
+  cross-platform chartdemo screenshots.
 
 ### M1 — data model and static curves
 
@@ -155,6 +157,12 @@ and `chartdemo` build. The current state is:
   visible curve and marker drawing; `FX2DPlot::fitData`/`fitY`; four labelled
   axes, ticks and grid; interactive wheel/rubber-band zoom and reset; and the
   live `charttest` view with follow and scrollbar panning.
+- **Implemented:** dense curve drawing uses per-pixel-column min/max
+  decimation. The samples stay in `FXData`; only the drawn polyline is reduced.
+  Each pixel column contributes its minimum and maximum y value, ordered
+  nearest the previous point. This is not a mean and does not hide spikes.
+  Dense markers draw only the first marker in each pixel column. Sparse curves
+  still draw every sample.
 - **Implemented, but not the final rendering target:** `FXChart` retains its
   `FXImage` back buffer and blits it on paint. Chart primitives still use the
   `FXDC` path; the planned shared `FXRaster` rendering path is not complete.
@@ -162,10 +170,10 @@ and `chartdemo` build. The current state is:
   labels/styles/visibility, axis data and view ranges, and the plot rectangle.
   Data-to-device mapping and a public tick/number enumerator are still needed
   for SVG output.
-- **Still open:** filled-area drawing, an in-plot legend, cursor readout,
-  decimation/performance work and X11 verification/antialiasing. `chartdemo`
-  currently imports CSV only; spreadsheet formats, preview, overrides and
-  export are not implemented.
+- **Still open:** filled-area drawing, an in-plot legend, cursor readout and X11
+  verification/antialiasing. `chartdemo` imports delimited text, OpenDocument
+  and Excel spreadsheets; preview, codec/delimiter overrides and export are not
+  implemented.
 
 The widget remains independent of file formats and SVG. Those features belong
 in the demo application once the remaining read-only geometry API is available.
@@ -521,7 +529,9 @@ ZIP:
 - 10,000 samples per series is a data-model requirement, not a draw requirement:
   per-pixel-column min/max decimation turns any series into at most two vertices
   per plot column, exactly and cheaply, with a full-resolution polyline when
-  zoomed in.
+  zoomed in. This is a display transform only: samples are kept in `FXData`, and
+  the minimum and maximum preserve the visible envelope rather than averaging
+  samples or dropping data.
 - Decimation is computed from the view range, so zoom and pan always draw the
   samples that are visible at the resolution of the screen.
 - The client buffer makes incremental scrolling cheap: pan by an integer pixel
