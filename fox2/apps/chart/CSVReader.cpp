@@ -14,6 +14,8 @@
 #include <cctype>
 #include <climits>
 #include <limits>
+#include <cmath>
+#include <utility>
 #if defined(HAVE_ZLIB_H)
 #include <zlib.h>
 #endif
@@ -373,22 +375,22 @@ static FXbool extractZipEntry(const std::string& bytes,const FXString& wanted,st
   const FXuval maxsize=(FXuval)256*1024*1024;
   std::string::size_type eocd=std::string::npos;
   std::string::size_type scan=bytes.size()>65557?bytes.size()-65557:0;
-  if(bytes.size()<22){ error="OpenDocument file is too short"; return false; }
+  if(bytes.size()<22){ error="Spreadsheet archive is too short"; return false; }
   std::string::size_type last=bytes.size()-22;
   for(std::string::size_type pos=last; ; pos--){
     if(zip32(bytes,pos)==0x06054b50){ eocd=pos; break; }
     if(pos==scan) break;
     }
-  if(eocd==std::string::npos){ error="OpenDocument file has no ZIP directory"; return false; }
+  if(eocd==std::string::npos){ error="Spreadsheet archive has no ZIP directory"; return false; }
   FXuint entries=zip16(bytes,eocd+10);
   FXuint dirsize=zip32(bytes,eocd+12);
   FXuint diroffset=zip32(bytes,eocd+16);
-  if(entries==0 || dirsize==0 || diroffset==0xffffffffU || dirsize==0xffffffffU){ error="OpenDocument ZIP directory is unsupported or empty"; return false; }
-  if((FXuval)diroffset+(FXuval)dirsize>bytes.size()){ error="OpenDocument ZIP directory is outside the file"; return false; }
+  if(entries==0 || dirsize==0 || diroffset==0xffffffffU || dirsize==0xffffffffU){ error="Spreadsheet ZIP directory is unsupported or empty"; return false; }
+  if((FXuval)diroffset+(FXuval)dirsize>bytes.size()){ error="Spreadsheet ZIP directory is outside the file"; return false; }
   std::string::size_type pos=diroffset;
   std::string::size_type end=diroffset+dirsize;
   for(FXuint entry=0; entry<entries && pos+46<=end; entry++){
-    if(zip32(bytes,pos)!=0x02014b50){ error="OpenDocument ZIP directory is corrupt"; return false; }
+    if(zip32(bytes,pos)!=0x02014b50){ error="Spreadsheet ZIP directory is corrupt"; return false; }
     FXuint flags=zip16(bytes,pos+8);
     FXuint method=zip16(bytes,pos+10);
     FXuint compressed=zip32(bytes,pos+20);
@@ -397,17 +399,17 @@ static FXbool extractZipEntry(const std::string& bytes,const FXString& wanted,st
     FXuint extralen=zip16(bytes,pos+30);
     FXuint commentlen=zip16(bytes,pos+32);
     FXuint localoffset=zip32(bytes,pos+42);
-    if(pos+46+namelen+extralen+commentlen>end){ error="OpenDocument ZIP directory is truncated"; return false; }
+    if(pos+46+namelen+extralen+commentlen>end){ error="Spreadsheet ZIP directory is truncated"; return false; }
     FXString name(bytes.data()+pos+46,namelen);
     if(name==wanted){
-      if(flags&1){ error="OpenDocument content is encrypted"; return false; }
-      if(compressed==0xffffffffU || uncompressed==0xffffffffU || localoffset==0xffffffffU){ error="ZIP64 OpenDocument files are not supported"; return false; }
-      if(uncompressed>maxsize){ error="OpenDocument content is too large"; return false; }
-      if((FXuval)localoffset+30>bytes.size() || zip32(bytes,localoffset)!=0x04034b50){ error="OpenDocument ZIP entry is corrupt"; return false; }
+      if(flags&1){ error="Spreadsheet content is encrypted"; return false; }
+      if(compressed==0xffffffffU || uncompressed==0xffffffffU || localoffset==0xffffffffU){ error="ZIP64 spreadsheets are not supported"; return false; }
+      if(uncompressed>maxsize){ error="Spreadsheet content is too large"; return false; }
+      if((FXuval)localoffset+30>bytes.size() || zip32(bytes,localoffset)!=0x04034b50){ error="Spreadsheet ZIP entry is corrupt"; return false; }
       FXuint localname=zip16(bytes,localoffset+26);
       FXuint localextra=zip16(bytes,localoffset+28);
       std::string::size_type dataoffset=(std::string::size_type)localoffset+30+localname+localextra;
-      if(dataoffset>bytes.size() || (FXuval)compressed>bytes.size()-dataoffset){ error="OpenDocument ZIP entry is truncated"; return false; }
+      if(dataoffset>bytes.size() || (FXuval)compressed>bytes.size()-dataoffset){ error="Spreadsheet ZIP entry is truncated"; return false; }
       if(method==0){
         result.assign(bytes.data()+dataoffset,compressed);
         return true;
@@ -420,23 +422,23 @@ static FXbool extractZipEntry(const std::string& bytes,const FXString& wanted,st
         stream.avail_in=compressed;
         stream.next_out=(Bytef*)(uncompressed?&result[0]:nullptr);
         stream.avail_out=uncompressed;
-        if(inflateInit2(&stream,-MAX_WBITS)!=Z_OK){ error="Could not start decompression of OpenDocument content"; return false; }
+        if(inflateInit2(&stream,-MAX_WBITS)!=Z_OK){ error="Could not start decompression of spreadsheet content"; return false; }
         FXint status=inflate(&stream,Z_FINISH);
         FXuval produced=stream.total_out;
         inflateEnd(&stream);
-        if(status!=Z_STREAM_END || produced!=uncompressed){ error="Could not decompress OpenDocument content"; return false; }
+        if(status!=Z_STREAM_END || produced!=uncompressed){ error="Could not decompress spreadsheet content"; return false; }
         return true;
 #else
-        error="OpenDocument import needs zlib support in this build";
+        error="Spreadsheet import needs zlib support in this build";
         return false;
 #endif
         }
-      error="OpenDocument content uses unsupported compression";
+      error="Spreadsheet content uses unsupported compression";
       return false;
       }
     pos+=46+namelen+extralen+commentlen;
     }
-  error="OpenDocument file has no content.xml";
+  error=FXString("Spreadsheet archive has no ")+wanted;
   return false;
   }
 
@@ -578,7 +580,7 @@ static FXbool parseODSContent(const FXString& xml,std::vector<std::vector<FXStri
   }
 
 
-static std::string odsRowsToCSV(const std::vector<std::vector<FXString> >& rows){
+static std::string rowsToCSV(const std::vector<std::vector<FXString> >& rows){
   FXuval columns=0;
   std::string out;
   for(FXuval r=0; r<rows.size(); r++) if(columns<rows[r].size()) columns=rows[r].size();
@@ -608,9 +610,426 @@ static FXbool readODS(const std::string& bytes,std::string& csv,FXString& encodi
   FXString xml(content.data(),(FXint)content.size());
   std::vector<std::vector<FXString> > rows;
   if(!parseODSContent(xml,rows,error)) return false;
-  csv=odsRowsToCSV(rows);
+  csv=rowsToCSV(rows);
   if(csv.empty()){ error="OpenDocument spreadsheet has no rows"; return false; }
   encoding="ODS (content.xml)";
+  return true;
+  }
+
+
+// Excel date and time styles
+enum { XLSX_STYLE_NONE=0, XLSX_STYLE_DATE=1, XLSX_STYLE_TIME=2, XLSX_STYLE_DATETIME=3 };
+
+
+static FXbool xlsxInteger(const FXString& input,FXint& value){
+  std::string text=trimField(input).text();
+  char* end=nullptr;
+  long number=std::strtol(text.c_str(),&end,10);
+  if(end==text.c_str() || *end || number<INT_MIN || number>INT_MAX) return false;
+  value=(FXint)number;
+  return true;
+  }
+
+
+static FXint xlsxBuiltinStyle(FXint id){
+  if((14<=id && id<=17) || (27<=id && id<=36) || (50<=id && id<=58)) return XLSX_STYLE_DATE;
+  if((18<=id && id<=21) || (45<=id && id<=47)) return XLSX_STYLE_TIME;
+  if(id==22) return XLSX_STYLE_DATETIME;
+  return XLSX_STYLE_NONE;
+  }
+
+
+static FXint xlsxFormatStyle(const FXString& code){
+  std::string text=code.text();
+  FXbool hasDate=false,hasTime=false,hasMonth=false;
+  for(FXuval i=0; i<text.size(); i++){
+    FXchar ch=(FXchar)std::tolower((FXuchar)text[i]);
+    if(ch=='"'){
+      for(i++; i<text.size() && text[i]!='"'; i++){ }
+      continue;
+      }
+    if(ch=='\\'){ i++; continue; }
+    if(ch=='['){
+      std::string::size_type close=text.find(']',i+1);
+      if(close==std::string::npos) break;
+      FXbool elapsed=false;
+      FXbool nonempty=false;
+      for(FXuval j=i+1; j<close; j++){
+        FXchar inner=(FXchar)std::tolower((FXuchar)text[j]);
+        if(inner==' ' || inner=='\t') continue;
+        if(inner!='h' && inner!='m' && inner!='s'){ elapsed=false; break; }
+        elapsed=true;
+        nonempty=true;
+        }
+      if(elapsed && nonempty) hasTime=true;
+      i=close;
+      continue;
+      }
+    if(ch=='y' || ch=='d') hasDate=true;
+    else if(ch=='h' || ch=='s') hasTime=true;
+    else if(ch=='m') hasMonth=true;
+    }
+  if(hasMonth && !hasDate && !hasTime) hasDate=true;
+  if(hasDate && hasTime) return XLSX_STYLE_DATETIME;
+  if(hasDate) return XLSX_STYLE_DATE;
+  if(hasTime) return XLSX_STYLE_TIME;
+  return XLSX_STYLE_NONE;
+  }
+
+
+static FXint xlsxColumnIndex(const FXString& reference){
+  FXint value=0;
+  FXint count=0;
+  for(FXint i=0; i<reference.length(); i++){
+    FXchar ch=reference[i];
+    if(ch>='a' && ch<='z') ch=(FXchar)(ch-'a'+'A');
+    if(ch<'A' || ch>'Z') break;
+    value=value*26+(ch-'A'+1);
+    count++;
+    }
+  return count ? value-1 : -1;
+  }
+
+
+class XLSXWorkbookParser {
+public:
+  FXbool date1904;
+  FXString sheetId;
+  FXString sheetName;
+public:
+  XLSXWorkbookParser():date1904(false){ }
+  FXXML::Error startElement(const FXString& tag,const FXStringDictionary& atts){
+    FXString name=xmlLocalName(tag);
+    if(name=="workbookPr"){
+      FXString value=xmlAttribute(atts,"date1904");
+      FXString lower=value;
+      lower.lower();
+      date1904=(value=="1" || lower=="true");
+      }
+    else if(name=="sheet" && sheetId.empty()){
+      sheetId=xmlAttribute(atts,"r:id");
+      sheetName=xmlAttribute(atts,"name");
+      }
+    return FXXML::ErrOK;
+    }
+  };
+
+
+class XLSXRelationsParser {
+public:
+  FXString wanted;
+  FXString target;
+  FXXML::Error startElement(const FXString& tag,const FXStringDictionary& atts){
+    if(xmlLocalName(tag)!="Relationship" || !target.empty()) return FXXML::ErrOK;
+    FXString id=xmlAttribute(atts,"Id");
+    FXString type=xmlAttribute(atts,"Type");
+    if((wanted.empty() || id==wanted) && type.find("/worksheet")>=0) target=xmlAttribute(atts,"Target");
+    return FXXML::ErrOK;
+    }
+  };
+
+
+class XLSXSharedStringsParser {
+public:
+  std::vector<FXString> strings;
+private:
+  FXString current;
+  FXbool inString;
+  FXint textDepth;
+  FXint phoneticDepth;
+public:
+  XLSXSharedStringsParser():inString(false),textDepth(0),phoneticDepth(0){ }
+  FXXML::Error startElement(const FXString& tag,const FXStringDictionary&){
+    FXString name=xmlLocalName(tag);
+    if(name=="si"){
+      current.clear();
+      inString=true;
+      textDepth=0;
+      phoneticDepth=0;
+      }
+    else if(inString && name=="rPh") phoneticDepth++;
+    else if(inString && name=="t" && phoneticDepth==0) textDepth++;
+    return FXXML::ErrOK;
+    }
+  FXXML::Error characters(const FXString& text){
+    if(inString && textDepth>0) current+=text;
+    return FXXML::ErrOK;
+    }
+  FXXML::Error endElement(const FXString& tag){
+    FXString name=xmlLocalName(tag);
+    if(name=="t" && textDepth>0) textDepth--;
+    else if(name=="rPh" && phoneticDepth>0) phoneticDepth--;
+    else if(name=="si" && inString){ strings.push_back(current); inString=false; }
+    return FXXML::ErrOK;
+    }
+  };
+
+
+class XLSXStylesParser {
+public:
+  std::vector<FXint> styles;
+private:
+  std::vector<std::pair<FXint,FXString> > formats;
+  FXbool inCellXfs;
+public:
+  XLSXStylesParser():inCellXfs(false){ }
+  FXXML::Error startElement(const FXString& tag,const FXStringDictionary& atts){
+    FXString name=xmlLocalName(tag);
+    if(name=="numFmt"){
+      FXint id=0;
+      if(xlsxInteger(xmlAttribute(atts,"numFmtId"),id)) formats.push_back(std::make_pair(id,xmlAttribute(atts,"formatCode")));
+      }
+    else if(name=="cellXfs") inCellXfs=true;
+    else if(inCellXfs && name=="xf"){
+      FXint id=0;
+      if(!xlsxInteger(xmlAttribute(atts,"numFmtId"),id)) id=0;
+      FXint style=xlsxBuiltinStyle(id);
+      if(style==XLSX_STYLE_NONE){
+        for(FXuval i=0; i<formats.size(); i++){
+          if(formats[i].first==id){ style=xlsxFormatStyle(formats[i].second); break; }
+          }
+        }
+      styles.push_back(style);
+      }
+    return FXXML::ErrOK;
+    }
+  FXXML::Error endElement(const FXString& tag){
+    if(xmlLocalName(tag)=="cellXfs") inCellXfs=false;
+    return FXXML::ErrOK;
+    }
+  };
+
+
+static FXbool xlsxSerialToText(const FXString& input,FXint style,FXbool date1904,FXString& value){
+  std::string text=trimField(input).text();
+  if(text.empty()) return false;
+  char* end=nullptr;
+  FXdouble serial=std::strtod(text.c_str(),&end);
+  if(end==text.c_str() || *end) return false;
+  if(date1904) serial+=1462.0;
+  FXdouble whole=std::floor(serial);
+  FXdouble fraction=serial-whole;
+  if(fraction<0.0){ fraction+=1.0; whole-=1.0; }
+  if(whole>10000000.0 || whole<-1000000.0) return false;
+  FXDate date(1899,12,30);
+  date.addDays((FXint)whole);
+  FXint year=0,month=0,day=0;
+  date.getDate(year,month,day);
+  FXint seconds=(FXint)std::floor(fraction*86400.0+0.5);
+  if(seconds>=86400){
+    date.addDays(1);
+    date.getDate(year,month,day);
+    seconds-=86400;
+    }
+  FXint hour=seconds/3600;
+  FXint minute=(seconds/60)%60;
+  FXint second=seconds%60;
+  if(style==XLSX_STYLE_DATE) value=FXString::value("%04d-%02d-%02d",year,month,day);
+  else if(style==XLSX_STYLE_TIME) value=FXString::value("%02d:%02d:%02d",hour,minute,second);
+  else if(style==XLSX_STYLE_DATETIME) value=FXString::value("%04d-%02d-%02d %02d:%02d:%02d",year,month,day,hour,minute,second);
+  else return false;
+  return true;
+  }
+
+
+class XLSXSheetParser {
+public:
+  std::vector<std::vector<FXString> > rows;
+private:
+  const std::vector<FXString>& shared;
+  const std::vector<FXint>& styles;
+  FXbool date1904;
+  std::vector<FXString> row;
+  FXString cellText;
+  FXString cellType;
+  FXString cellStyle;
+  FXString cellReference;
+  FXint cellColumn;
+  FXbool inRow;
+  FXbool inCell;
+  FXbool inValue;
+  FXbool inInline;
+  FXbool inText;
+private:
+  void finishCell(){
+    FXString value;
+    FXint style=XLSX_STYLE_NONE;
+    FXint styleIndex=-1;
+    if(!cellStyle.empty() && xlsxInteger(cellStyle,styleIndex) && 0<=styleIndex && styleIndex<(FXint)styles.size()) style=styles[styleIndex];
+    if(cellType=="s"){
+      FXint index=-1;
+      if(xlsxInteger(cellText,index) && 0<=index && index<(FXint)shared.size()) value=shared[index];
+      }
+    else if(cellType=="inlineStr" || cellType=="str" || cellType=="e" || cellType=="d") value=cellText;
+    else if(cellType=="b") value=(cellText=="1")?FXString("TRUE"):FXString("FALSE");
+    else if(style!=XLSX_STYLE_NONE && xlsxSerialToText(cellText,style,date1904,value)){
+      // The serial was converted to a date or time string
+      }
+    else value=cellText;
+    if(cellColumn<0 || cellColumn>=4096) cellColumn=(FXint)row.size();
+    while((FXint)row.size()<cellColumn) row.push_back(FXString());
+    if(cellColumn<(FXint)row.size()) row[cellColumn]=value;
+    else row.push_back(value);
+    cellText.clear();
+    cellType.clear();
+    cellStyle.clear();
+    cellReference.clear();
+    inCell=false;
+    inValue=false;
+    inInline=false;
+    inText=false;
+    }
+  void finishRow(){
+    while(!row.empty() && trimField(row.back()).empty()) row.pop_back();
+    if(!row.empty() && rows.size()<(FXuval)1000000) rows.push_back(row);
+    row.clear();
+    inRow=false;
+    }
+public:
+  XLSXSheetParser(const std::vector<FXString>& sharedStrings,const std::vector<FXint>& cellStyles,FXbool dateSystem):shared(sharedStrings),styles(cellStyles),date1904(dateSystem),cellColumn(-1),inRow(false),inCell(false),inValue(false),inInline(false),inText(false){ }
+  FXXML::Error startElement(const FXString& tag,const FXStringDictionary& atts){
+    FXString name=xmlLocalName(tag);
+    if(name=="row"){
+      if(inRow) finishRow();
+      row.clear();
+      inRow=true;
+      inCell=false;
+      return FXXML::ErrOK;
+      }
+    if(inRow && name=="c"){
+      if(inCell) finishCell();
+      cellText.clear();
+      cellType=xmlAttribute(atts,"t");
+      cellStyle=xmlAttribute(atts,"s");
+      cellReference=xmlAttribute(atts,"r");
+      cellColumn=xlsxColumnIndex(cellReference);
+      inCell=true;
+      inValue=false;
+      inInline=false;
+      inText=false;
+      return FXXML::ErrOK;
+      }
+    if(inCell){
+      if(name=="v") inValue=true;
+      else if(name=="is") inInline=true;
+      else if(name=="t" && inInline) inText=true;
+      }
+    return FXXML::ErrOK;
+    }
+  FXXML::Error characters(const FXString& text){
+    if(inCell && (inValue || inText)) cellText+=text;
+    return FXXML::ErrOK;
+    }
+  FXXML::Error endElement(const FXString& tag){
+    FXString name=xmlLocalName(tag);
+    if(inCell){
+      if(name=="v") inValue=false;
+      else if(name=="t") inText=false;
+      else if(name=="is") inInline=false;
+      else if(name=="c") finishCell();
+      }
+    else if(inRow && name=="row") finishRow();
+    return FXXML::ErrOK;
+    }
+  };
+
+
+static FXbool parseXLSXWorkbook(const FXString& xml,XLSXWorkbookParser& parser){
+  FXXMLString reader(xml,FXXML::Load);
+  reader.startElementCB.connect<XLSXWorkbookParser,&XLSXWorkbookParser::startElement>(&parser);
+  return reader.parse()==FXXML::ErrOK;
+  }
+
+
+static FXbool parseXLSXRelations(const FXString& xml,XLSXRelationsParser& parser){
+  FXXMLString reader(xml,FXXML::Load);
+  reader.startElementCB.connect<XLSXRelationsParser,&XLSXRelationsParser::startElement>(&parser);
+  return reader.parse()==FXXML::ErrOK;
+  }
+
+
+static FXbool parseXLSXSharedStrings(const FXString& xml,std::vector<FXString>& strings){
+  XLSXSharedStringsParser parser;
+  FXXMLString reader(xml,FXXML::Load);
+  reader.startElementCB.connect<XLSXSharedStringsParser,&XLSXSharedStringsParser::startElement>(&parser);
+  reader.charactersCB.connect<XLSXSharedStringsParser,&XLSXSharedStringsParser::characters>(&parser);
+  reader.endElementCB.connect<XLSXSharedStringsParser,&XLSXSharedStringsParser::endElement>(&parser);
+  if(reader.parse()!=FXXML::ErrOK) return false;
+  strings.swap(parser.strings);
+  return true;
+  }
+
+
+static FXbool parseXLSXStyles(const FXString& xml,std::vector<FXint>& styles){
+  XLSXStylesParser parser;
+  FXXMLString reader(xml,FXXML::Load);
+  reader.startElementCB.connect<XLSXStylesParser,&XLSXStylesParser::startElement>(&parser);
+  reader.endElementCB.connect<XLSXStylesParser,&XLSXStylesParser::endElement>(&parser);
+  if(reader.parse()!=FXXML::ErrOK) return false;
+  styles.swap(parser.styles);
+  return true;
+  }
+
+
+static FXbool parseXLSXSheet(const FXString& xml,const std::vector<FXString>& shared,const std::vector<FXint>& styles,FXbool date1904,std::vector<std::vector<FXString> >& rows){
+  XLSXSheetParser parser(shared,styles,date1904);
+  FXXMLString reader(xml,FXXML::Load);
+  reader.startElementCB.connect<XLSXSheetParser,&XLSXSheetParser::startElement>(&parser);
+  reader.charactersCB.connect<XLSXSheetParser,&XLSXSheetParser::characters>(&parser);
+  reader.endElementCB.connect<XLSXSheetParser,&XLSXSheetParser::endElement>(&parser);
+  if(reader.parse()!=FXXML::ErrOK) return false;
+  rows.swap(parser.rows);
+  return true;
+  }
+
+
+static FXString xlsxTargetPath(const FXString& target){
+  FXString path=target;
+  while(path.length()>=3 && path.mid(0,3)=="../") path=path.mid(3,path.length()-3);
+  if(!path.empty() && path[0]=='/') return path.mid(1,path.length()-1);
+  if(path.length()>=3 && path.mid(0,3)=="xl/") return path;
+  return FXString("xl/")+path;
+  }
+
+
+static FXbool readXLSX(const std::string& bytes,std::string& csv,FXString& encoding,FXString& error){
+  std::string workbookxml;
+  if(!extractZipEntry(bytes,"xl/workbook.xml",workbookxml,error)) return false;
+  XLSXWorkbookParser workbook;
+  parseXLSXWorkbook(FXString(workbookxml.data(),(FXint)workbookxml.size()),workbook);
+  FXString sheetPath="xl/worksheets/sheet1.xml";
+  if(!workbook.sheetId.empty()){
+    std::string relsxml;
+    FXString ignored;
+    if(extractZipEntry(bytes,"xl/_rels/workbook.xml.rels",relsxml,ignored)){
+      XLSXRelationsParser relations;
+      relations.wanted=workbook.sheetId;
+      if(parseXLSXRelations(FXString(relsxml.data(),(FXint)relsxml.size()),relations) && !relations.target.empty()) sheetPath=xlsxTargetPath(relations.target);
+      }
+    }
+  std::string sheetxml;
+  if(!extractZipEntry(bytes,sheetPath,sheetxml,error)) return false;
+  std::vector<FXString> shared;
+  std::vector<FXint> styles;
+  std::string auxiliary;
+  FXString ignored;
+  if(extractZipEntry(bytes,"xl/sharedStrings.xml",auxiliary,ignored) && !parseXLSXSharedStrings(FXString(auxiliary.data(),(FXint)auxiliary.size()),shared)){
+    error="Could not parse Excel shared strings";
+    return false;
+    }
+  auxiliary.clear();
+  if(extractZipEntry(bytes,"xl/styles.xml",auxiliary,ignored) && !parseXLSXStyles(FXString(auxiliary.data(),(FXint)auxiliary.size()),styles)){
+    error="Could not parse Excel styles";
+    return false;
+    }
+  std::vector<std::vector<FXString> > rows;
+  if(!parseXLSXSheet(FXString(sheetxml.data(),(FXint)sheetxml.size()),shared,styles,workbook.date1904,rows)){
+    error="Could not parse the Excel worksheet";
+    return false;
+    }
+  if(rows.empty()){ error="Excel workbook has no data"; return false; }
+  csv=rowsToCSV(rows);
+  encoding="XLSX (first sheet)";
   return true;
   }
 
@@ -649,7 +1068,31 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
   table=CSVTable();
   std::string utf8;
   if(bytes.size()>=4 && (FXuchar)bytes[0]=='P' && (FXuchar)bytes[1]=='K' && (FXuchar)bytes[2]==3 && (FXuchar)bytes[3]==4){
-    if(!readODS(bytes,utf8,table.encoding,error)) return false;
+    FXString extension=filename;
+    extension.lower();
+    FXint length=extension.length();
+    FXbool workbook=length>=5 && extension.mid(length-5,5)==".xlsx";
+    FXbool document=length>=4 && extension.mid(length-4,4)==".ods";
+    if(workbook){
+      if(!readXLSX(bytes,utf8,table.encoding,error)) return false;
+      }
+    else if(document){
+      if(!readODS(bytes,utf8,table.encoding,error)) return false;
+      }
+    else{
+      std::string probe;
+      FXString probeerror;
+      if(extractZipEntry(bytes,"content.xml",probe,probeerror)){
+        if(!readODS(bytes,utf8,table.encoding,error)) return false;
+        }
+      else if(extractZipEntry(bytes,"xl/workbook.xml",probe,probeerror)){
+        if(!readXLSX(bytes,utf8,table.encoding,error)) return false;
+        }
+      else{
+        error="Not an OpenDocument or Excel workbook";
+        return false;
+        }
+      }
     }
   else{
     FXString text=decodeCSV(bytes,table.encoding);

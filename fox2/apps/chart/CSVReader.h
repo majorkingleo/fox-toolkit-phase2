@@ -22,7 +22,7 @@ struct CSVTable {
 
 typedef void (*CSVProgressCallback)(void*,FXuint);
 
-/// Read a delimited text file or an OpenDocument spreadsheet
+/// Read a delimited text file, an OpenDocument spreadsheet or an Excel workbook
 FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgressCallback progress=nullptr,void* context=nullptr);
 
 }
