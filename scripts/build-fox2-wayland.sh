@@ -23,6 +23,8 @@
 #   --debug    build with debug information and no optimization (Debug)
 #   --relwithdebinfo  optimized build that still carries debug information
 #   --release  optimized build without debug information
+#   --pg       compile and link with -pg for gprof profiling; uses
+#              tmp/build-fox2-wayland-pg unless FOX_BUILD_DIR is set
 #   --prefix=DIR   install prefix (default: /usr/local)
 #   --destdir=DIR  stage the install under DIR (e.g. /stow/fox2)
 #   --install      install after building
@@ -49,6 +51,7 @@ check_only=no
 clean=no
 run_test=no
 with_opengl=no
+with_pg=no
 trace=no
 build_type=${FOX_BUILD_TYPE-}
 prefix=/usr/local
@@ -56,7 +59,7 @@ destdir=
 do_install=no
 
 usage(){
-  sed -n '2,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
   }
 
 while [ $# -gt 0 ]; do
@@ -65,6 +68,7 @@ while [ $# -gt 0 ]; do
     --clean)    clean=yes ;;
     --run)      run_test=yes ;;
     --opengl)   with_opengl=yes ;;
+    --pg|-pg)   with_pg=yes ;;
     --trace)    trace=yes ;;
     --debug)    build_type=Debug ;;
     --relwithdebinfo) build_type=RelWithDebInfo ;;
@@ -86,6 +90,11 @@ while [ $# -gt 0 ]; do
     esac
   shift
   done
+
+if [ "$with_pg" = yes ] && [ -z "${FOX_BUILD_DIR-}" ]; then
+  BUILD="$ROOT/tmp/build-fox2-wayland-pg"
+  LOG="$BUILD/build.log"
+  fi
 
 case "$prefix" in
   /*|[A-Za-z]:/*) ;;
@@ -219,9 +228,15 @@ opengl=OFF
 foxtrace=OFF
 [ "$trace" = yes ] && foxtrace=ON
 [ -n "$build_type" ] && echo "==> build type: $build_type"
+pgopts=()
+if [ "$with_pg" = yes ]; then
+  echo "==> profiling: -pg"
+  pgopts=(-DCMAKE_C_FLAGS=-pg -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg -DCMAKE_SHARED_LINKER_FLAGS=-pg -DCMAKE_MODULE_LINKER_FLAGS=-pg)
+  fi
 run cmake -S "$SRC" -B "$BUILD" -G Ninja -DFOX_PLATFORM=wayland -DFOX_WITH_CUPS=OFF \
   -DFOX_WITH_OPENGL=$opengl -DFOX_FOXTRACE=$foxtrace \
   -DCMAKE_INSTALL_PREFIX="$cmake_prefix" \
+  "${pgopts[@]}" \
   ${build_type:+-DCMAKE_BUILD_TYPE=$build_type}
 
 echo "==> build library, tools and tests"
@@ -235,6 +250,11 @@ echo
 echo "==> artifacts"
 ls -l "$BUILD"/lib/*FOX* 2>/dev/null || true
 echo "$(ls "$BUILD"/bin 2>/dev/null | wc -l) test and tool binaries in $BUILD/bin"
+
+if [ "$with_pg" = yes ]; then
+  echo
+  echo "profiling build: run a program, then: gprof $BUILD/bin/<program> gmon.out > profile.txt"
+  fi
 
 if [ "$trace" = yes ]; then
   echo
