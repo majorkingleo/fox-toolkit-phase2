@@ -76,49 +76,43 @@ static FXLineStyle dcLineStyle(FXuchar style){
 
 // Find range of x samples on one axis; lo>hi when there is no data
 void FX2DPlot::rangeX(FXint axis,FXdouble& lo,FXdouble& hi) const {
-  FXint i,j;
-  lo=1.0;
-  hi=0.0;
+  FXint i;
+  FXdouble dlo,dhi;
+  FXbool any=false;
   for(i=0; i<curves.no(); i++){
     FXCurve *curve=curves[i];
     FXData *data;
     if(!curve->isVisible() || curve->getXAxis()!=axis) continue;
     data=curve->getXData();
-    if(!data) continue;
-    for(j=0; j<data->no(); j++){
-      FXdouble value=data->get(j);
-      if(!Math::fpFinite(value)) continue;
-      if(lo>hi){ lo=hi=value; }
-      else{
-        if(value<lo) lo=value;
-        if(value>hi) hi=value;
-        }
+    if(!data || !data->getRange(dlo,dhi)) continue;
+    if(!any){ lo=dlo; hi=dhi; any=true; }
+    else{
+      if(dlo<lo) lo=dlo;
+      if(dhi>hi) hi=dhi;
       }
     }
+  if(!any){ lo=1.0; hi=0.0; }
   }
 
 
 // Find range of y samples on one axis; lo>hi when there is no data
 void FX2DPlot::rangeY(FXint axis,FXdouble& lo,FXdouble& hi) const {
-  FXint i,j;
-  lo=1.0;
-  hi=0.0;
+  FXint i;
+  FXdouble dlo,dhi;
+  FXbool any=false;
   for(i=0; i<curves.no(); i++){
     FXCurve *curve=curves[i];
     FXData *data;
     if(!curve->isVisible() || curve->getYAxis()!=axis) continue;
     data=curve->getYData();
-    if(!data) continue;
-    for(j=0; j<data->no(); j++){
-      FXdouble value=data->get(j);
-      if(!Math::fpFinite(value)) continue;
-      if(lo>hi){ lo=hi=value; }
-      else{
-        if(value<lo) lo=value;
-        if(value>hi) hi=value;
-        }
+    if(!data || !data->getRange(dlo,dhi)) continue;
+    if(!any){ lo=dlo; hi=dhi; any=true; }
+    else{
+      if(dlo<lo) lo=dlo;
+      if(dhi>hi) hi=dhi;
       }
     }
+  if(!any){ lo=1.0; hi=0.0; }
   }
 
 

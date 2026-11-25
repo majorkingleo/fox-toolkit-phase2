@@ -90,6 +90,9 @@ public:
   /// Return largest sample, or zero when empty
   FXdouble getMaximum() const;
 
+  /// Return finite minimum and maximum; false when no finite samples exist
+  FXbool getRange(FXdouble& lo,FXdouble& hi) const;
+
   /// Return index of sample at or before x; samples must be sorted
   FXint findIndexAt(FXdouble x) const;
 
