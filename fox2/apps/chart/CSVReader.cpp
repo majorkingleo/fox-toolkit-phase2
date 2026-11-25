@@ -6,6 +6,7 @@
 #include "FXUTF16Codec.h"
 #include "FXUTF32Codec.h"
 #include "FXCP1252Codec.h"
+#include "FXXMLString.h"
 #include <string>
 #include <vector>
 #include <cstdio>
@@ -13,6 +14,9 @@
 #include <cctype>
 #include <climits>
 #include <limits>
+#if defined(HAVE_ZLIB_H)
+#include <zlib.h>
+#endif
 
 using namespace FX;
 
@@ -301,6 +305,315 @@ static FXbool isMissing(const FXString& value){
   return s.empty() || s=="null" || s=="na" || s=="n/a" || s=="missing" || s=="-";
   }
 
+
+// The local part of an XML name, without its namespace prefix
+static FXString xmlLocalName(const FXString& name){
+  FXint colon=name.rfind(':');
+  return colon>=0?name.mid(colon+1,name.length()-colon-1):name;
+  }
+
+
+static FXString xmlAttribute(const FXStringDictionary& atts,const FXchar* key){
+  return atts.has(key)?atts[key]:FXString();
+  }
+
+
+static FXint xmlRepeat(const FXStringDictionary& atts,const FXchar* key){
+  if(!atts.has(key)) return 1;
+  std::string value=atts[key].text();
+  long count=std::strtol(value.c_str(),nullptr,10);
+  if(count<1) return 1;
+  if(count>INT_MAX) return INT_MAX;
+  return (FXint)count;
+  }
+
+
+// ODF stores a time cell as an ISO duration such as PT16H36M22S
+static FXString odsTimeToText(const FXString& value){
+  FXString upper=value;
+  upper.upper();
+  if(upper.length()<3 || upper[0]!='P') return value;
+  FXint start=upper.find('T');
+  if(start<0) return value;
+  std::string text=upper.text();
+  FXint hour=0,minute=0;
+  FXdouble second=0.0;
+  FXint pos=start+1;
+  while(pos<(FXint)text.size()){
+    char* end=nullptr;
+    FXdouble number=std::strtod(text.c_str()+pos,&end);
+    if(end==text.c_str()+pos) break;
+    pos=(FXint)(end-text.c_str());
+    if(pos>=(FXint)text.size()) break;
+    FXchar unit=text[pos++];
+    if(unit=='H') hour=(FXint)number;
+    else if(unit=='M') minute=(FXint)number;
+    else if(unit=='S') second=number;
+    }
+  if(hour>23 || minute>59 || second>=61.0) return value;
+  return FXString::value("%d:%02d:%06.3f",hour,minute,second);
+  }
+
+
+static FXuint zip16(const std::string& bytes,std::string::size_type pos){
+  return (FXuint)(FXuchar)bytes[pos] | ((FXuint)(FXuchar)bytes[pos+1]<<8);
+  }
+
+
+static FXuint zip32(const std::string& bytes,std::string::size_type pos){
+  return (FXuint)(FXuchar)bytes[pos]
+       | ((FXuint)(FXuchar)bytes[pos+1]<<8)
+       | ((FXuint)(FXuchar)bytes[pos+2]<<16)
+       | ((FXuint)(FXuchar)bytes[pos+3]<<24);
+  }
+
+
+// Pull one entry out of a ZIP archive; OpenDocument is a ZIP container
+static FXbool extractZipEntry(const std::string& bytes,const FXString& wanted,std::string& result,FXString& error){
+  const FXuval maxsize=(FXuval)256*1024*1024;
+  std::string::size_type eocd=std::string::npos;
+  std::string::size_type scan=bytes.size()>65557?bytes.size()-65557:0;
+  if(bytes.size()<22){ error="OpenDocument file is too short"; return false; }
+  std::string::size_type last=bytes.size()-22;
+  for(std::string::size_type pos=last; ; pos--){
+    if(zip32(bytes,pos)==0x06054b50){ eocd=pos; break; }
+    if(pos==scan) break;
+    }
+  if(eocd==std::string::npos){ error="OpenDocument file has no ZIP directory"; return false; }
+  FXuint entries=zip16(bytes,eocd+10);
+  FXuint dirsize=zip32(bytes,eocd+12);
+  FXuint diroffset=zip32(bytes,eocd+16);
+  if(entries==0 || dirsize==0 || diroffset==0xffffffffU || dirsize==0xffffffffU){ error="OpenDocument ZIP directory is unsupported or empty"; return false; }
+  if((FXuval)diroffset+(FXuval)dirsize>bytes.size()){ error="OpenDocument ZIP directory is outside the file"; return false; }
+  std::string::size_type pos=diroffset;
+  std::string::size_type end=diroffset+dirsize;
+  for(FXuint entry=0; entry<entries && pos+46<=end; entry++){
+    if(zip32(bytes,pos)!=0x02014b50){ error="OpenDocument ZIP directory is corrupt"; return false; }
+    FXuint flags=zip16(bytes,pos+8);
+    FXuint method=zip16(bytes,pos+10);
+    FXuint compressed=zip32(bytes,pos+20);
+    FXuint uncompressed=zip32(bytes,pos+24);
+    FXuint namelen=zip16(bytes,pos+28);
+    FXuint extralen=zip16(bytes,pos+30);
+    FXuint commentlen=zip16(bytes,pos+32);
+    FXuint localoffset=zip32(bytes,pos+42);
+    if(pos+46+namelen+extralen+commentlen>end){ error="OpenDocument ZIP directory is truncated"; return false; }
+    FXString name(bytes.data()+pos+46,namelen);
+    if(name==wanted){
+      if(flags&1){ error="OpenDocument content is encrypted"; return false; }
+      if(compressed==0xffffffffU || uncompressed==0xffffffffU || localoffset==0xffffffffU){ error="ZIP64 OpenDocument files are not supported"; return false; }
+      if(uncompressed>maxsize){ error="OpenDocument content is too large"; return false; }
+      if((FXuval)localoffset+30>bytes.size() || zip32(bytes,localoffset)!=0x04034b50){ error="OpenDocument ZIP entry is corrupt"; return false; }
+      FXuint localname=zip16(bytes,localoffset+26);
+      FXuint localextra=zip16(bytes,localoffset+28);
+      std::string::size_type dataoffset=(std::string::size_type)localoffset+30+localname+localextra;
+      if(dataoffset>bytes.size() || (FXuval)compressed>bytes.size()-dataoffset){ error="OpenDocument ZIP entry is truncated"; return false; }
+      if(method==0){
+        result.assign(bytes.data()+dataoffset,compressed);
+        return true;
+        }
+      if(method==8){
+#if defined(HAVE_ZLIB_H)
+        result.resize(uncompressed);
+        z_stream stream={};
+        stream.next_in=(Bytef*)(bytes.data()+dataoffset);
+        stream.avail_in=compressed;
+        stream.next_out=(Bytef*)(uncompressed?&result[0]:nullptr);
+        stream.avail_out=uncompressed;
+        if(inflateInit2(&stream,-MAX_WBITS)!=Z_OK){ error="Could not start decompression of OpenDocument content"; return false; }
+        FXint status=inflate(&stream,Z_FINISH);
+        FXuval produced=stream.total_out;
+        inflateEnd(&stream);
+        if(status!=Z_STREAM_END || produced!=uncompressed){ error="Could not decompress OpenDocument content"; return false; }
+        return true;
+#else
+        error="OpenDocument import needs zlib support in this build";
+        return false;
+#endif
+        }
+      error="OpenDocument content uses unsupported compression";
+      return false;
+      }
+    pos+=46+namelen+extralen+commentlen;
+    }
+  error="OpenDocument file has no content.xml";
+  return false;
+  }
+
+
+// Read the first non-empty sheet of an OpenDocument spreadsheet
+class ODSContentParser {
+public:
+  std::vector<std::vector<FXString> > rows;
+private:
+  std::vector<FXString> row;
+  FXString cellText;
+  FXString cellType;
+  FXString cellValue;
+  FXString cellDate;
+  FXString cellTime;
+  FXint cellRepeat;
+  FXint rowRepeat;
+  FXint paragraphDepth;
+  FXbool inTable;
+  FXbool inRow;
+  FXbool inCell;
+  FXbool done;
+private:
+  void finishCell(){
+    FXString value=cellText;
+    FXString type=cellType.lower();
+    if((type=="float" || type=="percentage" || type=="currency") && !cellValue.empty()) value=cellValue;
+    else if(type=="date" && !cellDate.empty()) value=cellDate;
+    else if(type=="time" && !cellTime.empty()) value=odsTimeToText(cellTime);
+    FXint copies=cellRepeat;
+    while(copies-->0 && row.size()<(FXuval)(1<<12)) row.push_back(value);
+    cellText.clear();
+    cellType.clear();
+    cellValue.clear();
+    cellDate.clear();
+    cellTime.clear();
+    paragraphDepth=0;
+    inCell=false;
+    }
+  void finishRow(){
+    while(!row.empty() && trimField(row.back()).empty()) row.pop_back();
+    if(!row.empty()){
+      FXint copies=rowRepeat;
+      while(copies-->0 && rows.size()<(FXuval)1000000) rows.push_back(row);
+      }
+    row.clear();
+    inRow=false;
+    inCell=false;
+    }
+public:
+  ODSContentParser():cellRepeat(1),rowRepeat(1),paragraphDepth(0),inTable(false),inRow(false),inCell(false),done(false){ }
+
+  FXXML::Error startElement(const FXString& tag,const FXStringDictionary& atts){
+    FXString name=xmlLocalName(tag);
+    if(name=="table"){
+      if(!done){ inTable=true; row.clear(); inRow=false; inCell=false; }
+      return FXXML::ErrOK;
+      }
+    if(!inTable || done) return FXXML::ErrOK;
+    if(name=="table-row"){
+      if(inRow) finishRow();
+      row.clear();
+      rowRepeat=xmlRepeat(atts,"table:number-rows-repeated");
+      inRow=true;
+      inCell=false;
+      return FXXML::ErrOK;
+      }
+    if(inRow && (name=="table-cell" || name=="covered-table-cell")){
+      if(inCell) finishCell();
+      cellText.clear();
+      cellType=xmlAttribute(atts,"office:value-type");
+      if(cellType.empty()) cellType=xmlAttribute(atts,"calcext:value-type");
+      cellValue=xmlAttribute(atts,"office:value");
+      cellDate=xmlAttribute(atts,"office:date-value");
+      cellTime=xmlAttribute(atts,"office:time-value");
+      cellRepeat=xmlRepeat(atts,"table:number-columns-repeated");
+      paragraphDepth=0;
+      inCell=true;
+      return FXXML::ErrOK;
+      }
+    if(inCell){
+      if(name=="p"){
+        if(!cellText.empty()) cellText+='\n';
+        paragraphDepth++;
+        }
+      else if(name=="s"){
+        FXint count=xmlRepeat(atts,"text:c");
+        while(count-->0) cellText+=' ';
+        }
+      else if(name=="tab") cellText+='\t';
+      else if(name=="line-break") cellText+='\n';
+      }
+    return FXXML::ErrOK;
+    }
+
+  FXXML::Error characters(const FXString& text){
+    if(inTable && inCell && !done && paragraphDepth>0) cellText+=text;
+    return FXXML::ErrOK;
+    }
+
+  FXXML::Error endElement(const FXString& tag){
+    FXString name=xmlLocalName(tag);
+    if(!inTable || done) return FXXML::ErrOK;
+    if(inCell && (name=="table-cell" || name=="covered-table-cell")){
+      finishCell();
+      return FXXML::ErrOK;
+      }
+    if(inRow && name=="table-row"){
+      finishRow();
+      return FXXML::ErrOK;
+      }
+    if(name=="table"){
+      if(inRow) finishRow();
+      inTable=false;
+      if(!rows.empty()) done=true;
+      }
+    return FXXML::ErrOK;
+    }
+  };
+
+
+static FXbool parseODSContent(const FXString& xml,std::vector<std::vector<FXString> >& rows,FXString& error){
+  ODSContentParser parser;
+  FXXMLString reader(xml,FXXML::Load);
+  reader.startElementCB.connect<ODSContentParser,&ODSContentParser::startElement>(&parser);
+  reader.charactersCB.connect<ODSContentParser,&ODSContentParser::characters>(&parser);
+  reader.endElementCB.connect<ODSContentParser,&ODSContentParser::endElement>(&parser);
+  FXXML::Error result=reader.parse();
+  if(result!=FXXML::ErrOK){
+    error=FXString("Could not parse OpenDocument content: ")+FXXML::getError(result);
+    return false;
+    }
+  if(parser.rows.empty()){
+    error="OpenDocument spreadsheet has no data";
+    return false;
+    }
+  rows.swap(parser.rows);
+  return true;
+  }
+
+
+static std::string odsRowsToCSV(const std::vector<std::vector<FXString> >& rows){
+  FXuval columns=0;
+  std::string out;
+  for(FXuval r=0; r<rows.size(); r++) if(columns<rows[r].size()) columns=rows[r].size();
+  for(FXuval r=0; r<rows.size(); r++){
+    for(FXuval c=0; c<columns; c++){
+      if(c) out+=',';
+      std::string field=(c<rows[r].size())?std::string(rows[r][c].text()):std::string();
+      if(field.find_first_of(",\"\r\n")!=std::string::npos){
+        out+='"';
+        for(FXuval i=0; i<field.size(); i++){
+          if(field[i]=='"') out+='"';
+          out+=field[i];
+          }
+        out+='"';
+        }
+      else out+=field;
+      }
+    out+='\n';
+    }
+  return out;
+  }
+
+
+static FXbool readODS(const std::string& bytes,std::string& csv,FXString& encoding,FXString& error){
+  std::string content;
+  if(!extractZipEntry(bytes,"content.xml",content,error)) return false;
+  FXString xml(content.data(),(FXint)content.size());
+  std::vector<std::vector<FXString> > rows;
+  if(!parseODSContent(xml,rows,error)) return false;
+  csv=odsRowsToCSV(rows);
+  if(csv.empty()){ error="OpenDocument spreadsheet has no rows"; return false; }
+  encoding="ODS (content.xml)";
+  return true;
+  }
+
 }
 
 
@@ -334,9 +647,15 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
     }
 
   table=CSVTable();
-  FXString text=decodeCSV(bytes,table.encoding);
+  std::string utf8;
+  if(bytes.size()>=4 && (FXuchar)bytes[0]=='P' && (FXuchar)bytes[1]=='K' && (FXuchar)bytes[2]==3 && (FXuchar)bytes[3]==4){
+    if(!readODS(bytes,utf8,table.encoding,error)) return false;
+    }
+  else{
+    FXString text=decodeCSV(bytes,table.encoding);
+    utf8.assign(text.text(),text.length());
+    }
   if(progress) progress(context,25);
-  std::string utf8(text.text(),text.length());
   FXchar separator=detectDelimiter(utf8);
   table.delimiter=(separator=='\t')?"tab":FXString(&separator,1);
 

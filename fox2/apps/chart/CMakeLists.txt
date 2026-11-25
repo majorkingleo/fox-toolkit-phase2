@@ -86,3 +86,7 @@ add_executable(chartdemo
   chartdemo_main.cpp)
 target_include_directories(chartdemo PRIVATE "${CHART_GENERATED_DIR}")
 target_link_libraries(chartdemo PRIVATE FOX::FOX m)
+if(FOX_ZLIB_LIBRARY)
+  target_include_directories(chartdemo PRIVATE "${FOX_ZLIB_INCLUDE_DIR}")
+  target_link_libraries(chartdemo PRIVATE "${FOX_ZLIB_LIBRARY}")
+endif()

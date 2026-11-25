@@ -412,7 +412,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   dragIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_drag:chart_drag),FXRGB(192,192,192),0,20,20);
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   filemenu=new FXMenuPane(this);
-  new FXMenuCommand(filemenu,"&Open CSV...\tCtl-O\tOpen one or more delimited text files",nullptr,this,ID_OPEN);
+  new FXMenuCommand(filemenu,"&Open Data...\tCtl-O\tOpen delimited text or OpenDocument files",nullptr,this,ID_OPEN);
   new FXMenuCommand(filemenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   new FXMenuTitle(menubar,"&File",nullptr,filemenu);
   FXMenuPane* thememenu=new FXMenuPane(this);
@@ -439,7 +439,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   tabs=new FXTabBook(this,nullptr,0,TABBOOK_TOPTABS|LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   new FXTabItem(tabs,"Welcome");
   FXVerticalFrame* page=new FXVerticalFrame(tabs,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_THICK|FRAME_RAISED,0,0,0,0,12,12,12,12);
-  welcome=new FXLabel(page,"Open one or more CSV files to plot their numeric columns.\n\nThe importer detects common delimiters, quoted fields, UTF encodings and Windows-1252 text.\nDate/time columns are detected and selected as the default X axis when available.",nullptr,JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y);
+  welcome=new FXLabel(page,"Open one or more CSV or OpenDocument (.ods) files to plot their numeric columns.\n\nThe importer detects common delimiters, quoted fields, UTF encodings and Windows-1252 text.\nDate/time columns are detected and selected as the default X axis when available.",nullptr,JUSTIFY_CENTER_X|JUSTIFY_CENTER_Y|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   setTarget(this);
   setSelector(ID_MAIN_CLOSE);
   }
@@ -657,7 +657,7 @@ void ChartDemoWindow::updateDetachedChartFonts(ChartDocument* document,FXTopWind
 
 
 long ChartDemoWindow::onCmdOpen(FXObject*,FXSelector,void*){
-  FXString* filenames=FXFileDialog::getOpenFilenames(this,"Open CSV files",FXSystem::getCurrentDirectory(),"CSV Files (*.csv,*.tsv,*.txt)\nAll Files (*)");
+  FXString* filenames=FXFileDialog::getOpenFilenames(this,"Open data files",FXSystem::getCurrentDirectory(),"Data Files (*.csv,*.tsv,*.txt,*.ods)\nCSV Files (*.csv,*.tsv,*.txt)\nOpenDocument Spreadsheets (*.ods)\nAll Files (*)");
   if(!filenames) return 1;
   for(FXint i=0; !filenames[i].empty(); i++) openFile(filenames[i]);
   delete [] filenames;
@@ -743,7 +743,7 @@ void ChartDemoWindow::startNextLoad(){
     CSVLoadTask* task=new CSVLoadTask(filename);
     if(!task->start()){
       delete task;
-      FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","Could not start the CSV loading thread.");
+      FXMessageBox::error(this,MBOX_OK,"Import Failed","Could not start the CSV loading thread.");
       continue;
       }
     loaders.push_back(task);
@@ -766,7 +766,7 @@ long ChartDemoWindow::onLoadPoll(FXObject*,FXSelector,void*){
       addLoadedFile(task->filename,task->table);
       }
     else{
-      FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","%s",task->error.text());
+      FXMessageBox::error(this,MBOX_OK,"Import Failed","%s",task->error.text());
       }
     delete task;
     }
@@ -831,7 +831,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
       }
     }
   if(document->xcolumns.empty()){
-    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","No plottable columns were found.");
+    FXMessageBox::error(this,MBOX_OK,"Import Failed","No plottable columns were found.");
     delete document;
     return;
     }
