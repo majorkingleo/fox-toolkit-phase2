@@ -31,6 +31,7 @@ struct ChartDocument {
   FXComboBox* xcolumn;
   FXToggleButton* xtoggle;
   FXToggleButton* ytoggle;
+  FXButton* autofity;
   FXButton* resetzoom;
   FXToggleButton* zoombutton;
   FXToggleButton* dragbutton;
@@ -72,6 +73,7 @@ protected:
   FXSVGIcon* detachIcon;
   FXSVGIcon* detachHoverIcon;
   FXSVGIcon* detachPressedIcon;
+  FXSVGIcon* autoFitYIcon;
   FXSVGIcon* resetZoomIcon;
   FXSVGIcon* xAxisIcon;
   FXSVGIcon* yAxisIcon;
@@ -96,6 +98,7 @@ public:
   long onCmdQuit(FXObject*,FXSelector,void*);
   long onXColumn(FXObject*,FXSelector,void*);
   long onAxisDescription(FXObject*,FXSelector,void*);
+  long onAutoFitY(FXObject* sender,FXSelector,void*);
   long onResetZoom(FXObject*,FXSelector,void*);
   long onPlotTool(FXObject* sender,FXSelector,void*);
   long onPlotChanged(FXObject*,FXSelector,void*);
@@ -124,6 +127,7 @@ public:
     ID_XCOLUMN,
     ID_X_DESCRIPTION,
     ID_Y_DESCRIPTION,
+    ID_AUTOFIT_Y,
     ID_RESET_ZOOM,
     ID_PLOT_CHANGED,
     ID_SERIES,

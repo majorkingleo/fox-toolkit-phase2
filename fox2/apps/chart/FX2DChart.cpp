@@ -483,8 +483,8 @@ long FX2DChart::onMouseWheel(FXObject*,FXSelector,void* ptr){
 long FX2DChart::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
   FXEvent *event=(FXEvent*)ptr;
   if(!isEnabled()) return 0;
-  if(event->win_x<plotarea.x || event->win_x>=plotarea.x+plotarea.w) return 0;
-  if(event->win_y<plotarea.y || event->win_y>=plotarea.y+plotarea.h) return 0;
+  if(event->win_x<0 || event->win_x>=width) return 0;
+  if(event->win_y<0 || event->win_y>=height) return 0;
   if(event->click_count>1){
     resetZoom();
     return 1;

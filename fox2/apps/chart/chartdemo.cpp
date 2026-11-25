@@ -54,6 +54,7 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_DESCRIPTION,ChartDemoWindow::onAxisDescription),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_Y_DESCRIPTION,ChartDemoWindow::onAxisDescription),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_AUTOFIT_Y,ChartDemoWindow::onAutoFitY),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_RESET_ZOOM,ChartDemoWindow::onResetZoom),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_PLOT_CHANGED,ChartDemoWindow::onPlotChanged),
   FXMAPFUNC(SEL_CHANGED,ChartDemoWindow::ID_XSCROLL,ChartDemoWindow::onXScroll),
@@ -180,6 +181,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   detachIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_detach:chart_detach),FXRGB(192,192,192),0,16,16);
   detachHoverIcon=new FXSVGIcon(app,(const FXuchar*)detach_hover_svg,FXRGB(192,192,192),0,16,16);
   detachPressedIcon=new FXSVGIcon(app,(const FXuchar*)detach_pressed_svg,FXRGB(192,192,192),0,16,16);
+  autoFitYIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_autofix_y_axis:chart_autofix_y_axis),FXRGB(192,192,192),0,20,20);
   resetZoomIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
   xAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
   yAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
@@ -212,6 +214,7 @@ void ChartDemoWindow::create(){
   detachIcon->create();
   detachHoverIcon->create();
   detachPressedIcon->create();
+  autoFitYIcon->create();
   resetZoomIcon->create();
   xAxisIcon->create();
   yAxisIcon->create();
@@ -475,6 +478,8 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->ytoggle->setAltTipText("Y Description");
   document->xtoggle->setState(true);
   document->ytoggle->setState(true);
+  document->autofity=new FXButton(charttoolbar,"",autoFitYIcon,this,ID_AUTOFIT_Y,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->autofity->setTipText("Auto-fit Y axis; preserve X view");
   document->resetzoom=new FXButton(charttoolbar,"",resetZoomIcon,this,ID_RESET_ZOOM,BUTTON_TOOLBAR|FRAME_RAISED|LAYOUT_CENTER_Y);
   document->resetzoom->setTipText("Reset zoom");
   document->resetzoom->disable();
@@ -714,6 +719,20 @@ long ChartDemoWindow::onAxisDescription(FXObject* sender,FXSelector sel,void*){
       FXAxis* axis=document->plot->getAxis(FX2DChart::YLO);
       if(shown) axis->setStyle(axis->getStyle()|AXIS_LABEL);
       else axis->setStyle(axis->getStyle()&~AXIS_LABEL);
+      document->plot->invalidateChart();
+      saveDocumentSettings(document);
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onAutoFitY(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->autofity==sender){
+      document->plot->fitY();
       document->plot->invalidateChart();
       saveDocumentSettings(document);
       return 1;
@@ -1020,6 +1039,7 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete detachPressedIcon;
   delete detachHoverIcon;
   delete detachIcon;
+  delete autoFitYIcon;
   delete resetZoomIcon;
   delete xAxisIcon;
   delete yAxisIcon;
