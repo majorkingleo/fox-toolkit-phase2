@@ -19,6 +19,7 @@ protected:
   FXScrollWindow* chartScroll;
   std::vector<FXGroupBox*> chartGroups;
   std::vector<FXList*> chartLists;
+  std::vector<FXButton*> chartRemoveButtons;
   std::vector<FXint> columns;
   std::vector<FXint> assignment;
   const CSVTable* table;

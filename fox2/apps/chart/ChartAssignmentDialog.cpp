@@ -40,7 +40,6 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
   FXVerticalFrame* chartPane=new FXVerticalFrame(workspace,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,4,4);
   FXHorizontalFrame* chartHeader=new FXHorizontalFrame(chartPane,LAYOUT_SIDE_TOP|LAYOUT_FILL_X,0,0,0,0,0,0,0,0,4,0);
   new FXLabel(chartHeader,"Charts (drop series here)",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X|LAYOUT_CENTER_Y);
-  new FXButton(chartHeader,"Remove last",nullptr,this,ID_REMOVE_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
   new FXButton(chartHeader,"Add chart",nullptr,this,ID_ADD_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
   chartScroll=new FXScrollWindow(chartPane,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON|FRAME_SUNKEN|FRAME_THICK);
   chartContainer=new FXVerticalFrame(chartScroll,LAYOUT_FILL_X|LAYOUT_TOP,0,0,0,0,4,4,4,4,4,4);
@@ -55,18 +54,30 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
 void ChartAssignmentDialog::ensureChartViews(){
   while((FXint)chartGroups.size()>plotCount){
     chartLists.pop_back();
+    chartRemoveButtons.pop_back();
     delete chartGroups.back();
     chartGroups.pop_back();
     }
   while((FXint)chartGroups.size()<plotCount){
     FXint index=(FXint)chartGroups.size();
     FXGroupBox* group=new FXGroupBox(chartContainer,FXString::value("Chart %d",index+1),FRAME_GROOVE|LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,160,6,6,14,6,4,4);
+    FXHorizontalFrame* header=new FXHorizontalFrame(group,LAYOUT_SIDE_TOP|LAYOUT_FILL_X,0,0,0,0,0,0,0,0,0,0);
+    new FXLabel(header,"",nullptr,LAYOUT_FILL_X);
+    FXButton* remove=new FXButton(header,"X",nullptr,this,ID_REMOVE_PLOT,FRAME_RAISED|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT|LAYOUT_CENTER_Y,0,0,24,20);
+    remove->setUserData((FXptr)(FXuval)(index+1));
     FXList* list=new FXList(group,this,ID_CHART_LIST,LIST_SINGLESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
     list->setNumVisible(6);
     list->dropEnable();
     if(chartContainer->id()) group->create();
     chartGroups.push_back(group);
     chartLists.push_back(list);
+    chartRemoveButtons.push_back(remove);
+    }
+  for(FXuval i=0; i<chartGroups.size(); i++){
+    chartGroups[i]->setText(FXString::value("Chart %d",(FXint)i+1));
+    chartRemoveButtons[i]->setUserData((FXptr)(FXuval)(i+1));
+    if(plotCount>1) chartRemoveButtons[i]->enable();
+    else chartRemoveButtons[i]->disable();
     }
   chartContainer->recalc();
   chartContainer->layout();
@@ -176,10 +187,18 @@ long ChartAssignmentDialog::onAddPlot(FXObject*,FXSelector,void*){
   }
 
 
-long ChartAssignmentDialog::onRemovePlot(FXObject*,FXSelector,void*){
+long ChartAssignmentDialog::onRemovePlot(FXObject* sender,FXSelector,void*){
   if(plotCount<=1) return 1;
-  FXint removed=plotCount-1;
-  for(FXuval i=0; i<assignment.size(); i++) if(assignment[i]>=removed) assignment[i]=0;
+  FXint removed=(FXint)(FXuval)((FXButton*)sender)->getUserData()-1;
+  if(removed<0 || removed>=plotCount) return 1;
+  for(FXuval i=0; i<assignment.size(); i++){
+    if(assignment[i]==removed) assignment[i]=0;
+    else if(assignment[i]>removed) assignment[i]--;
+    }
+  delete chartGroups[removed];
+  chartGroups.erase(chartGroups.begin()+removed);
+  chartLists.erase(chartLists.begin()+removed);
+  chartRemoveButtons.erase(chartRemoveButtons.begin()+removed);
   plotCount--;
   ensureChartViews();
   refreshSeries();
