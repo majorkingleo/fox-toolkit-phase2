@@ -172,7 +172,6 @@ static const FXchar detach_pressed_svg[]="<svg xmlns=\"http://www.w3.org/2000/sv
 
 
 ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",nullptr,nullptr,DECOR_ALL,20,20,1100,720){
-  loader=nullptr;
   fontDPI=0;
   fontScale=0.0;
   pixelScale=0.0;
@@ -490,59 +489,74 @@ void ChartDemoWindow::openFile(const FXString& filename){
       return;
       }
     }
-  if(loader && loader->filename==filename) return;
+  for(FXuval i=0; i<loaders.size(); i++) if(loaders[i]->filename==filename) return;
   for(FXuval i=0; i<pendingFiles.size(); i++) if(pendingFiles[i]==filename) return;
   pendingFiles.push_back(filename);
-  if(!loader) startNextLoad();
+  if(loaders.empty() && pendingFiles.size()==1){
+    loadingBar->setProgress(0);
+    loadingBar->show();
+    statusbar->recalc();
+    }
+  startNextLoad();
+  if(!loaders.empty()){
+    FXSelector poll=FXSEL(SEL_TIMEOUT,ID_LOAD_POLL);
+    if(!getApp()->hasTimeout(this,poll)) getApp()->addTimeout(this,poll,100000000);
+    }
+  else if(pendingFiles.empty()){
+    loadingBar->hide();
+    statusbar->getStatusLine()->setText("");
+    statusbar->getStatusLine()->setNormalText("Ready");
+    statusbar->recalc();
+    }
   }
 
 
 void ChartDemoWindow::startNextLoad(){
-  if(loader || pendingFiles.empty()) return;
-  FXString filename=pendingFiles[0];
-  pendingFiles.erase(pendingFiles.begin());
-  loader=new CSVLoadTask(filename);
-  if(!loader->start()){
-    delete loader;
-    loader=nullptr;
-    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","Could not start the CSV loading thread.");
-    startNextLoad();
-    return;
+  FXint maxloaders=FXMAX(2,FXMIN(4,FXThread::processors()));
+  while((FXint)loaders.size()<maxloaders && !pendingFiles.empty()){
+    FXString filename=pendingFiles[0];
+    pendingFiles.erase(pendingFiles.begin());
+    CSVLoadTask* task=new CSVLoadTask(filename);
+    if(!task->start()){
+      delete task;
+      FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","Could not start the CSV loading thread.");
+      continue;
+      }
+    loaders.push_back(task);
     }
-  statusbar->getStatusLine()->setText("Loading "+displayFileName(filename));
-  loadingBar->setProgress(0);
-  loadingBar->show();
-  statusbar->recalc();
-  getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL),100000000);
+  FXint total=(FXint)(loaders.size()+pendingFiles.size());
+  if(total>0) statusbar->getStatusLine()->setText(FXString::value("Importing %d file%s...",total,total==1?"":"s"));
   }
 
 
 long ChartDemoWindow::onLoadPoll(FXObject*,FXSelector,void*){
-  if(!loader) return 1;
-  loadingBar->setProgress(loader->getProgress());
-  if(loader->running()){
+  for(FXuval i=0; i<loaders.size();){
+    CSVLoadTask* task=loaders[i];
+    if(task->running()){
+      i++;
+      continue;
+      }
+    task->join();
+    loaders.erase(loaders.begin()+i);
+    if(task->success){
+      addLoadedFile(task->filename,task->table);
+      }
+    else{
+      FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","%s",task->error.text());
+      }
+    delete task;
+    }
+  startNextLoad();
+  if(!loaders.empty() || !pendingFiles.empty()){
+    FXuint progress=0;
+    for(FXuval i=0; i<loaders.size(); i++) progress+=loaders[i]->getProgress();
+    if(!loaders.empty()) loadingBar->setProgress(progress/(FXuint)loaders.size());
     getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL),100000000);
-    return 1;
-    }
-  loader->join();
-  CSVLoadTask* task=loader;
-  loader=nullptr;
-  if(task->success){
-    loadingBar->setProgress(100);
-    addLoadedFile(task->filename,task->table);
-    statusbar->getStatusLine()->setNormalText("Loaded "+displayFileName(task->filename));
-    }
-  else{
-    FXMessageBox::error(this,MBOX_OK,"CSV Import Failed","%s",task->error.text());
-    statusbar->getStatusLine()->setNormalText("Ready");
-    }
-  statusbar->getStatusLine()->setText("");
-  delete task;
-  if(!pendingFiles.empty()){
-    startNextLoad();
     }
   else{
     loadingBar->hide();
+    statusbar->getStatusLine()->setText("");
+    statusbar->getStatusLine()->setNormalText("Ready");
     statusbar->recalc();
     }
   return 1;
@@ -1166,11 +1180,11 @@ long ChartDemoWindow::onMainClose(FXObject*,FXSelector,void*){
 
 ChartDemoWindow::~ChartDemoWindow(){
   getApp()->removeTimeout(this,FXSEL(SEL_TIMEOUT,ID_LOAD_POLL));
-  if(loader){
-    loader->join();
-    delete loader;
-    loader=nullptr;
+  for(FXuval i=0; i<loaders.size(); i++){
+    loaders[i]->join();
+    delete loaders[i];
     }
+  loaders.clear();
   for(FXuval i=0; i<documents.size(); i++){
     if(documents[i]->detachWindow){
       FXMainWindow* window=documents[i]->detachWindow;

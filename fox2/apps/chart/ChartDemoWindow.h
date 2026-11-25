@@ -93,7 +93,7 @@ protected:
   FXLabel* welcome;
   std::vector<ChartDocument*> documents;
   std::vector<FXString> pendingFiles;
-  CSVLoadTask* loader;
+  std::vector<CSVLoadTask*> loaders;
 protected:
   ChartDemoWindow(){ }
 private:
