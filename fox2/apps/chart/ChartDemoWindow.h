@@ -32,7 +32,7 @@ struct ChartDocument {
   FXToggleButton* xtoggle;
   FXToggleButton* ytoggle;
   FXButton* resetzoom;
-  FXToggleButton* cropbutton;
+  FXToggleButton* zoombutton;
   FXToggleButton* dragbutton;
   FXLabel* info;
   FXVerticalFrame* series;
@@ -76,7 +76,7 @@ protected:
   FXSVGIcon* xAxisIcon;
   FXSVGIcon* yAxisIcon;
   FXSVGIcon* seriesIcon;
-  FXSVGIcon* cropIcon;
+  FXSVGIcon* zoomIcon;
   FXSVGIcon* dragIcon;
   FXFontDesc verticalLabelFontDesc;
   FXint fontDPI;

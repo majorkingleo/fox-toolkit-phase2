@@ -184,7 +184,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   xAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
   yAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
   seriesIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
-  cropIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_crop:chart_crop),FXRGB(192,192,192),0,20,20);
+  zoomIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_zoom:chart_zoom),FXRGB(192,192,192),0,20,20);
   dragIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_drag:chart_drag),FXRGB(192,192,192),0,20,20);
   menubar=new FXMenuBar(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X);
   filemenu=new FXMenuPane(this);
@@ -216,7 +216,7 @@ void ChartDemoWindow::create(){
   xAxisIcon->create();
   yAxisIcon->create();
   seriesIcon->create();
-  cropIcon->create();
+  zoomIcon->create();
   dragIcon->create();
   updateChartFonts();
   }
@@ -480,11 +480,11 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->resetzoom->disable();
   document->seriesshow=new FXToggleButton(charttoolbar,"","",seriesIcon,seriesIcon,this,ID_SERIES_PANEL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
   document->seriesshow->setTipText("Show/hide the series panel");
-  document->cropbutton=new FXToggleButton(charttoolbar,"","",cropIcon,cropIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
-  document->cropbutton->setTipText("Crop to a rectangular plot selection");
+  document->zoombutton=new FXToggleButton(charttoolbar,"","",zoomIcon,zoomIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
+  document->zoombutton->setTipText("Zoom to a rectangular plot selection");
   document->dragbutton=new FXToggleButton(charttoolbar,"","",dragIcon,dragIcon,this,ID_PLOT_TOOL,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y|LAYOUT_SIDE_RIGHT);
   document->dragbutton->setTipText("Drag to pan the plot");
-  document->cropbutton->setState(true);
+  document->zoombutton->setState(true);
   FXHorizontalFrame* controls=new FXHorizontalFrame(page,LAYOUT_FILL_X|LAYOUT_SIDE_TOP,0,0,0,0,4,4,4,4,6,0);
   document->info=new FXLabel(controls,"",nullptr,JUSTIFY_LEFT|LAYOUT_CENTER_Y|LAYOUT_FILL_X);
 
@@ -740,9 +740,9 @@ long ChartDemoWindow::onResetZoom(FXObject* sender,FXSelector,void*){
 long ChartDemoWindow::onPlotTool(FXObject* sender,FXSelector,void*){
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];
-    if(sender!=document->cropbutton && sender!=document->dragbutton) continue;
+    if(sender!=document->zoombutton && sender!=document->dragbutton) continue;
     FXbool panmode=sender==document->dragbutton && document->dragbutton->getState();
-    document->cropbutton->setState(!panmode);
+    document->zoombutton->setState(!panmode);
     document->dragbutton->setState(panmode);
     static_cast<ChartDemoPlot*>(document->plot)->setPanMode(panmode);
     return 1;
@@ -1024,7 +1024,7 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete xAxisIcon;
   delete yAxisIcon;
   delete seriesIcon;
-  delete cropIcon;
+  delete zoomIcon;
   delete dragIcon;
   delete filemenu;
 }
