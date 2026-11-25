@@ -10,6 +10,8 @@ FXDEFMAP(ChartAssignmentDialog) ChartAssignmentDialogMap[]={
   FXMAPFUNC(SEL_LEFTBUTTONPRESS,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onListPress),
   FXMAPFUNC(SEL_BEGINDRAG,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onBeginDrag),
   FXMAPFUNC(SEL_BEGINDRAG,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onBeginDrag),
+  FXMAPFUNC(SEL_DRAGGED,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onDragged),
+  FXMAPFUNC(SEL_DRAGGED,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onDragged),
   FXMAPFUNC(SEL_ENDDRAG,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onEndDrag),
   FXMAPFUNC(SEL_ENDDRAG,ChartAssignmentDialog::ID_CHART_LIST,ChartAssignmentDialog::onEndDrag),
   FXMAPFUNC(SEL_DND_REQUEST,ChartAssignmentDialog::ID_SERIES_LIST,ChartAssignmentDialog::onDNDRequest),
@@ -138,9 +140,15 @@ long ChartAssignmentDialog::onListPress(FXObject* sender,FXSelector,void* ptr){
   FXList* list=(FXList*)sender;
   FXEvent* event=(FXEvent*)ptr;
   FXint index=list->getItemAt(event->win_x,event->win_y);
-  if(index>=0 && index<list->getNumItems() && !list->isItemSelected(index)){
-    list->killSelection(false);
-    list->selectItem(index,false);
+  if(index>=0 && index<list->getNumItems()){
+    list->setCurrentItem(index,false);
+    if(!list->isItemSelected(index)){
+      list->killSelection(false);
+      list->selectItem(index,false);
+      }
+    list->getItem(index)->setDraggable(true);
+    FXuval seriesIndex=(FXuval)list->getItemData(index);
+    draggedSeries=seriesIndex>0?(FXint)seriesIndex-1:-1;
     }
   return 0;
   }
@@ -149,12 +157,22 @@ long ChartAssignmentDialog::onListPress(FXObject* sender,FXSelector,void* ptr){
 long ChartAssignmentDialog::onBeginDrag(FXObject* sender,FXSelector,void*){
   FXList* list=(FXList*)sender;
   FXint current=list->getCurrentItem();
-  if(current<0 || current>=list->getNumItems()) return 0;
-  FXuval index=(FXuval)list->getItemData(current);
-  if(index==0 || index>columns.size()) return 0;
-  draggedSeries=(FXint)index-1;
+  if(current>=0 && current<list->getNumItems()){
+    FXuval index=(FXuval)list->getItemData(current);
+    if(index==0 || index>columns.size()) return 0;
+    draggedSeries=(FXint)index-1;
+    }
+  if(draggedSeries<0 || draggedSeries>=(FXint)columns.size()) return 0;
   FXDragType types[1]={seriesDragType};
   return list->beginDrag(types,1)?1:0;
+  }
+
+
+long ChartAssignmentDialog::onDragged(FXObject* sender,FXSelector,void* ptr){
+  FXList* list=(FXList*)sender;
+  FXEvent* event=(FXEvent*)ptr;
+  list->handleDrag(event->root_x,event->root_y,DRAG_MOVE);
+  return 1;
   }
 
 

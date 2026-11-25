@@ -40,6 +40,7 @@ public:
   long onListPress(FXObject*,FXSelector,void*);
   long onSeriesFilter(FXObject*,FXSelector,void*);
   long onBeginDrag(FXObject*,FXSelector,void*);
+  long onDragged(FXObject*,FXSelector,void*);
   long onEndDrag(FXObject*,FXSelector,void*);
   long onDNDRequest(FXObject*,FXSelector,void*);
   long onDNDEnter(FXObject*,FXSelector,void*);
