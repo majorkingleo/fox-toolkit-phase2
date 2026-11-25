@@ -187,19 +187,53 @@ static FXString trimField(const FXString& input){
 
 
 static FXbool parseNumber(const FXString& input,FXdouble& value,FXbool decimalComma){
-  FXString s=trimField(input);
-  if(s.empty()) return false;
-  FXString lower=s.lower();
-  if(lower=="nan" || lower=="+nan" || lower=="-nan"){
-    value=std::numeric_limits<FXdouble>::quiet_NaN();
+  const FXchar* data=input.text();
+  FXint first=0,last=input.length();
+  while(first<last && (data[first]==' ' || data[first]=='\t')) first++;
+  while(last>first && (data[last-1]==' ' || data[last-1]=='\t')) last--;
+  if(first==last) return false;
+  const FXchar* begin=data+first;
+  FXint length=last-first;
+  FXbool comma=false,dot=false;
+  for(FXint i=0; i<length; i++){
+    if(begin[i]==',') comma=true;
+    else if(begin[i]=='.') dot=true;
+    }
+  std::string normalized;
+  FXbool transformed=false;
+  const FXchar* parsebegin=begin;
+  if(decimalComma?(comma || dot):comma){
+    normalized.reserve(length);
+    for(FXint i=0; i<length; i++){
+      FXchar ch=begin[i];
+      if(decimalComma){
+        if(ch=='.') continue;
+        if(ch==',') ch='.';
+        }
+      else if(ch==',') continue;
+      normalized.push_back(ch);
+      }
+    parsebegin=normalized.c_str();
+    transformed=true;
+    }
+  char* parseend=nullptr;
+  FXdouble number=std::strtod(parsebegin,&parseend);
+  FXbool consumed=false;
+  if(parseend!=parsebegin){
+    if(transformed){
+      consumed=(parseend==parsebegin+(std::ptrdiff_t)normalized.size());
+      }
+    else{
+      const FXchar* rest=parseend;
+      while(rest<data+last && (*rest==' ' || *rest=='\t')) rest++;
+      consumed=(rest==data+last);
+      }
+    }
+  if(consumed){
+    value=number;
     return true;
     }
-  if(lower=="null" || lower=="na" || lower=="n/a" || lower=="missing" || lower=="-") return false;
-  if(decimalComma){ s.substitute(".",""); s.substitute(',', '.'); }
-  else s.substitute(",","");
-  FXbool ok=false;
-  value=s.toDouble(&ok);
-  return ok;
+  return false;
   }
 
 
@@ -266,6 +300,30 @@ static FXbool parseDateTime(const FXString& input,FXdouble& value){
 
 
 static FXbool parseDateOnly(const FXString& input,FXdouble& value){
+  const FXchar* data=input.text();
+  FXint first=0,last=input.length();
+  while(first<last && (data[first]==' ' || data[first]=='\t')) first++;
+  while(last>first && (data[last-1]==' ' || data[last-1]=='\t')) last--;
+  if(last-first==10 && data[first+4]=='-' && data[first+7]=='-'){
+    FXint year=0,month=0,day=0;
+    FXbool digits=true;
+    for(FXint i=0; i<10; i++){
+      if(i==4 || i==7) continue;
+      if(data[first+i]<'0' || data[first+i]>'9'){ digits=false; break; }
+      }
+    if(digits){
+      for(FXint i=0; i<4; i++) year=year*10+(data[first+i]-'0');
+      for(FXint i=5; i<7; i++) month=month*10+(data[first+i]-'0');
+      for(FXint i=8; i<10; i++) day=day*10+(data[first+i]-'0');
+      if(1<=year && year<=9999 && 1<=month && month<=12 && 1<=day && day<=31){
+        FXDate date(year,month,day);
+        if(date.year()==year && date.month()==month && date.day()==day){
+          value=(FXdouble)date.getTime()/1.0e9;
+          return true;
+          }
+        }
+      }
+    }
   FXString trimmed=trimField(input);
   if(trimmed.find(':')>=0) return false;
   return parseDateTime(trimmed,value);
@@ -298,6 +356,15 @@ static FXbool parseTimeOnly(const FXString& input,FXdouble& value){
   if(s[pos]) return false;
   if(hour>23 || minute>59 || secondOfMinute>60) return false;
   value=hour*3600.0+minute*60.0+secondOfMinute+fraction;
+  return true;
+  }
+
+
+static FXbool parseDateAndTime(const FXString& dateInput,const FXString& timeInput,FXdouble& value){
+  FXdouble datevalue,timevalue;
+  if(!parseDateOnly(dateInput,datevalue)) return false;
+  if(!parseTimeOnly(timeInput,timevalue)) return false;
+  value=datevalue+timevalue;
   return true;
   }
 
@@ -1132,7 +1199,7 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
     FXdouble number;
     if(!parseNumber(samples[0][c],number,decimalComma)){
       FXdouble stamp;
-      if(!parseDateTime(samples[0][c],stamp)) hasheader=true;
+      if(!parseDateTime(samples[0][c],stamp) && !parseTimeOnly(samples[0][c],stamp)) hasheader=true;
       }
     }
   FXint firstdata=hasheader?1:0;
@@ -1180,8 +1247,9 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
       FXdouble value=0.0;
       if(c<row.size()){
         if(c==dateColumn && timeColumn>=0){
-          FXdouble datevalue,timevalue;
-          if(timeColumn<row.size() && parseDateOnly(row[c],datevalue) && parseTimeOnly(row[timeColumn],timevalue)) value=datevalue+timevalue;
+          if(timeColumn<row.size() && parseDateAndTime(row[c],row[timeColumn],value)){
+            // Date and time were combined
+            }
           else value=std::numeric_limits<FXdouble>::quiet_NaN();
           }
         else if(timestamps[c]){
