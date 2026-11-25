@@ -25,6 +25,8 @@
 #include "FXChartDefs.h"
 #endif
 
+#include <memory>
+
 namespace FXCHART {
 
 
@@ -67,8 +69,8 @@ protected:
   FXSelector message;           // Message sent per sample
   LiveSample current;           // Last sample
   FXCurve  *curves[SERIES_COUNT];       // Live curves
-  FXData   *timedata[SERIES_COUNT];     // Time samples
-  FXData   *values[SERIES_COUNT];       // Value samples
+  std::shared_ptr<FXData> timedata[SERIES_COUNT]; // Time samples
+  std::shared_ptr<FXData> values[SERIES_COUNT];   // Value samples
   FXTime    interval;           // Sampling interval, nanoseconds
   FXTime    starttime;          // Time of first sample
   FXTime    lasttime;           // Time of previous sample

@@ -9,6 +9,7 @@
 #include "ChartDetachedWindow.h"
 #include "icons.h"
 #include <algorithm>
+#include <memory>
 #include <vector>
 #include <cstdio>
 #include <cstring>
@@ -1160,7 +1161,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
   for(FXuval i=0; i<document->xcolumns.size(); i++) if(document->xcolumns[i]==xcol) xindex=(FXint)i;
   if(xindex<0) return;
   for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->clearCurves();
-  std::vector<FXData*> sharedx(document->plots.size(),nullptr);
+  std::shared_ptr<FXData> sharedx;
   FXint visiblecount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
@@ -1173,18 +1174,14 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     FXint plotindex=FXCLAMP(0,document->seriesPlot[i],(FXint)document->plots.size()-1);
     FX2DPlot* target=document->plots[plotindex];
     FXCurve* curve=new FXCurve(target,document->table.columns[col].name);
-    FXbool ownsx=false;
-    FXData* xdata=sharedx[plotindex];
-    if(xdata==nullptr){
-      xdata=new FXData;
-      xdata->assign(document->table.columns[xcol].values.data(),document->table.rows);
-      sharedx[plotindex]=xdata;
-      ownsx=true;
+    if(!sharedx){
+      sharedx=std::make_shared<FXData>();
+      sharedx->assign(document->table.columns[xcol].values.data(),document->table.rows);
       }
-    FXData* ydata=new FXData;
+    std::shared_ptr<FXData> ydata=std::make_shared<FXData>();
     ydata->assign(document->table.columns[col].values.data(),document->table.rows);
-    curve->setXData(xdata,ownsx);
-    curve->setYData(ydata);
+    curve->setXData(sharedx);
+    curve->setYData(std::move(ydata));
     LineStyle line={readableColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],getApp()->getTheme()->color(ROLE_WINDOW_BG)),1,LINESTYLE_SOLID};
     curve->setLineStyle(line);
     target->appendCurve(curve);
