@@ -285,6 +285,24 @@ static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSel
 static void alignPlotAreas(ChartDocument* document);
 
 
+static void updatePlotSizing(ChartDocument* document,FXint plotHeight){
+  FXbool single=document->plots.size()==1;
+  document->plotStack->setLayoutHints(single?(LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_TOP):(LAYOUT_FILL_X|LAYOUT_TOP));
+  for(FXuval p=0; p<document->plots.size(); p++){
+    FX2DPlot* plot=document->plots[p];
+    if(single) plot->setLayoutHints(LAYOUT_FILL_X|LAYOUT_FILL_Y);
+    else{
+      plot->setLayoutHints(LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT);
+      plot->setHeight(plotHeight);
+      }
+    }
+  document->plotStack->recalc();
+  document->plotStack->layout();
+  document->plotScroll->recalc();
+  document->plotScroll->layout();
+  }
+
+
 static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* verticalFont,FXFont* numberFont,FXint plotHeight){
   FXObject* target=document->plot->getTarget();
   FXSelector selector=document->plot->getSelector();
@@ -302,10 +320,7 @@ static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* vertical
     }
   document->plotCount=(FXint)document->plots.size();
   document->plot=document->plots[0];
-  document->plotStack->recalc();
-  document->plotStack->layout();
-  document->plotScroll->recalc();
-  document->plotScroll->layout();
+  updatePlotSizing(document,plotHeight);
   }
 
 
@@ -576,7 +591,7 @@ void ChartDemoWindow::updateChartFonts(){
 
 void ChartDemoWindow::scaleDocumentWidgets(ChartDocument* document,FXWindow* view){
   if(document->splitter) document->splitter->setBarSize(view->scale(4));
-  for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->setHeight(view->scale(280));
+  updatePlotSizing(document,view->scale(280));
   if(document->plotStack){
     document->plotStack->setVSpacing(view->scale(4));
     document->plotStack->recalc();
