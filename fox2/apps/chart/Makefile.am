@@ -17,6 +17,7 @@ CLEANFILES = icons.h icons.cpp
 
 ICON_SVGS = \
 icons/x-axis-label.svg \
+icons/date-axis.svg \
 icons/y-axis-label.svg \
 icons/autofix-y-axis.svg \
 icons/split-chart.svg \
@@ -27,6 +28,7 @@ icons/crop.svg \
 icons/drag.svg \
 icons/detach.svg \
 icons/dark/x-axis-label.svg \
+icons/dark/date-axis.svg \
 icons/dark/y-axis-label.svg \
 icons/dark/autofix-y-axis.svg \
 icons/dark/split-chart.svg \
@@ -40,6 +42,7 @@ CHART_ICON_INPUTS = $(addprefix $(srcdir)/,$(ICON_SVGS))
 
 ICON_RESOURCES = \
 -r chart_x_axis_label $(srcdir)/icons/x-axis-label.svg \
+-r chart_date_axis $(srcdir)/icons/date-axis.svg \
 -r chart_y_axis_label $(srcdir)/icons/y-axis-label.svg \
 -r chart_autofix_y_axis $(srcdir)/icons/autofix-y-axis.svg \
 -r chart_split_chart $(srcdir)/icons/split-chart.svg \
@@ -50,6 +53,7 @@ ICON_RESOURCES = \
 -r chart_drag $(srcdir)/icons/drag.svg \
 -r chart_detach $(srcdir)/icons/detach.svg \
 -r chart_dark_x_axis_label $(srcdir)/icons/dark/x-axis-label.svg \
+-r chart_dark_date_axis $(srcdir)/icons/dark/date-axis.svg \
 -r chart_dark_y_axis_label $(srcdir)/icons/dark/y-axis-label.svg \
 -r chart_dark_autofix_y_axis $(srcdir)/icons/dark/autofix-y-axis.svg \
 -r chart_dark_split_chart $(srcdir)/icons/dark/split-chart.svg \
@@ -96,6 +100,7 @@ EXTRA_DIST = \
 marble.bmp \
 icons/README.md \
 icons/x-axis-label.svg \
+icons/date-axis.svg \
 icons/y-axis-label.svg \
 icons/autofix-y-axis.svg \
 icons/split-chart.svg \
@@ -106,6 +111,7 @@ icons/crop.svg \
 icons/drag.svg \
 icons/detach.svg \
 icons/dark/x-axis-label.svg \
+icons/dark/date-axis.svg \
 icons/dark/y-axis-label.svg \
 icons/dark/autofix-y-axis.svg \
 icons/dark/split-chart.svg \

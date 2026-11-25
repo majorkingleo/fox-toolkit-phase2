@@ -12,6 +12,7 @@
 #include <vector>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 
 #if defined(WIN32)
 #include <windows.h>
@@ -49,6 +50,67 @@ public:
   };
 
 
+// Number of decimals needed to show a tick step without losing its value
+static FXint tickDecimals(FXdouble step){
+  FXdouble scaled=step;
+  for(FXint decimals=0; decimals<3; decimals++){
+    if(FXABS(scaled-Math::round(scaled))<=1.0e-7*FXMAX(1.0,FXABS(scaled))) return decimals;
+    scaled*=10.0;
+    }
+  return 3;
+  }
+
+
+// Show elapsed time with the unit that fits the tick spacing
+static FXString formatElapsedTick(FXdouble value,FXdouble spacing){
+  FXdouble scale=1.0;
+  const FXchar* suffix="s";
+  if(spacing>=2.0*86400.0){ scale=86400.0; suffix="d"; }
+  else if(spacing>=2.0*3600.0){ scale=3600.0; suffix="h"; }
+  else if(spacing>=2.0*60.0){ scale=60.0; suffix="m"; }
+  FXdouble step=spacing/scale;
+  FXint decimals=tickDecimals(step);
+  if(scale>1.0 && step>=10.0) decimals=0;
+  return FXString::value("%.*f%s",decimals,value/scale,suffix);
+  }
+
+
+// Show an absolute timestamp as a date, month, year or clock time
+static FXString formatDateTick(FXdouble value,FXdouble spacing,FXdouble origin){
+  FXdouble absolute=value+origin;
+  FXdouble day=std::floor(absolute/86400.0);
+  FXdouble seconds=absolute-day*86400.0;
+  FXint dayseconds=(FXint)std::floor(seconds+0.5);
+  FXDate date;
+  date.setTime((FXTime)Math::round(absolute*1.0e9));
+  if(dayseconds>=86400){
+    dayseconds-=86400;
+    date.addDays(1);
+    }
+  FXint year=0,month=0,dayofmonth=0;
+  date.getDate(year,month,dayofmonth);
+  FXint hour=dayseconds/3600;
+  FXint minute=(dayseconds/60)%60;
+  FXint second=dayseconds%60;
+  if(spacing>=86400.0*300.0) return FXString::value("%04d",year);
+  if(spacing>=86400.0*20.0) return FXString::value("%04d-%02d",year,month);
+  if(spacing>=86400.0) return FXString::value("%04d-%02d-%02d",year,month,dayofmonth);
+  if(spacing>=60.0) return FXString::value("%02d-%02d %02d:%02d",month,dayofmonth,hour,minute);
+  return FXString::value("%02d-%02d %02d:%02d:%02d",month,dayofmonth,hour,minute,second);
+  }
+
+
+// Format the x tick labels of a timestamp column
+static FXString formatChartXAxisNumber(FXdouble value,FXdouble spacing,void* context){
+  ChartDocument* document=(ChartDocument*)context;
+  if(!document || !Math::fpFinite(value) || !Math::fpFinite(spacing) || spacing<=0.0) return FXString::value("%g",value);
+  FXint column=document->selectedx;
+  if(column<0 || column>=(FXint)document->table.columns.size() || !document->table.columns[column].timestamp) return FXString::value("%g",value);
+  if(document->xdates) return formatDateTick(value,spacing,document->table.columns[column].timeOrigin);
+  return formatElapsedTick(value,spacing);
+  }
+
+
 FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_OPEN,ChartDemoWindow::onCmdOpen),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_QUIT,ChartDemoWindow::onCmdQuit),
@@ -57,6 +119,7 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE,ChartDemoWindow::onTheme),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE_DARK,ChartDemoWindow::onTheme),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_AXIS_MODE,ChartDemoWindow::onXAxisMode),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_DESCRIPTION,ChartDemoWindow::onAxisDescription),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_Y_DESCRIPTION,ChartDemoWindow::onAxisDescription),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_AUTOFIT_Y,ChartDemoWindow::onAutoFitY),
@@ -406,6 +469,7 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   resetZoomIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
   splitChartIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_split_chart:chart_split_chart),FXRGB(192,192,192),0,20,20);
   xAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
+  dateAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_date_axis:chart_date_axis),FXRGB(192,192,192),0,20,20);
   yAxisIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
   seriesIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
   zoomIcon=new FXSVGIcon(app,(const FXuchar*)(dark?chart_dark_zoom:chart_zoom),FXRGB(192,192,192),0,20,20);
@@ -455,6 +519,7 @@ void ChartDemoWindow::create(){
   resetZoomIcon->create();
   splitChartIcon->create();
   xAxisIcon->create();
+  dateAxisIcon->create();
   yAxisIcon->create();
   seriesIcon->create();
   zoomIcon->create();
@@ -479,6 +544,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   FXSVGIcon* oldResetZoom=resetZoomIcon;
   FXSVGIcon* oldSplitChart=splitChartIcon;
   FXSVGIcon* oldXAxis=xAxisIcon;
+  FXSVGIcon* oldDateAxis=dateAxisIcon;
   FXSVGIcon* oldYAxis=yAxisIcon;
   FXSVGIcon* oldSeries=seriesIcon;
   FXSVGIcon* oldZoom=zoomIcon;
@@ -488,6 +554,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   resetZoomIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_reset_zoom:chart_reset_zoom),FXRGB(192,192,192),0,24,24);
   splitChartIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_split_chart:chart_split_chart),FXRGB(192,192,192),0,20,20);
   xAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_x_axis_label:chart_x_axis_label),FXRGB(192,192,192),0,20,20);
+  dateAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_date_axis:chart_date_axis),FXRGB(192,192,192),0,20,20);
   yAxisIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_y_axis_label:chart_y_axis_label),FXRGB(192,192,192),0,20,20);
   seriesIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_data_series:chart_data_series),FXRGB(192,192,192),0,20,20);
   zoomIcon=new FXSVGIcon(getApp(),(const FXuchar*)(dark?chart_dark_zoom:chart_zoom),FXRGB(192,192,192),0,20,20);
@@ -497,6 +564,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   resetZoomIcon->create();
   splitChartIcon->create();
   xAxisIcon->create();
+  dateAxisIcon->create();
   yAxisIcon->create();
   seriesIcon->create();
   zoomIcon->create();
@@ -506,6 +574,8 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
     ((ChartTabItem*)document->tabitem)->setDetachIcons(detachIcon,detachHoverIcon,detachPressedIcon);
     document->xtoggle->setIcon(xAxisIcon);
     document->xtoggle->setAltIcon(xAxisIcon);
+    document->xmode->setIcon(dateAxisIcon);
+    document->xmode->setAltIcon(dateAxisIcon);
     document->ytoggle->setIcon(yAxisIcon);
     document->ytoggle->setAltIcon(yAxisIcon);
     document->autofity->setIcon(autoFitYIcon);
@@ -523,6 +593,7 @@ void ChartDemoWindow::updateChartIcons(FXbool dark){
   delete oldResetZoom;
   delete oldSplitChart;
   delete oldXAxis;
+  delete oldDateAxis;
   delete oldYAxis;
   delete oldSeries;
   delete oldZoom;
@@ -819,6 +890,8 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->seriesshow=nullptr;
   document->seriesclose=nullptr;
   document->serieswidth=205;
+  document->xdates=false;
+  document->xmode=nullptr;
   document->seriesshown=true;
   document->filtertext="";
   document->selectedx=-1;
@@ -866,6 +939,9 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   document->xtoggle=new FXToggleButton(charttoolbar,"","",xAxisIcon,xAxisIcon,this,ID_X_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
   document->xtoggle->setTipText("X Description");
   document->xtoggle->setAltTipText("X Description");
+  document->xmode=new FXToggleButton(charttoolbar,"","",dateAxisIcon,dateAxisIcon,this,ID_X_AXIS_MODE,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
+  document->xmode->setTipText("Switch X axis between time since start and dates");
+  document->xmode->setAltTipText("Switch X axis between time since start and dates");
   document->ytoggle=new FXToggleButton(charttoolbar,"","",yAxisIcon,yAxisIcon,this,ID_Y_DESCRIPTION,TOGGLEBUTTON_TOOLBAR|TOGGLEBUTTON_KEEPSTATE|FRAME_RAISED|LAYOUT_CENTER_Y);
   document->ytoggle->setTipText("Y Description");
   document->ytoggle->setAltTipText("Y Description");
@@ -987,6 +1063,7 @@ void ChartDemoWindow::loadDocumentSettings(ChartDocument* document){
         }
       }
     }
+  document->xdates=FXString(settings.readStringEntry(document->settingsSection.text(),"xaxisdates","0"))!="0";
   for(FXuval i=0; i<document->seriesKeys.size(); i++){
     FXString entry="series-"+chartHash(document->seriesKeys[i]);
     document->visible[i]=FXString(settings.readStringEntry(document->settingsSection.text(),entry,"1")).toInt()!=0;
@@ -1010,6 +1087,7 @@ void ChartDemoWindow::saveDocumentSettings(ChartDocument* document){
     settings.writeIntEntry(document->settingsSection.text(),entry,document->seriesPlot[i]);
     }
   settings.writeIntEntry(document->settingsSection.text(),"plotcount",document->plotCount);
+  settings.writeStringEntry(document->settingsSection.text(),"xaxisdates",document->xdates?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"xdescription",document->xtoggle && document->xtoggle->getState()?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"ydescription",document->ytoggle && document->ytoggle->getState()?"1":"0");
   settings.writeStringEntry(document->settingsSection.text(),"seriesfilter",document->seriesfilter?document->seriesfilter->getText().text():document->filtertext.text());
@@ -1109,13 +1187,29 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     target->appendCurve(curve);
     visiblecount++;
     }
-  FXString xlabel=document->table.columns[xcol].name+(document->table.columns[xcol].timestamp?" (seconds from start)":"");
+  FXbool timeaxis=document->table.columns[xcol].timestamp;
+  FXString xlabel=document->table.columns[xcol].name+(timeaxis&&!document->xdates?" (time since start)":"");
   for(FXuval p=0; p<document->plots.size(); p++){
     FX2DPlot* plot=document->plots[p];
-    plot->getAxis(FX2DChart::XLO)->setLabel(xlabel);
+    FXAxis* xaxis=plot->getAxis(FX2DChart::XLO);
+    xaxis->setNumberFormat(timeaxis?formatChartXAxisNumber:nullptr,timeaxis?document:nullptr);
+    xaxis->setLabel(xlabel);
     plot->getAxis(FX2DChart::YLO)->setLabel("Value");
     plot->fitData();
     if(zoomed[p]) plot->setViewRange(xmin[p],xmax[p],ymin[p],ymax[p]);
+    }
+  if(document->xmode){
+    document->xmode->setState(timeaxis && document->xdates);
+    if(timeaxis){
+      document->xmode->enable();
+      document->xmode->setTipText("Switch X axis between time since start and dates");
+      document->xmode->setAltTipText("Switch X axis between time since start and dates");
+      }
+    else{
+      document->xmode->disable();
+      document->xmode->setTipText("Date axis needs a date/time X column");
+      document->xmode->setAltTipText("Date axis needs a date/time X column");
+      }
     }
   updateSplitChartLayout(document);
   alignPlotAreas(document);
@@ -1147,6 +1241,20 @@ long ChartDemoWindow::onXColumn(FXObject* sender,FXSelector,void*){
         else document->resetzoom->disable();
         saveDocumentSettings(document);
         }
+      return 1;
+      }
+    }
+  return 0;
+  }
+
+
+long ChartDemoWindow::onXAxisMode(FXObject* sender,FXSelector,void*){
+  for(FXuval i=0; i<documents.size(); i++){
+    ChartDocument* document=documents[i];
+    if(document->xmode==sender){
+      document->xdates=document->xmode->getState();
+      rebuild(document,true);
+      saveDocumentSettings(document);
       return 1;
       }
     }
@@ -1557,6 +1665,7 @@ ChartDemoWindow::~ChartDemoWindow(){
   delete resetZoomIcon;
   delete splitChartIcon;
   delete xAxisIcon;
+  delete dateAxisIcon;
   delete yAxisIcon;
   delete seriesIcon;
   delete zoomIcon;

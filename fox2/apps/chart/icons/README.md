@@ -6,6 +6,7 @@ rounded caps. Small filled dots are used only where a point or handle needs
 extra emphasis.
 
 - `x-axis-label.svg`: horizontal axis and crossing series.
+- `date-axis.svg`: calendar for switching the X axis between elapsed time and dates.
 - `y-axis-label.svg`: vertical axis and Y-oriented series.
 - `autofix-y-axis.svg`: Y axis with fit/arrows indicating automatic range fitting.
 - `split-chart.svg`: chart frame divided into vertically stacked plotting areas.

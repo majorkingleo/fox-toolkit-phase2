@@ -10,6 +10,7 @@ struct CSVColumn {
   FXString name;
   FXbool numeric;
   FXbool timestamp;
+  FXdouble timeOrigin;
   std::vector<FXdouble> values;
   };
 

@@ -1163,14 +1163,13 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
     if(times[c] && dates[c+1]){ dateColumn=c+1; timeColumn=c; break; }
     }
 
-  FXint timestampColumn=-1;
-  for(FXint c=0; c<columns; c++) if(timestamps[c]){ timestampColumn=c; break; }
   table.columns.resize(columns);
   for(FXint c=0; c<columns; c++){
     CSVColumn& column=table.columns[c];
     column.name=hasheader?samples[0][c]:FXString("Column ")+FXString::value(c+1);
     column.numeric=numeric[c] || timestamps[c];
     column.timestamp=timestamps[c];
+    column.timeOrigin=0.0;
     }
 
   FXint rownumber=0;
@@ -1197,10 +1196,12 @@ FXbool readCSV(const FXString& filename,CSVTable& table,FXString& error,CSVProgr
     },-1,progress,context,30,65);
   table.rows=FXMAX(0,rownumber-(hasheader?1:0));
 
-  if(timestampColumn>=0){
-    std::vector<FXdouble>& values=table.columns[timestampColumn].values;
+  for(FXint c=0; c<columns; c++){
+    if(!timestamps[c]) continue;
+    std::vector<FXdouble>& values=table.columns[c].values;
     FXdouble origin=0.0;
     for(FXuval i=0; i<values.size(); i++) if(Math::fpFinite(values[i])){ origin=values[i]; break; }
+    table.columns[c].timeOrigin=origin;
     for(FXuval i=0; i<values.size(); i++) if(Math::fpFinite(values[i])) values[i]-=origin;
     }
   if(progress) progress(context,98);
