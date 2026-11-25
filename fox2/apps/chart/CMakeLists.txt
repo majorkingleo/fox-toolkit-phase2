@@ -1,6 +1,7 @@
 set(CHART_ICON_SVGS
   icons/x-axis-label.svg
   icons/y-axis-label.svg
+  icons/autofix-y-axis.svg
   icons/reset-zoom.svg
   icons/zoom.svg
   icons/data-series.svg
@@ -9,6 +10,7 @@ set(CHART_ICON_SVGS
   icons/detach.svg
   icons/dark/x-axis-label.svg
   icons/dark/y-axis-label.svg
+  icons/dark/autofix-y-axis.svg
   icons/dark/reset-zoom.svg
   icons/dark/zoom.svg
   icons/dark/data-series.svg
@@ -24,6 +26,7 @@ set(CHART_ICONS_CPP "${CHART_GENERATED_DIR}/icons.cpp")
 set(CHART_ICON_RESOURCES
   -r chart_x_axis_label icons/x-axis-label.svg
   -r chart_y_axis_label icons/y-axis-label.svg
+  -r chart_autofix_y_axis icons/autofix-y-axis.svg
   -r chart_reset_zoom icons/reset-zoom.svg
   -r chart_zoom icons/zoom.svg
   -r chart_data_series icons/data-series.svg
@@ -32,6 +35,7 @@ set(CHART_ICON_RESOURCES
   -r chart_detach icons/detach.svg
   -r chart_dark_x_axis_label icons/dark/x-axis-label.svg
   -r chart_dark_y_axis_label icons/dark/y-axis-label.svg
+  -r chart_dark_autofix_y_axis icons/dark/autofix-y-axis.svg
   -r chart_dark_reset_zoom icons/dark/reset-zoom.svg
   -r chart_dark_zoom icons/dark/zoom.svg
   -r chart_dark_data_series icons/dark/data-series.svg
