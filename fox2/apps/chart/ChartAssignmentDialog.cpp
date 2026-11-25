@@ -34,6 +34,10 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
     if(columns[i]==xcolumn) continue;
     if(i<assignment.size()) plotCount=FXMAX(plotCount,assignment[i]+1);
     }
+  FXHorizontalFrame* buttons=new FXHorizontalFrame(this,LAYOUT_SIDE_BOTTOM|FRAME_NONE|LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,0,0,0,0,8,8,4,4,6,0);
+  new FXButton(buttons,"&Apply",nullptr,this,FXDialogBox::ID_ACCEPT,BUTTON_DEFAULT|BUTTON_INITIAL|FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y,0,0,0,0,8,8,4,4);
+  new FXButton(buttons,"&Cancel",nullptr,this,FXDialogBox::ID_CANCEL,BUTTON_DEFAULT|FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y,0,0,0,0,8,8,4,4);
+  new FXHorizontalSeparator(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|SEPARATOR_GROOVE);
   FXVerticalFrame* body=new FXVerticalFrame(this,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,2,2,2,2,6,6);
   new FXLabel(body,"Drag a series onto a chart to assign it. Drag it to another chart to reassign it.",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   FXHorizontalFrame* workspace=new FXHorizontalFrame(body,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,8,0);
@@ -49,9 +53,6 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
   new FXButton(chartHeader,"Add chart",nullptr,this,ID_ADD_PLOT,FRAME_RAISED|LAYOUT_CENTER_Y);
   chartScroll=new FXScrollWindow(chartPane,LAYOUT_FILL_X|LAYOUT_FILL_Y|VSCROLLING_ON|FRAME_SUNKEN|FRAME_THICK);
   chartContainer=new FXVerticalFrame(chartScroll,LAYOUT_FILL_X|LAYOUT_TOP,0,0,0,0,4,4,4,4,4,4);
-  FXHorizontalFrame* buttons=new FXHorizontalFrame(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X|PACK_UNIFORM_WIDTH,0,0,0,0,0,0,0,0,6,0);
-  new FXButton(buttons,"&Apply",nullptr,this,ID_ACCEPT,BUTTON_DEFAULT|BUTTON_INITIAL|FRAME_RAISED|LAYOUT_RIGHT|LAYOUT_CENTER_Y);
-  new FXButton(buttons,"&Cancel",nullptr,this,ID_CANCEL,BUTTON_DEFAULT|FRAME_RAISED|LAYOUT_RIGHT|LAYOUT_CENTER_Y);
   ensureChartViews();
   refreshSeries();
   }
@@ -172,6 +173,9 @@ long ChartAssignmentDialog::onDragged(FXObject* sender,FXSelector,void* ptr){
   FXList* list=(FXList*)sender;
   FXEvent* event=(FXEvent*)ptr;
   list->handleDrag(event->root_x,event->root_y,DRAG_MOVE);
+  FXDragAction action=list->didAccept();
+  if(action==DRAG_MOVE) list->setDragCursor(getApp()->getDefaultCursor(DEF_DNDMOVE_CURSOR));
+  else list->setDragCursor(getApp()->getDefaultCursor(DEF_DNDSTOP_CURSOR));
   return 1;
   }
 
