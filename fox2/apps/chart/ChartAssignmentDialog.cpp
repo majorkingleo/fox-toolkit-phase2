@@ -64,6 +64,7 @@ void ChartAssignmentDialog::ensureChartViews(){
     FXList* list=new FXList(group,this,ID_CHART_LIST,LIST_SINGLESELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
     list->setNumVisible(6);
     list->dropEnable();
+    if(chartContainer->id()) group->create();
     chartGroups.push_back(group);
     chartLists.push_back(list);
     }
