@@ -1160,6 +1160,7 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
   for(FXuval i=0; i<document->xcolumns.size(); i++) if(document->xcolumns[i]==xcol) xindex=(FXint)i;
   if(xindex<0) return;
   for(FXuval p=0; p<document->plots.size(); p++) document->plots[p]->clearCurves();
+  std::vector<FXData*> sharedx(document->plots.size(),nullptr);
   FXint visiblecount=0;
   for(FXuval i=0; i<document->xcolumns.size(); i++){
     FXint col=document->xcolumns[i];
@@ -1172,15 +1173,17 @@ void ChartDemoWindow::rebuild(ChartDocument* document,FXbool keepView){
     FXint plotindex=FXCLAMP(0,document->seriesPlot[i],(FXint)document->plots.size()-1);
     FX2DPlot* target=document->plots[plotindex];
     FXCurve* curve=new FXCurve(target,document->table.columns[col].name);
-    FXData* xdata=new FXData;
-    FXData* ydata=new FXData;
-    xdata->reserve(document->table.rows);
-    ydata->reserve(document->table.rows);
-    for(FXint row=0; row<document->table.rows; row++){
-      xdata->append(document->table.columns[xcol].values[row]);
-      ydata->append(document->table.columns[col].values[row]);
+    FXbool ownsx=false;
+    FXData* xdata=sharedx[plotindex];
+    if(xdata==nullptr){
+      xdata=new FXData;
+      xdata->assign(document->table.columns[xcol].values.data(),document->table.rows);
+      sharedx[plotindex]=xdata;
+      ownsx=true;
       }
-    curve->setXData(xdata);
+    FXData* ydata=new FXData;
+    ydata->assign(document->table.columns[col].values.data(),document->table.rows);
+    curve->setXData(xdata,ownsx);
     curve->setYData(ydata);
     LineStyle line={readableColor(seriesColors[i%(sizeof(seriesColors)/sizeof(seriesColors[0]))],getApp()->getTheme()->color(ROLE_WINDOW_BG)),1,LINESTYLE_SOLID};
     curve->setLineStyle(line);

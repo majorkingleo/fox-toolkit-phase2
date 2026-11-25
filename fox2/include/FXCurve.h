@@ -46,6 +46,7 @@ protected:
   FXuchar   xaxis;      // X-Axis
   FXuchar   yaxis;      // Y-Axis
   FXbool    visible;    // Curve is visible
+  FXbool    xowned;     // Curve owns the x data
 protected:
   FXCurve();
 private:
@@ -98,8 +99,8 @@ public:
   /// Return true if curve is visible
   FXbool isVisible() const { return visible; }
 
-  /// Change x data samples
-  void setXData(FXData* dd);
+  /// Change x data samples; owned means this curve deletes it
+  void setXData(FXData* dd,FXbool owned=true);
 
   /// Return x data samples
   FXData* getXData() const { return xdata; }

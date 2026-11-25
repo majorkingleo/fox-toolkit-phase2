@@ -176,9 +176,48 @@ void FXData::append(FXdouble value){
 // Append a block of samples
 void FXData::append(const FXdouble* values,FXint count){
   FXint i;
+  if(count<=0) return;
+  if(limit==0 && size+count<=capacity){
+    for(i=0; i<count; i++){
+      data[size++]=values[i];
+      updateRange(values[i]);
+      }
+    return;
+    }
   for(i=0; i<count; i++){
     append(values[i]);
     }
+  }
+
+
+// Replace samples with a contiguous block
+void FXData::assign(const FXdouble* values,FXint count){
+  FXint i;
+  FXdouble lo=0.0,hi=0.0;
+  FXbool any=false;
+  if(count<0) count=0;
+  if(limit){
+    clear();
+    for(i=0; i<count; i++) append(values[i]);
+    return;
+    }
+  if(count>capacity) grow(count);
+  for(i=0; i<count; i++){
+    FXdouble value=values[i];
+    data[i]=value;
+    if(Math::fpFinite(value)){
+      if(!any){ lo=hi=value; any=true; }
+      else{
+        if(value<lo) lo=value;
+        if(value>hi) hi=value;
+        }
+      }
+    }
+  size=count;
+  head=0;
+  minimum=lo;
+  maximum=hi;
+  valid=any;
   }
 
 

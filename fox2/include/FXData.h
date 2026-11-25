@@ -72,6 +72,9 @@ public:
   /// Append count samples
   void append(const FXdouble* values,FXint count);
 
+  /// Replace samples with count values
+  void assign(const FXdouble* values,FXint count);
+
   /// Remove count samples starting at index
   void remove(FXint index,FXint count=1);
 

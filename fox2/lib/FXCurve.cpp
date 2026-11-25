@@ -43,7 +43,7 @@ FXIMPLEMENT(FXCurve,FXObject,nullptr,0)
 
 
 // Deserialization
-FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true),xowned(true){
   linestyle.color=FXRGB(0,0,0);
   linestyle.weight=1;
   linestyle.style=LINESTYLE_SOLID;
@@ -61,7 +61,7 @@ FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(FX2DChart::
 
 
 // Init
-FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),xdata(nullptr),ydata(nullptr),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),xdata(nullptr),ydata(nullptr),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true),xowned(true){
   linestyle.color=FXRGB(0,0,0);
   linestyle.weight=1;
   linestyle.style=LINESTYLE_SOLID;
@@ -135,10 +135,11 @@ void FXCurve::setVisible(FXbool vis){
   }
 
 
-// Change x data samples
-void FXCurve::setXData(FXData* dd){
-  if(xdata!=dd){
+// Change x data samples; owned means this curve deletes it
+void FXCurve::setXData(FXData* dd,FXbool owned){
+  if(xdata!=dd || xowned!=owned){
     xdata=dd;
+    xowned=owned;
     plot->update();
     }
   }
@@ -186,7 +187,7 @@ void FXCurve::load(FXStream& store){
 
 // Destroy
 FXCurve::~FXCurve(){
-  delete xdata;
+  if(xowned) delete xdata;
   delete ydata;
   plot=(FX2DPlot*)-1L;
   xdata=(FXData*)-1L;
