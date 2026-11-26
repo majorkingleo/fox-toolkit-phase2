@@ -72,6 +72,130 @@ FXDEFMAP(FXConsole) FXConsoleMap[]={
 FXIMPLEMENT(FXConsole,FXScrollArea,FXConsoleMap,ARRAYNUMBER(FXConsoleMap))
 
 
+// Construct empty bounded console storage
+FXConsoleBuffer::FXConsoleBuffer():contents(10000),styles(10000),capacity(10000),first(0),count(0),lineopen(false){
+  }
+
+
+// Start a new line, evicting the oldest line when the buffer is full
+FXint FXConsoleBuffer::beginLine(){
+  FXint index;
+  if(count<capacity){
+    index=(first+count)%capacity;
+    count++;
+    }
+  else{
+    index=first;
+    first=(first+1)%capacity;
+    }
+  contents[index].length(0);
+  styles[index].length(0);
+  lineopen=true;
+  return index;
+  }
+
+
+// Change maximum number of retained lines, preserving the newest lines
+void FXConsoleBuffer::setHistoryLines(FXint lines){
+  if(lines<1) lines=1;
+  if(capacity==lines) return;
+  FXint keep=FXMIN(count,lines);
+  FXStringBuffer newcontents(lines);
+  FXStringBuffer newstyles(lines);
+  FXint skip=count-keep;
+  for(FXint i=0; i<keep; i++){
+    FXint index=(first+skip+i)%capacity;
+    newcontents[i]=contents[index];
+    newstyles[i]=styles[index];
+    }
+  contents=newcontents;
+  styles=newstyles;
+  capacity=lines;
+  first=0;
+  count=keep;
+  }
+
+
+// Append text and split it into logical lines
+void FXConsoleBuffer::appendText(const FXString& text,FXuint style){
+  FXuint value=style&0xFF;
+  for(FXint i=0; i<text.length(); i++){
+    FXchar ch=text[i];
+    if(ch=='\n'){
+      if(!lineopen) beginLine();
+      lineopen=false;
+      continue;
+      }
+    FXint index=lineopen ? (first+count-1)%capacity : beginLine();
+    contents[index]+=ch;
+    styles[index]+=(FXchar)value;
+    }
+  }
+
+
+// Append a line and close it without creating an empty trailing line
+void FXConsoleBuffer::appendLine(const FXString& text,FXuint style){
+  if(text.empty()){
+    if(!lineopen) beginLine();
+    lineopen=false;
+    return;
+    }
+  appendText(text,style);
+  lineopen=false;
+  }
+
+
+// Append text with a per-byte style index
+void FXConsoleBuffer::appendStyled(const FXString& text,const FXuint* values){
+  for(FXint i=0; i<text.length(); i++){
+    FXchar ch=text[i];
+    if(ch=='\n'){
+      if(!lineopen) beginLine();
+      lineopen=false;
+      continue;
+      }
+    FXint index=lineopen ? (first+count-1)%capacity : beginLine();
+    contents[index]+=ch;
+    styles[index]+=(FXchar)(values ? values[i]&0xFF : 0);
+    }
+  }
+
+
+// Clear all retained lines
+void FXConsoleBuffer::clear(){
+  for(FXint i=0; i<capacity; i++){
+    contents[i].length(0);
+    styles[i].length(0);
+    }
+  first=0;
+  count=0;
+  lineopen=false;
+  }
+
+
+// Return logical line by index
+const FXString& FXConsoleBuffer::line(FXint lineindex) const {
+  static const FXString empty;
+  if(lineindex<0 || lineindex>=count) return empty;
+  return contents[(first+lineindex)%capacity];
+  }
+
+
+// Return logical line by index
+FXString FXConsoleBuffer::getLineText(FXint lineindex) const {
+  return line(lineindex);
+  }
+
+
+// Return style for byte in logical line
+FXuint FXConsoleBuffer::getStyle(FXint lineindex,FXint byte) const {
+  if(lineindex<0 || lineindex>=count) return 0;
+  const FXString& text=contents[(first+lineindex)%capacity];
+  if(byte<0 || byte>=text.length()) return 0;
+  return (FXuchar)styles[(first+lineindex)%capacity][byte];
+  }
+
+
 // Deserialization
 FXConsole::FXConsole(){
   flags|=FLAG_ENABLED|FLAG_DROPTARGET;
@@ -80,7 +204,7 @@ FXConsole::FXConsole(){
   marginbottom=0;
   marginleft=0;
   marginright=0;
-  historylines=0;
+  historylines=10000;
   visiblelines=0;
   topline=0;
   vrows=0;
@@ -108,14 +232,11 @@ FXConsole::FXConsole(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXi
   marginbottom=pb;
   marginleft=pl;
   marginright=pr;
-  historylines=100;
+  historylines=10000;
   visiblelines=1;
   topline=0;
   vrows=0;
   vcols=0;
-  contents.no(historylines);
-  style.no(historylines);
-for(int i=0; i<contents.no(); i++){ contents[i].format("blablablablaaaaaaaaaaaaaaa%d\n",i); }
   }
 
 
@@ -170,27 +291,19 @@ FXint FXConsole::getContentWidth(){
 
 // Determine minimum content height of scroll area
 FXint FXConsole::getContentHeight(){
-  return margintop+marginbottom+font->getFontHeight()*contents.no();
+  return margintop+marginbottom+font->getFontHeight()*FXMAX(visiblelines,buffer.getNumLines());
   }
 
 
 // Recalculate layout
 void FXConsole::layout(){
   FXint hh=font->getFontHeight();
-  FXint totallines;
 
   // Number of visible lines has changed
   visiblelines=(height-margintop-marginbottom+hh-1)/hh;
   if(visiblelines<1) visiblelines=1;
 
-  // Total lines to buffer
-  totallines=FXMAX(visiblelines,historylines);
-  if(contents.no()!=totallines){
-    contents.no(totallines);                    // FIXME keep text insofar as possible!
-    if(style.no()){ style.no(totallines); }
-    }
-
-  FXTRACE(TOPIC_DETAIL,"visiblelines=%d historylines=%d totallines=%d hh=%d space=%d\n",visiblelines,historylines,totallines,hh,height-margintop-marginbottom);
+  FXTRACE(TOPIC_DETAIL,"visiblelines=%d historylines=%d lines=%d hh=%d space=%d\n",visiblelines,historylines,buffer.getNumLines(),hh,height-margintop-marginbottom);
 
   // Scrollbars adjusted
   placeScrollBars(width,height);
@@ -213,7 +326,7 @@ FXint FXConsole::charWidth(FXwchar ch,FXint col) const {
 
 
 // Determine style
-FXuint FXConsole::styleOf(FXint line,FXint index,FXint p,FXint c) const {
+FXuint FXConsole::styleOf(FXint line,FXint p) const {
   FXuint s=0;
   FXchar ch;
 
@@ -227,13 +340,14 @@ FXuint FXConsole::styleOf(FXint line,FXint index,FXint p,FXint c) const {
 //  if((row==cursorrow)&&(options&TEXT_SHOWACTIVE)) s|=STYLE_ACTIVE;
 
   // Blank part of line
-  if(p>=contents[index].length()) return s;
+  const FXString& text=buffer.line(line);
+  if(p>=text.length()) return s;
 
   // Special style for control characters
-  ch=contents[index][p];
+  ch=text[p];
 
   // Get value from style buffer
-  if(style.no()) s|=style[index][p];
+  s|=buffer.getStyle(line,p);
 
   // Tabs are just fill
   if(ch == '\t') return s;
@@ -270,7 +384,7 @@ void FXConsole::drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,
 
 // Draw text line with correct style
 void FXConsole::drawTextLine(FXDCWindow& dc,FXint line,FXint left,FXint right) const {
-  FXint index=(topline+line)%contents.no();
+  const FXString& text=buffer.line(topline+line);
   FXint edge=pos_x+marginleft;
   FXint h=font->getFontHeight();
   FXint y=pos_y+margintop+line*h;
@@ -281,39 +395,39 @@ void FXConsole::drawTextLine(FXDCWindow& dc,FXint line,FXint left,FXint right) c
   FXint cw,sp,ep,sc,ec;
 
   // Scan ahead till until we hit the end or the left edge
-  for(sp=sc=0; sp<contents[index].length(); sp=contents[index].inc(sp),sc++){
-    cw=charWidth(contents[index].wc(sp),sc);
+  for(sp=sc=0; sp<text.length(); sp=text.inc(sp),sc++){
+    cw=charWidth(text.wc(sp),sc);
     if(x+edge+cw>=left) break;
     x+=cw;
     }
 
   // First style to display
-  curstyle=styleOf(line,index,sp,sc);
+  curstyle=styleOf(topline+line,sp);
 
   // Draw until we hit the end or the right edge
-  for(ep=sp,ec=sc; ep<contents[index].length(); ep=contents[index].inc(ep),ec++){
-    newstyle=styleOf(line,index,ep,ec);
+  for(ep=sp,ec=sc; ep<text.length(); ep=text.inc(ep),ec++){
+    newstyle=styleOf(topline+line,ep);
     if(newstyle!=curstyle){
 //      fillBufferRect(dc,edge+x,y,w,h,curstyle);
-      if(curstyle&STYLE_TEXT) drawTextFragment(dc,edge+x,y,w,h,&contents[index][sp],ep-sp,curstyle);
+      if(curstyle&STYLE_TEXT) drawTextFragment(dc,edge+x,y,w,h,&text[sp],ep-sp,curstyle);
       curstyle=newstyle;
       sp=ep;
       x+=w;
       w=0;
       }
-    cw=charWidth(contents[index].wc(ep),ec);
+    cw=charWidth(text.wc(ep),ec);
     if(x+edge+w>=right) break;
     w+=cw;
     }
 
   // Draw unfinished fragment
 //  fillBufferRect(dc,edge+x,y,w,h,curstyle);
-  if(curstyle&STYLE_TEXT) drawTextFragment(dc,edge+x,y,w,h,&contents[index][sp],ep-sp,curstyle);
+  if(curstyle&STYLE_TEXT) drawTextFragment(dc,edge+x,y,w,h,&text[sp],ep-sp,curstyle);
   x+=w;
 
   // Fill any left-overs outside of text
   if(x+edge<right){
-    curstyle=styleOf(line,index,ep,ec);
+    curstyle=styleOf(topline+line,ep);
 //    fillBufferRect(dc,edge+x,y,right-edge-x,h,curstyle);
     }
   }
@@ -327,7 +441,7 @@ void FXConsole::drawContents(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h) con
   FXint bl=(y+h-yy)/hh;
   FXint ln;
   if(tl<0) tl=0;
-  if(bl>=contents.no()) bl=contents.no()-1;
+  if(bl>=buffer.getNumLines()) bl=buffer.getNumLines()-1;
   FXTRACE(TOPIC_DETAIL,"tl=%d bl=%d\n",tl,bl);
   for(ln=tl; ln<=bl; ln++){
     drawTextLine(dc,ln,x,x+w);
@@ -432,9 +546,43 @@ void FXConsole::setHistoryLines(FXint hl){
   if(hl<1) hl=1;
   if(historylines!=hl){
     historylines=hl;
+    buffer.setHistoryLines(hl);
     recalc();
     update();
     }
+  }
+
+
+// Append text
+void FXConsole::appendText(const FXString& text,FXuint sty){
+  buffer.appendText(text,sty);
+  recalc();
+  update();
+  }
+
+
+// Append line
+void FXConsole::appendLine(const FXString& text,FXuint sty){
+  buffer.appendLine(text,sty);
+  recalc();
+  update();
+  }
+
+
+// Append styled text
+void FXConsole::appendStyled(const FXString& text,const FXuint* styles){
+  buffer.appendStyled(text,styles);
+  recalc();
+  update();
+  }
+
+
+// Clear text
+void FXConsole::clearText(){
+  buffer.clear();
+  setPosition(0,0);
+  recalc();
+  update();
   }
 
 

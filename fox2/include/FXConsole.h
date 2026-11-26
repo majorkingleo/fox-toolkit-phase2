@@ -45,6 +45,34 @@ enum {
 typedef FXArray<FXString>  FXStringBuffer;
 
 
+/// Bounded line and style storage used by FXConsole; independent of a display
+class FXAPI FXConsoleBuffer {
+private:
+  FXStringBuffer contents;
+  FXStringBuffer styles;
+  FXint capacity;
+  FXint first;
+  FXint count;
+  FXbool lineopen;
+private:
+  FXConsoleBuffer(const FXConsoleBuffer&);
+  FXConsoleBuffer& operator=(const FXConsoleBuffer&);
+  FXint beginLine();
+public:
+  FXConsoleBuffer();
+  void setHistoryLines(FXint lines);
+  FXint getHistoryLines() const { return capacity; }
+  void appendText(const FXString& text,FXuint style=0);
+  void appendLine(const FXString& line,FXuint style=0);
+  void appendStyled(const FXString& text,const FXuint* styles);
+  void clear();
+  FXint getNumLines() const { return count; }
+  FXString getLineText(FXint line) const;
+  const FXString& line(FXint line) const;
+  FXuint getStyle(FXint line,FXint byte) const;
+  };
+
+
 /**
 * The console widget is a scrolling text widget used primarily
 * for logging purposes and "terminals"  It is high-performance
@@ -53,8 +81,7 @@ typedef FXArray<FXString>  FXStringBuffer;
 class FXAPI FXConsole : public FXScrollArea {
   FXDECLARE(FXConsole)
 protected:
-  FXStringBuffer contents;      // Text data
-  FXStringBuffer style;         // Text style
+  FXConsoleBuffer buffer;       // Bounded text and style storage
   FXFont        *font;          // Text font
   FXint          margintop;     // Margins top
   FXint          marginbottom;  // Margin bottom
@@ -74,7 +101,7 @@ protected:
 protected:
   FXConsole();
   FXint charWidth(FXwchar ch,FXint col) const;
-  FXuint styleOf(FXint line,FXint index,FXint p,FXint c) const;
+  FXuint styleOf(FXint line,FXint p) const;
   virtual void moveContents(FXint x,FXint y) override;
   void drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXchar *text,FXint n,FXuint sty) const;
   void drawTextLine(FXDCWindow& dc,FXint line,FXint left,FXint right) const;
@@ -166,6 +193,24 @@ public:
 
   /// Return history lines
   FXint getHistoryLines() const { return historylines; }
+
+  /// Append text, splitting at newlines; style applies to all bytes in text
+  void appendText(const FXString& text,FXuint style=0);
+
+  /// Append a line, ending the current line if needed
+  void appendLine(const FXString& line,FXuint style=0);
+
+  /// Append text with one style id per byte
+  void appendStyled(const FXString& text,const FXuint* styles);
+
+  /// Clear all buffered text
+  void clearText();
+
+  /// Return the number of buffered lines
+  FXint getNumLines() const { return buffer.getNumLines(); }
+
+  /// Return a buffered line without its newline
+  FXString getLineText(FXint line) const { return buffer.getLineText(line); }
 
   /// Change number of visible rows
   void setVisibleRows(FXint rows);
