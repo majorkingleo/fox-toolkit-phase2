@@ -43,5 +43,19 @@ int main(){
   ok=check(buffer.getLineText(0)=="abc","styled append preserves text") && ok;
   ok=check(buffer.getStyle(0,0)==3 && buffer.getStyle(0,1)==4 && buffer.getStyle(0,2)==5,"styles stored per byte") && ok;
 
+  buffer.clear();
+  buffer.appendLine("alpha");
+  buffer.appendLine("beta");
+  buffer.appendLine("gamma");
+  ok=check(buffer.getRange(0,2,1,2)=="pha\nbe","multi-line half-open range extraction") && ok;
+  ok=check(buffer.getRange(1,2,0,2)=="pha\nbe","reverse endpoints normalize correctly") && ok;
+  ok=check(buffer.getRange(0,0,2,5)=="alpha\nbeta\ngamma","whole-buffer range extraction") && ok;
+  ok=check(buffer.getRange(1,2,1,2).empty(),"empty range extracts empty text") && ok;
+
+  buffer.setHistoryLines(2);
+  buffer.appendLine("delta");
+  ok=check(buffer.getNumLines()==2 && buffer.getLineText(0)=="gamma","range model remains consistent after ring eviction") && ok;
+  ok=check(buffer.getRange(0,0,1,5)=="gamma\ndelta","range uses retained logical line indices") && ok;
+
   return ok ? 0 : 1;
   }

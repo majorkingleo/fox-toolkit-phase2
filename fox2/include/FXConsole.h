@@ -74,6 +74,7 @@ public:
   void clear();
   FXint getNumLines() const { return count; }
   FXString getLineText(FXint line) const;
+  FXString getRange(FXint startline,FXint startbyte,FXint endline,FXint endbyte) const;
   const FXString& line(FXint line) const;
   FXuint getStyle(FXint line,FXint byte) const;
   };
@@ -108,12 +109,20 @@ protected:
   FXint          contentwidth;  // Cached content width
   FXint          contentheight; // Cached content height
   FXint          layoutwidth;   // Width used to build wrapped rows
+  FXint          selectstartline; // Selection anchor line
+  FXint          selectstartbyte; // Selection anchor byte
+  FXint          selectendline;   // Selection active line
+  FXint          selectendbyte;   // Selection active byte
+  FXint          anchorline;      // Mouse selection anchor line
+  FXint          anchorbyte;      // Mouse selection anchor byte
+  FXint          mousemode;       // Character, word, or line selection mode
   FXint          vrows;         // Default visible rows
   FXint          vcols;         // Default visible columns
   FXColor        textColor;     // Normal text color
   FXColor        selbackColor;  // Select background color
   FXColor        seltextColor;  // Select text color
   FXColor        cursorColor;   // Cursor color
+  FXString       clipped;       // Clipboard text
   FXbool         autoscroll;    // Follow the end while enabled
   FXbool         scrollpending; // Scroll to end after layout
   FXString       help;          // Status line help
@@ -125,6 +134,12 @@ protected:
   void rebuildRows(FXint availableWidth);
   FXint lineWidth(const FXString& text) const;
   void updateAutoScrollFromPosition();
+  FXbool isSelected(FXint line,FXint byte) const;
+  void setSelection(FXint line,FXint byte,FXbool extend=false);
+  void setWordSelection(FXint line,FXint byte);
+  void setLineSelection(FXint line);
+  FXbool copySelection();
+  FXint positionAt(FXint x,FXint y,FXint& line) const;
   virtual void moveContents(FXint x,FXint y) override;
   void drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXchar *text,FXint n,FXuint sty) const;
   void drawTextLine(FXDCWindow& dc,FXint line,FXint left,FXint right) const;
@@ -147,6 +162,14 @@ public:
   long onVScrollerChanged(FXObject*,FXSelector,void*);
   long onVScrollerDragged(FXObject*,FXSelector,void*);
   long onMouseWheel(FXObject*,FXSelector,void*);
+  long onLeftBtnPress(FXObject*,FXSelector,void*);
+  long onLeftBtnRelease(FXObject*,FXSelector,void*);
+  long onMotion(FXObject*,FXSelector,void*);
+  long onKeyPress(FXObject*,FXSelector,void*);
+  long onSelectionLost(FXObject*,FXSelector,void*);
+  long onSelectionRequest(FXObject*,FXSelector,void*);
+  long onClipboardLost(FXObject*,FXSelector,void*);
+  long onClipboardRequest(FXObject*,FXSelector,void*);
 public:
   enum {
     ID_XXX=FXScrollArea::ID_LAST,
@@ -237,6 +260,15 @@ public:
 
   /// Return a buffered line without its newline
   FXString getLineText(FXint line) const { return buffer.getLineText(line); }
+
+  /// Return selected text with newlines between selected logical lines
+  FXString getSelectedText() const;
+
+  /// Select all buffered text
+  void selectAll();
+
+  /// Copy selected text to the clipboard
+  FXbool copy();
 
   /// Set style table; style id 0 is default and id n uses styles[n-1]
   void setStyleTable(const FXHiliteStyle* styles,FXuint count);

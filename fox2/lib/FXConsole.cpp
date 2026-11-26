@@ -23,6 +23,7 @@
 #include "fxver.h"
 #include "fxdefs.h"
 #include "fxmath.h"
+#include "fxkeys.h"
 #include "FXMutex.h"
 #include "FXSize.h"
 #include "FXArray.h"
@@ -61,9 +62,21 @@ using namespace FX;
 
 namespace FX {
 
+static FXbool isConsoleWordByte(FXuchar ch){
+  return (ch>='0' && ch<='9') || (ch>='A' && ch<='Z') || (ch>='a' && ch<='z') || ch=='_';
+  }
+
 
 FXDEFMAP(FXConsole) FXConsoleMap[]={
   FXMAPFUNC(SEL_PAINT,0,FXConsole::onPaint),
+  FXMAPFUNC(SEL_MOTION,0,FXConsole::onMotion),
+  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,FXConsole::onLeftBtnPress),
+  FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,FXConsole::onLeftBtnRelease),
+  FXMAPFUNC(SEL_KEYPRESS,0,FXConsole::onKeyPress),
+  FXMAPFUNC(SEL_SELECTION_REQUEST,0,FXConsole::onSelectionRequest),
+  FXMAPFUNC(SEL_SELECTION_LOST,0,FXConsole::onSelectionLost),
+  FXMAPFUNC(SEL_CLIPBOARD_LOST,0,FXConsole::onClipboardLost),
+  FXMAPFUNC(SEL_CLIPBOARD_REQUEST,0,FXConsole::onClipboardRequest),
   FXMAPFUNC(SEL_COMMAND,FXConsole::ID_XXX,FXConsole::onXXX),
   FXMAPFUNC(SEL_COMMAND,FXScrollArea::ID_VSCROLLED,FXConsole::onVScrollerChanged),
   FXMAPFUNC(SEL_CHANGED,FXScrollArea::ID_VSCROLLED,FXConsole::onVScrollerDragged),
@@ -190,6 +203,31 @@ FXString FXConsoleBuffer::getLineText(FXint lineindex) const {
   }
 
 
+// Extract a half-open range over logical lines
+FXString FXConsoleBuffer::getRange(FXint startline,FXint startbyte,FXint endline,FXint endbyte) const {
+  if(startline<0) startline=0;
+  if(endline>=count) endline=count-1;
+  if(startline>=count || endline<0) return FXString::null;
+  if(startline>endline || (startline==endline && startbyte>endbyte)){
+    FXint line=startline;
+    FXint byte=startbyte;
+    startline=endline;
+    startbyte=endbyte;
+    endline=line;
+    endbyte=byte;
+    }
+  FXString result;
+  for(FXint i=startline; i<=endline; i++){
+    const FXString& text=this->line(i);
+    FXint begin=i==startline ? FXCLAMP(startbyte,0,text.length()) : 0;
+    FXint finish=i==endline ? FXCLAMP(endbyte,0,text.length()) : text.length();
+    if(begin<finish) result+=text.mid(begin,finish-begin);
+    if(i<endline) result+='\n';
+    }
+  return result;
+  }
+
+
 // Return style for byte in logical line
 FXuint FXConsoleBuffer::getStyle(FXint lineindex,FXint byte) const {
   if(lineindex<0 || lineindex>=count) return 0;
@@ -219,6 +257,10 @@ FXConsole::FXConsole(){
   contentwidth=1;
   contentheight=0;
   layoutwidth=0;
+  selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+  anchorline=anchorbyte=-1;
+  mousemode=0;
+  clipped.clear();
   autoscroll=true;
   scrollpending=false;
   }
@@ -246,6 +288,10 @@ FXConsole::FXConsole(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXi
   contentwidth=marginleft+marginright+1;
   contentheight=margintop+marginbottom;
   layoutwidth=0;
+  selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+  anchorline=anchorbyte=-1;
+  mousemode=0;
+  clipped.clear();
   vrows=0;
   vcols=0;
   autoscroll=true;
@@ -355,10 +401,10 @@ FXint FXConsole::charWidth(FXwchar ch,FXint col) const {
 
 // Measure a complete logical line
 FXint FXConsole::lineWidth(const FXString& text) const {
-  FXint width=0;
+  FXint totalwidth=0;
   FXint col=0;
-  for(FXint pos=0; pos<text.length(); pos=text.inc(pos),col++) width+=charWidth(text.wc(pos),col);
-  return width;
+  for(FXint pos=0; pos<text.length(); pos=text.inc(pos),col++) totalwidth+=charWidth(text.wc(pos),col);
+  return totalwidth;
   }
 
 
@@ -412,13 +458,318 @@ void FXConsole::updateAutoScrollFromPosition(){
   }
 
 
+// Test whether a byte lies in the current half-open selection
+FXbool FXConsole::isSelected(FXint lineindex,FXint byte) const {
+  if(selectstartline<0 || selectendline<0) return false;
+  FXint sl=selectstartline, sb=selectstartbyte, el=selectendline, eb=selectendbyte;
+  if(sl>el || (sl==el && sb>eb)){ swap(sl,el); swap(sb,eb); }
+  return (lineindex>sl || (lineindex==sl && byte>=sb)) &&
+         (lineindex<el || (lineindex==el && byte<eb));
+  }
+
+
+// Set or extend selection endpoint
+void FXConsole::setSelection(FXint lineindex,FXint byte,FXbool extend){
+  if(buffer.getNumLines()==0){
+    selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+    if(hasSelection()) releaseSelection();
+    update();
+    return;
+    }
+  lineindex=FXCLAMP(lineindex,0,buffer.getNumLines()-1);
+  byte=FXCLAMP(byte,0,buffer.line(lineindex).length());
+  if(!extend || selectstartline<0){
+    selectstartline=lineindex;
+    selectstartbyte=byte;
+    }
+  selectendline=lineindex;
+  selectendbyte=byte;
+  if(selectstartline!=selectendline || selectstartbyte!=selectendbyte){
+    FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+    if(!hasSelection()) acquireSelection(types,ARRAYNUMBER(types));
+    }
+  else if(hasSelection()) releaseSelection();
+  update();
+  }
+
+
+// Select the word around a byte position
+void FXConsole::setWordSelection(FXint lineindex,FXint byte){
+  if(lineindex<0 || lineindex>=buffer.getNumLines()) return;
+  const FXString& text=buffer.line(lineindex);
+  byte=FXCLAMP(byte,0,FXMAX(0,text.length()-1));
+  FXint start=byte;
+  FXint end=byte;
+  FXbool word=text.length()>0 && isConsoleWordByte((FXuchar)text[byte]);
+  while(start>0){
+    FXuchar ch=(FXuchar)text[start-1];
+    FXbool same=word ? isConsoleWordByte(ch) : ch==' ';
+    if(!same) break;
+    start--;
+    }
+  while(end<text.length()){
+    FXuchar ch=(FXuchar)text[end];
+    FXbool same=word ? isConsoleWordByte(ch) : ch==' ';
+    if(!same) break;
+    end++;
+    }
+  if(!word && start==end && end<text.length()) end=text.inc(end);
+  selectstartline=selectendline=lineindex;
+  selectstartbyte=start;
+  selectendbyte=end;
+  if(selectstartbyte!=selectendbyte){
+    FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+    if(!hasSelection()) acquireSelection(types,ARRAYNUMBER(types));
+    }
+  else if(hasSelection()) releaseSelection();
+  anchorline=lineindex;
+  anchorbyte=start;
+  update();
+  }
+
+
+// Select a complete logical line
+void FXConsole::setLineSelection(FXint lineindex){
+  if(lineindex<0 || lineindex>=buffer.getNumLines()) return;
+  selectstartline=selectendline=lineindex;
+  selectstartbyte=0;
+  selectendbyte=buffer.line(lineindex).length();
+  if(selectstartline!=selectendline || selectstartbyte!=selectendbyte){
+    FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+    if(!hasSelection()) acquireSelection(types,ARRAYNUMBER(types));
+    }
+  else if(hasSelection()) releaseSelection();
+  anchorline=lineindex;
+  anchorbyte=0;
+  update();
+  }
+
+
+// Map window coordinates to a logical line and byte offset
+FXint FXConsole::positionAt(FXint x,FXint y,FXint& lineindex) const {
+  if(rows.empty()){
+    lineindex=-1;
+    return 0;
+    }
+  FXint row=(y-pos_y-margintop)/FXMAX(1,font->getFontHeight());
+  row=FXCLAMP(row,0,(FXint)rows.size()-1);
+  const VisualRow& visualrow=rows[row];
+  lineindex=visualrow.line;
+  const FXString& text=buffer.line(lineindex);
+  FXint col=0;
+  FXint pixeloffset=x-(pos_x+marginleft);
+  FXint pixelwidth=0;
+  if(pixeloffset<=0) return visualrow.start;
+  for(FXint pos=visualrow.start; pos<visualrow.end; pos=text.inc(pos),col++){
+    FXint cw=charWidth(text.wc(pos),col);
+    if(pixeloffset<pixelwidth+cw/2) return pos;
+    pixelwidth+=cw;
+    if(pixeloffset<pixelwidth) return text.inc(pos);
+    }
+  return visualrow.end;
+  }
+
+
+// Return currently selected text
+FXString FXConsole::getSelectedText() const {
+  if(selectstartline<0 || selectendline<0) return FXString::null;
+  return buffer.getRange(selectstartline,selectstartbyte,selectendline,selectendbyte);
+  }
+
+
+// Select all buffered text
+void FXConsole::selectAll(){
+  if(buffer.getNumLines()==0){
+    selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+    if(hasSelection()) releaseSelection();
+    update();
+    return;
+    }
+  selectstartline=0;
+  selectstartbyte=0;
+  selectendline=buffer.getNumLines()-1;
+  selectendbyte=buffer.line(selectendline).length();
+  if(!getSelectedText().empty()){
+    FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+    if(!hasSelection()) acquireSelection(types,ARRAYNUMBER(types));
+    }
+  update();
+  }
+
+
+// Acquire clipboard ownership for selected text
+FXbool FXConsole::copySelection(){
+  FXString text=getSelectedText();
+  if(text.empty()) return false;
+  FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+  if(!acquireClipboard(types,ARRAYNUMBER(types))) return false;
+  clipped=text;
+  return true;
+  }
+
+
+// Public copy command
+FXbool FXConsole::copy(){
+  return copySelection();
+  }
+
+
+// Pressed left mouse button
+long FXConsole::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if(!isEnabled()) return 0;
+  handle(this,FXSEL(SEL_FOCUS_SELF,0),ptr);
+  grab();
+  FXint lineindex=-1;
+  FXint byte=positionAt(event->win_x,event->win_y,lineindex);
+  if(lineindex<0){ ungrab(); return 1; }
+  if(event->click_count>=3){
+    mousemode=3;
+    setLineSelection(lineindex);
+    }
+  else if(event->click_count==2){
+    mousemode=2;
+    setWordSelection(lineindex,byte);
+    }
+  else{
+    mousemode=1;
+    anchorline=lineindex;
+    anchorbyte=byte;
+    if(event->state&SHIFTMASK) setSelection(lineindex,byte,true);
+    else setSelection(lineindex,byte,false);
+    }
+  return 1;
+  }
+
+
+// Released left mouse button
+long FXConsole::onLeftBtnRelease(FXObject*,FXSelector,void*){
+  if(!isEnabled()) return 0;
+  ungrab();
+  mousemode=0;
+  return 1;
+  }
+
+
+// Drag selection with the mouse
+long FXConsole::onMotion(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if(mousemode==0) return 0;
+  FXint lineindex=-1;
+  FXint byte=positionAt(event->win_x,event->win_y,lineindex);
+  if(lineindex<0){ ungrab(); return 1; }
+  if(mousemode==1) setSelection(lineindex,byte,true);
+  else if(mousemode==2){
+    const FXString& text=buffer.line(lineindex);
+    FXint start=FXCLAMP(byte,0,FXMAX(0,text.length()-1));
+    FXint end=start;
+    FXuchar ch=text.empty() ? 0 : (FXuchar)text[start];
+    FXbool word=isConsoleWordByte(ch);
+    while(start>0){
+      FXuchar before=(FXuchar)text[start-1];
+      FXbool same=word ? isConsoleWordByte(before) : before==' ';
+      if(!same) break;
+      start--;
+      }
+    while(end<text.length()){
+      FXuchar after=(FXuchar)text[end];
+      FXbool same=word ? isConsoleWordByte(after) : after==' ';
+      if(!same) break;
+      end++;
+      }
+    if(!word && start==end && end<text.length()) end=text.inc(end);
+    selectstartline=anchorline;
+    selectstartbyte=anchorbyte;
+    selectendline=lineindex;
+    selectendbyte=end;
+    if(selectstartline!=selectendline || selectstartbyte!=selectendbyte){
+      FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+      if(!hasSelection()) acquireSelection(types,ARRAYNUMBER(types));
+      }
+    update();
+    }
+  else{
+    selectstartline=anchorline;
+    selectstartbyte=0;
+    selectendline=lineindex;
+    selectendbyte=buffer.line(lineindex).length();
+    if(selectstartline!=selectendline || selectstartbyte!=selectendbyte){
+      FXDragType types[4]={stringType,textType,utf8Type,utf16Type};
+      if(!hasSelection()) acquireSelection(types,ARRAYNUMBER(types));
+      }
+    update();
+    }
+  return 1;
+  }
+
+
+// Keyboard shortcuts for selection and copy
+long FXConsole::onKeyPress(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if((event->state&CONTROLMASK) && event->code==KEY_a){
+    selectAll();
+    return 1;
+    }
+  if((event->state&CONTROLMASK) && event->code==KEY_c){
+    copySelection();
+    return 1;
+    }
+  return 0;
+  }
+
+
+// Clipboard ownership lost
+long FXConsole::onClipboardLost(FXObject* sender,FXSelector sel,void* ptr){
+  FXScrollArea::onClipboardLost(sender,sel,ptr);
+  clipped.clear();
+  return 1;
+  }
+
+
+// Clear the primary selection when another window takes ownership
+long FXConsole::onSelectionLost(FXObject* sender,FXSelector sel,void* ptr){
+  FXScrollArea::onSelectionLost(sender,sel,ptr);
+  selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+  update();
+  return 1;
+  }
+
+
+// Provide primary-selection text on request
+long FXConsole::onSelectionRequest(FXObject* sender,FXSelector sel,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if(FXScrollArea::onSelectionRequest(sender,sel,ptr)) return 1;
+  if(event->target==stringType || event->target==textType || event->target==utf8Type || event->target==utf16Type){
+    setDNDData(FROM_SELECTION,event->target,getSelectedText());
+    return 1;
+    }
+  return 0;
+  }
+
+
+// Provide clipboard text on request
+long FXConsole::onClipboardRequest(FXObject* sender,FXSelector sel,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  if(FXScrollArea::onClipboardRequest(sender,sel,ptr)) return 1;
+  if(event->target==stringType || event->target==textType || event->target==utf8Type || event->target==utf16Type){
+    FXString text=clipped;
+#if defined(WIN32)
+    unixToDos(text);
+#endif
+    setDNDData(FROM_CLIPBOARD,event->target,text);
+    return 1;
+    }
+  return 0;
+  }
+
+
 // Determine style
 FXuint FXConsole::styleOf(FXint line,FXint p) const {
   FXuint s=0;
   FXchar ch;
 
   // Selected part of text
-//  if(selstartpos<=p && p<selendpos) s|=STYLE_SELECTED;
+  if(isSelected(line,p)) s|=STYLE_SELECTED;
 
   // Highlighted part of text
  // if(hilitestartpos<=p && p<hiliteendpos) s|=STYLE_HILITE;
@@ -671,6 +1022,8 @@ void FXConsole::setMarginRight(FXint mr){
 void FXConsole::setHistoryLines(FXint hl){
   if(hl<1) hl=1;
   if(historylines!=hl){
+    selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+    if(hasSelection()) releaseSelection();
     historylines=hl;
     buffer.setHistoryLines(hl);
     recalc();
@@ -681,7 +1034,12 @@ void FXConsole::setHistoryLines(FXint hl){
 
 // Append text
 void FXConsole::appendText(const FXString& text,FXuint sty){
+  FXint oldcount=buffer.getNumLines();
   buffer.appendText(text,sty);
+  if(oldcount>=historylines && !text.empty()){
+    selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+    if(hasSelection()) releaseSelection();
+    }
   recalc();
   update();
   }
@@ -689,7 +1047,12 @@ void FXConsole::appendText(const FXString& text,FXuint sty){
 
 // Append line
 void FXConsole::appendLine(const FXString& text,FXuint sty){
+  FXint oldcount=buffer.getNumLines();
   buffer.appendLine(text,sty);
+  if(oldcount>=historylines){
+    selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+    if(hasSelection()) releaseSelection();
+    }
   recalc();
   update();
   }
@@ -697,7 +1060,12 @@ void FXConsole::appendLine(const FXString& text,FXuint sty){
 
 // Append styled text
 void FXConsole::appendStyled(const FXString& text,const FXuint* styles){
+  FXint oldcount=buffer.getNumLines();
   buffer.appendStyled(text,styles);
+  if(oldcount>=historylines && !text.empty()){
+    selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+    if(hasSelection()) releaseSelection();
+    }
   recalc();
   update();
   }
@@ -705,6 +1073,8 @@ void FXConsole::appendStyled(const FXString& text,const FXuint* styles){
 
 // Clear text
 void FXConsole::clearText(){
+  selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
+  if(hasSelection()) releaseSelection();
   buffer.clear();
   setPosition(0,0);
   recalc();
@@ -739,10 +1109,10 @@ void FXConsole::scrollToEnd(){
 
 
 // Change number of visible rows
-void FXConsole::setVisibleRows(FXint rows){
-  if(rows<0) rows=0;
-  if(vrows!=rows){
-    vrows=rows;
+void FXConsole::setVisibleRows(FXint rowcount){
+  if(rowcount<0) rowcount=0;
+  if(vrows!=rowcount){
+    vrows=rowcount;
     recalc();
     }
   }
