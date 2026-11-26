@@ -39,6 +39,7 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_TAB,TerminalWindow::onCmdNewTab),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_WINDOW,TerminalWindow::onCmdNewWindow),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_CLOSE_CURRENT,TerminalWindow::onCmdCloseCurrent),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_DETACH,TerminalWindow::onCmdDetach),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_COPY,TerminalWindow::onCmdCopy),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PASTE,TerminalWindow::onCmdPaste),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
@@ -54,7 +55,7 @@ FXIMPLEMENT(TerminalWindow,FXMainWindow,TerminalWindowMap,ARRAYNUMBER(TerminalWi
 
 
 // Construct
-TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),current(-1){
+TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,FXbool withtab):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),current(-1),autostart(withtab){
   contents=new FXVerticalFrame(this,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0);
   tabrow=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0,0,0);
   tabbar=new TerminalTabBar(tabrow,this,0,LAYOUT_FILL_X|LAYOUT_CENTER_Y,0,0,0,0,2,2,2,2);
@@ -66,6 +67,7 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l):FXMainWindow(
   new FXMenuCommand(mainmenu,"New &Tab\tCtl-Shift-T",nullptr,this,ID_NEW_TAB);
   new FXMenuCommand(mainmenu,"New &Window\tCtl-Shift-N",nullptr,this,ID_NEW_WINDOW);
   new FXMenuCommand(mainmenu,"&Close Tab\tCtl-Shift-W",nullptr,this,ID_CLOSE_CURRENT);
+  new FXMenuCommand(mainmenu,"&Detach Tab",nullptr,this,ID_DETACH);
   new FXMenuSeparator(mainmenu);
   new FXMenuCommand(mainmenu,"&Copy\tCtl-Shift-C",nullptr,this,ID_COPY);
   new FXMenuCommand(mainmenu,"&Paste\tCtl-Shift-V",nullptr,this,ID_PASTE);
@@ -83,7 +85,7 @@ void TerminalWindow::create(){
   FXMainWindow::create();
   show(PLACEMENT_SCREEN);
   raise();
-  if(tabs.empty()){
+  if(autostart && tabs.empty()){
     if(!addTab(launch)){
       status->setText("Could not start the shell");
       return;
@@ -243,6 +245,39 @@ long TerminalWindow::onCmdCloseCurrent(FXObject*,FXSelector,void*){
 long TerminalWindow::onCmdNewWindow(FXObject*,FXSelector,void*){
   TerminalWindow *window=new TerminalWindow(getApp(),launch);
   window->create();
+  return 1;
+  }
+
+
+// Detach active tab into a new window
+void TerminalWindow::detachTab(FXint index){
+  TerminalTab tab;
+  TerminalWindow *window;
+  if(index<0 || index>=(FXint)tabs.size()) return;
+  tab=tabs[index];
+  tabs.erase(tabs.begin()+index);
+  tabbar->removeTitle(index);
+  window=new TerminalWindow(getApp(),tab.launch,false);
+  window->create();
+  window->move(FXMAX(0,getX()+24),FXMAX(0,getY()+24));
+  tab.view->reparent(window->switcher);
+  window->tabs.push_back(tab);
+  window->tabbar->addTitle(tab.title);
+  window->selectTab((FXint)window->tabs.size()-1);
+  window->raise();
+  if(tabs.empty()){
+    getApp()->addChore(this,FXWindow::ID_DELETE);
+    }
+  else{
+    if(current>=index && current>0) current--;
+    selectTab(FXCLAMP(0,current,(FXint)tabs.size()-1));
+    }
+  }
+
+
+// Detach active tab
+long TerminalWindow::onCmdDetach(FXObject*,FXSelector,void*){
+  detachTab(current);
   return 1;
   }
 

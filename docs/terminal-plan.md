@@ -1397,6 +1397,17 @@ Acceptance:
 - Cancel/lost-grab paths leave the tab in place.
 - The context menu detach works on Wayland where a drag may be unusual.
 
+Phase 6 result (partial): `TerminalWindow::detachTab()` creates a new window
+with autostart disabled, reparents the live `FXTerminal` into its switcher, moves
+the `TerminalTab` state and selects it. The old window remains with its other
+tabs and is deleted through a chore when it becomes empty. A programmatic
+three-tab X11 run detached the active tab and produced two windows: the old one
+with two tabs and the new one with one; the PTY was not restarted.
+
+Not yet done: drag tear-off, the tab context menu, Ctrl+Shift+M, and the
+`SEL_LEAVE`/lost-grab cancel paths. The menu command `Detach Tab` is the working
+entry point for now.
+
 ### Phase 7: profile conformance and reflow
 
 Finish xterm and VT100 behavior: DA/DSR replies, mouse encodings, bracketed

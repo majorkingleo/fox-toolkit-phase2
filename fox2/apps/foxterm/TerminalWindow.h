@@ -67,6 +67,7 @@ protected:
   FXTerminalLaunch  launch;
   std::vector<TerminalTab> tabs;
   FXint             current;
+  FXbool            autostart;
 protected:
   TerminalWindow(){}
   void saveGeometry();
@@ -75,10 +76,11 @@ protected:
   void selectTab(FXint index);
   void closeTab(FXint index);
   void updateTabTitle(FXint index);
+  void detachTab(FXint index);
 public:
 
-  /// Construct a terminal window
-  TerminalWindow(FXApp* a,const FXTerminalLaunch& launch);
+  /// Construct a terminal window; autostart adds the first tab in create()
+  TerminalWindow(FXApp* a,const FXTerminalLaunch& launch,FXbool autostart=true);
 
   /// Create the first tab and show the window
   virtual void create() override;
@@ -110,6 +112,9 @@ public:
   /// Open another window
   long onCmdNewWindow(FXObject*,FXSelector,void*);
 
+  /// Move the active tab into a new window
+  long onCmdDetach(FXObject*,FXSelector,void*);
+
   /// Copy the active selection
   long onCmdCopy(FXObject*,FXSelector,void*);
 
@@ -130,6 +135,7 @@ public:
     ID_NEW_TAB,
     ID_NEW_WINDOW,
     ID_CLOSE_CURRENT,
+    ID_DETACH,
     ID_COPY,
     ID_PASTE,
     ID_ABOUT,
