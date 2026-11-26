@@ -402,6 +402,12 @@ Also ship the imported Breeze presets as compiled FOX theme data:
 
 - `breeze` / `breeze-light` — Breeze GTK 6.8.3 light role colors and metrics.
 - `breeze-dark` — Breeze GTK 6.8.3 dark role colors and metrics.
+- `breeze-dark-layan` / `layan` — Breeze dark chrome and metrics with the
+  Layan dark color scheme from the user's KDE installation. The frame follows
+  the KDE window color `#33333B` while views stay darker at `#2A2A31`; the
+  frame hairline is the lighter KDE border `#57575E`, so both the frame/view
+  contrast and the border contrast match the KDE window. Scrollbar thumbs use
+  the Layan accent `#5657F5`.
 
 The upstream GTK payload is vendored under `fox2/themes/breeze/{light,dark}`;
 `import-breeze.sh` refreshes those folders from a Linux theme installation.
@@ -574,7 +580,13 @@ Role mapping is GTK-name based: `theme_bg_color`/`bg_color` -> `SURFACE`,
 sunken edges are derived from the imported surface with `makeHiliteColor()`
 and `makeShadowColor()`. Metrics come from the rule that names `button`:
 `border-radius`, `border-width`, `padding` and `outline-width`, with zero
-values skipped because GTK resets properties in more specific rules.
+values skipped because GTK resets properties in more specific rules. The menu
+bar item height comes from `menubar > menuitem`: `min-height` plus twice the
+first padding value and `border-width`, stored as `METRIC_MENUBAR_HEIGHT`.
+Popup rows use the same arithmetic from `menu menuitem`, stored as
+`METRIC_MENUROW_HEIGHT`; the Breeze presets use 30 px. Entry, combo box and
+list box height comes from `entry min-height`, stored as
+`METRIC_CONTROL_HEIGHT`.
 
 `tools/fxthemeimport.cpp` (new `tools/` subdirectory) writes the resolved
 theme as `.foxtheme` plus a human-readable summary, and exits with status 2
@@ -798,6 +810,16 @@ fallback had `#EFF0F1, #EFF0F1, #EFF0F1, #C6C8C9`, and 1051 of 1111396 pixels of
 the frame differ, all of them on the rounded edges. The classic theme draws no
 rounded shape, so it stays pixel-identical (0 differing pixels), and `hello` and
 `dpi` still run. Screenshot: `screenshots/tests/fox2/win32/button-breeze-gdiplus.png`.
+
+**Progress: Win32 corner coverage without GDI+ (2026-11-26).** GDI+ still does
+not blend on every driver; Wine and some Windows drivers ignore
+`SmoothingModeAntiAlias` for fills, which leaves the corners of every themed
+control hard and stair-stepped. `FXStyle::drawRoundRect()` now fills the
+straight runs as ordinary rectangles and blends only the four corner squares
+against the background with the same 4x4 disc coverage the Wayland rasterizer
+uses. The corner shape therefore matches the other backends and no longer
+depends on GDI+ smoothing state. `cutRoundedCorners()` and the check-mark path
+still use GDI+.
 
 Popups are unaffected: their outline is a window region (`SetWindowRgn`), and a
 region has no coverage to blend, so the shaped corners of a popup stay hard edged
@@ -1759,10 +1781,11 @@ BSD-3-Clause and CC0 license texts and attribution notice. The Linux helper
 `~/.local/share/themes`, `~/.themes` or `/usr/share/themes`, or from an explicit
 source directory.
 
-`FXTheme::setBreezeLight()` and `setBreezeDark()` provide the imported semantic
-colors and metrics as compiled code, requiring no theme files or GTK libraries
-at runtime. `FXApp::init()` recognizes `breeze`/`breeze-light` and
-`breeze-dark`. Applications can call
+`FXTheme::setBreezeLight()`, `setBreezeDark()` and `setBreezeDarkLayan()` provide
+the imported semantic colors and metrics as compiled code, requiring no theme
+files or GTK libraries at runtime. `FXApp::init()` recognizes
+`breeze`/`breeze-light`, `breeze-dark` and `breeze-dark-layan`/`layan`.
+Applications can call
 `setAllowedThemes(THEME_PRESET_...,defaultPreset)` before `init()`; a saved
 global selection outside that set is ignored and the allowed default is used.
 When no allowlist is configured, external theme imports and existing settings

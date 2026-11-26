@@ -39,6 +39,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXCursor.h"
 #include "FXToolBarShell.h"
 
@@ -249,7 +250,19 @@ void FXToolBarShell::drawFrame(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h){
 long FXToolBarShell::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
-  drawFrame(dc,0,0,width,height);
+
+  // A rounded theme floats the bar on the surface behind a single hairline
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    dc.setForeground(getApp()->getTheme()->color(ROLE_SURFACE));
+    dc.fillRectangle(0,0,width,height);
+    if(options&(FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK|FRAME_GROOVE|FRAME_RIDGE)){
+      dc.setForeground(getApp()->getTheme()->color(ROLE_BORDER));
+      dc.drawRectangle(0,0,width-1,height-1);
+      }
+    }
+  else{
+    drawFrame(dc,0,0,width,height);
+    }
   return 1;
   }
 

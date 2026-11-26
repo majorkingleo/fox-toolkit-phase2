@@ -40,7 +40,9 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXIcon.h"
+#include "FXStyle.h"
 #include "FXToggleButton.h"
 
 /*
@@ -421,8 +423,31 @@ long FXToggleButton::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
 
-  // Got a border at all?
-  if(options&(FRAME_RAISED|FRAME_SUNKEN)){
+  // A rounded theme takes the chrome from the style, so a themed toggle
+  // button gets the same flat toolbar look, rounded face and accent checked
+  // outline as a button; the classic path below stays byte for byte the same
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXButtonState st;
+    st.enabled=isEnabled();
+    st.hover=underCursor();
+    st.down=down;
+    st.engaged=(options&TOGGLEBUTTON_KEEPSTATE)&&state;
+    st.focused=hasFocus();
+    st.defaulted=false;
+    st.toolbar=(options&TOGGLEBUTTON_TOOLBAR)!=0;
+    st.border=border;
+    st.options=options;
+    st.back=backColor;
+    st.hilite=hiliteColor;
+    st.shadow=shadowColor;
+    st.edge=borderColor;
+    st.surface=baseColor;
+    st.text=textColor;
+    st.parentBack=getParent()?getParent()->getBackColor():backColor;
+    st.scale=getDisplayScale();
+    getApp()->getStyle()->drawButton(dc,0,0,width,height,st);
+    }
+  else if(options&(FRAME_RAISED|FRAME_SUNKEN)){
 
     // Toolbar style
     if(options&TOGGLEBUTTON_TOOLBAR){
@@ -499,8 +524,8 @@ long FXToggleButton::onPaint(FXObject*,FXSelector,void* ptr){
   just_x(tx,ix,tw,iw);
   just_y(ty,iy,th,ih);
 
-  // Shift a bit when pressed
-  if((down || ((options&TOGGLEBUTTON_KEEPSTATE) && state)) && (options&(FRAME_RAISED|FRAME_SUNKEN))){ ++tx; ++ty; ++ix; ++iy; }
+  // Shift a bit when pressed; flat toolbar buttons stay put
+  if((down || ((options&TOGGLEBUTTON_KEEPSTATE) && state)) && (options&(FRAME_RAISED|FRAME_SUNKEN)) && !((options&TOGGLEBUTTON_TOOLBAR) && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale()))){ ++tx; ++ty; ++ix; ++iy; }
 
   // Draw enabled state
   if(isEnabled()){
@@ -520,7 +545,7 @@ long FXToggleButton::onPaint(FXObject*,FXSelector,void* ptr){
       dc.setForeground(textColor);
       drawLabel(dc,label,hotoff,tx,ty,tw,th);
       }
-    if(hasFocus()){
+    if(hasFocus() && getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())==0){
       dc.drawFocusRectangle(border+1,border+1,width-2*border-2,height-2*border-2);
       }
     }

@@ -118,6 +118,17 @@ static FXbool parseLength(const FXString& text,FXint& result){
   }
 
 
+// Parse the first length of a shorthand such as "1.25mm 2.5mm"
+static FXbool parseFirstLength(const FXString& text,FXint& result){
+  FXint i=0,n=text.length();
+  FXint start;
+  while(i<n && (text[i]==' ' || text[i]=='\t')) i++;
+  start=i;
+  while(i<n && text[i]!=' ' && text[i]!='\t') i++;
+  return start<i && parseLength(text.mid(start,i-start),result);
+  }
+
+
 // Construct reader
 FXCSS::FXCSS(){
   warnings=0;
@@ -734,11 +745,36 @@ void FXCSS::apply(FXTheme& theme) const {
   theme.setMetric(METRIC_PADDING,length("button","padding",theme.metric(METRIC_PADDING)));
   theme.setMetric(METRIC_FOCUS_WIDTH,length("button","outline-width",theme.metric(METRIC_FOCUS_WIDTH)));
   theme.setMetric(METRIC_CHECK_SIZE,length("check","min-width",theme.metric(METRIC_CHECK_SIZE)));
+  theme.setMetric(METRIC_CONTROL_HEIGHT,length("entry","min-height",theme.metric(METRIC_CONTROL_HEIGHT)));
 
   // Menu rows have metrics of their own: a minimum height and the padding
   // around the text, both smaller than what a button asks for
   theme.setMetric(METRIC_ROW_HEIGHT,length("menu menuitem","min-height",theme.metric(METRIC_ROW_HEIGHT)));
-  theme.setMetric(METRIC_ROW_PADDING,length("menu menuitem","padding",theme.metric(METRIC_ROW_PADDING)));
+  FXint menupadding=theme.metric(METRIC_ROW_PADDING);
+  FXString menupadspec=property("menu menuitem","padding");
+  if(!menupadspec.empty()) parseFirstLength(menupadspec,menupadding);
+  theme.setMetric(METRIC_ROW_PADDING,menupadding);
+
+  // Popup menu rows use the padding and border of the menu item rule, with the
+  // row height as a floor
+  FXint menurowheight=length("menu menuitem","min-height",0);
+  if(menurowheight){
+    FXint menuborder=length("menu menuitem","border-width",theme.metric(METRIC_BORDER_WIDTH));
+    menurowheight+=((menupadding+menuborder)<<1);
+    theme.setMetric(METRIC_MENUROW_HEIGHT,FXMAX(menurowheight,theme.metric(METRIC_ROW_HEIGHT)));
+    }
+
+  // The menu bar item height comes from its own rule, whose shorthand padding
+  // carries the horizontal value first
+  FXint menubarheight=length("menubar > menuitem","min-height",0);
+  if(menubarheight){
+    FXint menubarpadding=0;
+    FXint menubarborder=length("menubar > menuitem","border-width",theme.metric(METRIC_BORDER_WIDTH));
+    FXString padding=property("menubar > menuitem","padding");
+    if(!padding.empty()) parseFirstLength(padding,menubarpadding);
+    menubarheight+=((menubarpadding+menubarborder)<<1);
+    theme.setMetric(METRIC_MENUBAR_HEIGHT,FXMAX(menubarheight,theme.metric(METRIC_ROW_HEIGHT)));
+    }
 
   // Scroll bar thickness: the stepper buttons set the width of the bar, and the
   // trough carries it when the theme has no steppers

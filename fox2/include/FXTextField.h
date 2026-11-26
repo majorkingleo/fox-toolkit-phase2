@@ -101,6 +101,8 @@ public:
   long onPaint(FXObject*,FXSelector,void*);
   long onUpdate(FXObject*,FXSelector,void*);
   long onBlink(FXObject*,FXSelector,void*);
+  long onEnter(FXObject*,FXSelector,void*);
+  long onLeave(FXObject*,FXSelector,void*);
   long onFocusIn(FXObject*,FXSelector,void*);
   long onFocusOut(FXObject*,FXSelector,void*);
   long onFocusSelf(FXObject*,FXSelector,void*);

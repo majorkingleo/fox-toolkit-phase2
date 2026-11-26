@@ -225,7 +225,11 @@ FXint FXComboBox::getDefaultHeight(){
     }
   th=field->getDefaultHeight();
   bh=button->getDefaultHeight();
-  return FXMAX(th,bh)+(inset<<1);
+  th=FXMAX(th,bh)+(inset<<1);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    th=FXMAX(th,getApp()->getTheme()->metric(METRIC_CONTROL_HEIGHT,getDisplayScale()));
+    }
+  return th;
   }
 
 

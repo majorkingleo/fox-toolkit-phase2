@@ -57,6 +57,7 @@ enum {
   ROLE_FOCUS_RING,        /// Keyboard focus ring
   ROLE_BUTTON,            /// Button face
   ROLE_HOVER_RING,        /// Pointer hover decoration
+  ROLE_SCROLLBAR_THUMB,   /// Scrollbar thumb
   ROLE_LAST
   };
 
@@ -89,6 +90,9 @@ enum {
   METRIC_ROW_PADDING,     /// Vertical padding inside a row of a menu
   METRIC_SCROLLBAR_WIDTH, /// Thickness of a scroll bar
   METRIC_SHADOW_SIZE,     /// Drop shadow size around popups, 0 for none
+  METRIC_CONTROL_HEIGHT,  /// Height of an entry, combo box or list box
+  METRIC_MENUBAR_HEIGHT,  /// Height of a menu bar item
+  METRIC_MENUROW_HEIGHT,  /// Height of a popup menu row
   METRIC_LAST
   };
 
@@ -109,7 +113,8 @@ enum {
   THEME_PRESET_DARK=2,
   THEME_PRESET_BREEZE=4,
   THEME_PRESET_BREEZE_DARK=8,
-  THEME_PRESET_ALL=15
+  THEME_PRESET_BREEZE_DARK_LAYAN=16,
+  THEME_PRESET_ALL=31
   };
 
 
@@ -170,6 +175,9 @@ public:
 
   /// Switch to the built-in Breeze dark preset
   void setBreezeDark();
+
+  /// Switch to Breeze dark chrome with the Layan dark color scheme
+  void setBreezeDarkLayan();
 
   /// Load theme from an INI file; returns true if the file parsed
   FXbool load(const FXString& path);

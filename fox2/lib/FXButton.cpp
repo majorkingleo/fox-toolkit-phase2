@@ -412,8 +412,8 @@ long FXButton::onPaint(FXObject*,FXSelector,void* ptr){
   just_x(tx,ix,tw,iw);
   just_y(ty,iy,th,ih);
 
-  // Shift a bit when pressed
-  if(state && (options&(FRAME_RAISED|FRAME_SUNKEN))){ ++tx; ++ty; ++ix; ++iy; }
+  // Shift a bit when pressed; flat toolbar buttons stay put
+  if(state && (options&(FRAME_RAISED|FRAME_SUNKEN)) && !((options&BUTTON_TOOLBAR) && 0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale()))){ ++tx; ++ty; ++ix; ++iy; }
 
   // Draw enabled state
   if(isEnabled()){

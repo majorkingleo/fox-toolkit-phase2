@@ -97,6 +97,9 @@ void FXTheme::setClassic(){
   metrics[METRIC_ROW_PADDING]=2;
   metrics[METRIC_SCROLLBAR_WIDTH]=0;
   metrics[METRIC_SHADOW_SIZE]=0;
+  metrics[METRIC_CONTROL_HEIGHT]=0;
+  metrics[METRIC_MENUBAR_HEIGHT]=0;
+  metrics[METRIC_MENUROW_HEIGHT]=0;
   scale=1.0;
 
   // Font roles start out as the application font; an empty description
@@ -151,9 +154,12 @@ void FXTheme::setBreezeLight(){
   metrics[METRIC_PADDING]=6;
   metrics[METRIC_ROW_HEIGHT]=15;
   metrics[METRIC_CORNER_RADIUS]=5;
-  metrics[METRIC_CHECK_SIZE]=14;
+  metrics[METRIC_CHECK_SIZE]=16;
   metrics[METRIC_SCROLLBAR_WIDTH]=14;
   metrics[METRIC_SHADOW_SIZE]=8;
+  metrics[METRIC_CONTROL_HEIGHT]=30;
+  metrics[METRIC_MENUBAR_HEIGHT]=30;
+  metrics[METRIC_MENUROW_HEIGHT]=30;
   }
 
 
@@ -180,9 +186,37 @@ void FXTheme::setBreezeDark(){
   metrics[METRIC_PADDING]=6;
   metrics[METRIC_ROW_HEIGHT]=15;
   metrics[METRIC_CORNER_RADIUS]=5;
-  metrics[METRIC_CHECK_SIZE]=14;
+  metrics[METRIC_CHECK_SIZE]=16;
   metrics[METRIC_SCROLLBAR_WIDTH]=14;
   metrics[METRIC_SHADOW_SIZE]=8;
+  metrics[METRIC_CONTROL_HEIGHT]=30;
+  metrics[METRIC_MENUBAR_HEIGHT]=30;
+  metrics[METRIC_MENUROW_HEIGHT]=30;
+  }
+
+
+// Switch to Breeze dark chrome with the Layan dark color scheme
+void FXTheme::setBreezeDarkLayan(){
+  setBreezeDark();
+  colors[ROLE_WINDOW_BG]=FXRGB(42,42,49);
+  colors[ROLE_SURFACE]=FXRGB(51,51,59);
+  colors[ROLE_SURFACE_HILITE]=FXRGB(117,117,123);
+  colors[ROLE_SURFACE_SHADOW]=FXRGB(33,33,39);
+  colors[ROLE_BUTTON]=FXRGB(68,69,75);
+  colors[ROLE_TEXT]=FXRGB(234,234,234);
+  colors[ROLE_BORDER]=FXRGB(87,87,94);
+  colors[ROLE_SELECTION_BG]=FXRGB(86,87,245);
+  colors[ROLE_SELECTION_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_MENU_SEL_BG]=FXRGB(86,87,245);
+  colors[ROLE_MENU_SEL_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_TOOLTIP_BG]=FXRGB(33,35,41);
+  colors[ROLE_TOOLTIP_TEXT]=FXRGB(221,221,221);
+  updateDerived();
+  colors[ROLE_TEXT_DISABLED]=FXRGB(151,151,155);
+  colors[ROLE_ACCENT]=FXRGB(86,87,245);
+  colors[ROLE_FOCUS_RING]=FXRGB(86,87,245);
+  colors[ROLE_HOVER_RING]=FXRGB(86,87,245);
+  colors[ROLE_SCROLLBAR_THUMB]=FXRGB(86,87,245);
   }
 
 
@@ -191,12 +225,12 @@ FXbool FXTheme::load(const FXString& path){
   static const FXchar *colorkeys[ROLE_LAST]={
     "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
     "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
-    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring"
+    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring","scrollbar_thumb"
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
     "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size",
-    "row_padding","scrollbar_width","shadow_size"
+    "row_padding","scrollbar_width","shadow_size","control_height","menubar_height","menu_row_height"
     };
   static const FXchar *fontkeys[FONT_LAST]={
     "ui","small","mono","title"
@@ -229,6 +263,7 @@ void FXTheme::updateDerived(){
   colors[ROLE_TEXT_DISABLED]=mixColor(colors[ROLE_TEXT],colors[ROLE_SURFACE],45);
   colors[ROLE_ACCENT]=colors[ROLE_SELECTION_BG];
   colors[ROLE_FOCUS_RING]=colors[ROLE_ACCENT];
+  colors[ROLE_SCROLLBAR_THUMB]=mixColor(colors[ROLE_SURFACE],colors[ROLE_TEXT],20);
   }
 
 
@@ -307,11 +342,12 @@ FXString FXTheme::describe(const FXString& name,const FXString& source) const {
   static const FXchar *colorkeys[ROLE_LAST]={
     "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
     "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
-    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring"
+    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring","scrollbar_thumb"
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
-    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size","shadow_size"
+    "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size",
+    "row_padding","scrollbar_width","shadow_size","control_height","menubar_height","menu_row_height"
     };
   FXString text;
   FXint i;

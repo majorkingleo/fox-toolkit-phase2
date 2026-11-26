@@ -43,6 +43,8 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
+#include "FXStyle.h"
 #include "FXIcon.h"
 #include "FXMenuPane.h"
 #include "FXMenuTitle.h"
@@ -139,7 +141,9 @@ FXint FXMenuTitle::getDefaultWidth(){
 
 // Get default height
 FXint FXMenuTitle::getDefaultHeight(){
-  return menuRowHeight(label.empty() ? 0 : font->getFontHeight(), icon ? getScaledIcon(icon)->getHeight() : 0, 4);
+  FXint h=menuRowHeight(label.empty() ? 0 : font->getFontHeight(), icon ? getScaledIcon(icon)->getHeight() : 0, 4);
+  if(isMenuRowThemed()) h=FXMAX(h,getApp()->getTheme()->metric(METRIC_MENUBAR_HEIGHT,getDisplayScale()));
+  return h;
   }
 
 
@@ -356,6 +360,44 @@ long FXMenuTitle::onPaint(FXObject*,FXSelector,void* ptr){
   dc.setFont(font);
   xx=6;
   yy=0;
+
+  // Rounded themes draw the menu bar item as a flat pill instead of a square
+  // beveled selection, with a margin so the bar shows around it
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXTheme* theme=getApp()->getTheme();
+    FXColor text=isEnabled()?textColor:theme->color(ROLE_TEXT_DISABLED);
+    FXColor face=0;
+    FXint radius=FXMIN(theme->metric(METRIC_CORNER_RADIUS,getDisplayScale()),FXMAX(0,(height-4)/2));
+
+    dc.setForeground(backColor);
+    dc.fillRectangle(0,0,width,height);
+
+    if(isEnabled() && isActive()){
+      face=theme->color(ROLE_MENU_SEL_BG);
+      text=theme->color(ROLE_MENU_SEL_TEXT);
+      }
+    else if(isEnabled() && underCursor()){
+      face=theme->color(ROLE_SURFACE,THEME_STATE_HOVER);
+      }
+    if(face && 2<width && 2<height){
+      getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,FXMIN(radius,height/2),face,face,0);
+      }
+
+    if(icon){
+      dc.drawIcon(getScaledIcon(icon),xx,(height-getScaledIcon(icon)->getHeight())/2);
+      xx+=5+getScaledIcon(icon)->getWidth();
+      }
+    if(!label.empty()){
+      yy=font->getFontAscent()+(height-font->getFontHeight())/2;
+      dc.setForeground(text);
+      dc.drawText(xx,yy,label);
+      if(0<=hotoff){
+        dc.fillRectangle(xx+font->getTextWidth(&label[0],hotoff),yy+1,font->getTextWidth(&label[hotoff],wclen(&label[hotoff])),1);
+        }
+      }
+    return 1;
+    }
+
   if(isEnabled()){
     if(isActive()){
       dc.setForeground(selbackColor);

@@ -188,30 +188,101 @@ void FXStyle::drawShadow(FXDCWindow&,FXint,FXint,FXint,FXint,FXint){
   }
 
 
-// Draw a rounded rectangle: the border first, then the face inset by the border
-// width, so the hairline stays inside the shape and both edges are blended once
+// Coverage of one pixel by a quarter disc, sampled 4x4; the same coverage the
+// Wayland rasterizer uses, so all backends get the same corner shape
+static FXuint cornerCoverage(FXint px,FXint py,FXint cx,FXint cy,FXint radius){
+  const FXint samples=4;
+  FXdouble rr=(FXdouble)radius*(FXdouble)radius;
+  FXint inside=0;
+  FXint sx,sy;
+  for(sy=0; sy<samples; sy++){
+    FXdouble fy=py+(sy+0.5)/samples-cy;
+    for(sx=0; sx<samples; sx++){
+      FXdouble fx=px+(sx+0.5)/samples-cx;
+      if(fx*fx+fy*fy<=rr) inside++;
+      }
+    }
+  return (FXuint)((inside*255+samples*samples/2)/(samples*samples));
+  }
+
+
+// Blend b over a with the given coverage
+static FXColor blendCoverage(FXColor a,FXColor b,FXuint coverage){
+  FXint t=(FXint)coverage;
+  FXint s=255-t;
+  return FXRGB((FXREDVAL(a)*s+FXREDVAL(b)*t+127)/255,
+               (FXGREENVAL(a)*s+FXGREENVAL(b)*t+127)/255,
+               (FXBLUEVAL(a)*s+FXBLUEVAL(b)*t+127)/255);
+  }
+
+
+// Draw a rounded rectangle with software coverage blending.  GDI+ silently
+// drops smoothing mode on some drivers (and under Wine), which left the four
+// corners of every themed control hard and stair-stepped.  The straight runs
+// are ordinary rectangles; only the four corner squares need per-pixel work.
 FXbool FXStyle::drawRoundRect(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,FXint radius,FXColor face,FXColor border,FXint borderWidth){
-  FXint r,br;
-  if(w<=0 || h<=0 || radius<=0 || !fxgdiplus()) return false;
+  FXint r,br,px,py,cx,cy,corner,index,n;
+  FXbool hasface;
+  FXColor *back=nullptr;
+  FXColor out;
+  if(w<=0 || h<=0 || radius<=0) return false;
   r=FXMIN(radius,FXMIN(w,h)/2);
   br=FXMIN(FXMAX(borderWidth,0),r);
-  Gdiplus::Graphics graphics((HDC)dc.context());
-  Gdiplus::GraphicsPath path;
-  if(graphics.GetLastStatus()!=Gdiplus::Ok || !gdiplusRoundRect(path,x,y,w,h,r)) return false;
-  gdiplusAntialias(graphics);
-  if(0<br){
-    Gdiplus::SolidBrush edge(gdiplusColor(border));
-    if(graphics.FillPath(&edge,&path)!=Gdiplus::Ok) return false;
-    if(2*br<w && 2*br<h){
-      Gdiplus::GraphicsPath inner;
-      Gdiplus::SolidBrush faceBrush(gdiplusColor(face));
-      if(!gdiplusRoundRect(inner,x+br,y+br,w-2*br,h-2*br,r-br)) return false;
-      return graphics.FillPath(&faceBrush,&inner)==Gdiplus::Ok;
+  hasface=(2*br<w && 2*br<h);
+
+  // Remember the background under the corner squares before the shape covers it
+  n=4*r*r;
+  if(!allocElms(back,n)) back=nullptr;
+  if(back){
+    index=0;
+    for(corner=0; corner<4; corner++){
+      FXint x0=x+((corner&1)?w-r:0);
+      FXint y0=y+((corner&2)?h-r:0);
+      for(py=y0; py<y0+r; py++){
+        for(px=x0; px<x0+r; px++){
+          back[index++]=dc.readPixel(px,py);
+          }
+        }
       }
-    return true;
     }
-  Gdiplus::SolidBrush faceBrush(gdiplusColor(face));
-  return graphics.FillPath(&faceBrush,&path)==Gdiplus::Ok;
+
+  // Opaque straight runs; the corner squares are replaced below
+  dc.setForeground(br?border:face);
+  dc.fillRectangle(x,y,w,h);
+  if(br && hasface){
+    dc.setForeground(face);
+    dc.fillRectangle(x+br,y+br,w-2*br,h-2*br);
+    }
+
+  // Replace each corner square with background, border and face at their
+  // respective coverage, in the same order the GDI+ fills would use
+  if(back){
+    index=0;
+    for(corner=0; corner<4; corner++){
+      FXint x0=x+((corner&1)?w-r:0);
+      FXint y0=y+((corner&2)?h-r:0);
+      cx=x+((corner&1)?w-r:r);
+      cy=y+((corner&2)?h-r:r);
+      for(py=y0; py<y0+r; py++){
+        for(px=x0; px<x0+r; px++){
+          FXuint co=cornerCoverage(px,py,cx,cy,r);
+          FXuint ci=0;
+          if(br==0){
+            out=blendCoverage(back[index++],face,co);
+            }
+          else{
+            if(hasface) ci=cornerCoverage(px,py,cx,cy,r-br);
+            out=blendCoverage(back[index++],border,co);
+            out=blendCoverage(out,face,ci);
+            }
+          dc.setForeground(out);
+          dc.drawPoint(px,py);
+          }
+        }
+      }
+    freeElms(back);
+    }
+  return true;
   }
 
 }

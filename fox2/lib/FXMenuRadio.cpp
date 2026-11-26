@@ -130,8 +130,9 @@ FXint FXMenuRadio::getMenuTextLeadSpace() const {
     FXTheme* theme=getApp()->getTheme();
     FXdouble scale=getDisplayScale();
     FXint size=theme->metric(METRIC_CHECK_SIZE,scale);
-    FXint row=theme->metric(METRIC_ROW_HEIGHT,scale);
+    FXint row=theme->metric(METRIC_MENUROW_HEIGHT,scale);
     FXint gap=FXMAX((FXint)(4*scale+0.5),theme->metric(METRIC_SPACING,scale));
+    if(row<=0) row=theme->metric(METRIC_ROW_HEIGHT,scale);
     size=FXMAX(9,FXMIN(size,row-2));
     return 5+size+gap;
     }

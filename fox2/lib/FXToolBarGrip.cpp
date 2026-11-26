@@ -39,6 +39,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXToolBar.h"
 #include "FXToolBarGrip.h"
 
@@ -140,6 +141,27 @@ long FXToolBarGrip::onPaint(FXObject*,FXSelector,void* ptr){
   dc.fillRectangle(border,border,width-(border<<1),height-(border<<1));
   ww=width-padleft-padright-(border<<1);
   hh=height-padtop-padbottom-(border<<1);
+
+  // A rounded theme draws a quiet dot grid instead of the classic bevel bars
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    FXColor mark=getApp()->getTheme()->color(ROLE_TEXT_DISABLED);
+    FXint dot=(1<getDisplayScale())?2:1;
+    FXint step=dot+2;
+    FXint cols=3,rows=2;
+    FXint x0,y0,c,r;
+    if(width<=height){ cols=2; rows=3; }
+    if(!(options&TOOLBARGRIP_DOUBLE)){ cols=1; rows=3; }
+    if(flags&(FLAG_ACTIVE|FLAG_TRYDRAG|FLAG_DODRAG)) mark=getApp()->getTheme()->color(ROLE_ACCENT);
+    x0=border+padleft+(ww-(cols*step-2))/2;
+    y0=border+padtop+(hh-(rows*step-2))/2;
+    dc.setForeground(mark);
+    for(c=0; c<cols; c++){
+      for(r=0; r<rows; r++){
+        dc.fillRectangle(x0+c*step,y0+r*step,dot,dot);
+        }
+      }
+    return 1;
+    }
   if(width>height){
     xx=border+padleft;
     if(options&TOOLBARGRIP_DOUBLE){     // =

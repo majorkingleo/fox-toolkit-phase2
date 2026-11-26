@@ -63,7 +63,8 @@ ChartAssignmentDialog::ChartAssignmentDialog(FXWindow* owner,const CSVTable& sou
   new FXLabel(seriesPane,"Series",nullptr,JUSTIFY_LEFT|LAYOUT_FILL_X);
   seriesFilter=new FXTextField(seriesPane,18,this,ID_SERIES_FILTER,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X);
   seriesFilter->setHelpText("Filter series by name");
-  series=new FXList(seriesPane,this,ID_SERIES_LIST,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
+  FXHorizontalFrame* seriesBox=new FXHorizontalFrame(seriesPane,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
+  series=new FXList(seriesBox,this,ID_SERIES_LIST,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y);
   series->setNumVisible(20);
   FXVerticalFrame* chartPane=new FXVerticalFrame(workspace,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,4,4);
   FXHorizontalFrame* chartHeader=new FXHorizontalFrame(chartPane,LAYOUT_SIDE_TOP|LAYOUT_FILL_X,0,0,0,0,0,0,0,0,4,0);
@@ -99,7 +100,8 @@ void ChartAssignmentDialog::ensureChartViews(){
     remove->setUserData((FXptr)(FXuval)(index+1));
     FXTextField* filter=new FXTextField(group,18,this,ID_CHART_FILTER,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X);
     filter->setHelpText("Filter chart series by name");
-    FXList* list=new FXList(group,this,ID_CHART_LIST,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK);
+    FXHorizontalFrame* listFrame=new FXHorizontalFrame(group,FRAME_SUNKEN|FRAME_THICK|LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0);
+    FXList* list=new FXList(listFrame,this,ID_CHART_LIST,LIST_EXTENDEDSELECT|LAYOUT_FILL_X|LAYOUT_FILL_Y);
     list->setNumVisible(6);
     list->dropEnable();
     if(chartContainer->id()) group->create();

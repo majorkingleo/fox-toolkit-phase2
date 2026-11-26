@@ -3,6 +3,24 @@
 
 fox_read_makefile_sources("${CMAKE_CURRENT_SOURCE_DIR}/Makefile.am" FOX_LIB_SOURCES)
 
+# The library icon table is generated from the image files by reswrap.
+set(ICON_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${ICON_GENERATED_DIR}")
+file(GLOB ICON_FILES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.gif"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.bmp")
+set(ICONS_H "${ICON_GENERATED_DIR}/icons.h")
+set(ICONS_CPP "${ICON_GENERATED_DIR}/icons.cpp")
+add_custom_command(
+  OUTPUT "${ICONS_H}" "${ICONS_CPP}"
+  COMMAND $<TARGET_FILE:reswrap> -nc -h -n FX -o icons.h ${ICON_FILES}
+  COMMAND $<TARGET_FILE:reswrap> -nc -i icons.h -n FX -o icons.cpp ${ICON_FILES}
+  DEPENDS reswrap ${ICON_FILES}
+  WORKING_DIRECTORY "${ICON_GENERATED_DIR}"
+  VERBATIM)
+list(FILTER FOX_LIB_SOURCES EXCLUDE REGEX "(^|/)icons\\.(cpp|h)$")
+list(APPEND FOX_LIB_SOURCES "${ICONS_CPP}" "${ICONS_H}")
+
 # Platform seam: exactly one implementation is compiled into the library
 list(FILTER FOX_LIB_SOURCES EXCLUDE REGEX "_(win32|posix|unix|x11|wayland)\\.cpp$")
 if(WIN32)
@@ -67,6 +85,7 @@ set_target_properties(FOX PROPERTIES
   VERSION ${PROJECT_VERSION}
   SOVERSION 0)
 
+target_include_directories(FOX PRIVATE "${ICON_GENERATED_DIR}")
 target_include_directories(FOX PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>

@@ -2,6 +2,7 @@
 
 AM_CXXFLAGS = @X_CFLAGS@
 INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
+RESWRAP = $(top_builddir)/utils/reswrap$(EXEEXT)
 
 lib_LTLIBRARIES = libFOX-2.0.la
 
@@ -359,6 +360,17 @@ icons.cpp \
 icons.h \
 fxpriv.h
 
+ICONS = $(wildcard $(srcdir)/*.gif) $(wildcard $(srcdir)/*.bmp)
+
+BUILT_SOURCES = icons.h icons.cpp
+CLEANFILES = icons.h icons.cpp
+
+icons.h: $(ICONS) $(RESWRAP)
+	$(RESWRAP) -nc -h -n FX -o $@ $(ICONS)
+
+icons.cpp: $(ICONS) $(RESWRAP) icons.h
+	$(RESWRAP) -nc -i icons.h -n FX -o $@ $(ICONS)
+
 # Platform seam: exactly one implementation is compiled into the library
 if COND_OSWINDOWS
 libFOX_2_0_la_SOURCES += FXApp_win32.cpp FXWindow_win32.cpp FXFont_win32.cpp FXIODevice_win32.cpp FXMutex_win32.cpp FXAutoThreadStorageKey_win32.cpp FXPipe_win32.cpp FXDir_win32.cpp FXFile_win32.cpp FXProcess_win32.cpp FXStat_win32.cpp FXSystem_win32.cpp FXPath_win32.cpp FXThread_win32.cpp FXCursor_win32.cpp FXVisual_win32.cpp FXGLVisual_win32.cpp FXDCWindow_win32.cpp FXTopWindow_win32.cpp FXRegion_win32.cpp fxutils_win32.cpp fxkeyboard_win32.cpp FXStyle_win32.cpp FXImage_win32.cpp FXBitmap_win32.cpp FXRootWindow_win32.cpp FXIcon_win32.cpp FXPopup_win32.cpp FXShell_win32.cpp FXToolTip_win32.cpp FXMainWindow_win32.cpp FXDragCorner_win32.cpp FXDesktopSettings_win32.cpp fxpriv_win32.cpp fxshadow_win32.cpp FXComposeContext_win32.cpp FXRegistry_win32.cpp FXCheckButton_win32.cpp FXSlider_win32.cpp FXSemaphore_win32.cpp FXMappedFile_win32.cpp FXSystemTime_win32.cpp fxosver_win32.cpp fxpty_win32.cpp
@@ -370,8 +382,6 @@ libFOX_2_0_la_SOURCES += FXCheckButton_unix.cpp FXDesktopSettings_unix.cpp FXReg
 if COND_WAYLAND
 AM_CXXFLAGS += -DFOX_WAYLAND
 AM_CPPFLAGS =
-BUILT_SOURCES =
-CLEANFILES =
 nodist_libFOX_2_0_la_SOURCES =
 
 # Client glue generated from the vendored protocol XML, the same list the CMake
@@ -591,4 +601,5 @@ sw.xbm \
 vsplit_mask.xbm \
 vsplit.xbm \
 xsplit_mask.xbm \
-xsplit.xbm
+xsplit.xbm \
+$(ICONS)

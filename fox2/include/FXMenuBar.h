@@ -47,6 +47,9 @@ public:
   long onCmdUnpost(FXObject*,FXSelector,void*);
 public:
 
+  /// Re-apply theme colors and the menu bar padding
+  virtual void applyTheme(FXTheme* theme) override;
+
   /**
   * Construct a floatable menubar
   * Normally, the menubar is docked under window p.
