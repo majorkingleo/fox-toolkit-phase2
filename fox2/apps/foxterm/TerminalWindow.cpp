@@ -27,7 +27,11 @@ using namespace FX;
 /*******************************************************************************/
 
 static FXint settingInt(FXApp* app,const FXchar* key,FXint fallback){
-  return app->reg().readIntEntry("WINDOW",key,fallback);
+  FXint value=app->reg().readIntEntry("WINDOW",key,fallback);
+  if(value<-10000 || value>100000) return fallback;
+  if(strcmp(key,"w")==0 && value<200) return fallback;
+  if(strcmp(key,"h")==0 && value<100) return fallback;
+  return value;
   }
 
 
@@ -173,6 +177,7 @@ void TerminalWindow::selectTab(FXint index){
   tabbar->setCurrent(index);
   switcher->layout();
   tabs[index].view->layout();
+  for(FXint i=0; i<(FXint)tabs.size(); i++) tabs[i].view->setDefault(i==index);
   tabs[index].view->setFocus();
   setTitle(FXString("FoxTerm - ")+tabs[index].title);
   status->setText(tabs[index].launch.shell);
@@ -334,7 +339,7 @@ long TerminalWindow::onCmdPaste(FXObject*,FXSelector,void*){
 // Save geometry
 void TerminalWindow::saveGeometry(){
   FXRegistry& reg=getApp()->reg();
-  if(!isMaximized()){
+  if(!isMaximized() && !isMinimized()){
     reg.writeIntEntry("WINDOW","x",getX());
     reg.writeIntEntry("WINDOW","y",getY());
     reg.writeIntEntry("WINDOW","w",getWidth());

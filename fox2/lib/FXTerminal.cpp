@@ -1125,7 +1125,8 @@ long FXTerminal::onKeyPress(FXObject*,FXSelector,void* ptr){
       }
     }
   if(event->code==KEY_Return || event->code==KEY_KP_Enter){
-    return send(FXString("\r")) ? 1 : 0;
+    send(FXString("\r"));
+    return 1;
     }
   if(event->code==KEY_Tab){
     return send(FXString((event->state&SHIFTMASK) ? "\x1b[Z" : "\t")) ? 1 : 0;
