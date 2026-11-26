@@ -48,6 +48,7 @@ Priority:
 | `FXSwitcher` | DONE | The page background follows the theme surface and the frame is drawn through the style, so a themed switcher keeps a single hairline like every other packer; the pages themselves belong to their children. |
 | `FXStatusBar`, `FXStatusLine` | PARTIAL | Status bar background/border, status text and highlighted text roles, field separators. | A status line picks its font from `FONT_SMALL` when the theme has one.
 | `FXMenuButton`, `FXOptionMenu` | DONE | Button chrome through `FXStyle::drawButton()`, themed text/arrow/disabled colors, and themed option rows in the popup; classic rendering is unchanged for radius-0 themes. |
+| `FXMenuTitle` | DONE | A rounded theme draws the active menu bar item as a flat pill in `ROLE_MENU_SEL_BG` with `ROLE_MENU_SEL_TEXT`, a hover fill from `ROLE_SURFACE`, and fills the item height from `METRIC_MENUBAR_HEIGHT`, which the CSS importer fills from `menubar > menuitem`; the menu bar drops its extra vertical padding so the pill matches KDE. Classic keeps the square bevel and its text shift. |
 | `FXMenuCaption`, `FXMenuCommand`, `FXMenuCheck`, `FXMenuRadio`, `FXMenuSeparator` | PARTIAL | Themed text, active/selected rounded fill, disabled text, antialiased check/radio marks and hairline separators, and menu rows sized from the theme: the content plus `METRIC_ROW_PADDING` and `METRIC_BORDER_WIDTH` on each side, never less than `METRIC_ROW_HEIGHT`, which the CSS importer fills from the `menu menuitem` rule. Explicit per-state colors remain. |
 
 ## P1: common input and data widgets

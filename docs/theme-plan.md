@@ -574,7 +574,9 @@ Role mapping is GTK-name based: `theme_bg_color`/`bg_color` -> `SURFACE`,
 sunken edges are derived from the imported surface with `makeHiliteColor()`
 and `makeShadowColor()`. Metrics come from the rule that names `button`:
 `border-radius`, `border-width`, `padding` and `outline-width`, with zero
-values skipped because GTK resets properties in more specific rules.
+values skipped because GTK resets properties in more specific rules. The menu
+bar item height comes from `menubar > menuitem`: `min-height` plus twice the
+first padding value and `border-width`, stored as `METRIC_MENUBAR_HEIGHT`.
 
 `tools/fxthemeimport.cpp` (new `tools/` subdirectory) writes the resolved
 theme as `.foxtheme` plus a human-readable summary, and exits with status 2

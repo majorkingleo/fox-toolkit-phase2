@@ -37,6 +37,7 @@
 #include "FXEvent.h"
 #include "FXWindow.h"
 #include "FXApp.h"
+#include "FXTheme.h"
 #include "FXButton.h"
 #include "FXMenuBar.h"
 
@@ -87,6 +88,7 @@ FXIMPLEMENT(FXMenuBar,FXToolBar,FXMenuBarMap,ARRAYNUMBER(FXMenuBarMap))
 FXMenuBar::FXMenuBar(FXComposite* p,FXComposite* q,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs):FXToolBar(p,q,opts,x,y,w,h,pl,pr,pt,pb,hs,vs){
   flags|=FLAG_ENABLED;
   dragCursor=getApp()->getDefaultCursor(DEF_RARROW_CURSOR);
+  if(0<getApp()->getTheme()->metric(METRIC_MENUBAR_HEIGHT)) padtop=padbottom=0;
   }
 
 
@@ -94,6 +96,19 @@ FXMenuBar::FXMenuBar(FXComposite* p,FXComposite* q,FXuint opts,FXint x,FXint y,F
 FXMenuBar::FXMenuBar(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs):FXToolBar(p,opts,x,y,w,h,pl,pr,pt,pb,hs,vs){
   flags|=FLAG_ENABLED;
   dragCursor=getApp()->getDefaultCursor(DEF_RARROW_CURSOR);
+  if(0<getApp()->getTheme()->metric(METRIC_MENUBAR_HEIGHT)) padtop=padbottom=0;
+  }
+
+
+// Re-apply theme colors and the menu bar padding
+void FXMenuBar::applyTheme(FXTheme* theme){
+  FXToolBar::applyTheme(theme);
+  FXint pad=(0<theme->metric(METRIC_MENUBAR_HEIGHT,getDisplayScale()))?0:2;
+  if(padtop!=pad || padbottom!=pad){
+    padtop=padbottom=pad;
+    recalc();
+    update();
+    }
   }
 
 
