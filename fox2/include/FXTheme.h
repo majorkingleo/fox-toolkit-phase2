@@ -57,6 +57,7 @@ enum {
   ROLE_FOCUS_RING,        /// Keyboard focus ring
   ROLE_BUTTON,            /// Button face
   ROLE_HOVER_RING,        /// Pointer hover decoration
+  ROLE_SCROLLBAR_THUMB,   /// Scrollbar thumb
   ROLE_LAST
   };
 

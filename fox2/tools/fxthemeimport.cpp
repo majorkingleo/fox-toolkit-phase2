@@ -100,6 +100,7 @@ int main(int argc,char* argv[]){
   showColor("tooltip_text",theme,ROLE_TOOLTIP_TEXT);
   showColor("accent",theme,ROLE_ACCENT);
   showColor("hover_ring",theme,ROLE_HOVER_RING);
+  showColor("scrollbar_thumb",theme,ROLE_SCROLLBAR_THUMB);
   std::printf("metrics:\n");
   std::printf("  %-20s %d\n","padding",theme.metric(METRIC_PADDING));
   std::printf("  %-20s %d\n","border_width",theme.metric(METRIC_BORDER_WIDTH));

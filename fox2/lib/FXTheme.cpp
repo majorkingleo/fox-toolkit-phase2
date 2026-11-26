@@ -216,6 +216,7 @@ void FXTheme::setBreezeDarkLayan(){
   colors[ROLE_ACCENT]=FXRGB(86,87,245);
   colors[ROLE_FOCUS_RING]=FXRGB(86,87,245);
   colors[ROLE_HOVER_RING]=FXRGB(86,87,245);
+  colors[ROLE_SCROLLBAR_THUMB]=FXRGB(86,87,245);
   }
 
 
@@ -224,7 +225,7 @@ FXbool FXTheme::load(const FXString& path){
   static const FXchar *colorkeys[ROLE_LAST]={
     "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
     "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
-    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring"
+    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring","scrollbar_thumb"
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
@@ -262,6 +263,7 @@ void FXTheme::updateDerived(){
   colors[ROLE_TEXT_DISABLED]=mixColor(colors[ROLE_TEXT],colors[ROLE_SURFACE],45);
   colors[ROLE_ACCENT]=colors[ROLE_SELECTION_BG];
   colors[ROLE_FOCUS_RING]=colors[ROLE_ACCENT];
+  colors[ROLE_SCROLLBAR_THUMB]=mixColor(colors[ROLE_SURFACE],colors[ROLE_TEXT],20);
   }
 
 
@@ -340,7 +342,7 @@ FXString FXTheme::describe(const FXString& name,const FXString& source) const {
   static const FXchar *colorkeys[ROLE_LAST]={
     "window_bg","surface","surface_hilite","surface_shadow","text","text_disabled","border",
     "selection_bg","selection_text","menu_selection_bg","menu_selection_text",
-    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring"
+    "tooltip_bg","tooltip_text","accent","focus_ring","button","hover_ring","scrollbar_thumb"
     };
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",

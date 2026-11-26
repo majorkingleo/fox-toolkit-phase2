@@ -871,11 +871,10 @@ long FXScrollBar::onPaint(FXObject*,FXSelector,void* ptr){
   FXTheme *theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
   if(0<radius){
-    FXColor surface=theme->color(ROLE_SURFACE);
-    FXColor thumb=blendColor(surface,theme->color(ROLE_TEXT),20);
+    FXColor thumb=theme->color(ROLE_SCROLLBAR_THUMB);
     FXColor thumbedge=blendColor(thumb,theme->color(ROLE_TEXT),20);
     if((mode==MODE_DRAG) || (mode==MODE_FINE_DRAG) || underCursor()){
-      thumb=blendColor(surface,theme->color(ROLE_TEXT),35);
+      thumb=blendColor(thumb,theme->color(ROLE_TEXT),20);
       thumbedge=blendColor(thumb,theme->color(ROLE_TEXT),25);
       }
     dc.setForeground(backColor);

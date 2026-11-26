@@ -406,7 +406,8 @@ Also ship the imported Breeze presets as compiled FOX theme data:
   Layan dark color scheme from the user's KDE installation. The frame follows
   the KDE window color `#33333B` while views stay darker at `#2A2A31`; the
   frame hairline is the lighter KDE border `#57575E`, so both the frame/view
-  contrast and the border contrast match the KDE window.
+  contrast and the border contrast match the KDE window. Scrollbar thumbs use
+  the Layan accent `#5657F5`.
 
 The upstream GTK payload is vendored under `fox2/themes/breeze/{light,dark}`;
 `import-breeze.sh` refreshes those folders from a Linux theme installation.
