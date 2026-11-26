@@ -5,6 +5,7 @@
 #include "FXCurve.h"
 #include "FXChartUtils.h"
 #include "FXData.h"
+#include "FXFollowView.h"
 
 #include <cmath>
 #include <functional>
@@ -95,6 +96,53 @@ bool pickNearestDoesNotBridgeNonFiniteGaps(){
   return pickNearest(points,3,5,0,1)==-1;
   }
 
+bool followViewDefaultsAndClampsWindow(){
+  FXFollowView view;
+  if(view.getWindowLength()!=30.0 || !view.isFollowing()) return false;
+  view.setWindowLength(0.0);
+  if(view.getWindowLength()!=1.0) return false;
+  view.setWindowLength(9000.0);
+  if(view.getWindowLength()!=7200.0) return false;
+  view.setWindowLength(std::numeric_limits<FXdouble>::quiet_NaN());
+  return view.getWindowLength()==30.0;
+  }
+
+bool followViewTracksLatestAndWindowChanges(){
+  FXFollowView view;
+  view.update(100.0);
+  if(view.getViewLeft()!=70.0 || view.getViewRight()!=100.0) return false;
+  view.update(110.0);
+  if(view.getViewLeft()!=80.0) return false;
+  view.setWindowLength(20.0);
+  return view.getViewLeft()==90.0 && view.getViewRight()==110.0;
+  }
+
+bool followViewScrollbarScrollAndResume(){
+  FXFollowView view;
+  view.update(100.0);
+  FXint range=0,page=0,position=0;
+  view.getScrollBar(0.0,100.0,range,page,position);
+  if(range!=FXFollowView::SCROLLBAR_RANGE || page!=300000 || position!=range-page) return false;
+  view.scrollTo(350000,range,0.0,100.0);
+  if(view.isFollowing() || view.getViewLeft()!=35.0) return false;
+  view.update(110.0);
+  if(view.isFollowing() || view.getViewLeft()!=35.0) return false;
+  view.getScrollBar(0.0,110.0,range,page,position);
+  if(position>=range-page) return false;
+  view.scrollTo(range-page,range,0.0,110.0);
+  return view.isFollowing() && view.getViewLeft()==80.0 && view.getViewRight()==110.0;
+  }
+
+bool followViewShortHistoryFollowsLatest(){
+  FXFollowView view;
+  view.update(10.0);
+  FXint range=0,page=0,position=0;
+  view.getScrollBar(0.0,10.0,range,page,position);
+  if(range!=page || position!=0) return false;
+  view.scrollTo(0,range,0.0,10.0);
+  return view.isFollowing() && view.getViewLeft()==-20.0;
+  }
+
 }
 
 int main(){
@@ -107,7 +155,11 @@ int main(){
     {"default tick label formatter",emptyFormatterUsesDefault},
     {"curve picking segment distance",pickNearestFindsClosestPointOnSegment},
     {"curve picking point and radius",pickNearestFindsSinglePointAndHonorsRadius},
-    {"curve picking respects non-finite gaps",pickNearestDoesNotBridgeNonFiniteGaps}
+    {"curve picking respects non-finite gaps",pickNearestDoesNotBridgeNonFiniteGaps},
+    {"follow view defaults and window clamp",followViewDefaultsAndClampsWindow},
+    {"follow view tracks latest timestamps",followViewTracksLatestAndWindowChanges},
+    {"follow view scrollbar transitions",followViewScrollbarScrollAndResume},
+    {"follow view short history",followViewShortHistoryFollowsLatest}
     };
   int failures=0;
   for(const Test& test : tests){

@@ -30,6 +30,7 @@
 #include "FXCurve.h"
 #include "FX2DChart.h"
 #include "FX2DPlot.h"
+#include "FXFollowView.h"
 #include "FXInteractivePlot.h"
 
 #ifndef FX_NO_GLOBAL_NAMESPACE

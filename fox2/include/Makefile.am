@@ -315,6 +315,7 @@ FXCurve.h \
 FXData.h \
 FX2DChart.h \
 FX2DPlot.h \
+FXFollowView.h \
 FXInteractivePlot.h \
 xincs.h
 
