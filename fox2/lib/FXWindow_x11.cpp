@@ -1197,6 +1197,40 @@ void FXWindow::disable(){
     }
   }
 
+// Apply whole-shell opacity through the compositing manager
+void FXWindow::setOpacity(FXint percent){
+  Display *dpy=(Display*)getApp()->getDisplay();
+  FXID shell=xid;
+  Atom atom;
+  unsigned long value;
+  if(!dpy) return;
+  opacity=FXCLAMP(0,percent,100);
+  if(!xid) return;
+  if(!isShell()) shell=getShell()->id();
+  atom=XInternAtom(dpy,"_NET_WM_WINDOW_OPACITY",False);
+  if(opacity>=100){
+    XDeleteProperty(dpy,(Window)shell,atom);
+    }
+  else{
+    value=(unsigned long)((FXuint)opacity*4294967295UL/100);
+    XChangeProperty(dpy,(Window)shell,atom,XA_CARDINAL,32,PropModeReplace,(unsigned char*)&value,1);
+    }
+  XFlush(dpy);
+  }
+
+
+// Opacity is honored only when a compositing manager owns the screen
+FXbool FXWindow::isOpacitySupported() const {
+  Display *dpy=(Display*)getApp()->getDisplay();
+  FXchar name[64];
+  Atom atom;
+  if(!dpy) return false;
+  snprintf(name,sizeof(name),"_NET_WM_CM_S%d",DefaultScreen(dpy));
+  atom=XInternAtom(dpy,name,False);
+  return XGetSelectionOwner(dpy,atom)!=None;
+  }
+
+
 }
 
 #endif

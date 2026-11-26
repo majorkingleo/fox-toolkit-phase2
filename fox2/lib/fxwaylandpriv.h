@@ -144,6 +144,7 @@ struct FXWaylandSurface {
   FXWaylandBuffer*           iconbuffer; // Buffer the compositor copies it from
   zwp_idle_inhibitor_v1*     idleinhibitor; // Keeps the screen on, while it exists
   FXdouble                   scale;      // Scale this surface is drawn at
+  FXint                      opacity;    // Shell opacity, 0..100
   FXint                      bufscale;   // Scale told to the compositor
   FXint                      logicalw;   // Size the compositor asked for, in
   FXint                      logicalh;   // logical pixels
@@ -414,6 +415,7 @@ void fxwaylandExposeRect(FXWaylandApp* app,FXID window,const FXRectangle& rect);
 /// transparent, so a popup shows the window behind it instead of its own
 /// background, while the margin of its drop shadow stays outside
 void fxwaylandSetRadius(FXWaylandApp* app,FXID window,FXint radius,FXint x,FXint y,FXint w,FXint h);
+void fxwaylandSetOpacity(FXWaylandApp* app,FXID window,FXint opacity);
 
 /// Return an idle buffer of the given size, creating the pool when needed
 FXWaylandBuffer* fxwaylandAcquireBuffer(FXWaylandSurface* surf,FXint w,FXint h);

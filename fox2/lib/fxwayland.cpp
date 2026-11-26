@@ -430,6 +430,7 @@ FXWaylandSurface* fxwaylandCreateSurface(FXWaylandApp* app,FXID window,FXbool po
   s->lastmask=0;
   s->width=0;
   s->height=0;
+  s->opacity=100;
   s->surface=wl_compositor_create_surface(app->compositor);
   if(!s->surface){ delete s; return nullptr; }
   fxwaylandPrepareScale(app,s);
@@ -586,6 +587,7 @@ FXbool fxwaylandCreatePopup(FXWaylandApp* app,FXID window,FXID parentwindow,FXin
   s->lastmask=0;
   s->width=0;
   s->height=0;
+  s->opacity=100;
   s->surface=wl_compositor_create_surface(app->compositor);
   if(!s->surface){ delete s; return false; }
   fxwaylandPrepareScale(app,s);
@@ -1177,6 +1179,35 @@ FXbool fxwaylandPaintPending(FXWaylandApp* app){
   }
 
 
+// Set the opacity the next committed frames are scaled by
+void fxwaylandSetOpacity(FXWaylandApp* app,FXID window,FXint opacity){
+  FXWaylandSurface *s;
+  s=fxwaylandFindSurface(app,window);
+  if(!s) return;
+  s->opacity=FXCLAMP(0,opacity,100);
+  s->dirty=true;
+  fxwaylandExpose(app,window);
+  }
+
+
+// Scale a finished ARGB frame by the shell opacity
+static void scaleOpacity(FXColor* pixels,FXint count,FXint opacity){
+  FXuint alpha;
+  FXuint red;
+  FXuint green;
+  FXuint blue;
+  FXColor c;
+  for(FXint i=0; i<count; i++){
+    c=pixels[i];
+    alpha=(FXALPHAVAL(c)*opacity+50)/100;
+    red=(FXREDVAL(c)*opacity+50)/100;
+    green=(FXGREENVAL(c)*opacity+50)/100;
+    blue=(FXBLUEVAL(c)*opacity+50)/100;
+    pixels[i]=FXRGBA(red,green,blue,alpha);
+    }
+  }
+
+
 // Commit the shells that were painted since the last call
 void fxwaylandFlushFrames(FXWaylandApp* app){
   FXWaylandSurface* s;
@@ -1209,6 +1240,7 @@ void fxwaylandFlushFrames(FXWaylandApp* app){
       if(0<s->nmasks) maskCorners(s);
       if((b=fxwaylandAcquireBuffer(s,s->storew,s->storeh))!=nullptr){
         memcpy(b->pixels,s->store,(FXuval)s->storew*s->storeh*sizeof(FXColor));
+        if(s->opacity<100) scaleOpacity(b->pixels,s->storew*s->storeh,s->opacity);
         fxwaylandCommitBuffer(s,b,0,0,b->width,b->height);
         fxwaylandDumpBuffer(s,b);
         s->dirty=false;

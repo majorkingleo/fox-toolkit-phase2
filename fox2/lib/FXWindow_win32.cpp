@@ -885,6 +885,32 @@ void FXWindow::disable(){
   }
 
 
+// Apply whole-shell opacity with a layered window
+void FXWindow::setOpacity(FXint percent){
+  HWND hwnd;
+  LONG_PTR style;
+  opacity=FXCLAMP(0,percent,100);
+  if(!xid || !isShell()) return;
+  hwnd=(HWND)xid;
+  style=GetWindowLongPtr(hwnd,GWL_EXSTYLE);
+  if(opacity>=100){
+    style&=~WS_EX_LAYERED;
+    SetWindowLongPtr(hwnd,GWL_EXSTYLE,style);
+    }
+  else{
+    style|=WS_EX_LAYERED;
+    SetWindowLongPtr(hwnd,GWL_EXSTYLE,style);
+    SetLayeredWindowAttributes(hwnd,0,(BYTE)((opacity*255+50)/100),LWA_ALPHA);
+    }
+  }
+
+
+// Layered windows are available on all supported Win32 versions
+FXbool FXWindow::isOpacitySupported() const {
+  return true;
+  }
+
+
 }
 
 #endif

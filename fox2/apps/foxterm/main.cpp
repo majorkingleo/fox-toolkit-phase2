@@ -53,6 +53,7 @@ static void usage(const FXchar* program){
   printf("  --profile NAME          select a profile (default)\n");
   printf("  --term vt100|xterm      select the emulation profile\n");
   printf("  --working-directory DIR start the shell in DIR\n");
+  printf("  --opacity PERCENT       set whole-window opacity (0..100)\n");
   printf("  --execute COMMAND       run COMMAND directly without a shell\n");
   printf("  --help                  show this help\n");
   printf("  --version               show the FOX version\n");
@@ -67,6 +68,7 @@ int main(int argc,char* argv[]){
   FXString arguments;
   FXString directory;
   FXString term;
+  FXint opacity=100;
   FXint kind=TERMINAL_XTERM;
   FXApp application("FoxTerm");
   TerminalWindow *window;
@@ -95,6 +97,11 @@ int main(int argc,char* argv[]){
         fprintf(stderr,"%s: unknown terminal type %s\n",argv[0],term.text());
         return 2;
         }
+      continue;
+      }
+    if(strcmp(argv[i],"--opacity")==0 && i+1<argc){
+      FXint parsed=FXString(argv[++i]).toInt();
+      opacity=FXCLAMP(0,parsed,100);
       continue;
       }
     if(strcmp(argv[i],"--working-directory")==0 && i+1<argc){
@@ -145,5 +152,6 @@ int main(int argc,char* argv[]){
   application.addSignal(SIGINT,window,TerminalWindow::ID_QUIT);
   new FXToolTip(&application,0);
   application.create();
+  window->setOpacity(opacity);
   return application.run();
   }

@@ -152,6 +152,7 @@ protected:
   FXint             dpi;                // DPI of the monitor this window is on
   FXColor           backColor;          // Window background color
   FXbool            backColorOverride=false;  // Back color set explicitly
+  FXint             opacity;           // Shell opacity, 0..100
   FXString          tag;                // Help tag
   FXuint            flags;              // Window state flags
   FXuint            options;            // Window options
@@ -860,6 +861,15 @@ public:
 
   /// Get background color
   FXColor getBackColor() const { return backColor; }
+
+  /// Set whole-shell opacity, 0..100; 100 is fully opaque
+  virtual void setOpacity(FXint percent);
+
+  /// Return shell opacity
+  FXint getOpacity() const { return opacity; }
+
+  /// Return true when the backend can apply shell opacity
+  virtual FXbool isOpacitySupported() const;
 
   /// Re-apply theme colors to this window
   virtual void applyTheme(FXTheme* theme);

@@ -231,6 +231,7 @@ FXWindow::FXWindow(){
   ypos=0;
   dpi=0;
   backColor=0;
+  opacity=100;
   flags=FLAG_DIRTY|FLAG_UPDATE|FLAG_RECALC|FLAG_CURSOR;
   options=0;
   wk=0;
@@ -257,6 +258,7 @@ FXWindow::FXWindow(FXApp* a,FXVisual *vis):FXDrawable(a,1,1){
   ypos=0;
   dpi=0;
   backColor=0;
+  opacity=100;
   flags=FLAG_DIRTY|FLAG_SHOWN|FLAG_UPDATE|FLAG_RECALC|FLAG_CURSOR;
   options=LAYOUT_FIX_X|LAYOUT_FIX_Y|LAYOUT_FIX_WIDTH|LAYOUT_FIX_HEIGHT;
   wk=1;
@@ -293,6 +295,7 @@ FXWindow::FXWindow(FXApp* a,FXWindow* own,FXuint opts,FXint x,FXint y,FXint w,FX
   ypos=y;
   dpi=0;
   backColor=getApp()->getBaseColor();
+  opacity=100;
   flags=FLAG_DIRTY|FLAG_UPDATE|FLAG_RECALC|FLAG_SHELL|FLAG_CURSOR;
   options=opts;
   }
@@ -328,6 +331,7 @@ FXWindow::FXWindow(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h):F
   ypos=y;
   dpi=0;
   backColor=getApp()->getBaseColor();
+  opacity=100;
   flags=FLAG_DIRTY|FLAG_UPDATE|FLAG_RECALC|FLAG_CURSOR;
   options=opts;
   }

@@ -156,6 +156,9 @@ public:
   /// Edit the active profile
   long onCmdSettings(FXObject*,FXSelector,void*);
 
+  /// Apply whole-window opacity
+  long onCmdOpacity(FXObject*,FXSelector,void*);
+
   /// Show About
   long onCmdAbout(FXObject*,FXSelector,void*);
 public:
@@ -177,6 +180,8 @@ public:
     ID_PROFILE0,
     ID_PROFILE_LAST=ID_PROFILE0+15,
     ID_SETTINGS,
+    ID_OPACITY0,
+    ID_OPACITY_LAST=ID_OPACITY0+4,
     ID_COPY,
     ID_PASTE,
     ID_ABOUT,

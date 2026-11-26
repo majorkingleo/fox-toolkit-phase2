@@ -1498,6 +1498,18 @@ Acceptance:
 - The X11 property, Win32 layered-alpha attribute and Wayland surface alpha
   are inspectable by the tests in section 14.5.
 
+Phase 10 result (partial): added `FXWindow::setOpacity()`, `getOpacity()` and
+`isOpacitySupported()` with an X11 `_NET_WM_WINDOW_OPACITY` property, Win32
+layered-window alpha, and a Wayland per-surface premultiplied scale pass.
+`foxterm` has an Opacity menu and `--opacity PERCENT`; the value is stored in
+`[APPEARANCE] opacity` and restored on restart. A live X11 run at 50% reports
+`_NET_WM_WINDOW_OPACITY` as `2147483647` and the composited window is visibly
+translucent. A headless Wayland PAM dump at 50% has center alpha `0x80`. The
+Win32 path cross-compiles; no real Windows compositor run yet.
+
+Not yet done: the settings-dialog capability label, detach across opacity
+changes, and the formal pixel gates from section 14.5.
+
 ### Phase 11: per-pixel `background` mode
 
 Implement the alpha-aware raster path and the backend capability gates. Do the
@@ -1522,6 +1534,10 @@ Acceptance:
 - The opaque pixel gates remain at 0 differing pixels.
 - The platform support matrix in section 8.4 is updated with the measured
   result, including any backend that only reaches `window`.
+
+Phase 11 is not started. `FXTerminalTransparency`, `backgroundOpacity`, the
+alpha-aware raster fill/blend path and the per-pixel background capability gates
+remain unimplemented. `window` opacity is the only transparency mode available.
 
 ### Phase 12: hardening, verification and documentation
 

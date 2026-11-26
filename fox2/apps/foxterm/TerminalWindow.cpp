@@ -48,6 +48,7 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PREV_TAB,TerminalWindow::onCmdPrevTab),
   FXMAPFUNCS(SEL_COMMAND,TerminalWindow::ID_PROFILE0,TerminalWindow::ID_PROFILE_LAST,TerminalWindow::onCmdProfile),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_SETTINGS,TerminalWindow::onCmdSettings),
+  FXMAPFUNCS(SEL_COMMAND,TerminalWindow::ID_OPACITY0,TerminalWindow::ID_OPACITY_LAST,TerminalWindow::onCmdOpacity),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_COPY,TerminalWindow::onCmdCopy),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PASTE,TerminalWindow::onCmdPaste),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
@@ -81,6 +82,15 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXMenuCommand(mainmenu,"&Detach Tab",nullptr,this,ID_DETACH);
   new FXMenuCommand(mainmenu,"&Find...\tCtl-Shift-F",nullptr,this,ID_FIND);
   new FXMenuCommand(mainmenu,"&Settings...",nullptr,this,ID_SETTINGS);
+  {
+    FXMenuPane *opacitymenu=new FXMenuPane(this);
+    new FXMenuCommand(opacitymenu,"100%",nullptr,this,ID_OPACITY0);
+    new FXMenuCommand(opacitymenu,"85%",nullptr,this,ID_OPACITY0+1);
+    new FXMenuCommand(opacitymenu,"70%",nullptr,this,ID_OPACITY0+2);
+    new FXMenuCommand(opacitymenu,"50%",nullptr,this,ID_OPACITY0+3);
+    new FXMenuCommand(opacitymenu,"0%",nullptr,this,ID_OPACITY0+4);
+    new FXMenuCascade(mainmenu,"Opacity",nullptr,opacitymenu);
+    }
   new FXMenuCommand(mainmenu,"Next Tab\tCtl-Tab",nullptr,this,ID_NEXT_TAB);
   new FXMenuCommand(mainmenu,"Previous Tab\tCtl-Shift-Tab",nullptr,this,ID_PREV_TAB);
   new FXMenuSeparator(mainmenu);
@@ -100,6 +110,7 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   findstatus=new FXLabel(findbar,"",nullptr,LAYOUT_CENTER_Y);
   findbar->hide();
   status=new FXLabel(contents,"Starting...",nullptr,FXuint(JUSTIFY_LEFT)|FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,4,4,1,1);
+  opacity=FXCLAMP(0,a->reg().readIntEntry("APPEARANCE","opacity",100),100);
   }
 
 
@@ -108,6 +119,7 @@ void TerminalWindow::create(){
   FXMainWindow::create();
   show(PLACEMENT_SCREEN);
   raise();
+  if(isOpacitySupported()) setOpacity(opacity);
   if(autostart && tabs.empty()){
     if(!addTab(launch)){
       status->setText("Could not start the shell");
@@ -327,6 +339,7 @@ void TerminalWindow::saveGeometry(){
     reg.writeIntEntry("WINDOW","y",getY());
     reg.writeIntEntry("WINDOW","w",getWidth());
     reg.writeIntEntry("WINDOW","h",getHeight());
+    reg.writeIntEntry("APPEARANCE","opacity",getOpacity());
     profiles.setActive(activeprofile);
     profiles.save(reg);
     reg.write();
@@ -508,6 +521,23 @@ long TerminalWindow::onCmdSettings(FXObject*,FXSelector,void*){
     profilebutton->setText(profile->name);
     rebuildProfileMenu();
     }
+  return 1;
+  }
+
+
+// Apply whole-window opacity
+long TerminalWindow::onCmdOpacity(FXObject*,FXSelector sel,void*){
+  static const FXint values[5]={100,85,70,50,0};
+  FXint index=(FXint)FXSELID(sel)-ID_OPACITY0;
+  if(index<0 || index>4) return 1;
+  if(!isOpacitySupported()){
+    status->setText("Opacity is not supported by this display");
+    return 1;
+    }
+  setOpacity(values[index]);
+  FXString text;
+  text.format("Opacity: %d%%",values[index]);
+  status->setText(text);
   return 1;
   }
 

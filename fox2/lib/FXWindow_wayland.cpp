@@ -506,6 +506,19 @@ FXbool FXWindow::releaseClipboard(){
   return false;
   }
 
+// Apply whole-shell opacity to the next committed surface
+void FXWindow::setOpacity(FXint percent){
+  opacity=FXCLAMP(0,percent,100);
+  if(xid) fxwaylandSetOpacity(fxwayland(getApp()->getDisplay()),xid,opacity);
+  }
+
+
+// Wayland surfaces are composited with per-pixel alpha
+FXbool FXWindow::isOpacitySupported() const {
+  return true;
+  }
+
+
 }
 
 #endif
