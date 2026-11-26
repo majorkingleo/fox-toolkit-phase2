@@ -418,6 +418,54 @@ const FXTerminalCell& FXTerminalScreen::getCell(FXint row,FXint col) const {
   }
 
 
+// Return a screen row
+const FXTerminalRow& FXTerminalScreen::getRow(FXint row) const {
+  static const FXTerminalRow empty;
+  if(row<0 || row>=(FXint)lines.size()) return empty;
+  return lines[row];
+  }
+
+
+// Return a scrollback row
+const FXTerminalRow& FXTerminalScreen::getScrollbackRow(FXint row) const {
+  static const FXTerminalRow empty;
+  if(row<0 || row>=(FXint)scrollback.size()) return empty;
+  return scrollback[row];
+  }
+
+
+// Return one screen cell text
+FXString FXTerminalScreen::getCellText(FXint row,FXint col) const {
+  FXString text;
+  FXwchar ch[2];
+  const FXTerminalCell& cell=getCell(row,col);
+  if(cell.cluster && cell.cluster<=(FXuint)clusters.size()) return clusters[cell.cluster-1];
+  if(cell.ch){
+    ch[0]=cell.ch;
+    ch[1]=0;
+    text.assign(ch,1);
+    }
+  return text;
+  }
+
+
+// Return one scrollback cell text
+FXString FXTerminalScreen::getScrollbackCellText(FXint row,FXint col) const {
+  FXString text;
+  FXwchar ch[2];
+  const FXTerminalRow& line=getScrollbackRow(row);
+  if(col<0 || col>=(FXint)line.cells.size()) return text;
+  const FXTerminalCell& cell=line.cells[col];
+  if(cell.cluster && cell.cluster<=(FXuint)clusters.size()) return clusters[cell.cluster-1];
+  if(cell.ch){
+    ch[0]=cell.ch;
+    ch[1]=0;
+    text.assign(ch,1);
+    }
+  return text;
+  }
+
+
 // Return true if a cell is a wide continuation
 FXbool FXTerminalScreen::isContinuation(FXint row,FXint col) const {
   return row>=0 && row<(FXint)lines.size() && col>=0 && col<(FXint)lines[row].cells.size() && lines[row].cells[col].width==0;

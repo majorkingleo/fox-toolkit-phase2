@@ -116,6 +116,7 @@ FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
 FXConsole.cpp \
+FXTerminal.cpp \
 fxterminalparser.cpp \
 fxterminalscreen.cpp \
 fxterminalwidth.cpp \

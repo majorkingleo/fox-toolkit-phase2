@@ -1310,6 +1310,19 @@ Acceptance:
 - X11 and Wayland both look correct; Windows build passes at least a manual
   smoke test.
 
+Phase 3 result (partial): added the public `FXTerminal` widget and
+`lib/FXTerminal.cpp`, using the screen, parser and PTY from Phases 1 and 2.
+Implemented painting, scrollback viewport, selection, clipboard copy/paste,
+mouse reporting, cursor blink, focus/IME positioning, key encoding, title/bell
+notifications and basic find. The view was exercised with a temporary X11
+harness that starts `/bin/sh`, displays the prompt, accepts a command, shows its
+output, and can inject `feed()` text. The CMake/X11 library and the MinGW-w64
+cross build compile the widget. The Wayland library target also compiles.
+Still to verify before Phase 3 is complete: interactive resize/`stty size`,
+Ctrl+C, `vim`/`less` alternate-screen round trip, selection drag/copy in the
+window, and a Wayland runtime frame. These move to the Phase 3 follow-up and
+the Phase 4 application work.
+
 ### Phase 4: single-window application
 
 Create `fox2/apps/foxterm` from the console example. Add the tab strip with a

@@ -111,6 +111,7 @@ struct FXTerminalCell {
 struct FXTerminalRow {
   std::vector<FXTerminalCell> cells;   // Cells in the row
   FXbool wrapped;                      // Row continues on the next row
+  FXTerminalRow():wrapped(false){ }
   };
 
 
@@ -407,6 +408,18 @@ public:
 
   /// Return one cell; row and column are zero based
   const FXTerminalCell& getCell(FXint row,FXint col) const;
+
+  /// Return a screen row
+  const FXTerminalRow& getRow(FXint row) const;
+
+  /// Return a scrollback row
+  const FXTerminalRow& getScrollbackRow(FXint row) const;
+
+  /// Return the text of one screen cell
+  FXString getCellText(FXint row,FXint col) const;
+
+  /// Return the text of one scrollback cell
+  FXString getScrollbackCellText(FXint row,FXint col) const;
 
   /// Return the number of retained scrollback rows
   FXint getScrollbackCount() const { return (FXint)scrollback.size(); }
