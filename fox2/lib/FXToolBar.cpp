@@ -79,6 +79,7 @@ namespace FX {
 
 // Map
 FXDEFMAP(FXToolBar) FXToolBarMap[]={
+  FXMAPFUNC(SEL_PAINT,0,FXToolBar::onPaint),
   FXMAPFUNC(SEL_UPDATE,FXToolBar::ID_DOCK_FLIP,FXToolBar::onUpdDockFlip),
   FXMAPFUNC(SEL_COMMAND,FXToolBar::ID_DOCK_FLIP,FXToolBar::onCmdDockFlip),
   };
@@ -95,6 +96,32 @@ FXToolBar::FXToolBar(FXComposite* p,FXComposite* q,FXuint opts,FXint x,FXint y,F
 
 // Make a non-floatable toolbar
 FXToolBar::FXToolBar(FXComposite* p,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb,FXint hs,FXint vs):FXDockBar(p,opts,x,y,w,h,pl,pr,pt,pb,hs,vs){
+  }
+
+
+// Handle repaint
+long FXToolBar::onPaint(FXObject*,FXSelector,void* ptr){
+  FXDCWindow dc(this,(FXEvent*)ptr);
+  FXint radius=getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale());
+  dc.setForeground(backColor);
+  dc.fillRectangle(0,0,width,height);
+
+  // A rounded theme gives the toolbar one hairline on the side that faces the
+  // content instead of a four-sided bevel around every bar
+  if(0<radius){
+    if(options&(FRAME_SUNKEN|FRAME_RAISED|FRAME_THICK|FRAME_GROOVE|FRAME_RIDGE)){
+      FXuint side=getDockingSide();
+      dc.setForeground(getApp()->getTheme()->color(ROLE_BORDER));
+      if(side&LAYOUT_SIDE_TOP) dc.fillRectangle(0,height-1,width,1);
+      else if(side&LAYOUT_SIDE_BOTTOM) dc.fillRectangle(0,0,width,1);
+      else if(side&LAYOUT_SIDE_LEFT) dc.fillRectangle(width-1,0,1,height);
+      else if(side&LAYOUT_SIDE_RIGHT) dc.fillRectangle(0,0,1,height);
+      }
+    }
+  else{
+    drawFrame(dc,0,0,width,height);
+    }
+  return 1;
   }
 
 

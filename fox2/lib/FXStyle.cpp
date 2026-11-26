@@ -428,6 +428,46 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
   FXint border=state.border;
   FXuint options=state.options;
 
+  // Toolbar buttons in a rounded theme are flat until they are hovered,
+  // pressed or checked.  Checked buttons get the Breeze accent outline, and
+  // the face is the button color lifted the way GTK lifts a checked button.
+  if(0<radius && state.toolbar){
+    FXColor accent=theme->color(ROLE_ACCENT);
+    FXColor face=theme->color(ROLE_BUTTON);
+    FXColor tooledge=0;
+    FXbool chrome=false;
+
+    // Clear the button area so the rounded corners show the toolbar behind it
+    dc.setForeground(state.parentBack);
+    dc.fillRectangle(x,y,w,h);
+
+    if(state.enabled){
+      if(state.down){
+        face=blendColor(face,accent,33);
+        tooledge=accent;
+        chrome=true;
+        }
+      else if(state.engaged){
+        face=blendColor(face,state.text,2);
+        tooledge=accent;
+        chrome=true;
+        }
+      else if(state.hover){
+        tooledge=theme->color(ROLE_HOVER_RING);
+        chrome=true;
+        }
+      if(state.focused){
+        tooledge=theme->color(ROLE_FOCUS_RING);
+        chrome=true;
+        }
+      }
+
+    if(chrome){
+      drawRoundedRectangle(dc,x,y,w,h,radius,face,tooledge,borderWidth);
+      }
+    return FXRectangle(x,y,w,h);
+    }
+
   // Rounded chrome, when the theme asks for it.  A flat/no-frame button is
   // used inside combo boxes and must not paint its own shell.
   if(0<radius && (options&(FRAME_RAISED|FRAME_SUNKEN)) && !(options&BUTTON_TOOLBAR)){

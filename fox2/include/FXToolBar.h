@@ -44,6 +44,7 @@ private:
   FXToolBar(const FXToolBar&);
   FXToolBar &operator=(const FXToolBar&);
 public:
+  long onPaint(FXObject*,FXSelector,void*);
   long onCmdDockFlip(FXObject*,FXSelector,void*);
   long onUpdDockFlip(FXObject*,FXSelector,void*);
 public:
