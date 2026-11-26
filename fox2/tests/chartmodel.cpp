@@ -96,6 +96,47 @@ bool pickNearestDoesNotBridgeNonFiniteGaps(){
   return pickNearest(points,3,5,0,1)==-1;
   }
 
+bool curveSegmentsSplitAndBridgeMissingValues(){
+  FXPointF points[8];
+  points[0].x=0.0f; points[0].y=0.0f;
+  points[1].x=1.0f; points[1].y=1.0f;
+  points[2].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[2].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[3].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[3].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[4].x=4.0f; points[4].y=4.0f;
+  points[5].x=5.0f; points[5].y=5.0f;
+  points[6].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[6].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[7].x=7.0f; points[7].y=7.0f;
+  std::vector<FXCurveSegment> segments;
+  getCurveSegments(points,8,segments);
+  if(segments.size()!=5) return false;
+  return segments[0].first==0 && segments[0].count==2 && !segments[0].gap &&
+         segments[1].first==1 && segments[1].count==2 && segments[1].gap &&
+         segments[2].first==4 && segments[2].count==2 && !segments[2].gap &&
+         segments[3].first==5 && segments[3].count==2 && segments[3].gap &&
+         segments[4].first==7 && segments[4].count==1 && !segments[4].gap;
+  }
+
+bool curveSegmentsHandleLeadingTrailingAndEmptyGaps(){
+  FXPointF points[4];
+  points[0].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[0].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[1].x=1.0f; points[1].y=1.0f;
+  points[2].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[2].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[3].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[3].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  std::vector<FXCurveSegment> segments;
+  getCurveSegments(points,4,segments);
+  if(segments.size()!=1 || segments[0].first!=1 || segments[0].count!=1 || segments[0].gap) return false;
+  getCurveSegments(points,1,segments);
+  if(!segments.empty()) return false;
+  getCurveSegments(nullptr,0,segments);
+  return segments.empty();
+  }
+
 bool followViewDefaultsAndClampsWindow(){
   FXFollowView view;
   if(view.getWindowLength()!=30.0 || !view.isFollowing()) return false;
@@ -156,6 +197,8 @@ int main(){
     {"curve picking segment distance",pickNearestFindsClosestPointOnSegment},
     {"curve picking point and radius",pickNearestFindsSinglePointAndHonorsRadius},
     {"curve picking respects non-finite gaps",pickNearestDoesNotBridgeNonFiniteGaps},
+    {"curve segments split and bridge gaps",curveSegmentsSplitAndBridgeMissingValues},
+    {"curve segments handle edge gaps",curveSegmentsHandleLeadingTrailingAndEmptyGaps},
     {"follow view defaults and window clamp",followViewDefaultsAndClampsWindow},
     {"follow view tracks latest timestamps",followViewTracksLatestAndWindowChanges},
     {"follow view scrollbar transitions",followViewScrollbarScrollAndResume},

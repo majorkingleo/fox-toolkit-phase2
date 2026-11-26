@@ -70,6 +70,33 @@ FXint pickNearest(const FXPointF* points,FXint count,FXint x,FXint y,FXint radiu
   }
 
 
+// Split finite runs and mark dotted bridges across missing samples
+void getCurveSegments(const FXPointF* points,FXint count,std::vector<FXCurveSegment>& segments){
+  segments.clear();
+  if(!points || count<=0) return;
+  FXint runstart=-1;
+  FXint previousend=-1;
+  for(FXint i=0; i<=count; i++){
+    FXbool finite=i<count && Math::fpFinite(points[i].x) && Math::fpFinite(points[i].y);
+    if(finite){
+      if(runstart<0) runstart=i;
+      continue;
+      }
+    if(runstart>=0){
+      FXint runend=i-1;
+      if(previousend>=0){
+        FXCurveSegment bridge={previousend,2,true};
+        segments.push_back(bridge);
+        }
+      FXCurveSegment run={runstart,runend-runstart+1,false};
+      segments.push_back(run);
+      previousend=runend;
+      runstart=-1;
+      }
+    }
+  }
+
+
 // Measure text width
 FXint textWidth(FXFont *font,const FXString& string){
   FXint angle=font->getAngle()/(90*64);

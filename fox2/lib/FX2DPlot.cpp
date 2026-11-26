@@ -28,6 +28,8 @@
 #include "FX2DChart.h"
 #include "FX2DPlot.h"
 
+#include <limits>
+
 /*
   Notes:
 */
@@ -170,6 +172,15 @@ static void appendCurvePoint(FXArray<FXPointF>& points,FXfloat x,FXfloat y){
   }
 
 
+// Add a non-finite separator between disjoint curve runs
+static void appendCurveGap(FXArray<FXPointF>& points){
+  if(points.no()==0 || (Math::fpFinite(points.tail().x) && Math::fpFinite(points.tail().y))){
+    FXfloat nan=std::numeric_limits<FXfloat>::quiet_NaN();
+    points.append(FXPointF(nan,nan));
+    }
+  }
+
+
 // Add the vertical extent of one pixel column, starting nearest the last point
 static void flushCurveBucket(FXArray<FXPointF>& points,FXfloat x,FXfloat lo,FXfloat hi){
   if(lo==hi){
@@ -227,7 +238,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
     if(curve->getLineStyle().style!=LINESTYLE_NONE){
       dc.setForeground(curve->getLineStyle().color);
       dc.setLineWidth(curve->getLineStyle().weight);
-      dc.setLineStyle(dcLineStyle(curve->getLineStyle().style));
+      FXLineStyle linestyle=dcLineStyle(curve->getLineStyle().style);
       if(count>2*FXMAX(1,plotright-plotleft)){
         FXbool active=false;
         FXint bucketx=0;
@@ -238,12 +249,17 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
           if(!Math::fpFinite(x) || !Math::fpFinite(y)){
             if(active) flushCurveBucket(points,(FXfloat)bucketx,bucketlo,buckethi);
             active=false;
-            if(points.no()>1) dc.drawLinesF(points.data(),points.no());
-            points.clear();
+            appendCurveGap(points);
             continue;
             }
           fx=(FXfloat)(plotleft+(x-xmin)*xscale);
           y=y*curve->getScale()+curve->getOffset();
+          if(!Math::fpFinite(y)){
+            if(active) flushCurveBucket(points,(FXfloat)bucketx,bucketlo,buckethi);
+            active=false;
+            appendCurveGap(points);
+            continue;
+            }
           fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
           px=(FXint)Math::lrint(fx);
           if(!active){
@@ -268,17 +284,28 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
           x=xdata->get(j);
           y=ydata->get(j);
           if(!Math::fpFinite(x) || !Math::fpFinite(y)){
-            if(points.no()>1) dc.drawLinesF(points.data(),points.no());
-            points.clear();
+            appendCurveGap(points);
+            continue;
+            }
+          y=y*curve->getScale()+curve->getOffset();
+          if(!Math::fpFinite(y)){
+            appendCurveGap(points);
             continue;
             }
           fx=(FXfloat)(plotleft+(x-xmin)*xscale);
-          y=y*curve->getScale()+curve->getOffset();
           fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
           appendCurvePoint(points,fx,fy);
           }
         }
-      if(points.no()>1) dc.drawLinesF(points.data(),points.no());
+      std::vector<FXCurveSegment> segments;
+      getCurveSegments(points.data(),points.no(),segments);
+      for(FXuval segment=0; segment<segments.size(); segment++){
+        FXCurveSegment part=segments[segment];
+        if(part.count<2) continue;
+        dc.setLineStyle(part.gap?LINE_ONOFF_DASH:linestyle);
+        dc.drawLinesF(points.data()+part.first,part.count);
+        }
+      dc.setLineStyle(linestyle);
       }
 
     // Markers; with dense data keep only the first marker in each pixel column
@@ -292,6 +319,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
           if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
           px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
           y=y*curve->getScale()+curve->getOffset();
+          if(!Math::fpFinite(y)) continue;
           py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
           if(first || px!=lastpx){
             drawMarker(dc,curve->getMarkerStyle(),px,py);
@@ -307,6 +335,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
           if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
           px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
           y=y*curve->getScale()+curve->getOffset();
+          if(!Math::fpFinite(y)) continue;
           py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
           drawMarker(dc,curve->getMarkerStyle(),px,py);
           }
