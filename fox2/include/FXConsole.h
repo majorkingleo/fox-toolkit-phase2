@@ -51,6 +51,17 @@ enum {
 typedef FXArray<FXString>  FXStringBuffer;
 
 
+/// A search match in both logical-line and flattened-buffer coordinates
+struct FXConsoleMatch {
+  FXint startline;
+  FXint startbyte;
+  FXint endline;
+  FXint endbyte;
+  FXint startpos;
+  FXint endpos;
+  };
+
+
 /// Bounded line and style storage used by FXConsole; independent of a display
 class FXAPI FXConsoleBuffer {
 private:
@@ -75,6 +86,7 @@ public:
   FXint getNumLines() const { return count; }
   FXString getLineText(FXint line) const;
   FXString getRange(FXint startline,FXint startbyte,FXint endline,FXint endbyte) const;
+  void findAll(const FXString& pattern,FXuint flags,std::vector<FXConsoleMatch>& matches) const;
   const FXString& line(FXint line) const;
   FXuint getStyle(FXint line,FXint byte) const;
   };
@@ -116,12 +128,19 @@ protected:
   FXint          anchorline;      // Mouse selection anchor line
   FXint          anchorbyte;      // Mouse selection anchor byte
   FXint          mousemode;       // Character, word, or line selection mode
+  FXint          findindex;       // Currently navigated match
   FXint          vrows;         // Default visible rows
   FXint          vcols;         // Default visible columns
   FXColor        textColor;     // Normal text color
   FXColor        selbackColor;  // Select background color
   FXColor        seltextColor;  // Select text color
   FXColor        cursorColor;   // Cursor color
+  FXColor        findbackColor; // Default search highlight background
+  FXColor        findtextColor; // Default search highlight foreground
+  FXString       findpattern;   // Current search pattern
+  FXuint         findflags;     // Current search flags
+  std::vector<FXConsoleMatch> findmatches; // Search match positions
+  std::vector<FXint> findlineoffsets; // Flattened byte offset of each logical line
   FXString       clipped;       // Clipboard text
   FXbool         autoscroll;    // Follow the end while enabled
   FXbool         scrollpending; // Scroll to end after layout
@@ -135,6 +154,9 @@ protected:
   FXint lineWidth(const FXString& text) const;
   void updateAutoScrollFromPosition();
   FXbool isSelected(FXint line,FXint byte) const;
+  FXbool isFindHighlighted(FXint line,FXint byte) const;
+  void refreshFindMatches();
+  void revealFindMatch(FXint index);
   void setSelection(FXint line,FXint byte,FXbool extend=false);
   void setWordSelection(FXint line,FXint byte);
   void setLineSelection(FXint line);
@@ -269,6 +291,16 @@ public:
 
   /// Copy selected text to the clipboard
   FXbool copy();
+
+  /// Set search pattern and flags, highlighting all matches
+  void setFindPattern(const FXString& pattern,FXuint searchflags);
+
+  /// Return the number of matches in the retained buffer
+  FXint getFindCount() const { return (FXint)findmatches.size(); }
+
+  /// Select and scroll to the next/previous search match
+  FXbool findNext();
+  FXbool findPrev();
 
   /// Set style table; style id 0 is default and id n uses styles[n-1]
   void setStyleTable(const FXHiliteStyle* styles,FXuint count);

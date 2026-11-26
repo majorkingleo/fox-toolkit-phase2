@@ -57,5 +57,25 @@ int main(){
   ok=check(buffer.getNumLines()==2 && buffer.getLineText(0)=="gamma","range model remains consistent after ring eviction") && ok;
   ok=check(buffer.getRange(0,0,1,5)=="gamma\ndelta","range uses retained logical line indices") && ok;
 
+  buffer.clear();
+  buffer.setHistoryLines(10);
+  buffer.appendLine("Alpha alpha");
+  buffer.appendLine("beta ALPHA");
+  std::vector<FXConsoleMatch> matches;
+  buffer.findAll("alpha",SEARCH_IGNORECASE,matches);
+  ok=check(matches.size()==3,"case-insensitive search finds all occurrences") && ok;
+  ok=check(matches.size()==3 && matches[0].startline==0 && matches[0].startbyte==0 && matches[0].endbyte==5,"first match coordinates") && ok;
+  ok=check(matches.size()==3 && matches[1].startline==0 && matches[1].startbyte==6 && matches[1].endbyte==11,"second match coordinates") && ok;
+  ok=check(matches.size()==3 && matches[2].startline==1 && matches[2].startbyte==5 && matches[2].endbyte==10,"third match coordinates") && ok;
+  buffer.findAll("alpha\nbeta",SEARCH_IGNORECASE,matches);
+  ok=check(matches.size()==1 && matches[0].startline==0 && matches[0].endline==1,"search can span logical lines") && ok;
+  buffer.findAll("[A-Z][a-z]+",SEARCH_REGEX,matches);
+  ok=check(matches.size()==1 && buffer.getRange(matches[0].startline,matches[0].startbyte,matches[0].endline,matches[0].endbyte)=="Alpha","regular-expression search uses FXText-style flags") && ok;
+  buffer.findAll("(",SEARCH_REGEX,matches);
+  ok=check(matches.empty(),"invalid regular expression returns no matches") && ok;
+  buffer.setHistoryLines(1);
+  buffer.findAll("alpha",SEARCH_IGNORECASE,matches);
+  ok=check(matches.size()==1 && matches[0].startline==0 && buffer.getRange(matches[0].startline,matches[0].startbyte,matches[0].endline,matches[0].endbyte)=="ALPHA","search coordinates follow retained ring lines") && ok;
+
   return ok ? 0 : 1;
   }

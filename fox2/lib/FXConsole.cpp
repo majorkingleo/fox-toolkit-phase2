@@ -19,6 +19,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>          *
 ********************************************************************************/
 #include <new>
+#include <algorithm>
 #include "xincs.h"
 #include "fxver.h"
 #include "fxdefs.h"
@@ -32,6 +33,7 @@
 #include "FXElement.h"
 #include "FXMetaClass.h"
 #include "FXString.h"
+#include "FXRex.h"
 #include "FXFont.h"
 #include "FXEvent.h"
 #include "FXDCWindow.h"
@@ -228,6 +230,53 @@ FXString FXConsoleBuffer::getRange(FXint startline,FXint startbyte,FXint endline
   }
 
 
+// Find all non-empty matches in the flattened retained text
+void FXConsoleBuffer::findAll(const FXString& pattern,FXuint flags,std::vector<FXConsoleMatch>& matches) const {
+  matches.clear();
+  if(pattern.empty() || count==0) return;
+  FXString text;
+  std::vector<FXint> linestarts;
+  linestarts.reserve(count);
+  for(FXint i=0; i<count; i++){
+    linestarts.push_back(text.length());
+    text+=line(i);
+    if(i+1<count) text+='\n';
+    }
+  FXint mode=FXRex::Normal;
+  if(flags&SEARCH_WORDS) mode|=FXRex::Words;
+  if(flags&SEARCH_PREFIX) mode|=FXRex::WordBeg;
+  if(flags&SEARCH_SUFFIX) mode|=FXRex::WordEnd;
+  if(flags&SEARCH_IGNORECASE) mode|=FXRex::IgnoreCase;
+  if(!(flags&SEARCH_REGEX)) mode|=FXRex::Verbatim;
+  FXRex expression;
+  if(expression.parse(pattern,mode)!=FXRex::ErrOK) return;
+  FXint from=0;
+  FXint beg[1];
+  FXint end[1];
+  while(from<=text.length()){
+    FXint found=expression.search(text,from,text.length(),FXRex::Normal,beg,end,1);
+    if(found<0) break;
+    if(end[0]>beg[0]){
+      auto locate=[&](FXint pos,FXint& lineindex,FXint& byte){
+        pos=FXCLAMP(pos,0,text.length());
+        lineindex=0;
+        while(lineindex+1<count && linestarts[lineindex+1]<=pos) lineindex++;
+        byte=FXCLAMP(pos-linestarts[lineindex],0,line(lineindex).length());
+        };
+      FXConsoleMatch match;
+      match.startpos=beg[0];
+      match.endpos=end[0];
+      locate(match.startpos,match.startline,match.startbyte);
+      locate(match.endpos,match.endline,match.endbyte);
+      matches.push_back(match);
+      }
+    FXint next=end[0]>beg[0] ? end[0] : found+1;
+    if(next<=from) next=from+1;
+    from=next;
+    }
+  }
+
+
 // Return style for byte in logical line
 FXuint FXConsoleBuffer::getStyle(FXint lineindex,FXint byte) const {
   if(lineindex<0 || lineindex>=count) return 0;
@@ -260,6 +309,10 @@ FXConsole::FXConsole(){
   selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
   anchorline=anchorbyte=-1;
   mousemode=0;
+  findindex=-1;
+  findbackColor=FXRGB(255,255,0);
+  findtextColor=FXRGB(0,0,0);
+  findflags=0;
   clipped.clear();
   autoscroll=true;
   scrollpending=false;
@@ -291,6 +344,10 @@ FXConsole::FXConsole(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXi
   selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
   anchorline=anchorbyte=-1;
   mousemode=0;
+  findindex=-1;
+  findbackColor=FXRGB(255,255,0);
+  findtextColor=FXRGB(0,0,0);
+  findflags=0;
   clipped.clear();
   vrows=0;
   vcols=0;
@@ -468,6 +525,62 @@ FXbool FXConsole::isSelected(FXint lineindex,FXint byte) const {
   }
 
 
+// Rebuild all cached search matches after text or pattern changes
+void FXConsole::refreshFindMatches(){
+  findmatches.clear();
+  findlineoffsets.clear();
+  findindex=-1;
+  if(findpattern.empty()) return;
+  findlineoffsets.reserve(buffer.getNumLines());
+  FXint offset=0;
+  for(FXint lineindex=0; lineindex<buffer.getNumLines(); lineindex++){
+    findlineoffsets.push_back(offset);
+    offset+=buffer.line(lineindex).length();
+    if(lineindex+1<buffer.getNumLines()) offset++;
+    }
+  buffer.findAll(findpattern,findflags,findmatches);
+  }
+
+
+// Test if a byte is within any search match
+FXbool FXConsole::isFindHighlighted(FXint lineindex,FXint byte) const {
+  if(lineindex<0 || lineindex>=(FXint)findlineoffsets.size() || findmatches.empty()) return false;
+  FXint pos=findlineoffsets[lineindex]+byte;
+  auto match=std::upper_bound(findmatches.begin(),findmatches.end(),pos,
+    [](FXint value,const FXConsoleMatch& item){ return value<item.startpos; });
+  if(match==findmatches.begin()) return false;
+  --match;
+  return match->startpos<=pos && pos<match->endpos;
+  }
+
+
+// Scroll the selected match into the visible viewport
+void FXConsole::revealFindMatch(FXint index){
+  if(index<0 || index>=(FXint)findmatches.size()) return;
+  const FXConsoleMatch& match=findmatches[index];
+  FXint rowindex=-1;
+  for(FXint i=0; i<(FXint)rows.size(); i++){
+    const VisualRow& row=rows[i];
+    if(row.line==match.startline && match.startbyte>=row.start && match.startbyte<=row.end){
+      rowindex=i;
+      break;
+      }
+    }
+  if(rowindex<0) return;
+  autoscroll=false;
+  FXint rowheight=FXMAX(1,font->getFontHeight());
+  FXint top=-getContentY();
+  FXint rowtop=margintop+rowindex*rowheight;
+  FXint visible=getVisibleHeight()-margintop-marginbottom;
+  if(rowtop<top) top=rowtop;
+  else if(rowtop+rowheight>top+visible) top=rowtop+rowheight-visible;
+  FXint bottom=FXMAX(0,getContentHeight()-getVisibleHeight());
+  top=FXCLAMP(top,0,bottom);
+  setPosition(pos_x,-top);
+  update();
+  }
+
+
 // Set or extend selection endpoint
 void FXConsole::setSelection(FXint lineindex,FXint byte,FXbool extend){
   if(buffer.getNumLines()==0){
@@ -611,6 +724,33 @@ FXbool FXConsole::copySelection(){
 // Public copy command
 FXbool FXConsole::copy(){
   return copySelection();
+  }
+
+
+// Set search pattern and update highlights throughout retained text
+void FXConsole::setFindPattern(const FXString& pattern,FXuint searchflags){
+  findpattern=pattern;
+  findflags=searchflags;
+  refreshFindMatches();
+  update();
+  }
+
+
+// Navigate to the next search match
+FXbool FXConsole::findNext(){
+  if(findmatches.empty()) return false;
+  findindex=(findindex+1)%(FXint)findmatches.size();
+  revealFindMatch(findindex);
+  return true;
+  }
+
+
+// Navigate to the previous search match
+FXbool FXConsole::findPrev(){
+  if(findmatches.empty()) return false;
+  findindex=findindex<0 ? (FXint)findmatches.size()-1 : (findindex+(FXint)findmatches.size()-1)%(FXint)findmatches.size();
+  revealFindMatch(findindex);
+  return true;
   }
 
 
@@ -771,8 +911,8 @@ FXuint FXConsole::styleOf(FXint line,FXint p) const {
   // Selected part of text
   if(isSelected(line,p)) s|=STYLE_SELECTED;
 
-  // Highlighted part of text
- // if(hilitestartpos<=p && p<hiliteendpos) s|=STYLE_HILITE;
+  // Search matches
+  if(isFindHighlighted(line,p)) s|=STYLE_HILITE;
 
   // Current active line
 //  if((row==cursorrow)&&(options&TEXT_SHOWACTIVE)) s|=STYLE_ACTIVE;
@@ -817,10 +957,12 @@ void FXConsole::drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,
     }
   if(!back){
     if(sty&STYLE_SELECTED) back=selbackColor;
+    else if(sty&STYLE_HILITE) back=findbackColor;
     else back=backColor;
     }
   if(!fore){
     if(sty&STYLE_SELECTED) fore=seltextColor;
+    else if(sty&STYLE_HILITE) fore=findtextColor;
     if(!fore) fore=textColor;
     }
   dc.setForeground(back);
@@ -1026,6 +1168,7 @@ void FXConsole::setHistoryLines(FXint hl){
     if(hasSelection()) releaseSelection();
     historylines=hl;
     buffer.setHistoryLines(hl);
+    refreshFindMatches();
     recalc();
     update();
     }
@@ -1040,6 +1183,7 @@ void FXConsole::appendText(const FXString& text,FXuint sty){
     selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
     if(hasSelection()) releaseSelection();
     }
+  refreshFindMatches();
   recalc();
   update();
   }
@@ -1053,6 +1197,7 @@ void FXConsole::appendLine(const FXString& text,FXuint sty){
     selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
     if(hasSelection()) releaseSelection();
     }
+  refreshFindMatches();
   recalc();
   update();
   }
@@ -1066,6 +1211,7 @@ void FXConsole::appendStyled(const FXString& text,const FXuint* styles){
     selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
     if(hasSelection()) releaseSelection();
     }
+  refreshFindMatches();
   recalc();
   update();
   }
@@ -1076,6 +1222,7 @@ void FXConsole::clearText(){
   selectstartline=selectstartbyte=selectendline=selectendbyte=-1;
   if(hasSelection()) releaseSelection();
   buffer.clear();
+  refreshFindMatches();
   setPosition(0,0);
   recalc();
   update();
