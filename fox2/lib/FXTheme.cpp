@@ -98,6 +98,7 @@ void FXTheme::setClassic(){
   metrics[METRIC_SCROLLBAR_WIDTH]=0;
   metrics[METRIC_SHADOW_SIZE]=0;
   metrics[METRIC_MENUBAR_HEIGHT]=0;
+  metrics[METRIC_MENUROW_HEIGHT]=0;
   scale=1.0;
 
   // Font roles start out as the application font; an empty description
@@ -156,6 +157,7 @@ void FXTheme::setBreezeLight(){
   metrics[METRIC_SCROLLBAR_WIDTH]=14;
   metrics[METRIC_SHADOW_SIZE]=8;
   metrics[METRIC_MENUBAR_HEIGHT]=30;
+  metrics[METRIC_MENUROW_HEIGHT]=30;
   }
 
 
@@ -186,6 +188,7 @@ void FXTheme::setBreezeDark(){
   metrics[METRIC_SCROLLBAR_WIDTH]=14;
   metrics[METRIC_SHADOW_SIZE]=8;
   metrics[METRIC_MENUBAR_HEIGHT]=30;
+  metrics[METRIC_MENUROW_HEIGHT]=30;
   }
 
 
@@ -199,7 +202,7 @@ FXbool FXTheme::load(const FXString& path){
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
     "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size",
-    "row_padding","scrollbar_width","shadow_size","menubar_height"
+    "row_padding","scrollbar_width","shadow_size","menubar_height","menu_row_height"
     };
   static const FXchar *fontkeys[FONT_LAST]={
     "ui","small","mono","title"
@@ -315,7 +318,7 @@ FXString FXTheme::describe(const FXString& name,const FXString& source) const {
   static const FXchar *metrickeys[METRIC_LAST]={
     "padding","margin","border_width","focus_width","spacing",
     "icon_size","small_icon_size","row_height","corner_radius","animation_time","check_size",
-    "row_padding","scrollbar_width","shadow_size","menubar_height"
+    "row_padding","scrollbar_width","shadow_size","menubar_height","menu_row_height"
     };
   FXString text;
   FXint i;

@@ -749,7 +749,19 @@ void FXCSS::apply(FXTheme& theme) const {
   // Menu rows have metrics of their own: a minimum height and the padding
   // around the text, both smaller than what a button asks for
   theme.setMetric(METRIC_ROW_HEIGHT,length("menu menuitem","min-height",theme.metric(METRIC_ROW_HEIGHT)));
-  theme.setMetric(METRIC_ROW_PADDING,length("menu menuitem","padding",theme.metric(METRIC_ROW_PADDING)));
+  FXint menupadding=theme.metric(METRIC_ROW_PADDING);
+  FXString menupadspec=property("menu menuitem","padding");
+  if(!menupadspec.empty()) parseFirstLength(menupadspec,menupadding);
+  theme.setMetric(METRIC_ROW_PADDING,menupadding);
+
+  // Popup menu rows use the padding and border of the menu item rule, with the
+  // row height as a floor
+  FXint menurowheight=length("menu menuitem","min-height",0);
+  if(menurowheight){
+    FXint menuborder=length("menu menuitem","border-width",theme.metric(METRIC_BORDER_WIDTH));
+    menurowheight+=((menupadding+menuborder)<<1);
+    theme.setMetric(METRIC_MENUROW_HEIGHT,FXMAX(menurowheight,theme.metric(METRIC_ROW_HEIGHT)));
+    }
 
   // The menu bar item height comes from its own rule, whose shorthand padding
   // carries the horizontal value first

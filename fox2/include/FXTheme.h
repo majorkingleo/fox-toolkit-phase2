@@ -90,6 +90,7 @@ enum {
   METRIC_SCROLLBAR_WIDTH, /// Thickness of a scroll bar
   METRIC_SHADOW_SIZE,     /// Drop shadow size around popups, 0 for none
   METRIC_MENUBAR_HEIGHT,  /// Height of a menu bar item
+  METRIC_MENUROW_HEIGHT,  /// Height of a popup menu row
   METRIC_LAST
   };
 

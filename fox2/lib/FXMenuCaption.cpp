@@ -197,10 +197,12 @@ FXint FXMenuCaption::menuRowHeight(FXint text,FXint icon,FXint classicPad) const
     FXTheme* theme=getApp()->getTheme();
     FXint pad=theme->metric(METRIC_ROW_PADDING,scale);
     FXint border=theme->metric(METRIC_BORDER_WIDTH,scale);
+    FXint row=theme->metric(METRIC_MENUROW_HEIGHT,scale);
     FXint h=0;
+    if(row<=0) row=theme->metric(METRIC_ROW_HEIGHT,scale);
     if(0<text) h=text+((pad+border)<<1);
     if(0<icon) h=FXMAX(h,icon+((pad+border)<<1));
-    return FXMAX(h,theme->metric(METRIC_ROW_HEIGHT,scale));
+    return FXMAX(h,row);
     }
   FXint h=0;
   if(0<text) h=text+classicPad;
