@@ -486,6 +486,9 @@ FXRectangle FXStyle::drawButton(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,c
     else if(state.engaged){
       face=blendColor(face,state.text,12);
       }
+    else if(state.defaulted){
+      face=blendColor(face,accent,20);
+      }
 
     // Hover, keyboard focus and the default button get their theme decoration
     if(state.enabled){

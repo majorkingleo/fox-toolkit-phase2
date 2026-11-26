@@ -27,13 +27,13 @@ Priority:
 | `FXFrame` | DONE | Base/hilite/shadow/border and theme padding. A themed frame draws a single hairline in `ROLE_BORDER` instead of a 3D bevel. |
 | `FXPacker`, `FXHorizontalFrame`, `FXVerticalFrame` | DONE | Packers go through the style as well, so `FRAME_SUNKEN`, `FRAME_RAISED`, `FRAME_THICK`, `FRAME_GROOVE` and `FRAME_RIDGE` draw the same hairline a themed frame draws; the classic bevel code is still there for a theme without a corner radius. |
 | `FXLabel` | DONE | Text role and UI font. |
-| `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, 1 px shadow. Still lacks a separate active/disabled text role. |
+| `FXButton` | DONE | `ROLE_BUTTON`, radius, hover/focus decoration, accent-tinted default button, 1 px shadow. Still lacks a separate active/disabled text role. |
 | `FXList`, `FXIconList`, `FXTreeList` | PARTIAL | Text/selection colors, `ROLE_WINDOW_BG` view background, disabled text, themed row height, focus handling and themed arrowless scrollbars. `FXList`, `FXIconList` and `FXTreeList` cut the corners of the viewport out of their own item background (`FXStyle::cutRoundedCorners()`) and draw its hairline, so a themed list fits a rounded frame; a list that asks for `FRAME_SUNKEN` gets the shadow color as its inset edge, and keyboard focus or pointer hover switches the edge to `ROLE_FOCUS_RING` or `ROLE_HOVER_RING`. An icon list in icon mode gets all four corners; in detail mode only the bottom two, because the column header covers the top of the viewport and paints its own square corners there. Hover rows and alternating rows remain. |
 | `FXTextField` | DONE | Text, selection, cursor and background colors, rounded inset border, focus outline, hover outline and disabled colors; the widget has no placeholder API. |
 | `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; the overall height is at least `METRIC_CONTROL_HEIGHT`, which the CSS importer fills from the `entry` rule and the Breeze presets set to 30 px; popup shadow remains. |
 | `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. | The font is `FONT_SMALL` while the theme gives that role a face.
 | `FXGroupBox` | DONE | Text color and font follow the theme, and the frame is a rounded hairline in `ROLE_BORDER` with the label cutting it open, the way GTK draws it; classic keeps the 3D frame. |
-| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover/focus border and `METRIC_CHECK_SIZE`; the check mark is antialiased on all three backends. Classic path unchanged. |
+| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover border, `ROLE_FOCUS_RING` around the focused control and `METRIC_CHECK_SIZE`; the check mark is antialiased on all three backends. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
 
 ## P0: chrome needed for a native-looking dialog

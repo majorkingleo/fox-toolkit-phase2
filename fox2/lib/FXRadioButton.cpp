@@ -423,6 +423,9 @@ long FXRadioButton::onPaint(FXObject*,FXSelector,void* ptr){
         }
       }
     drawFrame(dc,0,0,width,height);
+    if(hasFocus()){
+      getApp()->getStyle()->drawFocusRing(dc,0,0,width,height,getDisplayScale());
+      }
     return 1;
     }
 
