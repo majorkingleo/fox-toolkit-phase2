@@ -47,7 +47,6 @@ FXJSONString.h \
 FXKOI8RCodec.h \
 FXLFQueue.h \
 FXMappedFile.h \
-FXMessageChannel.h \
 FXMarkedPtr.h \
 FXMatrix.h \
 FXParallel.h \
