@@ -154,7 +154,7 @@ void FXTheme::setBreezeLight(){
   metrics[METRIC_PADDING]=6;
   metrics[METRIC_ROW_HEIGHT]=15;
   metrics[METRIC_CORNER_RADIUS]=5;
-  metrics[METRIC_CHECK_SIZE]=14;
+  metrics[METRIC_CHECK_SIZE]=16;
   metrics[METRIC_SCROLLBAR_WIDTH]=14;
   metrics[METRIC_SHADOW_SIZE]=8;
   metrics[METRIC_CONTROL_HEIGHT]=30;
@@ -186,7 +186,7 @@ void FXTheme::setBreezeDark(){
   metrics[METRIC_PADDING]=6;
   metrics[METRIC_ROW_HEIGHT]=15;
   metrics[METRIC_CORNER_RADIUS]=5;
-  metrics[METRIC_CHECK_SIZE]=14;
+  metrics[METRIC_CHECK_SIZE]=16;
   metrics[METRIC_SCROLLBAR_WIDTH]=14;
   metrics[METRIC_SHADOW_SIZE]=8;
   metrics[METRIC_CONTROL_HEIGHT]=30;

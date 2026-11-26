@@ -398,7 +398,11 @@ long FXRadioButton::onPaint(FXObject*,FXSelector,void* ptr){
       mark=theme->color(ROLE_TEXT_DISABLED);
       }
     else{
-      if(check!=false){ box=blendColor(box,hov,33); edge=hov; }
+      if(check!=false){
+        FXColor checked=blendColor(hov,FXRGB(0,0,0),40);
+        box=blendColor(box,checked,28);
+        edge=checked;
+        }
       if(underCursor()) edge=hov;
       if(hasFocus()) edge=foc;
       }

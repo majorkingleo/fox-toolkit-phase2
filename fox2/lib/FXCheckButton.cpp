@@ -386,14 +386,18 @@ long FXCheckButton::onPaint(FXObject*,FXSelector,void* ptr){
     FXColor hov=theme->color(ROLE_HOVER_RING);
     FXColor foc=theme->color(ROLE_FOCUS_RING);
     FXColor surf=theme->color(ROLE_SURFACE);
-    FXint radius=FXMIN(theme->metric(METRIC_CORNER_RADIUS,getDisplayScale()),isize/2);
+    FXint radius=FXMIN(theme->metric(METRIC_CORNER_RADIUS,getDisplayScale()),FXMAX(2,isize/5));
     if(!isEnabled()){
       box=blendColor(box,surf,45);
       edge=blendColor(edge,surf,45);
       mark=theme->color(ROLE_TEXT_DISABLED);
       }
     else{
-      if(check!=false){ box=blendColor(box,hov,33); edge=hov; }
+      if(check!=false){
+        FXColor checked=blendColor(hov,FXRGB(0,0,0),40);
+        box=blendColor(box,checked,28);
+        edge=checked;
+        }
       if(underCursor()) edge=hov;
       if(hasFocus()) edge=foc;
       }

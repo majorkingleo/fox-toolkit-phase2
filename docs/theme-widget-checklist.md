@@ -33,7 +33,7 @@ Priority:
 | `FXListBox`, `FXComboBox` | DONE | Single rounded shell with flat inset field and arrow area, themed popup/list colors and focused/hover shell border; the overall height is at least `METRIC_CONTROL_HEIGHT`, which the CSS importer fills from the `entry` rule and the Breeze presets set to 30 px; popup shadow remains. |
 | `FXToolTip` | PARTIAL | Themed background/text/border, theme padding and rounded frame; outer transparency and drop shadow remain. | The font is `FONT_SMALL` while the theme gives that role a face.
 | `FXGroupBox` | DONE | Text color and font follow the theme, and the frame is a rounded hairline in `ROLE_BORDER` with the label cutting it open, the way GTK draws it; classic keeps the 3D frame. |
-| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, themed check/radio mark, radius, hover border, `ROLE_FOCUS_RING` around the focused control and `METRIC_CHECK_SIZE`; the check mark is antialiased on all three backends. Classic path unchanged. |
+| `FXCheckButton`, `FXRadioButton` | DONE | Indicator face/border from the theme, accent-tinted checked face with a darker accent border, themed check/radio mark, 3 px corner radius, hover border, `ROLE_FOCUS_RING` around the focused control and a 16 px Breeze `METRIC_CHECK_SIZE`; the check mark is antialiased on all three backends. Classic path unchanged. |
 | `ControlPanel` | DONE | Theme chooser, filters, footer source note and live preview. |
 
 ## P0: chrome needed for a native-looking dialog
