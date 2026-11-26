@@ -102,10 +102,8 @@ void FX2DPlot::rangeY(FXint axis,FXdouble& lo,FXdouble& hi) const {
   FXbool any=false;
   for(i=0; i<curves.no(); i++){
     FXCurve *curve=curves[i];
-    FXData *data;
     if(!curve->isVisible() || curve->getYAxis()!=axis) continue;
-    data=curve->getYData();
-    if(!data || !data->getRange(dlo,dhi)) continue;
+    if(!curve->getYRange(dlo,dhi)) continue;
     if(!any){ lo=dlo; hi=dhi; any=true; }
     else{
       if(dlo<lo) lo=dlo;
@@ -245,6 +243,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
             continue;
             }
           fx=(FXfloat)(plotleft+(x-xmin)*xscale);
+          y=y*curve->getScale()+curve->getOffset();
           fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
           px=(FXint)Math::lrint(fx);
           if(!active){
@@ -274,6 +273,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
             continue;
             }
           fx=(FXfloat)(plotleft+(x-xmin)*xscale);
+          y=y*curve->getScale()+curve->getOffset();
           fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
           appendCurvePoint(points,fx,fy);
           }
@@ -291,6 +291,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
           y=ydata->get(j);
           if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
           px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
+          y=y*curve->getScale()+curve->getOffset();
           py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
           if(first || px!=lastpx){
             drawMarker(dc,curve->getMarkerStyle(),px,py);
@@ -305,6 +306,7 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
           y=ydata->get(j);
           if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
           px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
+          y=y*curve->getScale()+curve->getOffset();
           py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
           drawMarker(dc,curve->getMarkerStyle(),px,py);
           }

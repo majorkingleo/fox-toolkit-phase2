@@ -24,6 +24,8 @@
 #include "FXAxis.h"
 #include "FXChart.h"
 
+#include <utility>
+
 /*
   Notes:
 */
@@ -63,6 +65,7 @@ FXAxis::FXAxis(FXChart* ch,const FXString& nm,FXuint lblsty,FXuint numsty,FXuint
   precision=3;
   numberformat=nullptr;
   numberformatcontext=nullptr;
+  labelformatter={};
   fadeskip=false;
   fadehold=0;
   fadeon=true;
@@ -266,7 +269,8 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text=numberformat?numberformat(i*majorspace,majorspace,numberformatcontext):formatAxisNumber(i*majorspace,majorspace);
+          item.text=labelformatter ? formatLabel(i*majorspace,majorspace,labelformatter) :
+            (numberformat ? numberformat(i*majorspace,majorspace,numberformatcontext) : formatAxisNumber(i*majorspace,majorspace));
           item.x=x+tin*ex;
           item.y=y+tin*ey;
           item.born=now;
@@ -281,7 +285,8 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text=numberformat?numberformat(i*majorspace,majorspace,numberformatcontext):formatAxisNumber(i*majorspace,majorspace);
+          item.text=labelformatter ? formatLabel(i*majorspace,majorspace,labelformatter) :
+            (numberformat ? numberformat(i*majorspace,majorspace,numberformatcontext) : formatAxisNumber(i*majorspace,majorspace));
           item.x=x-tout*ex;
           item.y=y-tout*ey;
           item.born=now;
@@ -502,11 +507,27 @@ void FXAxis::setNumberFont(FXFont* font){
 
 // Set a number formatter; NULL restores the automatic format
 void FXAxis::setNumberFormat(FXAxisNumberFormat formatter,void* context){
-  if(numberformat!=formatter || numberformatcontext!=context){
+  if(numberformat!=formatter || numberformatcontext!=context || labelformatter){
     numberformat=formatter;
     numberformatcontext=context;
+    labelformatter={};
     chart->invalidateChart();
     }
+  }
+
+
+// Set a number formatter for axis tick labels
+void FXAxis::setLabelFormatter(std::function<FXString(FXdouble)> formatter){
+  labelformatter=std::move(formatter);
+  numberformat=nullptr;
+  numberformatcontext=nullptr;
+  chart->invalidateChart();
+  }
+
+
+// Apply a custom formatter, or the default axis number format
+FXString FXAxis::formatLabel(FXdouble value,FXdouble spacing,const std::function<FXString(FXdouble)>& formatter){
+  return formatter ? formatter(value) : formatAxisNumber(value,spacing);
   }
 
 

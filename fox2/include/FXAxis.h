@@ -25,6 +25,8 @@
 #include "FXArray.h"
 #endif
 
+#include <functional>
+
 
 namespace FXCHART {
 
@@ -95,6 +97,7 @@ protected:
   FXuchar     numberstyle;      // Number style flags
   FXAxisNumberFormat numberformat; // Number formatter, or NULL
   void       *numberformatcontext; // Context passed to the formatter
+  std::function<FXString(FXdouble)> labelformatter; // Optional simple number formatter
   FXuint      style;            // Axis style flags
   mutable FXbool fadeskip;      // Draw the numbers without fading
   mutable FXTime fadehold;      // No number fades before this time
@@ -178,6 +181,12 @@ public:
 
   /// Set a number formatter; NULL restores the automatic format
   void setNumberFormat(FXAxisNumberFormat formatter,void* context=nullptr);
+
+  /// Set a formatter for tick labels; an empty function restores automatic formatting
+  void setLabelFormatter(std::function<FXString(FXdouble)> formatter);
+
+  /// Apply a label formatter; exposed for no-display tests and custom formatting
+  static FXString formatLabel(FXdouble value,FXdouble spacing,const std::function<FXString(FXdouble)>& formatter);
 
   /// Return the number formatter, or NULL
   FXAxisNumberFormat getNumberFormat() const { return numberformat; }

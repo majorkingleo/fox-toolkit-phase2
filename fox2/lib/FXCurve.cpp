@@ -44,7 +44,7 @@ FXIMPLEMENT(FXCurve,FXObject,nullptr,0)
 
 
 // Deserialization
-FXCurve::FXCurve():plot(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+FXCurve::FXCurve():plot(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),scale(1.0),offset(0.0),visible(true){
   linestyle.color=FXRGB(0,0,0);
   linestyle.weight=1;
   linestyle.style=LINESTYLE_SOLID;
@@ -62,7 +62,7 @@ FXCurve::FXCurve():plot(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),vis
 
 
 // Init
-FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),scale(1.0),offset(0.0),visible(true){
   linestyle.color=FXRGB(0,0,0);
   linestyle.weight=1;
   linestyle.style=LINESTYLE_SOLID;
@@ -76,6 +76,27 @@ FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),label(nm),xaxis(FX2
   fillstyle.upper=FXRGBA(0,0,0,0);
   fillstyle.hatch=STIPPLE_NONE;
   fillstyle.style=FILLSTYLE_OFF;
+  }
+
+
+// Change Y-value scale and offset
+void FXCurve::setScale(FXdouble factor,FXdouble shift){
+  if(scale!=factor || offset!=shift){
+    scale=factor;
+    offset=shift;
+    if(plot) plot->update();
+    }
+  }
+
+
+// Return the scaled finite Y data range
+FXbool FXCurve::getYRange(FXdouble& lo,FXdouble& hi) const {
+  FXdouble minimum,maximum;
+  if(!ydata || !ydata->getRange(minimum,maximum)) return false;
+  lo=minimum*scale+offset;
+  hi=maximum*scale+offset;
+  if(lo>hi) std::swap(lo,hi);
+  return true;
   }
 
 
@@ -148,7 +169,7 @@ void FXCurve::setXData(std::shared_ptr<FXData> dd){
 void FXCurve::setYData(std::shared_ptr<FXData> dd){
   if(ydata!=dd){
     ydata=std::move(dd);
-    plot->update();
+    if(plot) plot->update();
     }
   }
 

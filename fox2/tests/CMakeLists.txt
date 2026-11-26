@@ -18,6 +18,9 @@ foreach(prog ${FOX_CONSOLE_TESTS})
   target_link_libraries(${prog} PRIVATE FOX::FOX m)
 endforeach()
 
+add_executable(chartmodel chartmodel.cpp)
+target_link_libraries(chartmodel PRIVATE FOX::FOX m)
+
 # Software rasterizer: --raster-only needs no display, otherwise it compares
 # its buffer with the same scene drawn by FXDCWindow
 add_executable(raster raster.cpp)
@@ -37,4 +40,5 @@ foreach(prog ${FOX_CTEST_PLAIN})
   add_test(NAME ${prog} COMMAND ${prog} --no-dialogs WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
 add_test(NAME raster COMMAND raster --no-dialogs --raster-only WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME chartmodel COMMAND chartmodel WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 set_tests_properties(${FOX_CTEST_SELFTEST} ${FOX_CTEST_PLAIN} raster PROPERTIES TIMEOUT 120)

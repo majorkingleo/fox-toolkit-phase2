@@ -47,6 +47,8 @@ protected:
   FillStyle fillstyle;  // Fill style
   FXuchar   xaxis;      // X-Axis
   FXuchar   yaxis;      // Y-Axis
+  FXdouble  scale;      // Y-value scale
+  FXdouble  offset;     // Y-value offset
   FXbool    visible;    // Curve is visible
 protected:
   FXCurve();
@@ -75,6 +77,18 @@ public:
 
   /// Return y axis description
   FXuchar getYAxis() const { return yaxis; }
+
+  /// Change the Y-value scale and offset
+  void setScale(FXdouble factor,FXdouble shift=0.0);
+
+  /// Return the Y-value scale
+  FXdouble getScale() const { return scale; }
+
+  /// Return the Y-value offset
+  FXdouble getOffset() const { return offset; }
+
+  /// Return the scaled finite Y data range; false if there are no finite samples
+  FXbool getYRange(FXdouble& lo,FXdouble& hi) const;
 
   /// Change line style
   void setLineStyle(const LineStyle& style);
