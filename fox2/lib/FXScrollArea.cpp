@@ -238,8 +238,15 @@ FXint FXScrollArea::getDefaultHeight(){
 // Move content
 void FXScrollArea::moveContents(FXint x,FXint y){
 
-  // Scroll pixels
-  scroll(getVisibleX(),getVisibleY(),getVisibleWidth(),getVisibleHeight(),x-pos_x,y-pos_y);
+  // A rounded viewport paints its hairline and corner cuts into the same
+  // content window as the items.  Blitting would copy those rows into the
+  // middle of the list, so repaint the viewport instead.
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    update(getVisibleX(),getVisibleY(),getVisibleWidth(),getVisibleHeight());
+    }
+  else{
+    scroll(getVisibleX(),getVisibleY(),getVisibleWidth(),getVisibleHeight(),x-pos_x,y-pos_y);
+    }
 
   // Update scroll position
   pos_x=x;
