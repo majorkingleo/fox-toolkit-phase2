@@ -296,6 +296,7 @@
 #include "FXGLContext.h"
 #include "FXGLCanvas.h"
 #include "FXConsole.h"
+#include "FXTerminal.h"
 #include "FXTabBar.h"
 #include "FXTabBook.h"
 #include "FXTabItem.h"

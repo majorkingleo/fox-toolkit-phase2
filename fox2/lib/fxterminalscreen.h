@@ -29,18 +29,15 @@
 #include "FXString.h"
 #endif
 
+#ifndef FXTERMINAL_H
+#include "FXTerminal.h"
+#endif
+
 #include <vector>
 #include <deque>
 
 
 namespace FX {
-
-
-/// Terminal emulation kinds
-enum {
-  TERMINAL_VT100,
-  TERMINAL_XTERM
-  };
 
 
 /// Terminal cell attributes

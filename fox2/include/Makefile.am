@@ -177,6 +177,7 @@ FXStringDictionary.h \
 FXString.h \
 FXSwitcher.h \
 FXConsole.h \
+FXTerminal.h \
 FXGLCanvas.h \
 FXGLContext.h \
 FXGLVisual.h \

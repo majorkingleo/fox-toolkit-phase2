@@ -1276,6 +1276,22 @@ Acceptance:
 - Closing a session with a running child does not leave a zombie on POSIX and
   does not leave a live child tree on Windows.
 
+Phase 2 result: added `include/FXTerminal.h` with the terminal kind and launch
+description, `lib/fxpty.h`, `lib/fxpty_posix.cpp` and `lib/fxpty_win32.cpp`.
+The POSIX implementation uses `posix_openpt`/`fork`/`execvp`, sets the terminal
+window size and child environment, queues partial writes, and kills the process
+group on close. The Win32 implementation loads ConPTY dynamically, creates the
+child with a kill-on-close job, uses a reader thread for output and a writer
+thread for input, and keeps the UI thread non-blocking. `tests/pty.cpp` starts
+the test binary itself as the child, checks the ready marker, writes a line,
+resizes the PTY, and verifies exit code 7.
+
+Passed: the POSIX test on the CMake/X11 and CMake/Wayland builds. The Win32
+source cross-compiles and `pty.exe` starts under Wine, but Wine does not provide
+a functional ConPTY; the test detects that and reports `SKIP`. A real Windows
+10 1809+ runtime pass is still required. Autotools builds the library and the
+`pty` target and the POSIX test passes there too.
+
 ### Phase 3: `FXTerminal` view
 
 Implement the widget, rendering, scrolling, selection, clipboard, cursor blink
