@@ -8,6 +8,7 @@
 #include "fx.h"
 #include "FXCharts.h"
 #include "live/LiveSource.h"
+#include <memory>
 
 /*
   Notes:
@@ -294,8 +295,8 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
     FXColor colors[4]={FXRGB(220,40,40),FXRGB(40,160,40),FXRGB(40,80,220),FXRGB(160,40,160)};
     FXint s,i;
     for(s=0; s<3; s++){
-      FXData *xd=new FXData();
-      FXData *yd=new FXData();
+      std::shared_ptr<FXData> xd=std::make_shared<FXData>();
+      std::shared_ptr<FXData> yd=std::make_shared<FXData>();
       FXCurve *curve=new FXCurve(plot,FXString::value("Series %d",s+1));
       LineStyle ls;
       for(i=0; i<10000; i++){
@@ -317,8 +318,8 @@ ChartWindow::ChartWindow(FXApp* a):FXMainWindow(a,"Chart Test",nullptr,nullptr,D
       demoCurves.append(curve);
       }
     {
-      FXData *xd=new FXData();
-      FXData *yd=new FXData();
+      std::shared_ptr<FXData> xd=std::make_shared<FXData>();
+      std::shared_ptr<FXData> yd=std::make_shared<FXData>();
       FXCurve *curve=new FXCurve(plot,"Markers");
       LineStyle ls;
       Marker ms;

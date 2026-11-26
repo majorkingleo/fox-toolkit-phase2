@@ -61,6 +61,8 @@ FXAxis::FXAxis(FXChart* ch,const FXString& nm,FXuint lblsty,FXuint numsty,FXuint
   numberoffset=3;
   labeloffset=6;
   precision=3;
+  numberformat=nullptr;
+  numberformatcontext=nullptr;
   fadeskip=false;
   fadehold=0;
   fadeon=true;
@@ -264,7 +266,7 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text=formatAxisNumber(i*majorspace,majorspace);
+          item.text=numberformat?numberformat(i*majorspace,majorspace,numberformatcontext):formatAxisNumber(i*majorspace,majorspace);
           item.x=x+tin*ex;
           item.y=y+tin*ey;
           item.born=now;
@@ -279,7 +281,7 @@ void FXAxis::drawAxis(FXDC& dc,FXint fx,FXint fy,FXint tx,FXint ty,FXint dx,FXin
         for(i=majl; i<=majh; i++){
           x=fx+Math::lrint(mulx*(i*majorspace-axisrange.minimum));
           y=fy+Math::lrint(muly*(i*majorspace-axisrange.minimum));
-          item.text=formatAxisNumber(i*majorspace,majorspace);
+          item.text=numberformat?numberformat(i*majorspace,majorspace,numberformatcontext):formatAxisNumber(i*majorspace,majorspace);
           item.x=x-tout*ex;
           item.y=y-tout*ey;
           item.born=now;
@@ -494,6 +496,16 @@ void FXAxis::setNumberFont(FXFont* font){
   if(numberfont!=font){
     numberfont=font;
     chart->recalc();
+    }
+  }
+
+
+// Set a number formatter; NULL restores the automatic format
+void FXAxis::setNumberFormat(FXAxisNumberFormat formatter,void* context){
+  if(numberformat!=formatter || numberformatcontext!=context){
+    numberformat=formatter;
+    numberformatcontext=context;
+    chart->invalidateChart();
     }
   }
 

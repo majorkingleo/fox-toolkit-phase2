@@ -72,6 +72,9 @@ public:
   /// Append count samples
   void append(const FXdouble* values,FXint count);
 
+  /// Replace samples with count values
+  void assign(const FXdouble* values,FXint count);
+
   /// Remove count samples starting at index
   void remove(FXint index,FXint count=1);
 
@@ -89,6 +92,9 @@ public:
 
   /// Return largest sample, or zero when empty
   FXdouble getMaximum() const;
+
+  /// Return finite minimum and maximum; false when no finite samples exist
+  FXbool getRange(FXdouble& lo,FXdouble& hi) const;
 
   /// Return index of sample at or before x; samples must be sorted
   FXint findIndexAt(FXdouble x) const;

@@ -49,6 +49,13 @@ class FXAPI FXIcon : public FXImage {
 protected:
   FXID     shape;             // Shape pixmap
   FXID     etch;              // Etch pixmap
+#if defined(WIN32)
+  FXID     alphabmp;          // Premultiplied ARGB bitmap for AlphaBlend
+#endif
+#if defined(FOX_X11)
+  FXID     alphamask;         // A8 alpha mask pixmap
+  FXID     alphapicture;      // XRender picture for the alpha mask
+#endif
   FXColor  transp;            // Transparency color
   FXshort  thresh;            // Treshold for etch mask
   FXColor* master;            // Pixels at the authored size, source for the scaled variants

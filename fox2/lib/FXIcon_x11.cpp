@@ -99,9 +99,15 @@ void FXIcon::destroy(){
       XFreePixmap((Display*)getApp()->getDisplay(),shape);
       XFreePixmap((Display*)getApp()->getDisplay(),etch);
       XFreePixmap((Display*)getApp()->getDisplay(),xid);
+      if(alphamask) XFreePixmap((Display*)getApp()->getDisplay(),alphamask);
+#if defined(HAVE_XRENDER_H)
+      if(alphapicture) XRenderFreePicture((Display*)getApp()->getDisplay(),alphapicture);
+#endif
       }
     shape=0;
     etch=0;
+    alphamask=0;
+    alphapicture=0;
     xid=0;
     }
   }
@@ -127,6 +133,18 @@ void FXIcon::render(){
 
     // Remember the pixels for the scaled copies
     snapshot();
+
+    // Drop the previous alpha mask
+    if(alphamask){
+      XFreePixmap((Display*)getApp()->getDisplay(),alphamask);
+      alphamask=0;
+      }
+#if defined(HAVE_XRENDER_H)
+    if(alphapicture){
+      XRenderFreePicture((Display*)getApp()->getDisplay(),alphapicture);
+      alphapicture=0;
+      }
+#endif
 
     // Fill with pixels if there is data
     if(data && 0<width && 0<height){
@@ -278,6 +296,39 @@ void FXIcon::render(){
         XDestroyImage(xim);
         }
       XFreeGC((Display*)getApp()->getDisplay(),gc);
+
+#if defined(HAVE_XRENDER_H)
+      // Keep an A8 alpha mask for icons with true alpha
+      if(getApp()->xrender && !(options&IMAGE_OPAQUE) && !(options&(IMAGE_ALPHACOLOR|IMAGE_ALPHAGUESS))){
+        Display* display=(Display*)getApp()->getDisplay();
+        XRenderPictFormat* a8=XRenderFindStandardFormat(display,PictStandardA8);
+        if(a8){
+          FXuchar* alpha=new FXuchar[width*height];
+          XImage* aimg;
+          GC agc;
+          img=data;
+          for(y=0; y<height; y++){
+            for(x=0; x<width; x++){
+              alpha[y*width+x]=((FXuchar*)(img+x))[3];
+              }
+            img+=width;
+            }
+          alphamask=XCreatePixmap(display,XDefaultRootWindow(display),width,height,8);
+          aimg=XCreateImage(display,DefaultVisual(display,DefaultScreen(display)),8,ZPixmap,0,(char*)alpha,width,height,8,0);
+          if(aimg && alphamask){
+            agc=XCreateGC(display,alphamask,0,nullptr);
+            XPutImage(display,alphamask,agc,aimg,0,0,0,0,width,height);
+            XFreeGC(display,agc);
+            alphapicture=XRenderCreatePicture(display,alphamask,a8,0,nullptr);
+            }
+          if(aimg){
+            aimg->data=nullptr;
+            XDestroyImage(aimg);
+            }
+          delete[] alpha;
+          }
+        }
+#endif
       }
     }
   }
@@ -299,6 +350,16 @@ void FXIcon::resize(FXint w,FXint h){
       XFreePixmap((Display*)getApp()->getDisplay(),xid);
       XFreePixmap((Display*)getApp()->getDisplay(),etch);
       XFreePixmap((Display*)getApp()->getDisplay(),shape);
+      if(alphamask){
+        XFreePixmap((Display*)getApp()->getDisplay(),alphamask);
+        alphamask=0;
+        }
+#if defined(HAVE_XRENDER_H)
+      if(alphapicture){
+        XRenderFreePicture((Display*)getApp()->getDisplay(),alphapicture);
+        alphapicture=0;
+        }
+#endif
 
       // Make new pixmap
       xid=XCreatePixmap((Display*)getApp()->getDisplay(),XDefaultRootWindow((Display*)getApp()->getDisplay()),w,h,dd);

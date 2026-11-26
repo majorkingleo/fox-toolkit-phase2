@@ -33,6 +33,7 @@ struct ChartDocument {
   FXScrollBar* xscroll;
   FXComboBox* xcolumn;
   FXToggleButton* xtoggle;
+  FXToggleButton* xmode;
   FXToggleButton* ytoggle;
   FXButton* autofity;
   FXButton* resetzoom;
@@ -57,6 +58,7 @@ struct ChartDocument {
   FXint plotCount;
   FXint selectedx;
   FXint serieswidth;
+  FXbool xdates;
   FXbool seriesshown;
   FXString filtertext;
   FXString settingsSection;
@@ -83,6 +85,7 @@ protected:
   FXSVGIcon* resetZoomIcon;
   FXSVGIcon* splitChartIcon;
   FXSVGIcon* xAxisIcon;
+  FXSVGIcon* dateAxisIcon;
   FXSVGIcon* yAxisIcon;
   FXSVGIcon* seriesIcon;
   FXSVGIcon* zoomIcon;
@@ -112,6 +115,7 @@ public:
   long onCmdQuit(FXObject*,FXSelector,void*);
   long onTheme(FXObject*,FXSelector sel,void*);
   long onXColumn(FXObject*,FXSelector,void*);
+  long onXAxisMode(FXObject*,FXSelector,void*);
   long onAxisDescription(FXObject*,FXSelector,void*);
   long onAutoFitY(FXObject* sender,FXSelector,void*);
   long onResetZoom(FXObject*,FXSelector,void*);
@@ -147,6 +151,7 @@ public:
     ID_THEME_BREEZE,
     ID_THEME_BREEZE_DARK,
     ID_XCOLUMN,
+    ID_X_AXIS_MODE,
     ID_X_DESCRIPTION,
     ID_Y_DESCRIPTION,
     ID_AUTOFIT_Y,

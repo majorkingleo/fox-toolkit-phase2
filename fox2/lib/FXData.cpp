@@ -77,6 +77,7 @@ void FXData::normalize(){
 
 // Update cached minimum and maximum
 void FXData::updateRange(FXdouble value){
+  if(!Math::fpFinite(value)) return;
   if(!valid){
     minimum=value;
     maximum=value;
@@ -89,21 +90,16 @@ void FXData::updateRange(FXdouble value){
   }
 
 
-// Recompute cached minimum and maximum
+// Recompute cached minimum and maximum over finite samples
 void FXData::rebuildRange(){
   FXint i;
+  valid=false;
   if(size==0){
     minimum=maximum=0.0;
-    valid=false;
     return;
     }
-  minimum=maximum=get(0);
-  for(i=1; i<size; i++){
-    FXdouble value=get(i);
-    if(value<minimum) minimum=value;
-    if(value>maximum) maximum=value;
-    }
-  valid=true;
+  for(i=0; i<size; i++) updateRange(get(i));
+  if(!valid) minimum=maximum=0.0;
   }
 
 
@@ -180,9 +176,48 @@ void FXData::append(FXdouble value){
 // Append a block of samples
 void FXData::append(const FXdouble* values,FXint count){
   FXint i;
+  if(count<=0) return;
+  if(limit==0 && size+count<=capacity){
+    for(i=0; i<count; i++){
+      data[size++]=values[i];
+      updateRange(values[i]);
+      }
+    return;
+    }
   for(i=0; i<count; i++){
     append(values[i]);
     }
+  }
+
+
+// Replace samples with a contiguous block
+void FXData::assign(const FXdouble* values,FXint count){
+  FXint i;
+  FXdouble lo=0.0,hi=0.0;
+  FXbool any=false;
+  if(count<0) count=0;
+  if(limit){
+    clear();
+    for(i=0; i<count; i++) append(values[i]);
+    return;
+    }
+  if(count>capacity) grow(count);
+  for(i=0; i<count; i++){
+    FXdouble value=values[i];
+    data[i]=value;
+    if(Math::fpFinite(value)){
+      if(!any){ lo=hi=value; any=true; }
+      else{
+        if(value<lo) lo=value;
+        if(value>hi) hi=value;
+        }
+      }
+    }
+  size=count;
+  head=0;
+  minimum=lo;
+  maximum=hi;
+  valid=any;
   }
 
 
@@ -226,6 +261,16 @@ FXdouble FXData::getMinimum() const {
 FXdouble FXData::getMaximum() const {
   if(!valid) const_cast<FXData*>(this)->rebuildRange();
   return maximum;
+  }
+
+
+// Return finite minimum and maximum; false when no finite samples exist
+FXbool FXData::getRange(FXdouble& lo,FXdouble& hi) const {
+  if(!valid) const_cast<FXData*>(this)->rebuildRange();
+  if(!valid) return false;
+  lo=minimum;
+  hi=maximum;
+  return true;
   }
 
 

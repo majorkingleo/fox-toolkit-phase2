@@ -63,6 +63,10 @@ enum {
   };
 
 
+/// Format one axis number; return the text to draw
+typedef FXString (*FXAxisNumberFormat)(FXdouble value,FXdouble spacing,void* context);
+
+
 // Describe a plot axis
 class FXCHARTAPI FXAxis {
 private:
@@ -89,6 +93,8 @@ protected:
   FXuchar     precision;        // Number precision
   FXuchar     labelstyle;       // Label style flags
   FXuchar     numberstyle;      // Number style flags
+  FXAxisNumberFormat numberformat; // Number formatter, or NULL
+  void       *numberformatcontext; // Context passed to the formatter
   FXuint      style;            // Axis style flags
   mutable FXbool fadeskip;      // Draw the numbers without fading
   mutable FXTime fadehold;      // No number fades before this time
@@ -169,6 +175,15 @@ public:
 
   /// Get label text style
   FXFont* getNumberFont() const { return numberfont; }
+
+  /// Set a number formatter; NULL restores the automatic format
+  void setNumberFormat(FXAxisNumberFormat formatter,void* context=nullptr);
+
+  /// Return the number formatter, or NULL
+  FXAxisNumberFormat getNumberFormat() const { return numberformat; }
+
+  /// Return the number formatter context
+  void* getNumberFormatContext() const { return numberformatcontext; }
 
   /// Set data range
   void setDataRange(FXdouble min,FXdouble max);

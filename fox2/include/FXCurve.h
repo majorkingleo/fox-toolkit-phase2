@@ -25,6 +25,8 @@
 #include "FXChartDefs.h"
 #endif
 
+#include <memory>
+
 namespace FXCHART {
 
 
@@ -37,8 +39,8 @@ class FXCHARTAPI FXCurve : public FXObject {
   FXDECLARE(FXCurve)
 protected:
   FX2DPlot *plot;       // Plot control
-  FXData   *xdata;      // X data samples
-  FXData   *ydata;      // Y data samples
+  std::shared_ptr<FXData> xdata; // X data samples
+  std::shared_ptr<FXData> ydata; // Y data samples
   FXString  label;      // Name of plot
   LineStyle linestyle;  // Line style
   Marker    marker;     // Marker style
@@ -99,16 +101,16 @@ public:
   FXbool isVisible() const { return visible; }
 
   /// Change x data samples
-  void setXData(FXData* dd);
+  void setXData(std::shared_ptr<FXData> dd);
 
   /// Return x data samples
-  FXData* getXData() const { return xdata; }
+  FXData* getXData() const { return xdata.get(); }
 
   /// Change y data samples
-  void setYData(FXData* dd);
+  void setYData(std::shared_ptr<FXData> dd);
 
   /// Return y data samples
-  FXData* getYData() const { return ydata; }
+  FXData* getYData() const { return ydata.get(); }
 
   /// Save curve to a stream
   virtual void save(FXStream& store) const override;

@@ -62,8 +62,8 @@ FXIMPLEMENT(LiveSource,FXObject,LiveSourceMap,ARRAYNUMBER(LiveSourceMap))
 // Make a live curve
 void LiveSource::addCurve(FXint index,const FXString& label,FXColor color,FXuchar axis){
   FXColor back=plot->getChartStyle().forecolor;
-  FXData *xd=new FXData();
-  FXData *yd=new FXData();
+  std::shared_ptr<FXData> xd=std::make_shared<FXData>();
+  std::shared_ptr<FXData> yd=std::make_shared<FXData>();
   FXCurve *curve=new FXCurve(plot,label);
   LineStyle style;
   xd->setLimit(20000);

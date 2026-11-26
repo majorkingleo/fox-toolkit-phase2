@@ -98,10 +98,12 @@ void FXIcon::destroy(){
       FXTRACE(TOPIC_CREATION,"%s::destroy %p\n",getClassName(),this);
       ::DeleteObject(shape);
       ::DeleteObject(etch);
+      ::DeleteObject(alphabmp);
       ::DeleteObject(xid);
       }
     shape=0;
     etch=0;
+    alphabmp=0;
     xid=0;
     }
   }
@@ -131,6 +133,12 @@ void FXIcon::render(){
 
     // Remember the pixels for the scaled copies
     snapshot();
+
+    // Rebuild the per-pixel alpha bitmap
+    if(alphabmp){
+      ::DeleteObject(alphabmp);
+      alphabmp=0;
+      }
 
     // Fill with pixels if there is data
     if(data && 0<width && 0<height){
@@ -231,6 +239,40 @@ void FXIcon::render(){
       ::SelectObject(hdcmsk,hmsk);
       ::DeleteDC(hdcmem);
       ::DeleteDC(hdcmsk);
+
+      // Keep a premultiplied ARGB image for icons with true alpha
+      if(!(options&IMAGE_OPAQUE) && !(options&(IMAGE_ALPHACOLOR|IMAGE_ALPHAGUESS))){
+        BITMAPINFO alphainfo;
+        FXuchar *dst;
+        HBITMAP bitmap;
+        ZeroMemory(&alphainfo,sizeof(alphainfo));
+        alphainfo.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+        alphainfo.bmiHeader.biWidth=width;
+        alphainfo.bmiHeader.biHeight=-height;
+        alphainfo.bmiHeader.biPlanes=1;
+        alphainfo.bmiHeader.biBitCount=32;
+        alphainfo.bmiHeader.biCompression=BI_RGB;
+        bitmap=::CreateDIBSection(nullptr,&alphainfo,DIB_RGB_COLORS,(void**)&dst,nullptr,0);
+        if(bitmap && dst){
+          img=data;
+          for(y=0; y<height; y++){
+            for(x=0; x<width; x++){
+              FXuchar *src=(FXuchar*)(img+x);
+              FXuint alpha=src[3];
+              dst[0]=(FXuchar)((src[0]*alpha+127)/255);
+              dst[1]=(FXuchar)((src[1]*alpha+127)/255);
+              dst[2]=(FXuchar)((src[2]*alpha+127)/255);
+              dst[3]=(FXuchar)alpha;
+              dst+=4;
+              }
+            img+=width;
+            }
+          alphabmp=bitmap;
+          }
+        else if(bitmap){
+          ::DeleteObject(bitmap);
+          }
+        }
       }
     }
   }
@@ -249,6 +291,8 @@ void FXIcon::resize(FXint w,FXint h){
       ::DeleteObject(xid);
       ::DeleteObject(shape);
       ::DeleteObject(etch);
+      ::DeleteObject(alphabmp);
+      alphabmp=0;
 
       // Create a bitmap compatible with current display
       HDC hdc=::GetDC(GetDesktopWindow());

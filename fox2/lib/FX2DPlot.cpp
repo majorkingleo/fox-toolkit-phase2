@@ -76,49 +76,43 @@ static FXLineStyle dcLineStyle(FXuchar style){
 
 // Find range of x samples on one axis; lo>hi when there is no data
 void FX2DPlot::rangeX(FXint axis,FXdouble& lo,FXdouble& hi) const {
-  FXint i,j;
-  lo=1.0;
-  hi=0.0;
+  FXint i;
+  FXdouble dlo,dhi;
+  FXbool any=false;
   for(i=0; i<curves.no(); i++){
     FXCurve *curve=curves[i];
     FXData *data;
     if(!curve->isVisible() || curve->getXAxis()!=axis) continue;
     data=curve->getXData();
-    if(!data) continue;
-    for(j=0; j<data->no(); j++){
-      FXdouble value=data->get(j);
-      if(!Math::fpFinite(value)) continue;
-      if(lo>hi){ lo=hi=value; }
-      else{
-        if(value<lo) lo=value;
-        if(value>hi) hi=value;
-        }
+    if(!data || !data->getRange(dlo,dhi)) continue;
+    if(!any){ lo=dlo; hi=dhi; any=true; }
+    else{
+      if(dlo<lo) lo=dlo;
+      if(dhi>hi) hi=dhi;
       }
     }
+  if(!any){ lo=1.0; hi=0.0; }
   }
 
 
 // Find range of y samples on one axis; lo>hi when there is no data
 void FX2DPlot::rangeY(FXint axis,FXdouble& lo,FXdouble& hi) const {
-  FXint i,j;
-  lo=1.0;
-  hi=0.0;
+  FXint i;
+  FXdouble dlo,dhi;
+  FXbool any=false;
   for(i=0; i<curves.no(); i++){
     FXCurve *curve=curves[i];
     FXData *data;
     if(!curve->isVisible() || curve->getYAxis()!=axis) continue;
     data=curve->getYData();
-    if(!data) continue;
-    for(j=0; j<data->no(); j++){
-      FXdouble value=data->get(j);
-      if(!Math::fpFinite(value)) continue;
-      if(lo>hi){ lo=hi=value; }
-      else{
-        if(value<lo) lo=value;
-        if(value>hi) hi=value;
-        }
+    if(!data || !data->getRange(dlo,dhi)) continue;
+    if(!any){ lo=dlo; hi=dhi; any=true; }
+    else{
+      if(dlo<lo) lo=dlo;
+      if(dhi>hi) hi=dhi;
       }
     }
+  if(!any){ lo=1.0; hi=0.0; }
   }
 
 
@@ -172,6 +166,29 @@ void FX2DPlot::fitY(){
   }
 
 
+// Append a point unless it repeats the previous one
+static void appendCurvePoint(FXArray<FXPointF>& points,FXfloat x,FXfloat y){
+  if(points.no()==0 || points.tail().x!=x || points.tail().y!=y) points.append(FXPointF(x,y));
+  }
+
+
+// Add the vertical extent of one pixel column, starting nearest the last point
+static void flushCurveBucket(FXArray<FXPointF>& points,FXfloat x,FXfloat lo,FXfloat hi){
+  if(lo==hi){
+    appendCurvePoint(points,x,lo);
+    return;
+    }
+  if(points.no() && FXABS(points.tail().y-hi)<FXABS(points.tail().y-lo)){
+    appendCurvePoint(points,x,hi);
+    appendCurvePoint(points,x,lo);
+    }
+  else{
+    appendCurvePoint(points,x,lo);
+    appendCurvePoint(points,x,hi);
+    }
+  }
+
+
 // Draw all visible curves
 void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FXint plotbottom) const {
   FXRectangle save=dc.getClipRectangle();
@@ -207,36 +224,90 @@ void FX2DPlot::drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FX
     if(count<=0) continue;
     xscale=((FXdouble)(plotright-plotleft))/(xmax-xmin);
     yscale=((FXdouble)(plotbottom-plottop))/(ymax-ymin);
-    // Curves
+    // Curves; keep the min/max envelope of each pixel column when the
+    // samples are much denser than the plot
     if(curve->getLineStyle().style!=LINESTYLE_NONE){
       dc.setForeground(curve->getLineStyle().color);
       dc.setLineWidth(curve->getLineStyle().weight);
       dc.setLineStyle(dcLineStyle(curve->getLineStyle().style));
-      for(j=0; j<count; j++){
-        x=xdata->get(j);
-        y=ydata->get(j);
-        if(!Math::fpFinite(x) || !Math::fpFinite(y)){
-          if(points.no()>1) dc.drawLinesF(points.data(),points.no());
-          points.clear();
-          continue;
+      if(count>2*FXMAX(1,plotright-plotleft)){
+        FXbool active=false;
+        FXint bucketx=0;
+        FXfloat bucketlo=0.0f,buckethi=0.0f;
+        for(j=0; j<count; j++){
+          x=xdata->get(j);
+          y=ydata->get(j);
+          if(!Math::fpFinite(x) || !Math::fpFinite(y)){
+            if(active) flushCurveBucket(points,(FXfloat)bucketx,bucketlo,buckethi);
+            active=false;
+            if(points.no()>1) dc.drawLinesF(points.data(),points.no());
+            points.clear();
+            continue;
+            }
+          fx=(FXfloat)(plotleft+(x-xmin)*xscale);
+          fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
+          px=(FXint)Math::lrint(fx);
+          if(!active){
+            active=true;
+            bucketx=px;
+            bucketlo=buckethi=fy;
+            }
+          else if(px==bucketx){
+            if(fy<bucketlo) bucketlo=fy;
+            if(fy>buckethi) buckethi=fy;
+            }
+          else{
+            flushCurveBucket(points,(FXfloat)bucketx,bucketlo,buckethi);
+            bucketx=px;
+            bucketlo=buckethi=fy;
+            }
           }
-        fx=(FXfloat)(plotleft+(x-xmin)*xscale);
-        fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
-        if(points.no() && points.tail().x==fx && points.tail().y==fy) continue;
-        points.append(FXPointF(fx,fy));
+        if(active) flushCurveBucket(points,(FXfloat)bucketx,bucketlo,buckethi);
+        }
+      else{
+        for(j=0; j<count; j++){
+          x=xdata->get(j);
+          y=ydata->get(j);
+          if(!Math::fpFinite(x) || !Math::fpFinite(y)){
+            if(points.no()>1) dc.drawLinesF(points.data(),points.no());
+            points.clear();
+            continue;
+            }
+          fx=(FXfloat)(plotleft+(x-xmin)*xscale);
+          fy=(FXfloat)(plotbottom-(y-ymin)*yscale);
+          appendCurvePoint(points,fx,fy);
+          }
         }
       if(points.no()>1) dc.drawLinesF(points.data(),points.no());
       }
 
-    // Markers
+    // Markers; with dense data keep only the first marker in each pixel column
     if(curve->getMarkerStyle().style!=MARKER_NONE && curve->getMarkerStyle().size>0){
-      for(j=0; j<count; j++){
-        x=xdata->get(j);
-        y=ydata->get(j);
-        if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
-        px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
-        py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
-        drawMarker(dc,curve->getMarkerStyle(),px,py);
+      if(count>2*FXMAX(1,plotright-plotleft)){
+        FXbool first=true;
+        FXint lastpx=0;
+        for(j=0; j<count; j++){
+          x=xdata->get(j);
+          y=ydata->get(j);
+          if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
+          px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
+          py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
+          if(first || px!=lastpx){
+            drawMarker(dc,curve->getMarkerStyle(),px,py);
+            lastpx=px;
+            first=false;
+            }
+          }
+        }
+      else{
+        for(j=0; j<count; j++){
+          x=xdata->get(j);
+          y=ydata->get(j);
+          if(!Math::fpFinite(x) || !Math::fpFinite(y)) continue;
+          px=plotleft+(FXint)Math::lrint((x-xmin)*xscale);
+          py=plotbottom-(FXint)Math::lrint((y-ymin)*yscale);
+          drawMarker(dc,curve->getMarkerStyle(),px,py);
+          }
         }
       }
     }

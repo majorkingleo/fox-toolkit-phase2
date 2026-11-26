@@ -26,6 +26,7 @@
 #include "FXCurve.h"
 #include "FX2DChart.h"
 #include "FX2DPlot.h"
+#include <utility>
 
 /*
   Notes:
@@ -43,7 +44,7 @@ FXIMPLEMENT(FXCurve,FXObject,nullptr,0)
 
 
 // Deserialization
-FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+FXCurve::FXCurve():plot(nullptr),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
   linestyle.color=FXRGB(0,0,0);
   linestyle.weight=1;
   linestyle.style=LINESTYLE_SOLID;
@@ -61,7 +62,7 @@ FXCurve::FXCurve():plot(nullptr),xdata(nullptr),ydata(nullptr),xaxis(FX2DChart::
 
 
 // Init
-FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),xdata(nullptr),ydata(nullptr),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
+FXCurve::FXCurve(FX2DPlot* plt,const FXString& nm):plot(plt),label(nm),xaxis(FX2DChart::XLO),yaxis(FX2DChart::YLO),visible(true){
   linestyle.color=FXRGB(0,0,0);
   linestyle.weight=1;
   linestyle.style=LINESTYLE_SOLID;
@@ -136,17 +137,17 @@ void FXCurve::setVisible(FXbool vis){
 
 
 // Change x data samples
-void FXCurve::setXData(FXData* dd){
+void FXCurve::setXData(std::shared_ptr<FXData> dd){
   if(xdata!=dd){
-    xdata=dd;
+    xdata=std::move(dd);
     plot->update();
     }
   }
 
 // Change y data samples
-void FXCurve::setYData(FXData* dd){
+void FXCurve::setYData(std::shared_ptr<FXData> dd){
   if(ydata!=dd){
-    ydata=dd;
+    ydata=std::move(dd);
     plot->update();
     }
   }
@@ -186,11 +187,9 @@ void FXCurve::load(FXStream& store){
 
 // Destroy
 FXCurve::~FXCurve(){
-  delete xdata;
-  delete ydata;
+  xdata.reset();
+  ydata.reset();
   plot=(FX2DPlot*)-1L;
-  xdata=(FXData*)-1L;
-  ydata=(FXData*)-1L;
   }
 
 }

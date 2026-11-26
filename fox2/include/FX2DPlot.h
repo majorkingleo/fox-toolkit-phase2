@@ -43,6 +43,8 @@ protected:
   mutable FXTime lastdraw; // Duration of the last curve draw
 protected:
   FX2DPlot();
+
+  /// Draw curves; dense curves keep the min/max envelope of each pixel column
   virtual void drawPlot(FXDC& dc,FXint plotleft,FXint plottop,FXint plotright,FXint plotbottom) const override;
   void rangeX(FXint axis,FXdouble& lo,FXdouble& hi) const;
   void rangeY(FXint axis,FXdouble& lo,FXdouble& hi) const;
