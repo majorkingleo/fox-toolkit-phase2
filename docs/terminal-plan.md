@@ -1368,6 +1368,20 @@ Acceptance:
 - Closing a tab terminates only its child.
 - Keyboard shortcuts in section 10.2 work.
 
+Phase 5 result (partial): the app now owns a vector of `TerminalTab` objects and
+a single `FXSwitcher`. New tabs are created by the plus button, the profile
+menu and the hamburger menu; the tab bar paints each title and close box,
+switches the active view, and sends `ID_TAB`/`ID_CLOSE_TAB` to the window.
+Closing a tab deletes only that view; hidden views keep their PTY running.
+OSC titles update the owning tab. The `New Tab`, `New Window`, `Close Tab`,
+`Copy`, `Paste`, `About` and `Quit` commands have accelerators. A programmatic
+three-tab X11 run verified the tab strip and prompt; the screenshot is
+`screenshots/tests/fox2/x11/foxterm-tabs.png`.
+
+Not yet done: tab overflow scrolling, drag reorder, duplicate/rename, close
+confirmation, Ctrl+Tab cycling, and the 20-tab gate. These remain for the
+Phase 5 follow-up.
+
 ### Phase 6: detach
 
 Implement `detachTab`, drag tear-off, context menu, Ctrl+Shift+M, reparent,

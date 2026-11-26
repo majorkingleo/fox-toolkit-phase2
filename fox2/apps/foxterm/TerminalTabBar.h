@@ -25,26 +25,38 @@
 #include "FXPacker.h"
 #endif
 
+#include <vector>
+
 namespace FX {
 
 
 /**
-* A compact single-tab strip. The first application phase uses it for one
-* session; the Phase 5 work adds the vector of tabs, close buttons, overflow
-* and drag handling without changing the window layout.
+* A compact tab strip. The strip paints the titles, highlights the active tab,
+* and sends ID_TAB or ID_CLOSE_TAB to its target. Overflow scrolling and drag
+* reorder are added by the next phase.
 */
 class TerminalTabBar : public FXPacker {
   FXDECLARE(TerminalTabBar)
 protected:
-  FXFont  *font;
-  FXString title;
-  FXbool   active;
+  FXFont              *font;
+  std::vector<FXString> titles;
+  FXint                current;
+  FXint                hover;
 protected:
   TerminalTabBar(){}
+  FXint tabWidth(FXint index) const;
+  FXint tabAt(FXint x) const;
+  FXbool closeAt(FXint index,FXint x) const;
+public:
+  enum {
+    ID_TAB=FXPacker::ID_LAST,
+    ID_CLOSE_TAB,
+    ID_LAST
+    };
 public:
 
   /// Construct a tab strip
-  TerminalTabBar(FXComposite* p,FXuint opts=0,FXint x=0,FXint y=0,FXint w=0,FXint h=0,FXint pl=2,FXint pr=2,FXint pt=2,FXint pb=2);
+  TerminalTabBar(FXComposite* p,FXObject* tgt=nullptr,FXSelector sel=0,FXuint opts=0,FXint x=0,FXint y=0,FXint w=0,FXint h=0,FXint pl=2,FXint pr=2,FXint pt=2,FXint pb=2);
 
   /// Create resources
   virtual void create() override;
@@ -61,17 +73,38 @@ public:
   /// Paint the strip
   long onPaint(FXObject*,FXSelector,void*);
 
-  /// Change the tab title
-  void setTitle(const FXString& text);
+  /// Select a tab or its close box
+  long onLeftBtnPress(FXObject*,FXSelector,void*);
 
-  /// Return the tab title
-  const FXString& getTitle() const { return title; }
+  /// Track the close box under the pointer
+  long onMotion(FXObject*,FXSelector,void*);
 
-  /// Set the active state
-  void setActive(FXbool flag);
+  /// Clear the hovered tab
+  long onLeave(FXObject*,FXSelector,void*);
 
-  /// Return the active state
-  FXbool isActive() const { return active; }
+  /// Set all titles
+  void setTitles(const std::vector<FXString>& text);
+
+  /// Append a title
+  void addTitle(const FXString& text);
+
+  /// Remove a title
+  void removeTitle(FXint index);
+
+  /// Change one title
+  void setTitle(FXint index,const FXString& text);
+
+  /// Return one title
+  const FXString& getTitle(FXint index) const;
+
+  /// Return number of tabs
+  FXint getNumTabs() const { return (FXint)titles.size(); }
+
+  /// Set the active tab
+  void setCurrent(FXint index);
+
+  /// Return the active tab
+  FXint getCurrent() const { return current; }
 
   /// Destructor
   virtual ~TerminalTabBar();

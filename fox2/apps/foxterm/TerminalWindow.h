@@ -29,44 +29,64 @@
 #include "FXTerminal.h"
 #endif
 
+#include <vector>
+
 namespace FX {
 class TerminalTabBar;
 }
 
 
+/// State for one tab
+struct TerminalTab {
+  FXTerminal       *view;
+  FXTerminalLaunch  launch;
+  FXString          title;
+  FXString          directory;
+  FXbool            exited;
+  FXint             exitcode;
+  };
+
+
 /**
-* One native terminal window. Phase 4 uses a single tab; the tab bar already
-* owns the strip that Phase 5 grows into a list of sessions.
+* One native terminal window. The switcher owns the live terminal views; the
+* tab bar owns only titles and selection. Hidden tabs keep their PTY running.
 */
 class TerminalWindow : public FXMainWindow {
   FXDECLARE(TerminalWindow)
 protected:
   FXVerticalFrame *contents;
   FXHorizontalFrame *tabrow;
-  TerminalTabBar   *tabbar;
+  FX::TerminalTabBar *tabbar;
   FXButton         *newbutton;
   FXMenuButton     *profilebutton;
   FXMenuPane       *profilemenu;
   FXMenuButton     *menubutton;
   FXMenuPane       *mainmenu;
-  FXTerminal       *terminal;
+  FXSwitcher       *switcher;
   FXLabel          *status;
   FXTerminalLaunch  launch;
+  std::vector<TerminalTab> tabs;
+  FXint             current;
 protected:
   TerminalWindow(){}
   void saveGeometry();
+  FXint findTab(FXObject* view) const;
+  FXbool addTab(const FXTerminalLaunch& l);
+  void selectTab(FXint index);
+  void closeTab(FXint index);
+  void updateTabTitle(FXint index);
 public:
 
-  /// Construct a terminal window for one launch description
+  /// Construct a terminal window
   TerminalWindow(FXApp* a,const FXTerminalLaunch& launch);
 
-  /// Create and start the child
+  /// Create the first tab and show the window
   virtual void create() override;
 
-  /// Update the title from the terminal
+  /// Update one tab title
   long onCmdTitle(FXObject*,FXSelector,void*);
 
-  /// Ring the application bell
+  /// Ring the bell
   long onCmdBell(FXObject*,FXSelector,void*);
 
   /// Show process exit state
@@ -75,13 +95,25 @@ public:
   /// Report a blocked clipboard request
   long onCmdClipboard(FXObject*,FXSelector,void*);
 
-  /// Open another terminal window
+  /// Select a tab
+  long onCmdTab(FXObject*,FXSelector,void*);
+
+  /// Close a tab by index
+  long onCmdCloseTab(FXObject*,FXSelector,void*);
+
+  /// Close the active tab
+  long onCmdCloseCurrent(FXObject*,FXSelector,void*);
+
+  /// Open a new tab
+  long onCmdNewTab(FXObject*,FXSelector,void*);
+
+  /// Open another window
   long onCmdNewWindow(FXObject*,FXSelector,void*);
 
-  /// Copy the selection
+  /// Copy the active selection
   long onCmdCopy(FXObject*,FXSelector,void*);
 
-  /// Paste the clipboard
+  /// Paste into the active tab
   long onCmdPaste(FXObject*,FXSelector,void*);
 
   /// Save geometry and quit
@@ -95,7 +127,9 @@ public:
     ID_BELL,
     ID_EXITED,
     ID_CLIPBOARD,
-    ID_NEW,
+    ID_NEW_TAB,
+    ID_NEW_WINDOW,
+    ID_CLOSE_CURRENT,
     ID_COPY,
     ID_PASTE,
     ID_ABOUT,
