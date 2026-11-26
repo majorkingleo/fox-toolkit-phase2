@@ -73,6 +73,8 @@ struct FXTerminalPrivate {
   FXTerminalParser      parser;
   FXPty                 pty;
   FXFont               *font;
+  FXObject             *notify;
+  FXSelector            notifyselector;
   FXint                 cellw;
   FXint                 cellh;
   FXint                 ascent;
@@ -111,7 +113,7 @@ struct FXTerminalPrivate {
   FXColor               cursorcolor;
   FXColor               selbackcolor;
   FXColor               seltextcolor;
-  FXTerminalPrivate():parser(screen),font(nullptr),cellw(1),cellh(1),ascent(1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
+  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
   };
 
 
@@ -455,8 +457,10 @@ FXTerminal::FXTerminal(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,F
   priv->font=getApp()->getRoleFont(FONT_MONO);
   priv->term="xterm-256color";
   updateMetrics(priv);
-  target=tgt;
-  message=sel;
+  priv->notify=tgt;
+  priv->notifyselector=sel;
+  target=nullptr;
+  message=0;
   flags|=FLAG_ENABLED;
   defaultCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
   dragCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
@@ -684,8 +688,10 @@ FXbool FXTerminal::sendText(const FXString& text){
 
 // Parse child output
 void FXTerminal::feed(const FXString& bytes){
+  FXString reply;
   if(!priv) return;
   priv->parser.feed(bytes);
+  while(priv->screen.takeResponse(reply)) send(reply);
   updateNotifications();
   recalc();
   update();
@@ -810,20 +816,20 @@ void FXTerminal::updateNotifications(){
   if(!priv) return;
   if(priv->screen.getTitle()!=priv->lasttitle){
     priv->lasttitle=priv->screen.getTitle();
-    if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_TITLE),nullptr);
+    if(priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_COMMAND,ID_TITLE),nullptr);
     }
   if(priv->screen.getWorkingDirectory()!=priv->lastdirectory){
     priv->lastdirectory=priv->screen.getWorkingDirectory();
-    if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_TITLE),nullptr);
+    if(priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_COMMAND,ID_TITLE),nullptr);
     }
   if(priv->screen.getBellCount()!=priv->lastbell){
     priv->lastbell=priv->screen.getBellCount();
-    if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_BELL),nullptr);
+    if(priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_COMMAND,ID_BELL),nullptr);
     }
   request=priv->screen.takeClipboardRequest();
   if(!request.empty()){
     priv->clipboardrequest=request;
-    if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_CLIPBOARD),nullptr);
+    if(priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_COMMAND,ID_CLIPBOARD),nullptr);
     }
   }
 
@@ -1227,8 +1233,7 @@ long FXTerminal::onVScrollerDragged(FXObject* sender,FXSelector sel,void* ptr){
 
 
 // Focus in
-long FXTerminal::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
-  FXScrollArea::onFocusIn(sender,sel,ptr);
+long FXTerminal::onFocusIn(FXObject*,FXSelector,void*){
   if(priv){
     priv->blinkon=true;
     getApp()->addTimeout(this,ID_BLINK,getApp()->getBlinkSpeed());
@@ -1240,8 +1245,7 @@ long FXTerminal::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
 
 
 // Focus out
-long FXTerminal::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
-  FXScrollArea::onFocusOut(sender,sel,ptr);
+long FXTerminal::onFocusOut(FXObject*,FXSelector,void*){
   if(priv){
     getApp()->removeTimeout(this,ID_BLINK);
     priv->blinkon=true;
@@ -1334,7 +1338,9 @@ long FXTerminal::onRead(FXObject*,FXSelector,void*){
   FXival count;
   if(!priv) return 0;
   while((count=priv->pty.read(buffer,sizeof(buffer)))>0){
+    FXString reply;
     priv->parser.feed(buffer,(FXint)count);
+    while(priv->screen.takeResponse(reply)) send(reply);
     }
   if(count<0){
     FXInputHandle handle=priv->pty.getWakeHandle();
@@ -1343,7 +1349,7 @@ long FXTerminal::onRead(FXObject*,FXSelector,void*){
   updateNotifications();
   if(!priv->exitnotified && !priv->pty.isRunning()){
     priv->exitnotified=true;
-    if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_EXITED),nullptr);
+    if(priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_COMMAND,ID_EXITED),nullptr);
     }
   recalc();
   update();

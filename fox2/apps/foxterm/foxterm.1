@@ -1,0 +1,49 @@
+.TH FOXTERM 1 "2026" "FOX 2.0" "User Commands"
+.SH NAME
+foxterm \- FOX terminal emulator
+.SH SYNOPSIS
+.B foxterm
+[\fB--profile\fR \fIname\fR]
+[\fB--term\fR \fIvt100\fR|\fIxterm\fR]
+[\fB--working-directory\fR \fIdir\fR]
+[\fB--execute\fR \fIcommand\fR [\fIarg\fR ...]]
+.SH DESCRIPTION
+.B foxterm
+opens a native window with a terminal view. It starts the default shell on a
+pseudo terminal and accepts text, keys, mouse reporting, selection and clipboard
+operations. The initial implementation uses one tab per window; multiple tabs
+and tear-off are added by the terminal workstream.
+.SH OPTIONS
+.TP
+.B --profile \fIname\fR
+Select a profile. The built-in profile is \fBdefault\fR.
+.TP
+.B --term \fIvt100\fR|\fIxterm\fR
+Select the terminal emulation and TERM value.
+.TP
+.B --working-directory \fIdir\fR
+Start the child in \fIdir\fR.
+.TP
+.B --execute \fIcommand\fR [\fIarg\fR ...]
+Run \fIcommand\fR directly, without a shell.
+.TP
+.B --help
+Show usage information.
+.TP
+.B --version
+Show the FOX version.
+.SH ENVIRONMENT
+The child inherits the environment and receives
+.BR TERM ,
+.BR COLUMNS ,
+.BR LINES ,
+.BR TERM_PROGRAM ,
+and, for xterm mode,
+.BR COLORTERM .
+The default shell is taken from
+.B COMSPEC
+on Windows and
+.B SHELL
+on POSIX systems.
+.SH SEE ALSO
+.BR fox-config (1)

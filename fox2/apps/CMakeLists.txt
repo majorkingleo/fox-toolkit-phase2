@@ -5,11 +5,13 @@ add_subdirectory(pathfinder)
 add_subdirectory(adie)
 add_subdirectory(glviewer)
 add_subdirectory(stopwatch)
+add_subdirectory(foxterm)
 
-install(TARGETS calculator ControlPanel charttest chartdemo PathFinder adie glviewer stopwatch
+install(TARGETS calculator ControlPanel charttest chartdemo PathFinder adie glviewer stopwatch foxterm
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES
   calculator/calculator.1
+  foxterm/foxterm.1
   controlpanel/ControlPanel.1
   pathfinder/PathFinder.1
   adie/adie.1

@@ -1336,6 +1336,25 @@ Acceptance:
 - Geometry and active profile survive a restart.
 - The application contains no `#if` blocks.
 
+Phase 4 result: added `fox2/apps/foxterm` with `main.cpp`,
+`TerminalWindow.*`, a single-tab `TerminalTabBar`, menu/plus/profile controls,
+status line, default shell detection through `COMSPEC`/`SHELL`, `--profile`,
+`--term`, `--working-directory` and `--execute`, and geometry persistence in
+`~/.config/FoxTerm.rc`. The shell receives the pseudo terminal and the widget
+shows prompt, output, selection/copy/paste and title changes. The parser now
+answers the terminal queries fish uses (XTVERSION, kitty keyboard, OSC 10/11 and
+XTGETTCAP), so the default fish prompt appears.
+
+Passed: CMake/X11 and CMake/Wayland application builds; a live X11 run with
+`/bin/sh` and `/usr/bin/fish`; a headless Wayland run with a captured frame; and
+SIGINT saving the window geometry. The MinGW-w64
+cross build produces `foxterm.exe` and `--help` runs under Wine. The X11
+screenshot is `screenshots/tests/fox2/x11/foxterm.png`; the Wayland frame is
+`screenshots/tests/fox2/wayland/foxterm.png`. The Autotools
+`apps/foxterm` target builds; the full Autotools tree still stops in the
+unrelated chart icon rule. Multiple tabs, profiles and close confirmation remain
+for Phases 5 and 9.
+
 ### Phase 5: tabs
 
 Implement multiple tabs, new/close/duplicate/rename/switch/reorder, overflow,

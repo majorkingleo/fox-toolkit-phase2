@@ -45,3 +45,5 @@
 .libs/
 .deps/
 *~
+/apps/foxterm/Makefile.in
+/apps/foxterm/foxterm

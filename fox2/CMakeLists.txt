@@ -74,7 +74,7 @@ if(FOX_BUILD_TESTS)
 
   if(WIN32)
     set(FOX_GUI_EXECUTABLES
-      calculator ControlPanel charttest chartdemo PathFinder adie glviewer stopwatch
+      calculator ControlPanel charttest chartdemo PathFinder adie glviewer stopwatch foxterm
       hello button dpi popup click menus tooltip clipboard dnd icon bmpicon textspin
       combo colordlg colordemo fontdlg rulerdemo gaugedemo idle hello2 layout ratio
       header splitter foursplit gaugetest switcher tabbook groupbox dialog wizard

@@ -260,8 +260,27 @@ void FXTerminalParser::dispatchOsc(){
     case 52:
       screen.setClipboardRequest(value);
       break;
+    case 10:
+      if(value=="?") screen.addResponse(FXString("\x1b]10;rgb:cccc/cccc/cccc\x1b\\"));
+      break;
+    case 11:
+      if(value=="?") screen.addResponse(FXString("\x1b]11;rgb:0c0c/0c0c/0c0c\x1b\\"));
+      break;
     default:
       break;
+    }
+  }
+
+
+// Parse one DCS string
+void FXTerminalParser::dispatchDcs(){
+  FXString reply;
+  if(stringOverflow || stringkind!='P') return;
+  if(string.left(2)=="+q"){
+    reply="\x1bP0+r";
+    reply+=string.mid(2,string.length()-2);
+    reply+="\x1b\\";
+    screen.addResponse(reply);
     }
   }
 
@@ -592,7 +611,10 @@ void FXTerminalParser::dispatchCsi(FXchar final){
         }
       break;
     case 'q':
-      if(intermediates==" ") t.setCursorStyle(param(0,0));
+      if(privateprefix=='>'){
+        t.addResponse(FXString("\x1bP>|foxterm(2.0)\x1b\\"));
+        }
+      else if(intermediates==" ") t.setCursorStyle(param(0,0));
       break;
     case 'r':
       row=param(0,1)-1;
@@ -609,7 +631,8 @@ void FXTerminalParser::dispatchCsi(FXchar final){
         }
       break;
     case 'u':
-      if(privateprefix==0) t.restoreCursor();
+      if(privateprefix=='?') t.addResponse(FXString("\x1b[?0u"));
+      else if(privateprefix==0) t.restoreCursor();
       break;
     default:
       break;
@@ -879,7 +902,8 @@ void FXTerminalParser::feed(const FXchar* data,FXint length){
       }
     if(state==PARSER_STRING_ESC){
       if(ch=='\\' || ch==0x9C){
-        dispatchOsc();
+        if(stringkind=='P') dispatchDcs();
+        else dispatchOsc();
         state=PARSER_GROUND;
         string.clear();
         stringkind=0;

@@ -284,6 +284,16 @@ static void testreplies(){
   checkresponse(screen,"\x1b[?1;2c","primary device attributes");
   feed(parser,"\x1b[>c");
   checkresponse(screen,"\x1b[>0;276;0c","secondary device attributes");
+  feed(parser,"\x1b[>0q");
+  checkresponse(screen,"\x1bP>|foxterm(2.0)\x1b\\","terminal version report");
+  feed(parser,"\x1b[?u");
+  checkresponse(screen,"\x1b[?0u","keyboard protocol report");
+  feed(parser,"\x1b]10;?\x07");
+  checkresponse(screen,"\x1b]10;rgb:cccc/cccc/cccc\x1b\\","foreground color report");
+  feed(parser,"\x1b]11;?\x07");
+  checkresponse(screen,"\x1b]11;rgb:0c0c/0c0c/0c0c\x1b\\","background color report");
+  feed(parser,"\x1bP+q696e646e\x1b\\");
+  checkresponse(screen,"\x1bP0+r696e646e\x1b\\","terminal capability report");
 
   fresh(screen,parser,20,5,TERMINAL_VT100);
   feed(parser,"\x1b[c");

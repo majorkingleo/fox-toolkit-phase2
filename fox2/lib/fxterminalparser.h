@@ -79,6 +79,7 @@ protected:
   void resetParser();
   void dispatchCsi(FXchar final);
   void dispatchOsc();
+  void dispatchDcs();
   void parseSgr(const FXString& text);
   FXColor parseColor(const FXString& text) const;
   void executeByte(FXuchar ch);
