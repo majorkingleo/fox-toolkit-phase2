@@ -991,7 +991,7 @@ long FXList::onPaint(FXObject*,FXSelector,void* ptr){
     if(0<view_w && 0<view_h){
       FXint rr=FXMIN(radius,FXMIN(view_w,view_h)/2);
       getApp()->getStyle()->cutRoundedCorners(dc,0,0,view_w,view_h,rr,getParent()->getBackColor());
-      dc.setForeground(theme->color(ROLE_BORDER));
+      dc.setForeground(theme->color((options&FRAME_SUNKEN)?ROLE_SURFACE_SHADOW:ROLE_BORDER));
       dc.drawRoundRectangle(0,0,view_w-1,view_h-1,rr,rr);
       }
     }
