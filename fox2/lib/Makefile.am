@@ -116,6 +116,9 @@ FXString.cpp \
 FXStringDictionary.cpp \
 FXSwitcher.cpp \
 FXConsole.cpp \
+fxterminalparser.cpp \
+fxterminalscreen.cpp \
+fxterminalwidth.cpp \
 FXGLCanvas.cpp \
 FXGLObject.cpp \
 FXGLViewer.cpp \
@@ -539,7 +542,7 @@ libFOX_2_0_la_SOURCES += FXApp_x11.cpp FXComposeContext_x11.cpp FXCursor_x11.cpp
 endif
 endif
 
-noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxglyphs.h fxglpriv.h fxraster.h fxrects.h fxstipples.h fxwinmap.h
+noinst_HEADERS = fxplatform.h fxplatformwindow.h fxapppriv.h fxiopriv.h fxpathpriv.h fxglyphs.h fxglpriv.h fxraster.h fxrects.h fxstipples.h fxwinmap.h fxterminalparser.h fxterminalscreen.h fxterminalwidth.h
 
 EXTRA_DIST = nanosvg.h nanosvgrast.h nanosvg-LICENSE.txt \
 blank_mask.xbm \

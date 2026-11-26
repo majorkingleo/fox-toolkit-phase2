@@ -54,13 +54,14 @@ dnd_SOURCES = dnd.cpp
 raster_SOURCES = raster.cpp
 noinst_PROGRAMS += raster
 
-noinst_PROGRAMS += codecs consolemodel dictest expression format glyphs half match math memmap minheritance parallel process region rex scan thread timefmt unicode units variant winmap xml svg
+noinst_PROGRAMS += codecs consolemodel dictest expression format glyphs half match math memmap minheritance parallel process region rex scan terminalmodel thread timefmt unicode units variant winmap xml svg
 
 # The rasterizer test also uses the private fxraster.h in ../lib
 AM_CPPFLAGS = -I$(top_srcdir)/lib
 
 codecs_SOURCES = codecs.cpp
 consolemodel_SOURCES = consolemodel.cpp
+terminalmodel_SOURCES = terminalmodel.cpp
 dictest_SOURCES = dictest.cpp
 expression_SOURCES = expression.cpp
 format_SOURCES = format.cpp
