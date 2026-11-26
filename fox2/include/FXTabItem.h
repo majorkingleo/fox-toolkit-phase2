@@ -42,6 +42,8 @@ enum {
 
 
 class FXTabBar;
+class FXDCWindow;
+class FXImage;
 
 
 /**
@@ -56,7 +58,11 @@ class FXAPI FXTabItem : public FXLabel {
   FXDECLARE(FXTabItem)
 protected:
   FXbool hovered=false;       // Cursor is over the tab (set by enter/leave)
+  FXImage* paintBuffer=nullptr; // Off-screen copy the tab is composed in, then blitted flicker-free
   FXTabItem(){}
+
+  /// Draw the whole tab (face, icon, label) into dc; dc origin is the tab origin
+  virtual void paintTab(FXDCWindow& dc,FXEvent* ev);
 private:
   FXTabItem(const FXTabItem&);
   FXTabItem& operator=(const FXTabItem&);
@@ -77,6 +83,8 @@ public:
 
   /// Construct a tab item
   FXTabItem(FXTabBar* p,const FXString& text,FXIcon* ic=0,FXuint opts=TAB_TOP_NORMAL,FXint x=0,FXint y=0,FXint w=0,FXint h=0,FXint pl=DEFAULT_PAD,FXint pr=DEFAULT_PAD,FXint pt=DEFAULT_PAD,FXint pb=DEFAULT_PAD);
+
+  virtual ~FXTabItem();
 
   /// Returns true because a tab item can receive focus
   virtual FXbool canFocus() const override;

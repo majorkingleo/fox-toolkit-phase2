@@ -237,7 +237,38 @@ long FXTabItem::onHotKeyRelease(FXObject*,FXSelector,void*){
 // Handle repaint
 long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
+  if(width<=0 || height<=0) return 1;
+
+  // Compose the tab off-screen and copy only the exposed area to the window,
+  // so the intermediate states (background, face, text) are never visible
+  if(!paintBuffer){
+    paintBuffer=new FXImage(getApp(),nullptr,0,width,height);
+    paintBuffer->create();
+    }
+  else if(paintBuffer->getWidth()!=width || paintBuffer->getHeight()!=height){
+    paintBuffer->resize(width,height);
+    }
+  {
+    FXEvent full=*ev;
+    full.rect.x=0; full.rect.y=0; full.rect.w=width; full.rect.h=height;
+    FXDCWindow bdc(paintBuffer);
+    paintTab(bdc,&full);
+    }
   FXDCWindow dc(this,ev);
+  dc.drawArea(paintBuffer,ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h,ev->rect.x,ev->rect.y);
+  return 1;
+  }
+
+
+// Release off-screen buffer
+FXTabItem::~FXTabItem(){
+  delete paintBuffer;
+  paintBuffer=nullptr;
+  }
+
+
+// Draw the tab into the given DC
+void FXTabItem::paintTab(FXDCWindow& dc,FXEvent* ev){
   FXint tw=0,th=0,iw=0,ih=0,tx,ty,ix,iy;
   dc.setForeground(backColor);
 //dc.setForeground(FXRGB(255,0,0));
@@ -400,7 +431,6 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
         }
       }
     }
-  return 1;
   }
 
 
