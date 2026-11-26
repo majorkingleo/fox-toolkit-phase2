@@ -110,6 +110,8 @@ FXDEFMAP(FXTextField) FXTextFieldMap[]={
   FXMAPFUNC(SEL_CLIPBOARD_LOST,0,FXTextField::onClipboardLost),
   FXMAPFUNC(SEL_CLIPBOARD_GAINED,0,FXTextField::onClipboardGained),
   FXMAPFUNC(SEL_CLIPBOARD_REQUEST,0,FXTextField::onClipboardRequest),
+  FXMAPFUNC(SEL_ENTER,0,FXTextField::onEnter),
+  FXMAPFUNC(SEL_LEAVE,0,FXTextField::onLeave),
   FXMAPFUNC(SEL_FOCUSIN,0,FXTextField::onFocusIn),
   FXMAPFUNC(SEL_FOCUSOUT,0,FXTextField::onFocusOut),
   FXMAPFUNC(SEL_FOCUS_SELF,0,FXTextField::onFocusSelf),
@@ -1134,6 +1136,7 @@ long FXTextField::onPaint(FXObject*,FXSelector,void* ptr){
     FXint edge=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale()),1);
     FXColor face=isEnabled()?backColor:theme->color(ROLE_SURFACE);
     FXColor outline=hasFocus()?theme->color(ROLE_FOCUS_RING):theme->color(ROLE_BORDER);
+    if(!hasFocus() && underCursor()) outline=theme->color(ROLE_HOVER_RING);
     if(!isEnabled()) outline=theme->color(ROLE_BORDER,THEME_STATE_DISABLED);
     dc.setForeground(getParent()?getParent()->getBackColor():backColor);
     dc.fillRectangle(0,0,width,height);
@@ -1182,6 +1185,28 @@ long FXTextField::onBlink(FXObject*,FXSelector,void*){
   blink^=FLAG_CARET;
   getApp()->addTimeout(this,ID_BLINK,getApp()->getBlinkSpeed());
   return 0;
+  }
+
+
+// Entering the field
+long FXTextField::onEnter(FXObject* sender,FXSelector sel,void* ptr){
+  FXFrame::onEnter(sender,sel,ptr);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    update();
+    if(getParent() && (FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0 || FXString::comparecase(getParent()->getClassName(),"FXListBox")==0)) getParent()->update();
+    }
+  return 1;
+  }
+
+
+// Leaving the field
+long FXTextField::onLeave(FXObject* sender,FXSelector sel,void* ptr){
+  FXFrame::onLeave(sender,sel,ptr);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    update();
+    if(getParent() && (FXString::comparecase(getParent()->getClassName(),"FXComboBox")==0 || FXString::comparecase(getParent()->getClassName(),"FXListBox")==0)) getParent()->update();
+    }
+  return 1;
   }
 
 

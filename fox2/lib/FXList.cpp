@@ -884,6 +884,7 @@ long FXList::onCmdSetIntValue(FXObject*,FXSelector,void* ptr){
 long FXList::onEnter(FXObject* sender,FXSelector sel,void* ptr){
   FXScrollArea::onEnter(sender,sel,ptr);
   getApp()->addTimeout(this,ID_TIPTIMER,getApp()->getMenuPause());
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -892,6 +893,7 @@ long FXList::onEnter(FXObject* sender,FXSelector sel,void* ptr){
 long FXList::onLeave(FXObject* sender,FXSelector sel,void* ptr){
   FXScrollArea::onLeave(sender,sel,ptr);
   getApp()->removeTimeout(this,ID_TIPTIMER);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -937,6 +939,7 @@ long FXList::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
     items[current]->setFocus(true);
     updateItem(current);
     }
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -949,6 +952,7 @@ long FXList::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
     items[current]->setFocus(false);
     updateItem(current);
     }
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -991,7 +995,10 @@ long FXList::onPaint(FXObject*,FXSelector,void* ptr){
     if(0<view_w && 0<view_h){
       FXint rr=FXMIN(radius,FXMIN(view_w,view_h)/2);
       getApp()->getStyle()->cutRoundedCorners(dc,0,0,view_w,view_h,rr,getParent()->getBackColor());
-      dc.setForeground(theme->color((options&FRAME_SUNKEN)?ROLE_SURFACE_SHADOW:ROLE_BORDER));
+      FXColor edge=theme->color((options&FRAME_SUNKEN)?ROLE_SURFACE_SHADOW:ROLE_BORDER);
+      if(hasFocus()) edge=theme->color(ROLE_FOCUS_RING);
+      else if(underCursor()) edge=theme->color(ROLE_HOVER_RING);
+      dc.setForeground(edge);
       dc.drawRoundRectangle(0,0,view_w-1,view_h-1,rr,rr);
       }
     }

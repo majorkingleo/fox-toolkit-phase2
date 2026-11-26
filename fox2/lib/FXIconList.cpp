@@ -1636,6 +1636,7 @@ long FXIconList::onCmdSetIntValue(FXObject*,FXSelector,void* ptr){
 long FXIconList::onEnter(FXObject* sender,FXSelector sel,void* ptr){
   FXScrollArea::onEnter(sender,sel,ptr);
   getApp()->addTimeout(this,ID_TIPTIMER,getApp()->getMenuPause());
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -1644,6 +1645,7 @@ long FXIconList::onEnter(FXObject* sender,FXSelector sel,void* ptr){
 long FXIconList::onLeave(FXObject* sender,FXSelector sel,void* ptr){
   FXScrollArea::onLeave(sender,sel,ptr);
   getApp()->removeTimeout(this,ID_TIPTIMER);
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -1688,6 +1690,7 @@ long FXIconList::onFocusIn(FXObject* sender,FXSelector sel,void* ptr){
     items[current]->setFocus(true);
     updateItem(current);
     }
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -1700,6 +1703,7 @@ long FXIconList::onFocusOut(FXObject* sender,FXSelector sel,void* ptr){
     items[current]->setFocus(false);
     updateItem(current);
     }
+  if(0<getApp()->getTheme()->metric(METRIC_CORNER_RADIUS,getDisplayScale())) update();
   return 1;
   }
 
@@ -1824,7 +1828,10 @@ long FXIconList::onPaint(FXObject*,FXSelector,void* ptr){
       // starts above the widget keeps their arcs outside the clip
       FXint top=(options&(ICONLIST_BIG_ICONS|ICONLIST_MINI_ICONS)) ? 0 : -(rr<<1);
       getApp()->getStyle()->cutRoundedCorners(dc,0,top,view_w,view_h-top,rr,getParent()->getBackColor());
-      dc.setForeground(theme->color(ROLE_BORDER));
+      FXColor edge=theme->color((options&FRAME_SUNKEN)?ROLE_SURFACE_SHADOW:ROLE_BORDER);
+      if(hasFocus()) edge=theme->color(ROLE_FOCUS_RING);
+      else if(underCursor()) edge=theme->color(ROLE_HOVER_RING);
+      dc.setForeground(edge);
       dc.drawRoundRectangle(0,top,view_w-1,view_h-1-top,rr,rr);
       }
     }
