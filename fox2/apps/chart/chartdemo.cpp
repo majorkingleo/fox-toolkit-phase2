@@ -1,6 +1,7 @@
 #include "fx.h"
 #include "FXSVGIcon.h"
 #include "FXCharts.h"
+#include "FXInteractivePlot.h"
 #include "CSVReader.h"
 #include "ChartDemoWindow.h"
 #include "ChartAssignmentDialog.h"
@@ -145,177 +146,6 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
 FXIMPLEMENT(ChartDemoWindow,FXMainWindow,ChartDemoWindowMap,ARRAYNUMBER(ChartDemoWindowMap))
 
 
-class ChartDemoPlot : public FX2DPlot {
-  FXDECLARE(ChartDemoPlot)
-protected:
-  FXbool panmode;
-  FXbool panning;
-  FXbool cursorinside;
-  FXint cursorx;
-  FXint cursory;
-  FXint pananchorx;
-  FXint pananchory;
-  FXdouble panrange[4];
-protected:
-  ChartDemoPlot():panmode(false),panning(false),cursorinside(false),cursorx(0),cursory(0),pananchorx(0),pananchory(0){ }
-private:
-  ChartDemoPlot(const ChartDemoPlot&);
-  ChartDemoPlot& operator=(const ChartDemoPlot&);
-public:
-  long onLeftBtnPress(FXObject*,FXSelector,void*);
-  long onMotion(FXObject*,FXSelector,void*);
-  long onLeftBtnRelease(FXObject*,FXSelector,void*);
-  long onUngrabbed(FXObject*,FXSelector,void*);
-  long onLeave(FXObject*,FXSelector,void*);
-  virtual void drawOverlay(FXDC& dc) const override;
-  ChartDemoPlot(FXComposite* p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FX2DPlot(p,tgt,sel,opts,x,y,w,h,pl,pr,pt,pb),panmode(false),panning(false),cursorinside(false),cursorx(0),cursory(0),pananchorx(0),pananchory(0){ }
-  void setPanMode(FXbool mode){ panmode=mode; }
-  };
-
-
-FXDEFMAP(ChartDemoPlot) ChartDemoPlotMap[]={
-  FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,ChartDemoPlot::onLeftBtnPress),
-  FXMAPFUNC(SEL_MOTION,0,ChartDemoPlot::onMotion),
-  FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,ChartDemoPlot::onLeftBtnRelease),
-  FXMAPFUNC(SEL_UNGRABBED,0,ChartDemoPlot::onUngrabbed),
-  FXMAPFUNC(SEL_LEAVE,0,ChartDemoPlot::onLeave),
-  };
-
-FXIMPLEMENT(ChartDemoPlot,FX2DPlot,ChartDemoPlotMap,ARRAYNUMBER(ChartDemoPlotMap))
-
-
-long ChartDemoPlot::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
-  if(!panmode) return FX2DChart::onLeftBtnPress(nullptr,0,ptr);
-  FXEvent* event=(FXEvent*)ptr;
-  const FXRectangle& area=getPlotArea();
-  if(!isEnabled() || event->win_x<area.x || event->win_x>=area.x+area.w || event->win_y<area.y || event->win_y>=area.y+area.h) return 0;
-  if(event->click_count>1){
-    resetZoom();
-    return 1;
-    }
-  pananchorx=event->win_x;
-  pananchory=event->win_y;
-  panrange[0]=getAxis(FX2DChart::XLO)->getAxisRangeMin();
-  panrange[1]=getAxis(FX2DChart::XLO)->getAxisRangeMax();
-  panrange[2]=getAxis(FX2DChart::YLO)->getAxisRangeMin();
-  panrange[3]=getAxis(FX2DChart::YLO)->getAxisRangeMax();
-  panning=true;
-  grab();
-  return 1;
-  }
-
-
-long ChartDemoPlot::onMotion(FXObject*,FXSelector,void* ptr){
-  FXEvent* event=(FXEvent*)ptr;
-  if(panmode && panning){
-    const FXRectangle& area=getPlotArea();
-    if(area.w<=0 || area.h<=0) return 1;
-    FXdouble dx=(event->win_x-pananchorx)*(panrange[1]-panrange[0])/area.w;
-    FXdouble dy=(event->win_y-pananchory)*(panrange[3]-panrange[2])/area.h;
-    setViewRange(panrange[0]-dx,panrange[1]-dx,panrange[2]+dy,panrange[3]+dy);
-    return 1;
-    }
-  const FXRectangle& area=getPlotArea();
-  FXbool inside=event->win_x>=area.x && event->win_x<area.x+area.w && event->win_y>=area.y && event->win_y<area.y+area.h;
-  if(cursorinside!=inside || (inside && (cursorx!=event->win_x || cursory!=event->win_y))){
-    cursorinside=inside;
-    cursorx=event->win_x;
-    cursory=event->win_y;
-    update();
-    }
-  if(panmode) return 0;
-  return FX2DChart::onMotion(nullptr,0,ptr);
-  }
-
-
-long ChartDemoPlot::onLeftBtnRelease(FXObject*,FXSelector,void*){
-  if(!panmode || !panning) return panmode?0:FX2DChart::onLeftBtnRelease(nullptr,0,nullptr);
-  panning=false;
-  ungrab();
-  return 1;
-  }
-
-
-long ChartDemoPlot::onUngrabbed(FXObject*,FXSelector,void* ptr){
-  if(!panmode || !panning) return panmode?0:FX2DChart::onUngrabbed(nullptr,0,ptr);
-  panning=false;
-  return 1;
-  }
-
-
-long ChartDemoPlot::onLeave(FXObject*,FXSelector,void*){
-  if(cursorinside && !panning){
-    cursorinside=false;
-    update();
-    }
-  return 1;
-  }
-
-
-void ChartDemoPlot::drawOverlay(FXDC& dc) const {
-  FX2DChart::drawOverlay(dc);
-  if(!cursorinside) return;
-  const FXRectangle& area=getPlotArea();
-  if(area.w<=0 || area.h<=0) return;
-  FXdouble xmin=getAxis(FX2DChart::XLO)->getAxisRangeMin();
-  FXdouble xmax=getAxis(FX2DChart::XLO)->getAxisRangeMax();
-  if(!(xmax>xmin)) return;
-  FXdouble xvalue=xmin+(xmax-xmin)*(cursorx-area.x)/area.w;
-  FXColor crosshair=readableColor(FXRGB(150,150,150),getChartStyle().forecolor);
-  dc.setForeground(crosshair);
-  dc.setLineWidth(1);
-  dc.setLineStyle(LINE_ONOFF_DASH);
-  dc.drawLine(cursorx,area.y,cursorx,area.y+area.h);
-  dc.drawLine(area.x,cursory,area.x+area.w,cursory);
-  dc.setLineStyle(LINE_SOLID);
-  FXFont* font=getAxis(FX2DChart::XLO)->getNumberFont();
-  dc.setFont(font);
-  FXint textheight=font->getFontHeight();
-  FXint textx=area.x+4;
-  FXint texty=area.y+textheight+3;
-  FXint rowheight=textheight+3;
-  for(FXint i=0; i<numCurves(); i++){
-    FXCurve* curve=getCurve(i);
-    if(!curve->isVisible()) continue;
-    FXData* xs=curve->getXData();
-    FXData* ys=curve->getYData();
-    if(!xs || !ys) continue;
-    FXint count=FXMIN(xs->no(),ys->no());
-    if(count<=0) continue;
-    FXint index=xs->findIndexAt(xvalue);
-    if(index<0) continue;
-    FXdouble samplex=xs->get(index);
-    FXdouble sampley=ys->get(index);
-    if(index+1<count){
-      FXdouble nextx=xs->get(index+1);
-      FXdouble nexty=ys->get(index+1);
-      if(Math::fpFinite(samplex) && Math::fpFinite(sampley) && Math::fpFinite(nextx) && Math::fpFinite(nexty) && nextx>samplex && xvalue>=samplex && xvalue<=nextx){
-        sampley+=(nexty-sampley)*(xvalue-samplex)/(nextx-samplex);
-        }
-      }
-    if(!Math::fpFinite(sampley)) continue;
-    FXAxis* yaxis=getAxis(curve->getYAxis());
-    FXdouble ymin=yaxis->getAxisRangeMin();
-    FXdouble ymax=yaxis->getAxisRangeMax();
-    if(!(ymax>ymin) || sampley<ymin || sampley>ymax) continue;
-    FXint pointx=area.x+(FXint)Math::lrint((xvalue-xmin)*area.w/(xmax-xmin));
-    FXint pointy=area.y+area.h-(FXint)Math::lrint((sampley-ymin)*area.h/(ymax-ymin));
-    dc.setForeground(curve->getLineStyle().color);
-    dc.fillEllipse(pointx-3,pointy-3,7,7);
-    FXString text=FXString::value("%s: %.6g",curve->getLabel().text(),sampley);
-    FXint width=textWidth(font,text);
-    if(textx+width>area.x+area.w-4){
-      textx=area.x+4;
-      texty+=rowheight;
-      }
-    if(texty>area.y+area.h) break;
-    dc.setForeground(curve->getLineStyle().color);
-    drawText(dc,text,textx,texty,TEXT_ATTACH_LEFT|TEXT_ATTACH_BOTTOM);
-    textx+=width+12;
-    }
-  }
-
-
 static const FXColor seriesColors[]={
   FXRGB(220,50,47),FXRGB(38,139,210),FXRGB(133,153,0),FXRGB(211,54,130),
   FXRGB(42,161,152),FXRGB(203,75,22),FXRGB(108,113,196),FXRGB(181,137,0),
@@ -326,8 +156,8 @@ static const FXColor seriesColors[]={
 static void applyPlotColors(FX2DPlot* plot,FXColor background,FXColor foreground,FXColor majorgrid,FXColor minorgrid);
 
 
-static ChartDemoPlot* createChartPlot(FXComposite* parent,FXObject* target,FXSelector selector,FXFont* verticalFont,FXFont* numberFont,FXint plotHeight){
-  ChartDemoPlot* plot=new ChartDemoPlot(parent,target,selector,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,plotHeight,12,12,12,12);
+static FXInteractivePlot* createChartPlot(FXComposite* parent,FXObject* target,FXSelector selector,FXFont* verticalFont,FXFont* numberFont,FXint plotHeight){
+  FXInteractivePlot* plot=new FXInteractivePlot(parent,target,selector,LAYOUT_FILL_X|LAYOUT_FIX_HEIGHT,0,0,0,plotHeight,12,12,12,12);
   plot->getAxis(FX2DChart::XHI)->setStyle(AXIS_OFF);
   plot->getAxis(FX2DChart::YHI)->setStyle(AXIS_OFF);
   plot->getAxis(FX2DChart::YLO)->setLabelFont(verticalFont);
@@ -375,7 +205,7 @@ static void ensurePlotCount(ChartDocument* document,FXint count,FXFont* vertical
     document->plots.pop_back();
     }
   while((FXint)document->plots.size()<count){
-    ChartDemoPlot* plot=createChartPlot(document->plotStack,target,selector,verticalFont,numberFont,plotHeight);
+    FXInteractivePlot* plot=createChartPlot(document->plotStack,target,selector,verticalFont,numberFont,plotHeight);
     document->plots.push_back(plot);
     if(document->plotStack->id()) plot->create();
     FXTheme* theme=document->plot->getApp()->getTheme();
@@ -1355,14 +1185,15 @@ long ChartDemoWindow::onPlotTool(FXObject* sender,FXSelector,void*){
     FXbool panmode=sender==document->dragbutton && document->dragbutton->getState();
     document->zoombutton->setState(!panmode);
     document->dragbutton->setState(panmode);
-    for(FXuval p=0; p<document->plots.size(); p++) static_cast<ChartDemoPlot*>(document->plots[p])->setPanMode(panmode);
+    for(FXuval p=0; p<document->plots.size(); p++) static_cast<FXInteractivePlot*>(document->plots[p])->setPanMode(panmode);
     return 1;
     }
   return 0;
   }
 
 
-long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void*){
+long ChartDemoWindow::onPlotChanged(FXObject* sender,FXSelector,void* ptr){
+  if(ptr) return 1;
   if(syncingPlots) return 1;
   for(FXuval i=0; i<documents.size(); i++){
     ChartDocument* document=documents[i];

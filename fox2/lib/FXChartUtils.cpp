@@ -36,6 +36,40 @@ using namespace FXCHART;
 namespace FXCHART {
 
 
+// Find the nearest point or segment within radius pixels
+FXint pickNearest(const FXPointF* points,FXint count,FXint x,FXint y,FXint radius,FXdouble* distance){
+  if(distance) *distance=-1.0;
+  if(!points || count<=0 || radius<0) return -1;
+  FXdouble limit=(FXdouble)radius*radius;
+  FXdouble best=limit;
+  FXint nearest=-1;
+  FXint segments=count==1 ? 1 : count-1;
+  for(FXint i=0; i<segments; i++){
+    FXdouble x0=points[i].x;
+    FXdouble y0=points[i].y;
+    FXdouble x1=points[count==1?i:i+1].x;
+    FXdouble y1=points[count==1?i:i+1].y;
+    if(!Math::fpFinite(x0) || !Math::fpFinite(y0) || !Math::fpFinite(x1) || !Math::fpFinite(y1)) continue;
+    FXdouble dx=x1-x0;
+    FXdouble dy=y1-y0;
+    FXdouble length=dx*dx+dy*dy;
+    FXdouble along=length>0.0 ? ((x-x0)*dx+(y-y0)*dy)/length : 0.0;
+    along=FXCLAMP(0.0,along,1.0);
+    FXdouble nearestx=x0+along*dx;
+    FXdouble nearesty=y0+along*dy;
+    FXdouble deltax=x-nearestx;
+    FXdouble deltay=y-nearesty;
+    FXdouble squared=deltax*deltax+deltay*deltay;
+    if(squared<=limit && (nearest<0 || squared<best)){
+      best=squared;
+      nearest=i;
+      }
+    }
+  if(distance && nearest>=0) *distance=best;
+  return nearest;
+  }
+
+
 // Measure text width
 FXint textWidth(FXFont *font,const FXString& string){
   FXint angle=font->getAngle()/(90*64);

@@ -349,6 +349,7 @@ FXCurve.cpp \
 FXData.cpp \
 FX2DChart.cpp \
 FX2DPlot.cpp \
+FXInteractivePlot.cpp \
 icons.cpp \
 icons.h \
 fxpriv.h

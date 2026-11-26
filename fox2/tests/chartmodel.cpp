@@ -3,11 +3,13 @@
 #include "FXChartDefs.h"
 #include "FXAxis.h"
 #include "FXCurve.h"
+#include "FXChartUtils.h"
 #include "FXData.h"
 
 #include <cmath>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -64,6 +66,35 @@ bool emptyFormatterUsesDefault(){
   return FXAxis::formatLabel(2.5,0.5,{})=="2.5";
   }
 
+bool pickNearestFindsClosestPointOnSegment(){
+  FXPointF points[3];
+  points[0].x=0.0f; points[0].y=0.0f;
+  points[1].x=10.0f; points[1].y=0.0f;
+  points[2].x=10.0f; points[2].y=10.0f;
+  FXdouble distance=-1.0;
+  FXint index=pickNearest(points,3,5,1,1,&distance);
+  return index==0 && distance==1.0;
+  }
+
+bool pickNearestFindsSinglePointAndHonorsRadius(){
+  FXPointF point;
+  point.x=4.0f;
+  point.y=7.0f;
+  FXdouble distance=-1.0;
+  if(pickNearest(&point,1,7,11,5,&distance)!=0 || distance!=25.0) return false;
+  if(pickNearest(&point,1,7,11,4,&distance)>=0) return false;
+  return pickNearest(nullptr,0,0,0,8)==-1 && pickNearest(&point,1,0,0,-1)==-1;
+  }
+
+bool pickNearestDoesNotBridgeNonFiniteGaps(){
+  FXPointF points[3];
+  points[0].x=0.0f; points[0].y=0.0f;
+  points[1].x=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[1].y=std::numeric_limits<FXfloat>::quiet_NaN();
+  points[2].x=10.0f; points[2].y=0.0f;
+  return pickNearest(points,3,5,0,1)==-1;
+  }
+
 }
 
 int main(){
@@ -73,7 +104,10 @@ int main(){
     {"negative scale range ordering",scaledRangeReordersNegativeScale},
     {"default and empty ranges",emptyAndDefaultRangesArePreserved},
     {"custom tick label formatter",customFormatterReceivesTickValue},
-    {"default tick label formatter",emptyFormatterUsesDefault}
+    {"default tick label formatter",emptyFormatterUsesDefault},
+    {"curve picking segment distance",pickNearestFindsClosestPointOnSegment},
+    {"curve picking point and radius",pickNearestFindsSinglePointAndHonorsRadius},
+    {"curve picking respects non-finite gaps",pickNearestDoesNotBridgeNonFiniteGaps}
     };
   int failures=0;
   for(const Test& test : tests){
