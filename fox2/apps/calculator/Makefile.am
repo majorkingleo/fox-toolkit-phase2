@@ -3,6 +3,7 @@
 AM_CXXFLAGS = @X_CFLAGS@
 INCLUDES = -I$(top_srcdir)/include -I$(top_builddir)/include
 LDADD = $(top_builddir)/lib/libFOX-2.0.la -lm
+RESWRAP = $(top_builddir)/utils/reswrap$(EXEEXT)
 
 bin_PROGRAMS = calculator
 
@@ -20,8 +21,18 @@ constmem.bmp \
 question.gif \
 tinycalc.gif
 
-# icons.h and icons.cpp are checked in; the reswrap rule of the original
-# Makefile.am comes back when fox2/utils/reswrap is ported.
+ICON_PATHS = $(addprefix $(srcdir)/,$(IMAGES))
+
+# icons.h and icons.cpp are generated from the image files by reswrap.
+BUILT_SOURCES = icons.h icons.cpp
+CLEANFILES = icons.h icons.cpp
+
+icons.h: $(ICON_PATHS) $(RESWRAP)
+	$(RESWRAP) -h -o $@ $(ICON_PATHS)
+
+icons.cpp: $(ICON_PATHS) $(RESWRAP) icons.h
+	$(RESWRAP) -i icons.h -o $@ $(ICON_PATHS)
+
 calculator_SOURCES = \
 icons.h \
 icons.cpp \
