@@ -29,6 +29,8 @@
 #include "FXTerminal.h"
 #endif
 
+#include "Profiles.h"
+
 #include <vector>
 
 namespace FX {
@@ -69,6 +71,8 @@ protected:
   FXLabel          *findstatus;
   FXTerminalLaunch  launch;
   std::vector<TerminalTab> tabs;
+  Profiles          profiles;
+  FXString          activeprofile;
   FXint             current;
   FXbool            autostart;
 protected:
@@ -80,10 +84,11 @@ protected:
   void closeTab(FXint index);
   void updateTabTitle(FXint index);
   void detachTab(FXint index);
+  void rebuildProfileMenu();
 public:
 
   /// Construct a terminal window; autostart adds the first tab in create()
-  TerminalWindow(FXApp* a,const FXTerminalLaunch& launch,FXbool autostart=true);
+  TerminalWindow(FXApp* a,const FXTerminalLaunch& launch,const FXString& active=FXString::null,FXbool autostart=true);
 
   /// Create the first tab and show the window
   virtual void create() override;
@@ -145,6 +150,12 @@ public:
   /// Select the previous tab
   long onCmdPrevTab(FXObject*,FXSelector,void*);
 
+  /// Create a tab from a profile
+  long onCmdProfile(FXObject*,FXSelector,void*);
+
+  /// Edit the active profile
+  long onCmdSettings(FXObject*,FXSelector,void*);
+
   /// Show About
   long onCmdAbout(FXObject*,FXSelector,void*);
 public:
@@ -163,6 +174,9 @@ public:
     ID_FIND_CLOSE,
     ID_NEXT_TAB,
     ID_PREV_TAB,
+    ID_PROFILE0,
+    ID_PROFILE_LAST=ID_PROFILE0+15,
+    ID_SETTINGS,
     ID_COPY,
     ID_PASTE,
     ID_ABOUT,

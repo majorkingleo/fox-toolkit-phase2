@@ -1,4 +1,5 @@
 add_executable(foxterm
+  Profiles.cpp
   TerminalTabBar.cpp
   TerminalWindow.cpp
   main.cpp)

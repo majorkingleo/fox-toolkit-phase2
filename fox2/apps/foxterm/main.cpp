@@ -20,6 +20,7 @@
 ********************************************************************************/
 #include "fx.h"
 #include "TerminalWindow.h"
+#include "Profiles.h"
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
@@ -27,16 +28,6 @@
 using namespace FX;
 
 /*******************************************************************************/
-
-// Return the default shell without platform conditionals
-static FXString defaultShell(){
-  FXString comspec=FXSystem::getEnvironment("COMSPEC");
-  FXString shell=FXSystem::getEnvironment("SHELL");
-  if(!comspec.empty()) return comspec;
-  if(!shell.empty()) return shell;
-  return FXString("/bin/sh");
-  }
-
 
 // Quote one command line argument
 static FXString quoteArgument(const FXString& argument){
@@ -126,23 +117,31 @@ int main(int argc,char* argv[]){
     usage(argv[0]);
     return 2;
     }
-  if(profile.empty()) profile="default";
-  if(execute.empty()){
-    launch.shell=defaultShell();
-    launch.arguments=arguments;
-    }
-  else{
-    launch.shell=execute;
-    launch.arguments=arguments;
-    }
-  launch.directory=directory.empty() ? FXSystem::getHomeDirectory() : directory;
-  if(launch.directory.empty()) launch.directory=FXSystem::getCurrentDirectory();
-  launch.term=term.empty() ? (kind==TERMINAL_VT100 ? "vt100" : "xterm-256color") : term;
-  launch.kind=kind;
-  launch.columns=80;
-  launch.rows=24;
   application.init(argc,argv);
-  window=new TerminalWindow(&application,launch);
+  {
+    Profiles profiles;
+    FXint selected;
+    TerminalProfile chosen;
+    profiles.load(application.reg());
+    if(profile.empty()) profile=profiles.getActive();
+    selected=profiles.find(profile);
+    if(selected<0){
+      fprintf(stderr,"%s: unknown profile %s\n",argv[0],profile.text());
+      return 2;
+      }
+    chosen=profiles.at(selected);
+    if(!directory.empty()) chosen.directory=directory;
+    if(!term.empty()){
+      chosen.term=term;
+      chosen.kind=kind;
+      }
+    if(!execute.empty()){
+      chosen.shell=execute;
+      chosen.arguments=arguments;
+      }
+    launch=profiles.launch(chosen);
+    window=new TerminalWindow(&application,launch,chosen.id);
+    }
   application.addSignal(SIGINT,window,TerminalWindow::ID_QUIT);
   new FXToolTip(&application,0);
   application.create();

@@ -1467,6 +1467,17 @@ Acceptance:
 - A corrupt setting never prevents startup.
 - Settings are written only when OK/quit chooses to save.
 
+Phase 9 result (partial): added `Profiles` with built-in `default` and `vt100`
+profiles, registry load/save for name, shell, arguments, directory, TERM, kind
+and scrollback, and active-profile persistence. `foxterm --profile` selects a
+profile; the profile drop-down creates a tab from the chosen profile; the
+Settings dialog edits the active profile and applies it to new tabs. The
+registry is written only on OK or quit.
+
+Not yet done: color schemes, font/cursor profile fields, profile create/delete,
+and live appearance updates. The current color palette and font remain the
+built-in defaults.
+
 ### Phase 10: transparency baseline (`window` mode)
 
 Add the transparency settings, the `FXWindow` opacity API and the per-backend

@@ -12,6 +12,8 @@ foxterm_LDFLAGS = -mwindows
 endif
 
 foxterm_SOURCES = \
+Profiles.h \
+Profiles.cpp \
 TerminalTabBar.h \
 TerminalTabBar.cpp \
 TerminalWindow.h \

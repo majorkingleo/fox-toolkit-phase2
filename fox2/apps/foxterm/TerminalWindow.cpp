@@ -46,6 +46,8 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND_CLOSE,TerminalWindow::onCmdFindClose),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEXT_TAB,TerminalWindow::onCmdNextTab),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PREV_TAB,TerminalWindow::onCmdPrevTab),
+  FXMAPFUNCS(SEL_COMMAND,TerminalWindow::ID_PROFILE0,TerminalWindow::ID_PROFILE_LAST,TerminalWindow::onCmdProfile),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_SETTINGS,TerminalWindow::onCmdSettings),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_COPY,TerminalWindow::onCmdCopy),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PASTE,TerminalWindow::onCmdPaste),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
@@ -61,20 +63,24 @@ FXIMPLEMENT(TerminalWindow,FXMainWindow,TerminalWindowMap,ARRAYNUMBER(TerminalWi
 
 
 // Construct
-TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,FXbool withtab):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),current(-1),autostart(withtab){
+TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString& active,FXbool withtab):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),activeprofile(active),current(-1),autostart(withtab){
   contents=new FXVerticalFrame(this,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0);
   tabrow=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0,0,0);
   tabbar=new TerminalTabBar(tabrow,this,0,LAYOUT_FILL_X|LAYOUT_CENTER_Y,0,0,0,0,2,2,2,2);
   newbutton=new FXButton(tabrow,"+",nullptr,this,ID_NEW_TAB,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y);
-  profilemenu=new FXMenuPane(this);
-  new FXMenuCommand(profilemenu,"Default profile",nullptr,this,ID_NEW_TAB);
-  profilebutton=new FXMenuButton(tabrow,"Default",nullptr,profilemenu,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
+  profiles.load(a->reg());
+  if(activeprofile.empty() || profiles.find(activeprofile)<0) activeprofile=profiles.getActive();
+  profilemenu=nullptr;
+  profilebutton=new FXMenuButton(tabrow,"Default",nullptr,nullptr,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
+  rebuildProfileMenu();
+  profilebutton->setText(profiles.at(profiles.find(activeprofile)).name);
   mainmenu=new FXMenuPane(this);
   new FXMenuCommand(mainmenu,"New &Tab\tCtl-Shift-T",nullptr,this,ID_NEW_TAB);
   new FXMenuCommand(mainmenu,"New &Window\tCtl-Shift-N",nullptr,this,ID_NEW_WINDOW);
   new FXMenuCommand(mainmenu,"&Close Tab\tCtl-Shift-W",nullptr,this,ID_CLOSE_CURRENT);
   new FXMenuCommand(mainmenu,"&Detach Tab",nullptr,this,ID_DETACH);
   new FXMenuCommand(mainmenu,"&Find...\tCtl-Shift-F",nullptr,this,ID_FIND);
+  new FXMenuCommand(mainmenu,"&Settings...",nullptr,this,ID_SETTINGS);
   new FXMenuCommand(mainmenu,"Next Tab\tCtl-Tab",nullptr,this,ID_NEXT_TAB);
   new FXMenuCommand(mainmenu,"Previous Tab\tCtl-Shift-Tab",nullptr,this,ID_PREV_TAB);
   new FXMenuSeparator(mainmenu);
@@ -83,7 +89,7 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,FXbool withtab
   new FXMenuSeparator(mainmenu);
   new FXMenuCommand(mainmenu,"&About",nullptr,this,ID_ABOUT);
   new FXMenuCommand(mainmenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
-  menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
+  menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT)|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
   switcher=new FXSwitcher(contents,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0,0,0,0,0);
   findbar=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,2,2,1,1);
   new FXLabel(findbar,"Find:",nullptr,LAYOUT_CENTER_Y);
@@ -260,7 +266,7 @@ long TerminalWindow::onCmdCloseCurrent(FXObject*,FXSelector,void*){
 
 // New window
 long TerminalWindow::onCmdNewWindow(FXObject*,FXSelector,void*){
-  TerminalWindow *window=new TerminalWindow(getApp(),launch);
+  TerminalWindow *window=new TerminalWindow(getApp(),launch,activeprofile);
   window->create();
   return 1;
   }
@@ -274,7 +280,7 @@ void TerminalWindow::detachTab(FXint index){
   tab=tabs[index];
   tabs.erase(tabs.begin()+index);
   tabbar->removeTitle(index);
-  window=new TerminalWindow(getApp(),tab.launch,false);
+  window=new TerminalWindow(getApp(),tab.launch,activeprofile,false);
   window->create();
   window->move(FXMAX(0,getX()+24),FXMAX(0,getY()+24));
   tab.view->reparent(window->switcher);
@@ -321,6 +327,8 @@ void TerminalWindow::saveGeometry(){
     reg.writeIntEntry("WINDOW","y",getY());
     reg.writeIntEntry("WINDOW","w",getWidth());
     reg.writeIntEntry("WINDOW","h",getHeight());
+    profiles.setActive(activeprofile);
+    profiles.save(reg);
     reg.write();
     }
   }
@@ -404,6 +412,102 @@ long TerminalWindow::onCmdNextTab(FXObject*,FXSelector,void*){
 // Previous tab
 long TerminalWindow::onCmdPrevTab(FXObject*,FXSelector,void*){
   if(!tabs.empty()) selectTab((current+(FXint)tabs.size()-1)%(FXint)tabs.size());
+  return 1;
+  }
+
+
+// Rebuild the profile drop-down
+void TerminalWindow::rebuildProfileMenu(){
+  FXint index=profiles.find(activeprofile);
+  if(index<0) index=0;
+  if(profilemenu) delete profilemenu;
+  profilemenu=new FXMenuPane(this);
+  for(FXint i=0; i<profiles.count() && i<16; i++){
+    new FXMenuCommand(profilemenu,profiles.at(i).name,nullptr,this,ID_PROFILE0+i);
+    }
+  if(profilebutton) profilebutton->setMenu(profilemenu);
+  }
+
+
+// Create a tab from a profile
+long TerminalWindow::onCmdProfile(FXObject*,FXSelector sel,void*){
+  FXint index=(FXint)FXSELID(sel)-ID_PROFILE0;
+  if(index<0 || index>=profiles.count()) return 1;
+  profiles.setActive(profiles.at(index).id);
+  activeprofile=profiles.at(index).id;
+  launch=profiles.launch(profiles.at(index));
+  profilebutton->setText(profiles.at(index).name);
+  addTab(launch);
+  return 1;
+  }
+
+
+// Edit the active profile
+long TerminalWindow::onCmdSettings(FXObject*,FXSelector,void*){
+  FXint index=profiles.find(activeprofile);
+  TerminalProfile *profile;
+  FXDialogBox dialog(this,"Terminal Profile");
+  FXVerticalFrame *body;
+  FXHorizontalFrame *row;
+  FXHorizontalFrame *buttons;
+  FXTextField *namefield;
+  FXTextField *shellfield;
+  FXTextField *argsfield;
+  FXTextField *dirfield;
+  FXTextField *termfield;
+  FXSpinner *scrollback;
+  FXComboBox *kindcombo;
+  if(index<0) index=0;
+  profile=&profiles.at(index);
+  body=new FXVerticalFrame(&dialog,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y),0,0,0,0,8,8,8,8,6,6);
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"Name:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  namefield=new FXTextField(row,30,nullptr,0,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
+  namefield->setText(profile->name);
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"Shell:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  shellfield=new FXTextField(row,40,nullptr,0,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
+  shellfield->setText(profile->shell);
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"Arguments:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  argsfield=new FXTextField(row,40,nullptr,0,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
+  argsfield->setText(profile->arguments);
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"Directory:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  dirfield=new FXTextField(row,40,nullptr,0,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
+  dirfield->setText(profile->directory);
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"TERM:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  termfield=new FXTextField(row,20,nullptr,0,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
+  termfield->setText(profile->term);
+  kindcombo=new FXComboBox(row,10,nullptr,0,FXuint(COMBOBOX_NORMAL)|FXuint(LAYOUT_CENTER_Y));
+  kindcombo->appendItem("xterm");
+  kindcombo->appendItem("vt100");
+  kindcombo->setCurrentItem(profile->kind==TERMINAL_VT100 ? 1 : 0);
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"Scrollback:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  scrollback=new FXSpinner(row,7,nullptr,0,FXuint(SPIN_NORMAL)|FXuint(LAYOUT_CENTER_Y));
+  scrollback->setRange(0,100000);
+  scrollback->setValue(profile->scrollback);
+  buttons=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXButton(buttons,"Cancel",nullptr,&dialog,FXDialogBox::ID_CANCEL,FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT));
+  new FXButton(buttons,"OK",nullptr,&dialog,FXDialogBox::ID_ACCEPT,FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT));
+  if(dialog.execute(PLACEMENT_OWNER)){
+    profile->name=namefield->getText();
+    profile->shell=shellfield->getText();
+    profile->arguments=argsfield->getText();
+    profile->directory=dirfield->getText();
+    profile->term=termfield->getText();
+    profile->kind=kindcombo->getCurrentItem()==1 ? TERMINAL_VT100 : TERMINAL_XTERM;
+    if(profile->kind==TERMINAL_VT100) profile->term="vt100";
+    else if(profile->term.empty()) profile->term="xterm-256color";
+    profile->scrollback=scrollback->getValue();
+    profiles.save(getApp()->reg());
+    getApp()->reg().write();
+    launch=profiles.launch(*profile);
+    profilebutton->setText(profile->name);
+    rebuildProfileMenu();
+    }
   return 1;
   }
 
