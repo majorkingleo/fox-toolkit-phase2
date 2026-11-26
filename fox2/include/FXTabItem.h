@@ -55,12 +55,15 @@ class FXTabBar;
 class FXAPI FXTabItem : public FXLabel {
   FXDECLARE(FXTabItem)
 protected:
+  FXbool hovered=false;       // Cursor is over the tab (set by enter/leave)
   FXTabItem(){}
 private:
   FXTabItem(const FXTabItem&);
   FXTabItem& operator=(const FXTabItem&);
 public:
   long onPaint(FXObject*,FXSelector,void*);
+  long onEnter(FXObject*,FXSelector,void*);
+  long onLeave(FXObject*,FXSelector,void*);
   long onFocusIn(FXObject*,FXSelector,void*);
   long onFocusOut(FXObject*,FXSelector,void*);
   long onUngrabbed(FXObject*,FXSelector,void*);

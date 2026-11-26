@@ -85,6 +85,8 @@ static FXColor blendColor(FXColor a,FXColor b,FXint percent){
 // Map
 FXDEFMAP(FXTabItem) FXTabItemMap[]={
   FXMAPFUNC(SEL_PAINT,0,FXTabItem::onPaint),
+  FXMAPFUNC(SEL_ENTER,0,FXTabItem::onEnter),
+  FXMAPFUNC(SEL_LEAVE,0,FXTabItem::onLeave),
   FXMAPFUNC(SEL_FOCUSIN,0,FXTabItem::onFocusIn),
   FXMAPFUNC(SEL_FOCUSOUT,0,FXTabItem::onFocusOut),
   FXMAPFUNC(SEL_UNGRABBED,0,FXTabItem::onUngrabbed),
@@ -109,6 +111,30 @@ FXTabItem::FXTabItem(FXTabBar* p,const FXString& text,FXIcon* ic,FXuint opts,FXi
 
 // If window can have focus
 FXbool FXTabItem::canFocus() const { return true; }
+
+
+// Cursor entered the tab; repaint with the hover face.  The app does not
+// update underCursor() until after a leave has been delivered, so the state
+// is tracked here instead of being asked at paint time
+long FXTabItem::onEnter(FXObject* sender,FXSelector sel,void* ptr){
+  FXLabel::onEnter(sender,sel,ptr);
+  if(!hovered){
+    hovered=true;
+    update();
+    }
+  return 1;
+  }
+
+
+// Cursor left the tab; repaint without the hover face
+long FXTabItem::onLeave(FXObject* sender,FXSelector sel,void* ptr){
+  FXLabel::onLeave(sender,sel,ptr);
+  if(hovered){
+    hovered=false;
+    update();
+    }
+  return 1;
+  }
 
 
 // Gained focus
@@ -236,7 +262,7 @@ long FXTabItem::onPaint(FXObject*,FXSelector,void* ptr){
       face=blendColor(face,theme->color(ROLE_SURFACE),45);
       edge=blendColor(edge,theme->color(ROLE_SURFACE),45);
       }
-    else if(!selected && underCursor()){
+    else if(!selected && hovered){
       face=blendColor(theme->color(ROLE_SURFACE),accent,20);
       }
     if(hasFocus() && !selected) edge=theme->color(ROLE_FOCUS_RING);

@@ -44,11 +44,16 @@ FXbool ChartTabItem::overDetachIcon(FXint x,FXint y) const {
 
 void ChartTabItem::updateDetachIcon(){
   FXIcon* nextIcon=iconPressed?pressedIcon:(iconHot?hoverIcon:normalIcon);
-  if(getIcon()!=nextIcon) setIcon(nextIcon);
+  // The icons have the same size: repaint only, no relayout of the tab bar
+  if(icon!=nextIcon){
+    icon=nextIcon;
+    update();
+    }
   }
 
 
-long ChartTabItem::onEnter(FXObject*,FXSelector,void* ptr){
+long ChartTabItem::onEnter(FXObject* sender,FXSelector sel,void* ptr){
+  FXTabItem::onEnter(sender,sel,ptr);
   FXEvent* event=(FXEvent*)ptr;
   iconHot=overDetachIcon(event->win_x,event->win_y);
   updateDetachIcon();
@@ -56,7 +61,8 @@ long ChartTabItem::onEnter(FXObject*,FXSelector,void* ptr){
   }
 
 
-long ChartTabItem::onLeave(FXObject*,FXSelector,void*){
+long ChartTabItem::onLeave(FXObject* sender,FXSelector sel,void* ptr){
+  FXTabItem::onLeave(sender,sel,ptr);
   iconHot=false;
   updateDetachIcon();
   return 1;
