@@ -578,7 +578,9 @@ values skipped because GTK resets properties in more specific rules. The menu
 bar item height comes from `menubar > menuitem`: `min-height` plus twice the
 first padding value and `border-width`, stored as `METRIC_MENUBAR_HEIGHT`.
 Popup rows use the same arithmetic from `menu menuitem`, stored as
-`METRIC_MENUROW_HEIGHT`; the Breeze presets use 30 px.
+`METRIC_MENUROW_HEIGHT`; the Breeze presets use 30 px. Entry, combo box and
+list box height comes from `entry min-height`, stored as
+`METRIC_CONTROL_HEIGHT`.
 
 `tools/fxthemeimport.cpp` (new `tools/` subdirectory) writes the resolved
 theme as `.foxtheme` plus a human-readable summary, and exits with status 2

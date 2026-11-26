@@ -745,6 +745,7 @@ void FXCSS::apply(FXTheme& theme) const {
   theme.setMetric(METRIC_PADDING,length("button","padding",theme.metric(METRIC_PADDING)));
   theme.setMetric(METRIC_FOCUS_WIDTH,length("button","outline-width",theme.metric(METRIC_FOCUS_WIDTH)));
   theme.setMetric(METRIC_CHECK_SIZE,length("check","min-width",theme.metric(METRIC_CHECK_SIZE)));
+  theme.setMetric(METRIC_CONTROL_HEIGHT,length("entry","min-height",theme.metric(METRIC_CONTROL_HEIGHT)));
 
   // Menu rows have metrics of their own: a minimum height and the padding
   // around the text, both smaller than what a button asks for

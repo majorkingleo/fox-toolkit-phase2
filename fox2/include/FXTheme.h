@@ -89,6 +89,7 @@ enum {
   METRIC_ROW_PADDING,     /// Vertical padding inside a row of a menu
   METRIC_SCROLLBAR_WIDTH, /// Thickness of a scroll bar
   METRIC_SHADOW_SIZE,     /// Drop shadow size around popups, 0 for none
+  METRIC_CONTROL_HEIGHT,  /// Height of an entry, combo box or list box
   METRIC_MENUBAR_HEIGHT,  /// Height of a menu bar item
   METRIC_MENUROW_HEIGHT,  /// Height of a popup menu row
   METRIC_LAST
