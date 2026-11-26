@@ -40,6 +40,12 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_WINDOW,TerminalWindow::onCmdNewWindow),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_CLOSE_CURRENT,TerminalWindow::onCmdCloseCurrent),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_DETACH,TerminalWindow::onCmdDetach),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND,TerminalWindow::onCmdFind),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND_NEXT,TerminalWindow::onCmdFindNext),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND_PREV,TerminalWindow::onCmdFindPrev),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND_CLOSE,TerminalWindow::onCmdFindClose),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEXT_TAB,TerminalWindow::onCmdNextTab),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PREV_TAB,TerminalWindow::onCmdPrevTab),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_COPY,TerminalWindow::onCmdCopy),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PASTE,TerminalWindow::onCmdPaste),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
@@ -68,6 +74,9 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,FXbool withtab
   new FXMenuCommand(mainmenu,"New &Window\tCtl-Shift-N",nullptr,this,ID_NEW_WINDOW);
   new FXMenuCommand(mainmenu,"&Close Tab\tCtl-Shift-W",nullptr,this,ID_CLOSE_CURRENT);
   new FXMenuCommand(mainmenu,"&Detach Tab",nullptr,this,ID_DETACH);
+  new FXMenuCommand(mainmenu,"&Find...\tCtl-Shift-F",nullptr,this,ID_FIND);
+  new FXMenuCommand(mainmenu,"Next Tab\tCtl-Tab",nullptr,this,ID_NEXT_TAB);
+  new FXMenuCommand(mainmenu,"Previous Tab\tCtl-Shift-Tab",nullptr,this,ID_PREV_TAB);
   new FXMenuSeparator(mainmenu);
   new FXMenuCommand(mainmenu,"&Copy\tCtl-Shift-C",nullptr,this,ID_COPY);
   new FXMenuCommand(mainmenu,"&Paste\tCtl-Shift-V",nullptr,this,ID_PASTE);
@@ -76,6 +85,14 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,FXbool withtab
   new FXMenuCommand(mainmenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FRAME_RAISED|FRAME_THICK|LAYOUT_RIGHT|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
   switcher=new FXSwitcher(contents,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0,0,0,0,0);
+  findbar=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,2,2,1,1);
+  new FXLabel(findbar,"Find:",nullptr,LAYOUT_CENTER_Y);
+  findfield=new FXTextField(findbar,20,this,ID_FIND,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
+  new FXButton(findbar,"Prev",nullptr,this,ID_FIND_PREV,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y);
+  new FXButton(findbar,"Next",nullptr,this,ID_FIND_NEXT,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y);
+  new FXButton(findbar,"Close",nullptr,this,ID_FIND_CLOSE,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y);
+  findstatus=new FXLabel(findbar,"",nullptr,LAYOUT_CENTER_Y);
+  findbar->hide();
   status=new FXLabel(contents,"Starting...",nullptr,FXuint(JUSTIFY_LEFT)|FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,4,4,1,1);
   }
 
@@ -314,6 +331,79 @@ long TerminalWindow::onCmdQuit(FXObject*,FXSelector,void*){
   saveGeometry();
   for(FXint i=0; i<(FXint)tabs.size(); i++) tabs[i].view->terminate();
   getApp()->exit(0);
+  return 1;
+  }
+
+
+// Show find bar
+long TerminalWindow::onCmdFind(FXObject*,FXSelector,void*){
+  findbar->show();
+  recalc();
+  findfield->setFocus();
+  if(!findfield->getText().empty()) onCmdFindNext(nullptr,0,nullptr);
+  return 1;
+  }
+
+
+// Find next
+long TerminalWindow::onCmdFindNext(FXObject*,FXSelector,void*){
+  FXString pattern;
+  FXint count;
+  if(0>current || current>=(FXint)tabs.size()) return 1;
+  pattern=findfield->getText();
+  if(pattern.empty()) return 1;
+  if(tabs[current].view->findText(pattern,SEARCH_IGNORECASE)==0){
+    findstatus->setText("0 matches");
+    return 1;
+    }
+  tabs[current].view->findNext();
+  count=tabs[current].view->getFindCount();
+  FXString text;
+  text.format("%d matches",count);
+  findstatus->setText(text);
+  return 1;
+  }
+
+
+// Find previous
+long TerminalWindow::onCmdFindPrev(FXObject*,FXSelector,void*){
+  FXString pattern;
+  FXint count;
+  if(0>current || current>=(FXint)tabs.size()) return 1;
+  pattern=findfield->getText();
+  if(pattern.empty()) return 1;
+  if(tabs[current].view->findText(pattern,SEARCH_IGNORECASE)==0){
+    findstatus->setText("0 matches");
+    return 1;
+    }
+  tabs[current].view->findPrev();
+  count=tabs[current].view->getFindCount();
+  FXString text;
+  text.format("%d matches",count);
+  findstatus->setText(text);
+  return 1;
+  }
+
+
+// Hide find bar
+long TerminalWindow::onCmdFindClose(FXObject*,FXSelector,void*){
+  findbar->hide();
+  recalc();
+  if(0<=current && current<(FXint)tabs.size()) tabs[current].view->setFocus();
+  return 1;
+  }
+
+
+// Next tab
+long TerminalWindow::onCmdNextTab(FXObject*,FXSelector,void*){
+  if(!tabs.empty()) selectTab((current+1)%(FXint)tabs.size());
+  return 1;
+  }
+
+
+// Previous tab
+long TerminalWindow::onCmdPrevTab(FXObject*,FXSelector,void*){
+  if(!tabs.empty()) selectTab((current+(FXint)tabs.size()-1)%(FXint)tabs.size());
   return 1;
   }
 

@@ -251,6 +251,8 @@ static void testmodes(){
   check(screen.getMouseMode()==1,"x10 mouse");
   feed(parser,"\x1b[?1000l\x1b[?1002h\x1b[?1006h");
   check(screen.getMouseMode()==2 && screen.getPrivateMode(1006),"button mouse");
+  feed(parser,"\x1b[5 q");
+  check(screen.getCursorStyle()==TERMCURSOR_BAR,"cursor style");
   feed(parser,"\x1b[?2004h\x1b[?1004h");
   check(screen.getPrivateMode(2004) && screen.getPrivateMode(1004),"paste and focus");
   feed(parser,"\x1b[?2004l\x1b[?1004l");

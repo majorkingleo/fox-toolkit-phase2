@@ -64,6 +64,9 @@ protected:
   FXMenuPane       *mainmenu;
   FXSwitcher       *switcher;
   FXLabel          *status;
+  FXHorizontalFrame *findbar;
+  FXTextField      *findfield;
+  FXLabel          *findstatus;
   FXTerminalLaunch  launch;
   std::vector<TerminalTab> tabs;
   FXint             current;
@@ -124,6 +127,24 @@ public:
   /// Save geometry and quit
   long onCmdQuit(FXObject*,FXSelector,void*);
 
+  /// Show the find bar
+  long onCmdFind(FXObject*,FXSelector,void*);
+
+  /// Find the next match
+  long onCmdFindNext(FXObject*,FXSelector,void*);
+
+  /// Find the previous match
+  long onCmdFindPrev(FXObject*,FXSelector,void*);
+
+  /// Hide the find bar
+  long onCmdFindClose(FXObject*,FXSelector,void*);
+
+  /// Select the next tab
+  long onCmdNextTab(FXObject*,FXSelector,void*);
+
+  /// Select the previous tab
+  long onCmdPrevTab(FXObject*,FXSelector,void*);
+
   /// Show About
   long onCmdAbout(FXObject*,FXSelector,void*);
 public:
@@ -136,6 +157,12 @@ public:
     ID_NEW_WINDOW,
     ID_CLOSE_CURRENT,
     ID_DETACH,
+    ID_FIND,
+    ID_FIND_NEXT,
+    ID_FIND_PREV,
+    ID_FIND_CLOSE,
+    ID_NEXT_TAB,
+    ID_PREV_TAB,
     ID_COPY,
     ID_PASTE,
     ID_ABOUT,

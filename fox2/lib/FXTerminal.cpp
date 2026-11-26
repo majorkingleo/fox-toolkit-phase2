@@ -294,6 +294,7 @@ static void sendMouseReport(FXTerminalPrivate *p,FXTerminal *term,FXint button,F
   FXint screenrow=row-history;
   FXint screencol=col;
   if(screenrow<0 || screenrow>=p->screen.getRows()) return;
+  if(release && !p->screen.getPrivateMode(1006)) button=3;
   if(p->screen.getPrivateMode(1006)){
     report.format("\x1b[<%d;%d;%d%c",button,screencol+1,screenrow+1,release?'m':'M');
     }
@@ -877,6 +878,12 @@ FXbool FXTerminal::pasteClipboard(){
   FXString text;
   if(!priv) return false;
   if(getDNDData(FROM_CLIPBOARD,utf8Type,text) || getDNDData(FROM_CLIPBOARD,utf16Type,text) || getDNDData(FROM_CLIPBOARD,stringType,text)){
+    if(priv->screen.getPrivateMode(2004)){
+      FXString paste="\x1b[200~";
+      paste+=text;
+      paste+="\x1b[201~";
+      return sendText(paste);
+      }
     return sendText(text);
     }
   return false;
@@ -1050,22 +1057,34 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
         }
       }
     }
-  if(hasFocus() && priv->blinkon && priv->screen.getPrivateMode(25)){
+  if(hasFocus() && priv->screen.getPrivateMode(25)){
     FXint cursor=hist+priv->screen.getCursorRow();
     if(cursor>=firstrow && cursor<firstrow+visible){
       const FXTerminalRow& row=rowAt(priv,cursor);
       c=priv->screen.getCursorColumn();
       x=priv->marginleft+c*priv->cellw;
       y=getContentY()+priv->margintop+(cursor-firstrow)*priv->cellh;
-      dc.setForeground(priv->cursorcolor);
-      dc.fillRectangle(x,y,priv->cellw,priv->cellh);
-      if(c<(FXint)row.cells.size()){
-        const FXTerminalCell& cell=row.cells[c];
-        text=cellTextAt(priv,cursor,c);
-        if(!text.empty()){
-          bg=resolveColor(priv,cell.bg,priv->defaultbg);
-          dc.setForeground(bg);
-          dc.drawText(x,y+priv->ascent,text);
+      FXint style=priv->screen.getCursorStyle();
+      FXbool blinkstyle=(style==TERMCURSOR_BLOCKBLINK || style==TERMCURSOR_UNDERLINEBLINK || style==TERMCURSOR_BARBLINK);
+      if(!blinkstyle || priv->blinkon){
+        dc.setForeground(priv->cursorcolor);
+        if(style==TERMCURSOR_BAR || style==TERMCURSOR_BARBLINK){
+          dc.fillRectangle(x,y,FXMAX(1,priv->cellw/8),priv->cellh);
+          }
+        else if(style==TERMCURSOR_UNDERLINE || style==TERMCURSOR_UNDERLINEBLINK){
+          dc.fillRectangle(x,y+priv->cellh-2,priv->cellw,2);
+          }
+        else{
+          dc.fillRectangle(x,y,priv->cellw,priv->cellh);
+          if(c<(FXint)row.cells.size()){
+            const FXTerminalCell& cell=row.cells[c];
+            text=cellTextAt(priv,cursor,c);
+            if(!text.empty()){
+              bg=resolveColor(priv,cell.bg,priv->defaultbg);
+              dc.setForeground(bg);
+              dc.drawText(x,y+priv->ascent,text);
+              }
+            }
           }
         }
       }
@@ -1239,6 +1258,7 @@ long FXTerminal::onFocusIn(FXObject*,FXSelector,void*){
     getApp()->addTimeout(this,ID_BLINK,getApp()->getBlinkSpeed());
     update();
     }
+  if(priv && priv->screen.getPrivateMode(1004)) send(FXString("\x1b[I"));
   if(getComposeContext()) getComposeContext()->focusIn();
   return 1;
   }
@@ -1251,6 +1271,7 @@ long FXTerminal::onFocusOut(FXObject*,FXSelector,void*){
     priv->blinkon=true;
     update();
     }
+  if(priv && priv->screen.getPrivateMode(1004)) send(FXString("\x1b[O"));
   if(getComposeContext()) getComposeContext()->focusOut();
   return 1;
   }

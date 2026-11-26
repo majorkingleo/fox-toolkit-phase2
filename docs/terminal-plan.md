@@ -1425,6 +1425,14 @@ Acceptance:
 - Mouse reporting works in `vim`, `mc` and a small test program; Shift
   overrides selection.
 
+Phase 7 result (partial): the screen already reflows soft-wrapped primary rows;
+the parser now answers XTVERSION, kitty-keyboard, OSC 10/11 and XTGETTCAP
+queries, which lets fish and other probes complete. Cursor styles from DECSCUSR
+are rendered as block, bar and underline in `FXTerminal`; focus reporting and
+bracketed-paste framing are wired. The model test covers cursor style and query
+responses. Full `vttest` comparison, `vim`/`mc` mouse checks and the complete
+profile matrix still need a manual gate.
+
 ### Phase 8: input, clipboard and search
 
 Finish IME, paste protection, OSC 52 policy, search bar, double/triple click,
@@ -1437,6 +1445,14 @@ Acceptance:
 - Bracketed paste is used only when the child enabled it.
 - Search finds text in scrollback, highlights all matches and wraps around.
 - Copy/paste works across applications and platforms.
+
+Phase 8 result (partial): `Ctrl+Shift+C/V/A` copy, paste and select-all are
+handled; paste uses bracketed-paste framing when mode 2004 is active; focus
+in/out emit `ESC[I`/`ESC[O` when mode 1004 is active; mouse reports use SGR when
+1006 is active and X10 button 3 on release otherwise. `foxterm` has a find bar
+(`Find...`, Next, Prev, Close) backed by `FXTerminal::findText/findNext/findPrev`,
+plus Next/Previous Tab commands. Multi-line paste confirmation, OSC 52 policy and
+the full 20-tab search gate remain for the follow-up.
 
 ### Phase 9: profiles and settings dialog
 
