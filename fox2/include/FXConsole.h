@@ -29,6 +29,12 @@
 #include "FXArray.h"
 #endif
 
+#ifndef FXTEXT_H
+#include "FXText.h"
+#endif
+
+#include <vector>
+
 
 //////////////////////////////  UNDER DEVELOPMENT  //////////////////////////////
 
@@ -81,7 +87,16 @@ public:
 class FXAPI FXConsole : public FXScrollArea {
   FXDECLARE(FXConsole)
 protected:
+  struct VisualRow {
+    FXint line;
+    FXint start;
+    FXint end;
+    FXint width;
+    };
+protected:
   FXConsoleBuffer buffer;       // Bounded text and style storage
+  FXArray<FXHiliteStyle> styletable; // Per-run text styles
+  std::vector<VisualRow> rows;  // Wrapped rows for current viewport
   FXFont        *font;          // Text font
   FXint          margintop;     // Margins top
   FXint          marginbottom;  // Margin bottom
@@ -90,18 +105,26 @@ protected:
   FXint          historylines;  // History lines
   FXint          visiblelines;  // Visible lines
   FXint          topline;       // Where first line is in contents
+  FXint          contentwidth;  // Cached content width
+  FXint          contentheight; // Cached content height
+  FXint          layoutwidth;   // Width used to build wrapped rows
   FXint          vrows;         // Default visible rows
   FXint          vcols;         // Default visible columns
   FXColor        textColor;     // Normal text color
   FXColor        selbackColor;  // Select background color
   FXColor        seltextColor;  // Select text color
   FXColor        cursorColor;   // Cursor color
+  FXbool         autoscroll;    // Follow the end while enabled
+  FXbool         scrollpending; // Scroll to end after layout
   FXString       help;          // Status line help
   FXString       tip;           // Tooltip
 protected:
   FXConsole();
   FXint charWidth(FXwchar ch,FXint col) const;
   FXuint styleOf(FXint line,FXint p) const;
+  void rebuildRows(FXint availableWidth);
+  FXint lineWidth(const FXString& text) const;
+  void updateAutoScrollFromPosition();
   virtual void moveContents(FXint x,FXint y) override;
   void drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXchar *text,FXint n,FXuint sty) const;
   void drawTextLine(FXDCWindow& dc,FXint line,FXint left,FXint right) const;
@@ -121,6 +144,9 @@ private:
 public:
   long onPaint(FXObject*,FXSelector,void*);
   long onXXX(FXObject*,FXSelector,void*);
+  long onVScrollerChanged(FXObject*,FXSelector,void*);
+  long onVScrollerDragged(FXObject*,FXSelector,void*);
+  long onMouseWheel(FXObject*,FXSelector,void*);
 public:
   enum {
     ID_XXX=FXScrollArea::ID_LAST,
@@ -211,6 +237,18 @@ public:
 
   /// Return a buffered line without its newline
   FXString getLineText(FXint line) const { return buffer.getLineText(line); }
+
+  /// Set style table; style id 0 is default and id n uses styles[n-1]
+  void setStyleTable(const FXHiliteStyle* styles,FXuint count);
+
+  /// Enable or disable following the end of the buffer
+  void setAutoScroll(FXbool on);
+
+  /// Return whether new text follows the end of the buffer
+  FXbool isAutoScroll() const { return autoscroll; }
+
+  /// Scroll to the end and resume auto-scroll
+  void scrollToEnd();
 
   /// Change number of visible rows
   void setVisibleRows(FXint rows);

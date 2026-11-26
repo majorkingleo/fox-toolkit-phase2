@@ -65,6 +65,9 @@ namespace FX {
 FXDEFMAP(FXConsole) FXConsoleMap[]={
   FXMAPFUNC(SEL_PAINT,0,FXConsole::onPaint),
   FXMAPFUNC(SEL_COMMAND,FXConsole::ID_XXX,FXConsole::onXXX),
+  FXMAPFUNC(SEL_COMMAND,FXScrollArea::ID_VSCROLLED,FXConsole::onVScrollerChanged),
+  FXMAPFUNC(SEL_CHANGED,FXScrollArea::ID_VSCROLLED,FXConsole::onVScrollerDragged),
+  FXMAPFUNC(SEL_MOUSEWHEEL,0,FXConsole::onMouseWheel),
   };
 
 
@@ -213,6 +216,11 @@ FXConsole::FXConsole(){
   selbackColor=0;
   seltextColor=0;
   cursorColor=0;
+  contentwidth=1;
+  contentheight=0;
+  layoutwidth=0;
+  autoscroll=true;
+  scrollpending=false;
   }
 
 
@@ -235,8 +243,13 @@ FXConsole::FXConsole(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXi
   historylines=10000;
   visiblelines=1;
   topline=0;
+  contentwidth=marginleft+marginright+1;
+  contentheight=margintop+marginbottom;
+  layoutwidth=0;
   vrows=0;
   vcols=0;
+  autoscroll=true;
+  scrollpending=false;
   }
 
 
@@ -285,13 +298,13 @@ void FXConsole::moveContents(FXint x,FXint y){
 
 // Determine minimum content width of scroll area
 FXint FXConsole::getContentWidth(){
-  return marginleft+marginright+1;             // FIXME
+  return contentwidth;
   }
 
 
 // Determine minimum content height of scroll area
 FXint FXConsole::getContentHeight(){
-  return margintop+marginbottom+font->getFontHeight()*FXMAX(visiblelines,buffer.getNumLines());
+  return contentheight;
   }
 
 
@@ -305,8 +318,23 @@ void FXConsole::layout(){
 
   FXTRACE(TOPIC_DETAIL,"visiblelines=%d historylines=%d lines=%d hh=%d space=%d\n",visiblelines,historylines,buffer.getNumLines(),hh,height-margintop-marginbottom);
 
-  // Scrollbars adjusted
-  placeScrollBars(width,height);
+  // Build row layout using the current viewport, then converge after scrollbar placement
+  for(FXint pass=0; pass<3; pass++){
+    FXint available=0;
+    if(options&CONSOLE_WRAPLINES) available=FXMAX(1,getVisibleWidth()-marginleft-marginright);
+    rebuildRows(available);
+    placeScrollBars(width,height);
+    if(!(options&CONSOLE_WRAPLINES)) break;
+    FXint actual=FXMAX(1,getVisibleWidth()-marginleft-marginright);
+    if(actual==layoutwidth) break;
+    }
+
+  // Keep the viewport at the end when following is enabled
+  if(scrollpending || autoscroll){
+    FXint bottom=FXMAX(0,getContentHeight()-getVisibleHeight());
+    setPosition(pos_x,-bottom);
+    }
+  scrollpending=false;
 
   // No more dirty
   flags&=~FLAG_DIRTY;
@@ -322,6 +350,65 @@ FXint FXConsole::charWidth(FXwchar ch,FXint col) const {
     return font->getCharWidth(' ')*(8-col%8);
     }
   return font->getCharWidth(ch);
+  }
+
+
+// Measure a complete logical line
+FXint FXConsole::lineWidth(const FXString& text) const {
+  FXint width=0;
+  FXint col=0;
+  for(FXint pos=0; pos<text.length(); pos=text.inc(pos),col++) width+=charWidth(text.wc(pos),col);
+  return width;
+  }
+
+
+// Rebuild the visual row map and content dimensions
+void FXConsole::rebuildRows(FXint availableWidth){
+  rows.clear();
+  contentwidth=marginleft+marginright+1;
+  layoutwidth=availableWidth;
+  FXint maxwidth=0;
+  for(FXint lineindex=0; lineindex<buffer.getNumLines(); lineindex++){
+    const FXString& text=buffer.line(lineindex);
+    if(!(options&CONSOLE_WRAPLINES)){
+      FXint w=lineWidth(text);
+      rows.push_back({lineindex,0,text.length(),w});
+      maxwidth=FXMAX(maxwidth,w);
+      continue;
+      }
+    FXint start=0;
+    FXint pos=0;
+    FXint col=0;
+    FXint rowwidth=0;
+    if(text.empty()) rows.push_back({lineindex,0,0,0});
+    while(pos<text.length()){
+      FXint cw=charWidth(text.wc(pos),col);
+      if(rowwidth>0 && rowwidth+cw>availableWidth){
+        rows.push_back({lineindex,start,pos,rowwidth});
+        maxwidth=FXMAX(maxwidth,rowwidth);
+        start=pos;
+        rowwidth=0;
+        col=0;
+        continue;
+        }
+      rowwidth+=cw;
+      pos=text.inc(pos);
+      col++;
+      }
+    if(start<text.length()){
+      rows.push_back({lineindex,start,text.length(),rowwidth});
+      maxwidth=FXMAX(maxwidth,rowwidth);
+      }
+    }
+  if(!(options&CONSOLE_WRAPLINES)) contentwidth=marginleft+marginright+maxwidth;
+  contentheight=margintop+marginbottom+font->getFontHeight()*FXMAX(visiblelines,(FXint)rows.size());
+  }
+
+
+// Re-evaluate auto-scroll after user scrolling
+void FXConsole::updateAutoScrollFromPosition(){
+  FXint bottom=FXMAX(0,getContentHeight()-getVisibleHeight());
+  autoscroll=(-getContentY()>=bottom);
   }
 
 
@@ -349,14 +436,11 @@ FXuint FXConsole::styleOf(FXint line,FXint p) const {
   // Get value from style buffer
   s|=buffer.getStyle(line,p);
 
-  // Tabs are just fill
-  if(ch == '\t') return s;
+  // Whitespace has no glyph but still fills a styled background
+  if(ch=='\t' || ch==' ') return s|STYLE_TEXT;
 
-  // Spaces are just fill
-  if(ch == ' ') return s;
-
-  // Newlines are just fill
-  if(ch == '\n') return s;
+  // Newlines are stored as line boundaries, not as characters
+  if(ch=='\n') return s;
 
   // Get special style for control codes
   if((FXuchar)ch < ' ') return s|STYLE_CONTROL|STYLE_TEXT;
@@ -367,68 +451,86 @@ FXuint FXConsole::styleOf(FXint line,FXint p) const {
 
 // Draw fragment of text in given style
 void FXConsole::drawTextFragment(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h,const FXchar *text,FXint n,FXuint sty) const {
-  if(sty&STYLE_SELECTED){
-    if(0<w && 0<h){
-      dc.setForeground(selbackColor);
-      dc.fillRectangle(x,y,w,h);
-      }
-    dc.setForeground(seltextColor);
+  FXuint index=sty&STYLE_MASK;
+  FXuint usedstyle=sty;
+  FXColor fore=0;
+  FXColor back=0;
+  if(index && index<=styletable.no()){
+    const FXHiliteStyle& entry=styletable[index-1];
+    usedstyle=entry.style;
+    if(sty&STYLE_SELECTED){ back=entry.selectBackColor; fore=entry.selectForeColor; }
+    else if(sty&STYLE_HILITE){ back=entry.hiliteBackColor; fore=entry.hiliteForeColor; }
+    else if(sty&STYLE_ACTIVE) back=entry.activeBackColor;
+    else back=entry.normalBackColor;
+    if(!fore) fore=entry.normalForeColor;
     }
-  else{
-    dc.setForeground(textColor);
+  if(!back){
+    if(sty&STYLE_SELECTED) back=selbackColor;
+    else back=backColor;
     }
+  if(!fore){
+    if(sty&STYLE_SELECTED) fore=seltextColor;
+    if(!fore) fore=textColor;
+    }
+  dc.setForeground(back);
+  if(0<w && 0<h) dc.fillRectangle(x,y,w,h);
+  dc.setForeground(fore);
   y+=font->getFontAscent();
   dc.drawText(x,y,text,n);
+  if(usedstyle&FXText::STYLE_BOLD) dc.drawText(x+1,y,text,n);
+  if(usedstyle&FXText::STYLE_UNDERLINE) dc.fillRectangle(x,y+1,w,1);
+  if(usedstyle&FXText::STYLE_STRIKEOUT) dc.fillRectangle(x,y-font->getFontAscent()/2,w,1);
   }
 
 
 // Draw text line with correct style
 void FXConsole::drawTextLine(FXDCWindow& dc,FXint line,FXint left,FXint right) const {
-  const FXString& text=buffer.line(topline+line);
+  if(line<0 || line>=(FXint)rows.size()) return;
+  const VisualRow& row=rows[line];
+  const FXString& text=buffer.line(row.line);
   FXint edge=pos_x+marginleft;
   FXint h=font->getFontHeight();
   FXint y=pos_y+margintop+line*h;
   FXint x=0;
   FXint w=0;
+  FXint start=row.start;
+  FXint end=row.end;
   FXuint curstyle;
   FXuint newstyle;
   FXint cw,sp,ep,sc,ec;
 
-  // Scan ahead till until we hit the end or the left edge
-  for(sp=sc=0; sp<text.length(); sp=text.inc(sp),sc++){
-    cw=charWidth(text.wc(sp),sc);
+  // Skip columns left of the viewport when horizontal scrolling is enabled
+  for(sp=sc=start; sp<end; sp=text.inc(sp),sc++){
+    cw=charWidth(text.wc(sp),sc-start);
     if(x+edge+cw>=left) break;
     x+=cw;
     }
 
   // First style to display
-  curstyle=styleOf(topline+line,sp);
+  curstyle=styleOf(row.line,sp);
 
   // Draw until we hit the end or the right edge
-  for(ep=sp,ec=sc; ep<text.length(); ep=text.inc(ep),ec++){
-    newstyle=styleOf(topline+line,ep);
+  for(ep=sp,ec=sc; ep<end; ep=text.inc(ep),ec++){
+    newstyle=styleOf(row.line,ep);
     if(newstyle!=curstyle){
-//      fillBufferRect(dc,edge+x,y,w,h,curstyle);
       if(curstyle&STYLE_TEXT) drawTextFragment(dc,edge+x,y,w,h,&text[sp],ep-sp,curstyle);
       curstyle=newstyle;
       sp=ep;
       x+=w;
       w=0;
       }
-    cw=charWidth(text.wc(ep),ec);
+    cw=charWidth(text.wc(ep),ec-start);
     if(x+edge+w>=right) break;
     w+=cw;
     }
 
   // Draw unfinished fragment
-//  fillBufferRect(dc,edge+x,y,w,h,curstyle);
   if(curstyle&STYLE_TEXT) drawTextFragment(dc,edge+x,y,w,h,&text[sp],ep-sp,curstyle);
   x+=w;
 
   // Fill any left-overs outside of text
   if(x+edge<right){
-    curstyle=styleOf(topline+line,ep);
-//    fillBufferRect(dc,edge+x,y,right-edge-x,h,curstyle);
+    curstyle=styleOf(row.line,ep);
     }
   }
 
@@ -441,7 +543,7 @@ void FXConsole::drawContents(FXDCWindow& dc,FXint x,FXint y,FXint w,FXint h) con
   FXint bl=(y+h-yy)/hh;
   FXint ln;
   if(tl<0) tl=0;
-  if(bl>=buffer.getNumLines()) bl=buffer.getNumLines()-1;
+  if(bl>=(FXint)rows.size()) bl=(FXint)rows.size()-1;
   FXTRACE(TOPIC_DETAIL,"tl=%d bl=%d\n",tl,bl);
   for(ln=tl; ln<=bl; ln++){
     drawTextLine(dc,ln,x,x+w);
@@ -498,6 +600,30 @@ long FXConsole::onPaint(FXObject*,FXSelector,void* ptr){
 // Draw the text
 long FXConsole::onXXX(FXObject*,FXSelector,void*){
   return 1;
+  }
+
+
+// Vertical scrollbar moved
+long FXConsole::onVScrollerChanged(FXObject* sender,FXSelector sel,void* ptr){
+  FXScrollArea::onVScrollerChanged(sender,sel,ptr);
+  updateAutoScrollFromPosition();
+  return 1;
+  }
+
+
+// Vertical scrollbar dragged
+long FXConsole::onVScrollerDragged(FXObject* sender,FXSelector sel,void* ptr){
+  FXScrollArea::onVScrollerDragged(sender,sel,ptr);
+  updateAutoScrollFromPosition();
+  return 1;
+  }
+
+
+// Mouse wheel moved the viewport
+long FXConsole::onMouseWheel(FXObject* sender,FXSelector sel,void* ptr){
+  long result=FXScrollArea::onMouseWheel(sender,sel,ptr);
+  updateAutoScrollFromPosition();
+  return result;
   }
 
 
@@ -581,6 +707,32 @@ void FXConsole::appendStyled(const FXString& text,const FXuint* styles){
 void FXConsole::clearText(){
   buffer.clear();
   setPosition(0,0);
+  recalc();
+  update();
+  }
+
+
+// Set style table; style id zero remains the default style
+void FXConsole::setStyleTable(const FXHiliteStyle* styles,FXuint count){
+  if(count>255) count=255;
+  if(!styles) count=0;
+  styletable.no(count);
+  for(FXuint i=0; i<count; i++) styletable[i]=styles[i];
+  update();
+  }
+
+
+// Enable or disable following new text
+void FXConsole::setAutoScroll(FXbool on){
+  if(on) scrollToEnd();
+  else autoscroll=false;
+  }
+
+
+// Scroll to the end and resume following
+void FXConsole::scrollToEnd(){
+  autoscroll=true;
+  scrollpending=true;
   recalc();
   update();
   }
