@@ -799,6 +799,16 @@ the frame differ, all of them on the rounded edges. The classic theme draws no
 rounded shape, so it stays pixel-identical (0 differing pixels), and `hello` and
 `dpi` still run. Screenshot: `screenshots/tests/fox2/win32/button-breeze-gdiplus.png`.
 
+**Progress: Win32 corner coverage without GDI+ (2026-11-26).** GDI+ still does
+not blend on every driver; Wine and some Windows drivers ignore
+`SmoothingModeAntiAlias` for fills, which leaves the corners of every themed
+control hard and stair-stepped. `FXStyle::drawRoundRect()` now fills the
+straight runs as ordinary rectangles and blends only the four corner squares
+against the background with the same 4x4 disc coverage the Wayland rasterizer
+uses. The corner shape therefore matches the other backends and no longer
+depends on GDI+ smoothing state. `cutRoundedCorners()` and the check-mark path
+still use GDI+.
+
 Popups are unaffected: their outline is a window region (`SetWindowRgn`), and a
 region has no coverage to blend, so the shaped corners of a popup stay hard edged
 on X11 and Win32 until a popup can carry per-pixel alpha.
