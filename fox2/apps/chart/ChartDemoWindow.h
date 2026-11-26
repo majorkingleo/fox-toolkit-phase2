@@ -94,6 +94,7 @@ protected:
   FXMenuRadio* darkTheme;
   FXMenuRadio* breezeTheme;
   FXMenuRadio* breezeDarkTheme;
+  FXMenuRadio* breezeDarkLayanTheme;
   FXuint themePreset;
   FXbool iconsDark;
   FXbool syncingPlots;
@@ -150,6 +151,7 @@ public:
     ID_THEME_DARK,
     ID_THEME_BREEZE,
     ID_THEME_BREEZE_DARK,
+    ID_THEME_BREEZE_DARK_LAYAN,
     ID_XCOLUMN,
     ID_X_AXIS_MODE,
     ID_X_DESCRIPTION,

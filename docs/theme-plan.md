@@ -402,6 +402,11 @@ Also ship the imported Breeze presets as compiled FOX theme data:
 
 - `breeze` / `breeze-light` — Breeze GTK 6.8.3 light role colors and metrics.
 - `breeze-dark` — Breeze GTK 6.8.3 dark role colors and metrics.
+- `breeze-dark-layan` / `layan` — Breeze dark chrome and metrics with the
+  Layan dark color scheme from the user's KDE installation. The frame follows
+  the KDE window color `#33333B` while views stay darker at `#2A2A31`; the
+  frame hairline is the lighter KDE border `#57575E`, so both the frame/view
+  contrast and the border contrast match the KDE window.
 
 The upstream GTK payload is vendored under `fox2/themes/breeze/{light,dark}`;
 `import-breeze.sh` refreshes those folders from a Linux theme installation.
@@ -1775,10 +1780,11 @@ BSD-3-Clause and CC0 license texts and attribution notice. The Linux helper
 `~/.local/share/themes`, `~/.themes` or `/usr/share/themes`, or from an explicit
 source directory.
 
-`FXTheme::setBreezeLight()` and `setBreezeDark()` provide the imported semantic
-colors and metrics as compiled code, requiring no theme files or GTK libraries
-at runtime. `FXApp::init()` recognizes `breeze`/`breeze-light` and
-`breeze-dark`. Applications can call
+`FXTheme::setBreezeLight()`, `setBreezeDark()` and `setBreezeDarkLayan()` provide
+the imported semantic colors and metrics as compiled code, requiring no theme
+files or GTK libraries at runtime. `FXApp::init()` recognizes
+`breeze`/`breeze-light`, `breeze-dark` and `breeze-dark-layan`/`layan`.
+Applications can call
 `setAllowedThemes(THEME_PRESET_...,defaultPreset)` before `init()`; a saved
 global selection outside that set is ignored and the allowed default is used.
 When no allowlist is configured, external theme imports and existing settings

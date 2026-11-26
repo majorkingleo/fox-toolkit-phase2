@@ -112,7 +112,8 @@ enum {
   THEME_PRESET_DARK=2,
   THEME_PRESET_BREEZE=4,
   THEME_PRESET_BREEZE_DARK=8,
-  THEME_PRESET_ALL=15
+  THEME_PRESET_BREEZE_DARK_LAYAN=16,
+  THEME_PRESET_ALL=31
   };
 
 
@@ -173,6 +174,9 @@ public:
 
   /// Switch to the built-in Breeze dark preset
   void setBreezeDark();
+
+  /// Switch to Breeze dark chrome with the Layan dark color scheme
+  void setBreezeDarkLayan();
 
   /// Load theme from an INI file; returns true if the file parsed
   FXbool load(const FXString& path);

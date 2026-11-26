@@ -195,6 +195,30 @@ void FXTheme::setBreezeDark(){
   }
 
 
+// Switch to Breeze dark chrome with the Layan dark color scheme
+void FXTheme::setBreezeDarkLayan(){
+  setBreezeDark();
+  colors[ROLE_WINDOW_BG]=FXRGB(42,42,49);
+  colors[ROLE_SURFACE]=FXRGB(51,51,59);
+  colors[ROLE_SURFACE_HILITE]=FXRGB(117,117,123);
+  colors[ROLE_SURFACE_SHADOW]=FXRGB(33,33,39);
+  colors[ROLE_BUTTON]=FXRGB(68,69,75);
+  colors[ROLE_TEXT]=FXRGB(234,234,234);
+  colors[ROLE_BORDER]=FXRGB(87,87,94);
+  colors[ROLE_SELECTION_BG]=FXRGB(86,87,245);
+  colors[ROLE_SELECTION_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_MENU_SEL_BG]=FXRGB(86,87,245);
+  colors[ROLE_MENU_SEL_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_TOOLTIP_BG]=FXRGB(33,35,41);
+  colors[ROLE_TOOLTIP_TEXT]=FXRGB(221,221,221);
+  updateDerived();
+  colors[ROLE_TEXT_DISABLED]=FXRGB(151,151,155);
+  colors[ROLE_ACCENT]=FXRGB(86,87,245);
+  colors[ROLE_FOCUS_RING]=FXRGB(86,87,245);
+  colors[ROLE_HOVER_RING]=FXRGB(86,87,245);
+  }
+
+
 // Load theme from an INI file
 FXbool FXTheme::load(const FXString& path){
   static const FXchar *colorkeys[ROLE_LAST]={

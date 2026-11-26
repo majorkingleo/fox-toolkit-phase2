@@ -1141,6 +1141,7 @@ long FXDesktopSetup::onColorTheme(FXObject*,FXSelector,void* ptr){
   if(entry->kind==THEME_ENTRY_BUILTIN){
     themesource=entry->source;
     if(entry->preset==THEME_PRESET_BREEZE) theme.setBreezeLight();
+    else if(entry->preset==THEME_PRESET_BREEZE_DARK_LAYAN) theme.setBreezeDarkLayan();
     else theme.setBreezeDark();
     applyThemeColors(theme);
     updateThemeStatus(tr("Built-in theme: ")+entry->name);
@@ -1382,6 +1383,11 @@ FXbool FXDesktopSetup::loadTheme(const FXString& source,FXTheme& theme,FXString&
     summary=tr("Built-in Breeze Dark theme");
     return true;
     }
+  if(source=="breeze-dark-layan"){
+    theme.setBreezeDarkLayan();
+    summary=tr("Built-in Breeze Dark Layan theme");
+    return true;
+    }
   if(source.right(9)==".foxtheme"){
     if(!theme.load(source)) return false;
     summary=tr("Theme file: ")+source;
@@ -1431,6 +1437,7 @@ void FXDesktopSetup::initColors(){
     if(i==0){
       addThemeEntry(tr("Breeze-Light"),"breeze-light",THEME_PRESET_BREEZE,THEME_ENTRY_BUILTIN,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
       addThemeEntry(tr("Breeze-Dark"),"breeze-dark",THEME_PRESET_BREEZE_DARK,THEME_ENTRY_BUILTIN,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
+      addThemeEntry(tr("Breeze-Dark-Layan"),"breeze-dark-layan",THEME_PRESET_BREEZE_DARK_LAYAN,THEME_ENTRY_BUILTIN,THEME_FAMILY_PRESET,THEME_SCOPE_BUILTIN);
       }
     }
 
