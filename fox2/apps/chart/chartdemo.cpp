@@ -809,7 +809,7 @@ void ChartDemoWindow::addLoadedFile(const FXString& filename,CSVTable& table){
   FXSplitter* content=new FXSplitter(page,this,ID_SPLITTER_CHANGED,LAYOUT_FILL_X|LAYOUT_FILL_Y|LAYOUT_SIDE_TOP|SPLITTER_REVERSED|SPLITTER_TRACKING);
   content->setBarSize(scale(4));
   document->splitter=content;
-  FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
+  FXVerticalFrame* chartarea=new FXVerticalFrame(content,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0,0,0,0,0,0,0);
   FXVerticalFrame* chartcolumn=new FXVerticalFrame(chartarea,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,0,0,0,0,0,0);
   document->plotScroll=new FXScrollWindow(chartcolumn,LAYOUT_SIDE_TOP|LAYOUT_FILL_X|LAYOUT_FILL_Y|HSCROLLING_OFF);
   document->plotStack=new FXVerticalFrame(document->plotScroll,LAYOUT_FILL_X|LAYOUT_TOP|FRAME_NONE,0,0,0,0,0,0,0,0,0,scale(4));
