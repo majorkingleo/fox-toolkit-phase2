@@ -121,6 +121,7 @@ FXDEFMAP(ChartDemoWindow) ChartDemoWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE,ChartDemoWindow::onTheme),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE_DARK,ChartDemoWindow::onTheme),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BREEZE_DARK_LAYAN,ChartDemoWindow::onTheme),
+  FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_THEME_BONAFIDES_DARK,ChartDemoWindow::onTheme),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_XCOLUMN,ChartDemoWindow::onXColumn),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_AXIS_MODE,ChartDemoWindow::onXAxisMode),
   FXMAPFUNC(SEL_COMMAND,ChartDemoWindow::ID_X_DESCRIPTION,ChartDemoWindow::onAxisDescription),
@@ -317,17 +318,20 @@ ChartDemoWindow::ChartDemoWindow(FXApp* app):FXMainWindow(app,"FOX Chart Demo",n
   breezeTheme=new FXMenuRadio(thememenu,"FOX Breeze Light",this,ID_THEME_BREEZE);
   breezeDarkTheme=new FXMenuRadio(thememenu,"FOX Breeze Dark",this,ID_THEME_BREEZE_DARK);
   breezeDarkLayanTheme=new FXMenuRadio(thememenu,"FOX Breeze Dark Layan",this,ID_THEME_BREEZE_DARK_LAYAN);
+  bonaFidesDarkTheme=new FXMenuRadio(thememenu,"FOX BonaFides Dark",this,ID_THEME_BONAFIDES_DARK);
   FXColor surface=app->getTheme()->color(ROLE_SURFACE);
   if(surface==FXRGB(45,45,45)) themePreset=THEME_PRESET_DARK;
   else if(surface==FXRGB(239,240,241)) themePreset=THEME_PRESET_BREEZE;
   else if(surface==FXRGB(32,35,38)) themePreset=THEME_PRESET_BREEZE_DARK;
   else if(surface==FXRGB(49,49,58)) themePreset=THEME_PRESET_BREEZE_DARK_LAYAN;
+  else if(surface==FXRGB(31,42,57)) themePreset=THEME_PRESET_BONAFIDES_DARK;
   else themePreset=THEME_PRESET_CLASSIC;
   classicTheme->setCheck(themePreset==THEME_PRESET_CLASSIC);
   darkTheme->setCheck(themePreset==THEME_PRESET_DARK);
   breezeTheme->setCheck(themePreset==THEME_PRESET_BREEZE);
   breezeDarkTheme->setCheck(themePreset==THEME_PRESET_BREEZE_DARK);
   breezeDarkLayanTheme->setCheck(themePreset==THEME_PRESET_BREEZE_DARK_LAYAN);
+  bonaFidesDarkTheme->setCheck(themePreset==THEME_PRESET_BONAFIDES_DARK);
   new FXMenuTitle(menubar,"&Theme",nullptr,thememenu);
 
   statusbar=new FXStatusBar(this,LAYOUT_SIDE_BOTTOM|LAYOUT_FILL_X);
@@ -601,6 +605,11 @@ long ChartDemoWindow::onTheme(FXObject*,FXSelector sel,void*){
       themePreset=THEME_PRESET_BREEZE_DARK_LAYAN;
       name="breeze-dark-layan";
       break;
+    case ID_THEME_BONAFIDES_DARK:
+      theme.setBonaFidesDark();
+      themePreset=THEME_PRESET_BONAFIDES_DARK;
+      name="bonafides-dark";
+      break;
     default:
       theme.setClassic();
       themePreset=THEME_PRESET_CLASSIC;
@@ -612,6 +621,7 @@ long ChartDemoWindow::onTheme(FXObject*,FXSelector sel,void*){
   breezeTheme->setCheck(themePreset==THEME_PRESET_BREEZE);
   breezeDarkTheme->setCheck(themePreset==THEME_PRESET_BREEZE_DARK);
   breezeDarkLayanTheme->setCheck(themePreset==THEME_PRESET_BREEZE_DARK_LAYAN);
+  bonaFidesDarkTheme->setCheck(themePreset==THEME_PRESET_BONAFIDES_DARK);
   getApp()->reg().writeStringEntry("SETTINGS","theme",name.text());
   getApp()->setTheme(theme);
   return 1;

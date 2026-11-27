@@ -408,6 +408,11 @@ Also ship the imported Breeze presets as compiled FOX theme data:
   frame hairline is the lighter KDE border `#57575E`, so both the frame/view
   contrast and the border contrast match the KDE window. Scrollbar thumbs use
   the Layan accent `#5657F5`.
+- `bonafides-dark` / `bonafides` — BonaFides-Dark-GTK (Arc-based) role colors
+  and metrics: slate frame `#232F41`, navy views `#1F2A39`, text `#EEEEEC`,
+  accent `#457DBD`, focus ring `#5294E2`, radius 5. Only the semantic values
+  are compiled in; the GTK payload is not vendored because BonaFides derives
+  from Arc, whose license differs from this library.
 
 The upstream GTK payload is vendored under `fox2/themes/breeze/{light,dark}`;
 `import-breeze.sh` refreshes those folders from a Linux theme installation.

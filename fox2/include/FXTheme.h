@@ -114,7 +114,8 @@ enum {
   THEME_PRESET_BREEZE=4,
   THEME_PRESET_BREEZE_DARK=8,
   THEME_PRESET_BREEZE_DARK_LAYAN=16,
-  THEME_PRESET_ALL=31
+  THEME_PRESET_BONAFIDES_DARK=32,
+  THEME_PRESET_ALL=63
   };
 
 
@@ -178,6 +179,9 @@ public:
 
   /// Switch to Breeze dark chrome with the Layan dark color scheme
   void setBreezeDarkLayan();
+
+  /// Switch to the BonaFides dark color scheme
+  void setBonaFidesDark();
 
   /// Load theme from an INI file; returns true if the file parsed
   FXbool load(const FXString& path);

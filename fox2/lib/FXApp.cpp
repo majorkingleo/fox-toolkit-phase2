@@ -1245,12 +1245,14 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
     else if(FXString::comparecase(themename,"breeze")==0 || FXString::comparecase(themename,"breeze-light")==0) selected=THEME_PRESET_BREEZE;
     else if(FXString::comparecase(themename,"breeze-dark")==0) selected=THEME_PRESET_BREEZE_DARK;
     else if(FXString::comparecase(themename,"breeze-dark-layan")==0 || FXString::comparecase(themename,"layan")==0) selected=THEME_PRESET_BREEZE_DARK_LAYAN;
+    else if(FXString::comparecase(themename,"bonafides-dark")==0 || FXString::comparecase(themename,"bonafides")==0) selected=THEME_PRESET_BONAFIDES_DARK;
     if(!(allowedThemes&selected)) selected=defaultTheme;
     switch(selected){
       case THEME_PRESET_DARK: theme.setDark(); setTheme(theme); break;
       case THEME_PRESET_BREEZE: theme.setBreezeLight(); setTheme(theme); break;
       case THEME_PRESET_BREEZE_DARK: theme.setBreezeDark(); setTheme(theme); break;
       case THEME_PRESET_BREEZE_DARK_LAYAN: theme.setBreezeDarkLayan(); setTheme(theme); break;
+      case THEME_PRESET_BONAFIDES_DARK: theme.setBonaFidesDark(); setTheme(theme); break;
       default: theme.setClassic(); setTheme(theme); break;
       }
     }
@@ -1274,6 +1276,10 @@ void FXApp::init(int& argc,char** argv,FXbool connect){
     }
   else if(FXString::comparecase(themename,"breeze-dark-layan")==0 || FXString::comparecase(themename,"layan")==0){
     theme.setBreezeDarkLayan();
+    setTheme(theme);
+    }
+  else if(FXString::comparecase(themename,"bonafides-dark")==0 || FXString::comparecase(themename,"bonafides")==0){
+    theme.setBonaFidesDark();
     setTheme(theme);
     }
   else if(FXString::comparecase(themename,"classic")!=0){
@@ -1922,6 +1928,7 @@ FXbool FXApp::setAllowedThemes(FXuint themes,FXuint defaultPreset){
     else if(themes&THEME_PRESET_DARK) defaultPreset=THEME_PRESET_DARK;
     else if(themes&THEME_PRESET_BREEZE) defaultPreset=THEME_PRESET_BREEZE;
     else if(themes&THEME_PRESET_BREEZE_DARK) defaultPreset=THEME_PRESET_BREEZE_DARK;
+    else if(themes&THEME_PRESET_BONAFIDES_DARK) defaultPreset=THEME_PRESET_BONAFIDES_DARK;
     else defaultPreset=THEME_PRESET_BREEZE_DARK_LAYAN;
     }
   allowedThemes=themes;

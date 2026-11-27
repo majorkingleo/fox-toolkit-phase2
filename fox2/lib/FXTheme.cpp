@@ -220,6 +220,40 @@ void FXTheme::setBreezeDarkLayan(){
   }
 
 
+// Switch to the BonaFides dark color scheme, imported from BonaFides-Dark-GTK
+// (an Arc-based theme: slate frame, deep navy views, Breeze-like blue accent)
+void FXTheme::setBonaFidesDark(){
+  setClassic();
+  colors[ROLE_WINDOW_BG]=FXRGB(35,47,65);        // Menubar, tab strip, sidebar
+  colors[ROLE_SURFACE]=FXRGB(31,42,57);          // Views, entries, list base
+  colors[ROLE_SURFACE_HILITE]=FXRGB(60,81,112);  // Raised edge, slider thumb
+  colors[ROLE_SURFACE_SHADOW]=FXRGB(23,31,42);   // Sunken edge
+  colors[ROLE_TEXT]=FXRGB(238,238,236);
+  colors[ROLE_TEXT_DISABLED]=FXRGB(91,123,167);
+  colors[ROLE_BORDER]=FXRGB(28,38,52);
+  colors[ROLE_SELECTION_BG]=FXRGB(69,125,189);
+  colors[ROLE_SELECTION_TEXT]=FXRGB(238,238,236);
+  colors[ROLE_MENU_SEL_BG]=FXRGB(59,98,146);     // Accent over menu background
+  colors[ROLE_MENU_SEL_TEXT]=FXRGB(255,255,255);
+  colors[ROLE_TOOLTIP_BG]=FXRGB(45,61,84);
+  colors[ROLE_TOOLTIP_TEXT]=FXRGB(238,238,236);
+  colors[ROLE_ACCENT]=FXRGB(69,125,189);
+  colors[ROLE_FOCUS_RING]=FXRGB(82,148,226);
+  colors[ROLE_BUTTON]=FXRGB(45,61,84);
+  colors[ROLE_HOVER_RING]=FXRGB(82,148,226);
+  colors[ROLE_SCROLLBAR_THUMB]=FXRGB(60,81,112);
+  metrics[METRIC_PADDING]=6;
+  metrics[METRIC_ROW_HEIGHT]=15;
+  metrics[METRIC_CORNER_RADIUS]=5;
+  metrics[METRIC_CHECK_SIZE]=16;
+  metrics[METRIC_SCROLLBAR_WIDTH]=14;
+  metrics[METRIC_SHADOW_SIZE]=8;
+  metrics[METRIC_CONTROL_HEIGHT]=30;
+  metrics[METRIC_MENUBAR_HEIGHT]=30;
+  metrics[METRIC_MENUROW_HEIGHT]=28;
+  }
+
+
 // Load theme from an INI file
 FXbool FXTheme::load(const FXString& path){
   static const FXchar *colorkeys[ROLE_LAST]={
