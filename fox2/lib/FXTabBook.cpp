@@ -428,10 +428,27 @@ void FXTabBook::setCurrent(FXint index,FXbool notify){
 long FXTabBook::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
-  dc.setForeground(backColor);
-  dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
   FXTheme *theme=getApp()->getTheme();
   if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    // The band that carries the tabs is chrome and lighter than the page, so
+    // the strip keeps running behind the empty space right of the last tab
+    dc.setForeground(theme->color(ROLE_SURFACE));
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
+    FXWindow *first=getFirst();
+    FXWindow *pane=first?first->getNext():nullptr;
+    if(pane){
+      FXint bx,by,bw,bh;
+      if(options&TABBOOK_SIDEWAYS){
+        if(options&TABBOOK_BOTTOMTABS){ bx=pane->getX()+pane->getWidth(); by=0; bw=width-bx; bh=height; }
+        else{ bx=0; by=0; bw=pane->getX(); bh=height; }
+        }
+      else{
+        if(options&TABBOOK_BOTTOMTABS){ bx=0; by=pane->getY()+pane->getHeight(); bw=width; bh=height-by; }
+        else{ bx=0; by=0; bw=width; bh=pane->getY(); }
+        }
+      dc.setForeground(theme->color(ROLE_BUTTON));
+      dc.fillRectangle(bx,by,bw,bh);
+      }
     dc.setForeground(theme->color(ROLE_BORDER));
     if(options&TABBOOK_SIDEWAYS){
       if(options&TABBOOK_BOTTOMTABS) dc.fillRectangle(0,0,1,height);
@@ -443,6 +460,8 @@ long FXTabBook::onPaint(FXObject*,FXSelector,void* ptr){
       }
     }
   else{
+    dc.setForeground(backColor);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
     drawFrame(dc,0,0,width,height);
     }
   return 1;

@@ -270,15 +270,19 @@ FXTabItem::~FXTabItem(){
 // Draw the tab into the given DC
 void FXTabItem::paintTab(FXDCWindow& dc,FXEvent* ev){
   FXint tw=0,th=0,iw=0,ih=0,tx,ty,ix,iy;
-  dc.setForeground(backColor);
-//dc.setForeground(FXRGB(255,0,0));
-  dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
 
   // Modern themed tab face
   FXTheme *theme=getApp()->getTheme();
   FXint radius=theme->metric(METRIC_CORNER_RADIUS,getDisplayScale());
   FXbool themed=0<radius;
   if(themed){
+    // Tabs sit flat on the tab bar strip, the way GTK draws them: no face and
+    // no outline, the strip runs up to the page, and only the accent bar on
+    // the page side marks the selected tab
+    FXColor strip=theme->color(ROLE_BUTTON);
+    FXColor accent=theme->color(ROLE_ACCENT);
+    dc.setForeground(strip);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
     FXTabBar *bar=static_cast<FXTabBar*>(getParent());
     FXint index=bar?bar->indexOfChild(this):-1;
     FXbool selected=false;
@@ -286,61 +290,24 @@ void FXTabItem::paintTab(FXDCWindow& dc,FXEvent* ev){
       if(bar->isMemberOf(FXMETACLASS(FXTabBook))) selected=(index>=0 && (index>>1)==bar->getCurrent());
       else selected=(index==bar->getCurrent());
       }
-    FXColor face=selected?theme->color(ROLE_SURFACE):blendColor(theme->color(ROLE_SURFACE),theme->color(ROLE_TEXT),20);
-    FXColor edge=selected?theme->color(ROLE_BORDER):blendColor(theme->color(ROLE_SURFACE),theme->color(ROLE_BORDER),35);
-    FXColor accent=theme->color(ROLE_ACCENT);
-    if(!isEnabled()){
-      face=blendColor(face,theme->color(ROLE_SURFACE),45);
-      edge=blendColor(edge,theme->color(ROLE_SURFACE),45);
-      }
-    else if(!selected && hovered){
-      face=blendColor(theme->color(ROLE_SURFACE),accent,20);
-      }
-    if(hasFocus() && !selected) edge=theme->color(ROLE_FOCUS_RING);
-    getApp()->getStyle()->drawRoundedRectangle(dc,0,0,width,height,radius,face,edge,1);
-
-    // Square the side that joins the tab bar/page, so only the outer corners
-    // of a top/bottom tab are rounded
-    FXint rr=FXMIN(radius,FXMIN(width,height)/2);
-    if(0<rr){
-      dc.setForeground(face);
-      switch(options&TAB_ORIENT_MASK){
-        case TAB_BOTTOM:
-          dc.fillRectangle(0,0,width,rr);
-          dc.setForeground(edge);
-          dc.fillRectangle(0,0,1,rr);
-          dc.fillRectangle(width-1,0,1,rr);
-          break;
-        case TAB_LEFT:
-          dc.fillRectangle(width-rr,0,rr,height);
-          dc.setForeground(edge);
-          dc.fillRectangle(width-rr,0,rr,1);
-          dc.fillRectangle(width-rr,height-1,rr,1);
-          break;
-        case TAB_RIGHT:
-          dc.fillRectangle(0,0,rr,height);
-          dc.setForeground(edge);
-          dc.fillRectangle(0,0,rr,1);
-          dc.fillRectangle(0,height-1,rr,1);
-          break;
-        default:
-          dc.fillRectangle(0,height-rr,width,rr);
-          dc.setForeground(edge);
-          dc.fillRectangle(0,height-rr,1,rr);
-          dc.fillRectangle(width-1,height-rr,1,rr);
-          break;
-        }
+    if(isEnabled() && !selected && hovered){
+      dc.setForeground(blendColor(strip,accent,20));
+      dc.fillRectangle(0,0,width,height);
       }
     if(selected){
       FXint thick=FXMAX(theme->metric(METRIC_BORDER_WIDTH,getDisplayScale())+1,2);
       dc.setForeground(accent);
       switch(options&TAB_ORIENT_MASK){
-        case TAB_BOTTOM:  dc.fillRectangle(radius,height-thick,width-2*radius,thick); break;
-        case TAB_LEFT:    dc.fillRectangle(0,radius,thick,height-2*radius); break;
-        case TAB_RIGHT:   dc.fillRectangle(width-thick,radius,thick,height-2*radius); break;
-        default:          dc.fillRectangle(radius,0,width-2*radius,thick); break;
+        case TAB_BOTTOM:  dc.fillRectangle(0,0,width,thick); break;
+        case TAB_LEFT:    dc.fillRectangle(width-thick,0,thick,height); break;
+        case TAB_RIGHT:   dc.fillRectangle(0,0,thick,height); break;
+        default:          dc.fillRectangle(0,height-thick,width,thick); break;
         }
       }
+    }
+  else{
+    dc.setForeground(backColor);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
     }
   if(!themed){
     switch(options&TAB_ORIENT_MASK){

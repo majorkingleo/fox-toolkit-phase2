@@ -383,10 +383,12 @@ void FXTabBar::setCurrent(FXint index,FXbool notify){
 long FXTabBar::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent *ev=(FXEvent*)ptr;
   FXDCWindow dc(this,ev);
-  dc.setForeground(backColor);
-  dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
   FXTheme *theme=getApp()->getTheme();
   if(0<theme->metric(METRIC_CORNER_RADIUS,getDisplayScale())){
+    // The strip behind the tabs is chrome, lighter than the page: the tabs
+    // and the empty strip share the button face, as in GTK
+    dc.setForeground(theme->color(ROLE_BUTTON));
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
     dc.setForeground(theme->color(ROLE_BORDER));
     if(options&TABBOOK_SIDEWAYS){
       if(options&TABBOOK_BOTTOMTABS) dc.fillRectangle(0,0,1,height);
@@ -398,6 +400,8 @@ long FXTabBar::onPaint(FXObject*,FXSelector,void* ptr){
       }
     }
   else{
+    dc.setForeground(backColor);
+    dc.fillRectangle(ev->rect.x,ev->rect.y,ev->rect.w,ev->rect.h);
     drawFrame(dc,0,0,width,height);
     }
   return 1;
