@@ -105,6 +105,8 @@ private:
   void span(FXint y,FXint x1,FXint x2);
   void plotLine(FXint x1,FXint y1,FXint x2,FXint y2,FXuint& dashindex,FXuint& dashremain,FXbool& dashon,FXbool skipfirst);
   void aaLine(FXint x1,FXint y1,FXint x2,FXint y2);
+  void aaLineD(FXdouble x1,FXdouble y1,FXdouble x2,FXdouble y2);
+  void aaWideLine(FXint x1,FXint y1,FXint x2,FXint y2);
   void wideLine(FXint x1,FXint y1,FXint x2,FXint y2);
   void fillFgRectangle(FXint x,FXint y,FXint w,FXint h);
   void fillFgEllipse(FXint x,FXint y,FXint w,FXint h);

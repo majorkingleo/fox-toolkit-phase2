@@ -483,10 +483,12 @@ static FXbool rasterClipLine(FXdouble& x0,FXdouble& y0,FXdouble& x1,FXdouble& y1
 
 // Draw a thin antialiased line using Wu coverage
 void FXRaster::aaLine(FXint x1,FXint y1,FXint x2,FXint y2){
-  FXdouble x0=x1;
-  FXdouble y0=y1;
-  FXdouble x3=x2;
-  FXdouble y3=y2;
+  aaLineD((FXdouble)x1,(FXdouble)y1,(FXdouble)x2,(FXdouble)y2);
+  }
+
+
+// Wu coverage line with fractional endpoints
+void FXRaster::aaLineD(FXdouble x0,FXdouble y0,FXdouble x3,FXdouble y3){
   FXdouble dx,dy,gradient,intery,xend,yend,xgap;
   FXint xpxl1,ypxl1,xpxl2,ypxl2,x;
   FXbool steep;
@@ -546,13 +548,40 @@ void FXRaster::aaLine(FXint x1,FXint y1,FXint x2,FXint y2){
     }
   }
 
+// Wide line with antialiased edges: the stroke is approximated by parallel
+// thin Wu lines spread across the line width.  Without this a line drawn with
+// linewidth>1 falls back to the hard edged wideLine(), which is what made
+// chart curves look stair-stepped next to antialiased toolkit output.
+void FXRaster::aaWideLine(FXint x1,FXint y1,FXint x2,FXint y2){
+  FXdouble dx=(FXdouble)(x2-x1);
+  FXdouble dy=(FXdouble)(y2-y1);
+  FXdouble len=Math::sqrt(dx*dx+dy*dy);
+  FXdouble nx=0.0;
+  FXdouble ny=0.0;
+  FXint i,w=FXMAX(1,linewidth);
+  if(len>0.0){
+    nx=-dy/len;
+    ny= dx/len;
+    }
+  for(i=0; i<w; i++){
+    FXdouble t=(FXdouble)i-(w-1)*0.5;
+    aaLineD(x1+nx*t,y1+ny*t,x2+nx*t,y2+ny*t);
+    }
+  }
+
+
 // Draw a line
 void FXRaster::drawLine(FXint x1,FXint y1,FXint x2,FXint y2){
   FXuint dashindex;
   FXuint dashremain;
   FXbool dashon;
   if(linewidth>1){
-    wideLine(x1,y1,x2,y2);
+    if(antialias && linestyle==LINE_SOLID){
+      aaWideLine(x1,y1,x2,y2);
+      }
+    else{
+      wideLine(x1,y1,x2,y2);
+      }
     return;
     }
   if(antialias && linestyle==LINE_SOLID){
@@ -580,8 +609,15 @@ void FXRaster::drawLines(const FXPoint* points,FXuint npoints){
     return;
     }
   if(linewidth>1){
-    for(i=0; i<npoints-1; i++){
-      wideLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y);
+    if(antialias && linestyle==LINE_SOLID){
+      for(i=0; i<npoints-1; i++){
+        aaWideLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y);
+        }
+      }
+    else{
+      for(i=0; i<npoints-1; i++){
+        wideLine(points[i].x,points[i].y,points[i+1].x,points[i+1].y);
+        }
       }
     for(i=1; i<npoints-1; i++){
       ex=linewidth>>1;
