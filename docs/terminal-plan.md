@@ -1594,31 +1594,55 @@ of Phase 10. Phase 11 and Phase 12 are not started.
 
 Bugs and gaps found in review:
 
-- **B1 `closeOnExit` is never applied.** `Profiles` loads and saves
-  `closeOnExit`, but `TerminalWindow::onCmdExited()` only appends `[exited]`.
-  A tab whose child exits stays open under the default policy (`true`). Fix:
-  close the tab on exit when the policy is set, close the window when it was
-  the last tab, and keep the tab with the `[exited]` suffix otherwise
-  (section 10.3).
-- **B2 `confirmClose` is never applied.** Closing a tab or window with a live
-  child does not ask for confirmation (section 10.5).
+- **B1 `closeOnExit` is never applied. FIXED.** `TerminalWindow::onCmdExited()`
+  now applies the policy of the tab's profile: with `closeonexit=true` the tab
+  closes through a chore (the widget is still inside its own read callback, so
+  it must not be destroyed there), the last tab of the last window ends the
+  application, and the last tab of a window that has siblings deletes only that
+  window. With `closeonexit=false` the tab keeps the final screen and gains the
+  `[exited]` suffix. `TerminalTab` records its `profileid` so the policy is the
+  one the tab was created from, also after a detach.
+- **B2 `confirmClose` is never applied. FIXED.** `closeTab()` asks through
+  `FXMessageBox::question(MBOX_OK_CANCEL)` when the child of the tab is still
+  running and its profile sets `confirm`; Cancel leaves the tab alone. Quit,
+  window-manager close and Ctrl+Q ask once for every running session of the
+  process (`MBOX_QUIT_CANCEL`), and a termination signal takes the new
+  `onSignalQuit` path so a gate or a logout never waits on a dialog.
+- **B2a Window accelerators never acted. FIXED.** `FXMenuCommand` registers its
+  accelerator on the owning window, but `FXComposite::onKeyPress` bounces the
+  key to the focus widget first, so `FXTerminal` turned Ctrl+Shift+W into 0x17
+  for the child and no shortcut of section 10.2 worked. `FXTerminal::onKeyPress`
+  now consults the accel table of its shell before encoding the key, and also
+  tries the shifted form of a letter because a Ctrl+Shift+letter carries the
+  unshifted keysym on Wayland. `Detach Tab` gained its `Ctl-Shift-M` label.
+- **B2b Deleting a window crashed on the next update pass. FIXED.** The opacity
+  submenu was created as a local `FXMenuPane`; it leaked, its commands kept the
+  deleted window as their target, and the update walk dereferenced it
+  (SIGSEGV in `FXWindow::onUpdate` under `FXMenuCaption::onUpdate`). Every menu
+  pane is now a member and is deleted in `~TerminalWindow`. This also repairs
+  the detach path that deletes a window emptied by tear-off.
 - **B3 No docs or screenshots for Wayland tabs and opacity.** `docs/terminal.md`
-  does not exist; `foxterm.1` exists but is not checked against the options.
+  does not exist. `foxterm.1` now matches the command line (`--opacity`) and
+  states the tab, detach, close-on-exit and confirmation behavior; the user
+  guide and the re-captured screenshots are still missing.
 - **B4 Phase 3 gates are unverified:** `stty size` after resize, Ctrl+C,
   `vim`/`less` alternate-screen round trip, selection drag, and a real Wayland
-  frame of the interactive shell.
+  frame of the interactive shell. The keyboard path is now covered by
+  `gate-wayland-foxterm.sh` (typing reaches the child, Ctrl+Shift shortcuts act).
 - **Missing, Phase 5:** overflow scrolling, drag reorder, duplicate, rename,
-  Ctrl+Tab cycling (only Next/Previous menu items exist), the 20-tab gate.
-- **Missing, Phase 6:** drag tear-off, tab context menu, Ctrl+Shift+M,
-  lost-grab cancel.
+  the 20-tab gate. Ctrl+Shift+T/W/M, Ctrl+Q and the Next/Previous Tab
+  accelerators work again through B2a.
+- **Missing, Phase 6:** drag tear-off, tab context menu, lost-grab cancel.
+  `Ctrl+Shift+M` (B2a) is the working detach shortcut.
 - **Missing, Phase 8:** multi-line paste confirmation, OSC 52 policy (requests
   are only blocked and reported in the status line), IME gate, font zoom.
 - **Missing, Phase 9:** color schemes, font and cursor fields, profile
   create/delete, live appearance updates.
 - **Missing, Phase 10:** capability label in the settings dialog, detach and
   restart opacity gates, pixel gates from section 14.5.
-- **Missing, whole plan:** no automated `gate-wayland-foxterm.sh`; the Windows
-  ConPTY run is still untested on real Windows.
+- **Missing, whole plan:** the Windows ConPTY run is still untested on real
+  Windows. The new `scripts/gate-wayland-foxterm.sh` covers the tab and window
+  lifetime on headless sway; see "Fix result (B1, B2)" below.
 
 Visual review (screenshots, not re-captured in this review):
 `screenshots/tests/fox2/wayland/foxterm.png` and
@@ -1652,7 +1676,9 @@ Plasma:
 - **V6 Native title bar is intentional** (section 2). Windows 11 shows tabs in
   the title bar; this stays a documented difference.
 - **V7 Re-capture** all screenshots on the current tree and add `foxterm-menu`
-  (context menu) and `foxterm-latin1` shots.
+  (context menu) and `foxterm-latin1` shots. The method is in Step S8 below.
+
+Steps S1 to S8 in "Visual plan" below fix V1 to V7.
 
 New requests, now R19 and R20 in section 1 and in the Phase 8 and Phase 9
 acceptance lists:
@@ -1668,8 +1694,164 @@ acceptance lists:
   an Encoding submenu with a check on the active entry, a profile field, and
   a `terminalmodel` test per encoding.
 
-Next steps in order: B1, B2, N1, N2, V1 to V4, B4 gate script, Phase 5 and 6 follow-ups,
-Phase 8 follow-ups, Phase 9 color schemes, Phase 11, Phase 12.
+### Visual plan: reaching the Windows Terminal / Konsole look
+
+Goal: on Linux (X11 and Wayland) and Windows, `foxterm` looks like Windows
+Terminal in layout and like Konsole in density. No new widget set; all changes
+use theme roles (`ROLE_*`) and metrics (`METRIC_*`) so every theme works. Do
+the steps in order; each step ends with a re-captured screenshot compared with
+the target.
+
+**Step S1: fix cell metrics (`FXTerminal.cpp`, `cellw` near line 403).**
+Cause: `cellw` comes from `getTextWidth("M")` of whatever face `FONT_MONO`
+resolves to. If that face is proportional, or hinting rounds `M` wider than the
+advance, every cell is too wide. Work:
+- Verify that `FONT_MONO` resolves to a fixed-pitch face (`FXFont` pitch flag);
+  if not, search the fallback list (`Cascadia Mono`, `Consolas`, `DejaVu Sans
+  Mono`, `Liberation Mono`, `Noto Sans Mono`) and use the first fixed-pitch hit.
+- Take `cellw` as the maximum advance over `0`..`9` and `M` and `W`, and take
+  `cellh` as `ascent+descent` without extra leading; no rounding up of both.
+- Draw each cell run at `col*cellw`; a run of equal attributes is one
+  `drawText` call, so kerning inside a run cannot widen it.
+- Test: a `terminalmodel`-independent gate that feeds `printf '%*s' 80 |
+  tr ' ' M` and checks the row is exactly `80*cellw` px wide, and a screenshot
+  where `sh-5.3$` touches no gap wider than 1 px.
+
+**Step S2: grid padding and chrome density.**
+- Add a `padding` property to `FXTerminal` (default `METRIC_PADDING`, at least
+  6 px, scaled by DPI) applied to all four sides; the background fills the
+  padding, selection does not.
+- Remove `FRAME_SUNKEN|FRAME_THICK` from the switcher; the terminal has no
+  border. A 1 px `ROLE_BORDER` line separates strip and grid only.
+- The status line becomes a transient bar: hidden by default, shown on child
+  exit, on error and while the find bar is open. Konsole has no status bar and
+  Windows Terminal has none.
+
+**Step S3: Windows Terminal style tab strip (`TerminalTabBar.cpp`).**
+Paint everything in `onPaint` from theme roles; no child widgets per tab.
+- Strip background: `ROLE_WINDOW_BG` darkened 8 percent (the Windows Terminal
+  title strip is darker than the content). Strip height `METRIC_CONTROL_HEIGHT`.
+- Active tab: filled with the terminal default background so it merges with the
+  grid, top corners rounded by `METRIC_CORNER_RADIUS`, text `ROLE_TEXT`. No raised
+  border, no underline box.
+- Inactive tab: no fill; `ROLE_SURFACE_HILITE` at 40 percent alpha on hover;
+  text `ROLE_TEXT_DISABLED` blended toward `ROLE_TEXT`.
+- A 2 px `ROLE_ACCENT` line on top of the active tab, the Konsole alternative,
+  selectable by a theme flag `tabAccentLine` (off by default).
+- Tab width: 120 px target, shrinking to 48 px as tabs are added, then overflow
+  arrows; title elided with `...`.
+- Close button: a 12 px cross, drawn only on the active tab and on the hovered
+  tab, with a round hover background; middle click closes the tab.
+- Bell and exit state: a small dot before the title (`ROLE_ACCENT` for bell,
+  `ROLE_TEXT_DISABLED` for exited).
+- Separator: a 1 px vertical line between two inactive tabs, hidden next to the
+  active or hovered tab.
+- Animation: reorder and open/close use `METRIC_ANIMATION_TIME` when the theme
+  enables animations; otherwise immediate.
+
+**Step S4: flat strip buttons.**
+- Replace `newbutton`, `profilebutton` and `menubutton` by tab-bar painted
+  hit areas (drawn in the same `TerminalTabBar`): `+`, a chevron drop-down, and
+  a hamburger glyph at the right end. They are flat, 28 px wide, get the hover
+  rounded rectangle of S3 and open the same `FXMenuPane`s through `popup()`.
+- No text labels `Default` or `Menu`; tooltips carry the names and the active
+  profile name appears in the `+` tooltip.
+- Use `FXMenuButton` only as the popup host (hidden); do not use
+  `FRAME_RAISED|FRAME_THICK`.
+
+**Step S5: scrollbar, cursor, selection.**
+- Overlay scrollbar of `METRIC_SCROLLBAR_WIDTH`/2 on the right: invisible until
+  scroll or mouse-over, fades after 1.5 s, thumb colour `ROLE_SCROLLBAR_THUMB`.
+  It is drawn inside the padding and never changes the column count.
+- Cursor: block is a solid cell with the glyph drawn in the background colour;
+  an unfocused terminal draws a 1 px hollow block (Konsole and Windows Terminal
+  both do this). Bar and underline are 2 px (scaled).
+- Selection colours from the colour scheme, not fixed `selbackcolor`; the
+  selection starts at the cell edge nearest the pointer (half-cell rule).
+- Search matches: all matches `ROLE_ACCENT` at 35 percent alpha, the current
+  one 70 percent.
+
+**Step S6: colour scheme and font defaults.**
+- Ship the Windows Terminal default scheme (`Campbell`: background `#0C0C0C`,
+  foreground `#CCCCCC`, the 16 ANSI colours of Campbell) as the default and
+  `One Half Dark`, `Solarized Dark` and `Konsole Breeze` as presets; the
+  current `FXRGB(12,12,12)`/`(204,204,204)` already match Campbell.
+- Default font: `Cascadia Mono` 12 pt if installed, else the S1 fallback list.
+  Bold uses the bold face, not smeared double-strike; "bright bold" is a scheme
+  option.
+- Text rendering uses the grayscale antialiasing of the raster backend on
+  Wayland; no subpixel colour fringes on transparent windows (Phase 11).
+
+**Step S7: dialogs and menus.**
+- The context menu (R19) and the hamburger menu use the theme menu style with
+  shortcut text right-aligned, separators between groups, and the Encoding
+  submenu with radio marks.
+- The Settings dialog uses a left list (`Profiles`, `Appearance`, `Encoding`)
+  and a right pane in Windows Terminal style; no nested tab books.
+
+**Step S8: verification (answers V7).**
+- Add `scripts/gate-wayland-foxterm.sh` on the model of
+  `gate-wayland-stopwatch.sh` (headless sway, virtual pointer): starts
+  `foxterm --execute` with a fixed script that prints colours, `ls` output and a
+  `less` page; saves `foxterm.png`, `foxterm-tabs.png` (5 tabs, one hovered, one
+  with bell), `foxterm-menu.png`, `foxterm-latin1.png`, `foxterm-selection.png`
+  and `foxterm-opacity.png`.
+- Pixel assertions, not only pictures: grid left edge is `padding` px from the
+  window edge; the active tab fill equals the terminal background; the cursor
+  cell colour equals the scheme cursor colour; the cell pitch of a
+  `MMMM` row is `cellw`.
+- Review each screenshot side by side with a Windows Terminal 1.x screenshot
+  (dark, Campbell, Cascadia Mono 12) and a Konsole Breeze Dark screenshot of
+  the same content, and record the remaining differences in this section.
+- Windows and X11 get the same shots through
+  `scripts/capture-test-screenshots.ps1` and the X11 harness.
+
+Acceptance for the visual goals:
+
+- The prompt row is a tight monospace row (S1); the grid has padding (S2).
+- The tab strip, active tab, hover state, close button and `+`/chevron/hamburger
+  controls match the description in S3 and S4 in all built-in themes.
+- No raised or thick frames remain in the foxterm window.
+- Screenshots of all three platforms exist and the recorded differences from
+  the targets are limited to: native title bar (V6 above) and font
+  availability.
+
+Next steps in order: N1, N2, visual Steps S1 to S5, B4 gate script, Phase 5
+and 6 follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11,
+Phase 12. B1 and B2 are done; see the fix result below.
+
+### Fix result (B1, B2)
+
+Fixed on the Wayland target (`FOX_WAYLAND_TARGET=foxterm
+./scripts/build-fox2-wayland.sh`), clean build, no new warnings in the
+terminal files.
+
+Changes:
+
+- `fox2/apps/foxterm/TerminalWindow.h/.cpp`: `TerminalTab` records its
+  `profileid`; `tabProfile()`, `confirmCloseTab()` and `confirmQuit()` read the
+  policy; `closeTab(index,force)`, `onChoreCloseTab()` (SEL_CHORE),
+  `onSignalQuit()` (SEL_SIGNAL, no dialog), `terminateTabs()` and a static list
+  of live windows back the close, quit and last-window decisions; every menu
+  pane is a member and deleted in the destructor.
+- `fox2/lib/FXTerminal.cpp`: the shell accelerator table is consulted before a
+  key is encoded for the child, including the shifted form of a letter.
+- `fox2/apps/foxterm/foxterm.1`: tabs, detach, close-on-exit, confirmation and
+  `--opacity` documented.
+- `scripts/gate-wayland-foxterm.sh`: new headless-sway gate with six phases:
+  default close-on-exit closes the process; `closeonexit=false` keeps the tab
+  with `[exited]`; SIGINT quits without a dialog; Ctrl+Shift+W on a live child
+  asks and Escape keeps the session, then OK closes the last tab and the
+  process; typed text still reaches the child; Ctrl+Shift+T adds a tab,
+  Ctrl+Shift+M detaches it, closing the detached tab leaves the other window
+  and Ctrl+Q quits cleanly.
+
+Result: `terminalmodel` and `pty` pass, the gate passes all six phases, and the
+`windows/Ctrl+Q` runs no longer crash. Not run: the X11 gate for this change
+(the library change is backend neutral) and a real Windows run. Existing
+failures in this checkout are unrelated to the change: `raster` segfaults in
+`FXRaster::fillPolyspan`, and `half`, `math` and `variant` fail their numeric
+or platform comparisons; neither touches the terminal files.
 
 ## 14. Tests and verification
 
