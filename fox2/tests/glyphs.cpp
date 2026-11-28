@@ -113,6 +113,20 @@ int main(int argc,char** argv){
       return 1;
       }
     checkMetrics(glyphs);
+
+    // A character the main face lacks comes from a fallback font, when an installed font has it
+    if(!glyphs.hasChar(0xF07B) && glyphs.hasCharFallback(0xF07B)){
+      const FXGlyph* icon=glyphs.getGlyph(0xF07B);
+      printf("  fallback: U+F07B found in another font\n");
+      check(icon!=nullptr && icon->width>0 && icon->height>0,"fallback glyph has ink");
+      check(icon==glyphs.getGlyph(0xF07B),"fallback glyph is cached");
+      }
+    else{
+      printf("  fallback: no installed font covers U+F07B or the main font has it; skipped\n");
+      }
+    check(!glyphs.hasCharFallback(0x10FFFE),"a character no font covers has no fallback");
+    check(!glyphs.hasCharFallback(0x10FFFE),"the miss is remembered");
+    check(glyphs.getGlyph(0x10FFFE)!=nullptr,"a missing character still draws the main face box");
   }
 
 #if defined(FOX_X11)

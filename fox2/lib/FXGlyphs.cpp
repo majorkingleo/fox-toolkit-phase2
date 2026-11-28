@@ -159,6 +159,10 @@ void FXGlyphs::close(){
   freeElms(glyphs);
   count=0;
   alloced=0;
+  for(i=0; i<nfallbacks; i++){ FT_Done_Face((FT_Face)fallbacks[i]); fallbacks[i]=nullptr; }
+  nfallbacks=0;
+  nmisses=0;
+  charsize=0;
   if(face){ FT_Done_Face((FT_Face)face); face=nullptr; }
   if(library){ FT_Done_FreeType((FT_Library)library); library=nullptr; }
   ascent=0;
@@ -227,6 +231,7 @@ FXbool FXGlyphs::open(const FXchar* family,FXuint size,FXuint weight,FXuint slan
     return false;
     }
   face=f;
+  charsize=sz;
   // Size the face the way Xft does, so the metrics agree
   if(FT_Set_Char_Size(f,0,(FT_F26Dot6)(sz*64.0+0.5),0,0)){
     close();
@@ -241,6 +246,107 @@ FXbool FXGlyphs::open(const FXchar* family,FXuint size,FXuint weight,FXuint slan
   }
 
 
+// Characters of the private use areas, where icon fonts live
+static FXbool isPrivateUse(FXuint ch){
+  return (0xE000<=ch && ch<=0xF8FF) || ch>=0xF0000;
+  }
+
+
+// Rank a family for a character; lower is better, 3 means unsuitable
+static FXint rankFamily(FXuint ch,const FXchar* family){
+  if(isPrivateUse(ch)){
+    FXbool icons=(strstr(family,"Nerd Font")!=nullptr) || (strstr(family,"Symbols")!=nullptr);
+    FXbool mono=(strstr(family,"Mono")!=nullptr);
+    if(icons && mono) return 0;
+    if(icons) return 1;
+    return 2;
+    }
+  return 2;
+  }
+
+
+// Find a font that has the character, open it at the main face size, and return
+// the face and the glyph index in it; return nullptr if no font has the character
+void* FXGlyphs::findFallback(FXuint ch,FXuint& index){
+  FcPattern* pattern;
+  FcCharSet* chars;
+  FcFontSet* set;
+  FcCharSet* coverage;
+  FcResult result;
+  FXint best;
+  FcPattern* chosen=nullptr;
+  FXuint i;
+  FXint pass;
+  FT_Face alt;
+  if(!face) return nullptr;
+
+  // An open fallback face may already have it
+  for(i=0; i<nfallbacks; i++){
+    index=FT_Get_Char_Index((FT_Face)fallbacks[i],ch);
+    if(index) return fallbacks[i];
+    }
+
+  // Nothing installed covers it: do not search again
+  for(i=0; i<nmisses; i++){
+    if(misses[i]==ch) return nullptr;
+    }
+  if(nfallbacks>=8) return nullptr;
+  pattern=FcPatternCreate();
+  chars=FcCharSetCreate();
+  FcCharSetAddChar(chars,ch);
+  FcPatternAddCharSet(pattern,FC_CHARSET,chars);
+  FcCharSetDestroy(chars);
+  if(fontname.length()) FcPatternAddString(pattern,FC_FAMILY,(const FcChar8*)fontname.text());
+  FcPatternAddDouble(pattern,FC_PIXEL_SIZE,charsize);
+  FcPatternAddBool(pattern,FC_SCALABLE,true);
+  FcPatternAddInteger(pattern,FC_SPACING,FC_MONO);
+  FcConfigSubstitute(nullptr,pattern,FcMatchPattern);
+  FcDefaultSubstitute(pattern);
+  set=FcFontSort(nullptr,pattern,FcTrue,nullptr,&result);
+  FcPatternDestroy(pattern);
+  if(set){
+    for(pass=0; pass<3 && !chosen; pass++){
+      for(FXint k=0; k<set->nfont; k++){
+        FcChar8* file;
+        FcChar8* fam;
+        if(FcPatternGetCharSet(set->fonts[k],FC_CHARSET,0,&coverage)!=FcResultMatch) continue;
+        if(!FcCharSetHasChar(coverage,ch)) continue;
+        if(FcPatternGetString(set->fonts[k],FC_FILE,0,&file)!=FcResultMatch) continue;
+        if(filename==(const FXchar*)file) continue;
+        if(FcPatternGetString(set->fonts[k],FC_FAMILY,0,&fam)!=FcResultMatch) continue;
+        best=rankFamily(ch,(const FXchar*)fam);
+        if(best<=pass){ chosen=FcPatternDuplicate(set->fonts[k]); break; }
+        }
+      }
+    FcFontSetDestroy(set);
+    }
+  if(chosen){
+    FcChar8* file;
+    FXint faceindex=0;
+    if(FcPatternGetString(chosen,FC_FILE,0,&file)==FcResultMatch){
+      FcPatternGetInteger(chosen,FC_INDEX,0,&faceindex);
+      if(FT_New_Face((FT_Library)library,(const FXchar*)file,faceindex&0xffff,&alt)==0){
+        if(FT_Set_Char_Size(alt,0,(FT_F26Dot6)(charsize*64.0+0.5),0,0)==0){
+          index=FT_Get_Char_Index(alt,ch);
+          if(index){
+            fallbacks[nfallbacks++]=alt;
+            FcPatternDestroy(chosen);
+            return alt;
+            }
+          }
+        FT_Done_Face(alt);
+        }
+      }
+    FcPatternDestroy(chosen);
+    }
+
+  // Remember that nothing covers it
+  if(nmisses<256) misses[nmisses++]=ch;
+  index=0;
+  return nullptr;
+  }
+
+
 /*******************************************************************************/
 
 // Load and cache the glyph of a character
@@ -251,11 +357,19 @@ FXGlyph* FXGlyphs::load(FXuint ch){
   FT_Render_Mode mode=FT_RENDER_MODE_NORMAL;
   FXGlyph g;
   FXint x,y,pitch;
+  FXuint index;
   if(!f) return nullptr;
   if(!hinting) flags|=FT_LOAD_NO_HINTING;
   if(autohint) flags|=FT_LOAD_FORCE_AUTOHINT;
   if(!antialias){ flags|=FT_LOAD_TARGET_MONO; mode=FT_RENDER_MODE_MONO; }
-  if(FT_Load_Glyph(f,FT_Get_Char_Index(f,ch),flags)) return nullptr;
+  index=FT_Get_Char_Index(f,ch);
+
+  // The main face has no glyph: use the first fallback face that has one
+  if(index==0 && ch>=0x80){
+    FT_Face alt=(FT_Face)findFallback(ch,index);
+    if(alt) f=alt;
+    }
+  if(FT_Load_Glyph(f,index,flags)) return nullptr;
   slot=f->glyph;
   if(FT_Render_Glyph(slot,mode)) return nullptr;
   g.ch=ch;
@@ -306,6 +420,15 @@ const FXGlyph* FXGlyphs::getGlyph(FXuint ch){
 FXbool FXGlyphs::hasChar(FXuint ch){
   if(!face) return false;
   return FT_Get_Char_Index((FT_Face)face,ch)!=0;
+  }
+
+
+// Return true if the main font or a fallback font has a glyph for the character
+FXbool FXGlyphs::hasCharFallback(FXuint ch){
+  FXuint index;
+  if(!face) return false;
+  if(FT_Get_Char_Index((FT_Face)face,ch)!=0) return true;
+  return ch>=0x80 && findFallback(ch,index)!=nullptr;
   }
 
 
@@ -385,6 +508,11 @@ const FXGlyph* FXGlyphs::getGlyph(FXuint){
 
 
 FXbool FXGlyphs::hasChar(FXuint){
+  return false;
+  }
+
+
+FXbool FXGlyphs::hasCharFallback(FXuint){
   return false;
   }
 

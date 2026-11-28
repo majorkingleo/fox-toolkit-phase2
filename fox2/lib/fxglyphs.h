@@ -77,10 +77,16 @@ private:
   FXbool   autohint;            // Use the auto hinter
   FXString filename;            // Font file chosen by fontconfig
   FXString fontname;            // Family name chosen by fontconfig
+  FXdouble charsize;            // Face size in pixels, also used for fallback faces
+  void*    fallbacks[8]={};     // Fallback faces opened on demand
+  FXuint   nfallbacks=0;        // Number of fallback faces
+  FXuint   misses[256]={};      // Characters no installed font covers
+  FXuint   nmisses=0;           // Number of remembered misses
 private:
   FXGlyphs(const FXGlyphs&);
   FXGlyphs& operator=(const FXGlyphs&);
   FXGlyph* load(FXuint ch);
+  void* findFallback(FXuint ch,FXuint& index);
 public:
 
   /// Construct a cache without a font
@@ -122,8 +128,11 @@ public:
   /// Return the cached glyph of a character, loading it if needed
   const FXGlyph* getGlyph(FXuint ch);
 
-  /// Return true if the font has a glyph for the character
+  /// Return true if the main font has a glyph for the character
   FXbool hasChar(FXuint ch);
+
+  /// Return true if the main font or a fallback font has a glyph for the character
+  FXbool hasCharFallback(FXuint ch);
 
   /// Return the advance width of a character
   FXint getCharWidth(FXuint ch);
