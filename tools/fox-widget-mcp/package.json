@@ -1,0 +1,24 @@
+{
+  "name": "fox-widget-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local read-only MCP server that gives the pi coding agent FOX 1.7.95 and FOX 2 widget knowledge: class hierarchy, headers, implementations, theme coverage and diffs.",
+  "type": "module",
+  "bin": {
+    "fox-widget-mcp": "./server.mjs"
+  },
+  "pi": {
+    "extensions": [
+      "./pi/extension.ts"
+    ]
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/",
+    "tools": "node server.mjs --list-tools"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "LGPL-3.0-or-later"
+}
