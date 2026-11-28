@@ -88,7 +88,9 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   profiles.load(a->reg());
   if(activeprofile.empty() || profiles.find(activeprofile)<0) activeprofile=profiles.getActive();
   profilemenu=nullptr;
-  profilebutton=new FXMenuButton(tabrow,"Default",nullptr,nullptr,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
+  // ICON_BEFORE_TEXT puts the drop-down arrow at the left of the label; without
+  // it the arrow and the text are both centred and overlap
+  profilebutton=new FXMenuButton(tabrow,"Default",nullptr,nullptr,JUSTIFY_NORMAL|ICON_BEFORE_TEXT|FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
   rebuildProfileMenu();
   profilebutton->setText(profiles.at(profiles.find(activeprofile)).name);
   mainmenu=new FXMenuPane(this);
@@ -115,7 +117,7 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXMenuSeparator(mainmenu);
   new FXMenuCommand(mainmenu,"&About",nullptr,this,ID_ABOUT);
   new FXMenuCommand(mainmenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
-  menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT)|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
+  menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FXuint(JUSTIFY_NORMAL)|FXuint(ICON_BEFORE_TEXT)|FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT)|FXuint(LAYOUT_CENTER_Y)|FXuint(MENUBUTTON_DOWN));
   rule=new FXCanvas(contents,this,ID_RULE,LAYOUT_FILL_X|FRAME_NONE,0,0,0,1);
   switcher=new FXSwitcher(contents,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_NONE,0,0,0,0,0,0,0,0);
   findbar=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,2,2,1,1);

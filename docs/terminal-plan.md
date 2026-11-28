@@ -1664,7 +1664,9 @@ Plasma:
 - **V3 Buttons look like 1990s FOX.** `+`, `Default`, `Menu` are bordered raised
   buttons with caret glyphs overlapping the text. Windows Terminal shows
   flat `+` and chevron buttons that highlight on hover; use flat toolbar
-  buttons with separate drop-down arrows.
+  buttons with separate drop-down arrows. (The overlap itself is fixed: the
+  two menu buttons now carry `JUSTIFY_NORMAL|ICON_BEFORE_TEXT`, so the caret
+  sits left of the label instead of being centred over it.)
 - **V4 Chrome carries too much.** The Wayland frame has no padding around the
   grid (text touches the left edge) and a tall status line. Windows Terminal and
   Konsole pad the grid by 4 to 8 px and Konsole hides the status bar. Add a
