@@ -618,6 +618,18 @@ void FXTerminal::layout(){
   }
 
 
+// Change the object that receives the notifications of this view
+void FXTerminal::setNotifyTarget(FXObject* tgt){
+  if(priv) priv->notify=tgt;
+  }
+
+
+// Return the object that receives the notifications of this view
+FXObject* FXTerminal::getNotifyTarget() const {
+  return priv ? priv->notify : nullptr;
+  }
+
+
 // Start a shell on a new PTY
 FXbool FXTerminal::start(const FXTerminalLaunch& launch){
   FXString error;

@@ -142,6 +142,14 @@ public:
   /// Return the padding; -1 when the constructor gave explicit margins
   FXint getPadding() const;
 
+  /// Change the object that receives the notifications of this view; a view
+  /// that moves to another window must be retargeted, or its notifications
+  /// reach a window that may already be gone
+  void setNotifyTarget(FXObject* tgt);
+
+  /// Return the object that receives the notifications of this view
+  FXObject* getNotifyTarget() const;
+
   /// Start a shell on a new pseudo terminal
   FXbool start(const FXTerminalLaunch& launch);
 
