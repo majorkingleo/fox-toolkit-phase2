@@ -271,8 +271,12 @@ size from the visible area and font metrics. Its API must include:
 - `getSupportedTransparencyModes()` returning a bit mask of the three modes.
   The mask is queried after the widget is created and may change when the
   window is moved to a different compositor or display.
-- `setEncoding(const FXString& name)`, `getEncoding()` and
-  `getSupportedEncodings()` for the run-time character encoding (R20).
+- `setEncoding(const FXString& name)`, `getEncoding()`, the static
+  `getSupportedEncodingCount()`, `getSupportedEncodingName(index)` and
+  `findEncoding(name)` for the run-time character encoding (R20). `setEncoding`
+  returns the canonical name that is in effect, so the caller learns about a
+  fallback without a notification. The list is static because the context menu
+  is built before the first session exists.
 - `search()`, `findNext()`, `findPrev()`, `clearSearch()`.
 - `selectAll()`, `copySelection()`, `pasteClipboard()`.
 - `getSelectedText()`.
@@ -289,7 +293,7 @@ Notification selectors from the widget to its target:
 | `ID_CLIPBOARD` | The child requested a clipboard read or write through OSC 52. The application decides whether to allow it. |
 | `ID_TERMINAL_SEARCH_CHANGED` | Search result count changed; optional for the search bar. |
 | `ID_CONTEXT` | The user right-clicked, or pressed the menu key or Shift+F10. The data pointer holds the position and whether a selection exists; the target pops up the menu (R19). |
-| `ID_ENCODING` | The effective encoding changed, for example after an unsupported name fell back to UTF-8. |
+| `ID_ENCODING_LOSS` | A key or paste was sent as '?' because the session encoding cannot express it. Sent as `SEL_CHANGED`, not `SEL_COMMAND`, so it cannot collide with the ids the window uses for its own menu commands. The effective encoding itself comes from the return value of `setEncoding()`. |
 | `ID_TRANSPARENCY` | The effective transparency mode changed, for example after a capability query or a move to another compositor. The target calls `getTransparencyMode()` and the supported-mask getter. |
 
 `FXWindow` gains `setOpacity(FXint percent)`, `getOpacity()` and
@@ -1049,6 +1053,7 @@ struct TerminalProfile {
   FXString startingDirectory;   // may be empty
   FXint    termKind;            // TERMINAL_VT100 or TERMINAL_XTERM
   FXString term;                // TERM value
+  FXString encoding;            // default character encoding of a new session
   FXString colorScheme;         // built-in or user scheme name
   FXString fontFace;            // empty means theme FONT_MONO
   FXint    fontSize;            // points, 0 means theme size
@@ -1100,7 +1105,7 @@ x, y, w, h, maximized, activeProfile, windowCount
 
 [PROFILES]
 count, default
-id0, name0, shell0, args0, dir0, term0, kind0, scheme0,
+id0, name0, shell0, args0, dir0, term0, encoding0, kind0, scheme0,
 font0, size0, scrollback0, cursor0, confirm0, closeonexit0
 
 [APPEARANCE]
@@ -1118,6 +1123,8 @@ Keys are written with `writeStringEntry`, `writeIntEntry`, `writeBoolEntry`;
 read with the matching `read*Entry` calls. Validate every loaded value:
 
 - `kind` must be 0 or 1 and must agree with `term`.
+- `encoding` must be a supported name or alias; anything else falls back to
+  UTF-8.
 - `scrollback` is clamped to 0..100000.
 - `fontSize` is clamped to 6..72.
 - `cursor` is clamped to the three supported styles.
@@ -1590,8 +1597,8 @@ runs, and `foxterm --execute /bin/sh -c ...` starts on the live Wayland session.
 
 Done: Phase 1, Phase 2 (POSIX), most of Phase 3, Phase 4, the core of Phase 5,
 the in-process detach of Phase 6, the core of Phases 7 to 9, `window` mode
-of Phase 10, and N1 (the right-click context menus). Phase 11 and Phase 12 are
-not started.
+of Phase 10, N1 (the right-click context menus) and N2 (the character encoding
+switch, including the profile field). Phase 11 and Phase 12 are not started.
 
 Bugs and gaps found in review:
 
@@ -1701,14 +1708,15 @@ acceptance lists:
   menu and the strip menu, and the entries are enabled or disabled through
   `SEL_UPDATE` handlers. The Encoding submenu shows UTF-8 and stays disabled
   until N2. Details and the platform fix in "Fix result (N1)" below.
-- **N2 Encoding switch.** Not implemented. `FXTerminalParser` decodes only UTF-8
-  (`PARSER_UTF8`) and `Profiles` has no encoding field. FOX already has
-  `FX88591Codec`, `FX88592Codec`, `FXCP1252Codec` and `FXKOI8RCodec` to reuse;
-  ISO-8859-15, Windows-1250/1251, CP437 and CP850 need small tables. Work
-  items: `FXTerminalCharset` in `lib/`, `FXTerminal::setEncoding()`, inverse
-  mapping for keys and paste, width rule for single-byte sets (all one cell),
-  an Encoding submenu with a check on the active entry, a profile field, and
-  a `terminalmodel` test per encoding.
+- **N2 Encoding switch. DONE.** `FXTerminalCharset` in `lib/` decodes output
+  and encodes keys, paste and IME text; UTF-8 stays the default and the fast
+  path. The context menu carries a checked radio per encoding, `[PROFILE]
+  encoding` sets the default of a new tab, and `terminalmodel` covers every
+  encoding. See "Fix result (N2)" below. Not done: the child's `LANG`/`LC_ALL`
+  is still inherited (section 7.2 forbids overriding the user's locale), so a
+  legacy profile changes how the view decodes bytes and not what the shell
+  believes its locale is; a run-time switch of a *multibyte* legacy encoding
+  (Shift_JIS, GBK) is out of scope by the same decision.
 
 ### Visual plan: reaching the Windows Terminal / Konsole look
 
@@ -1944,9 +1952,9 @@ Acceptance for the visual goals:
   the targets are limited to: native title bar (V6 above) and font
   availability.
 
-Next steps in order: N2, visual Steps S3 to S5, B4 gate script, Phase 5
-and 6 follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11,
-Phase 12. B1, B2, N1, S1 and S2 are done; see the fix results below.
+Next steps in order: visual Steps S3 to S5, B4 gate script, Phase 5 and 6
+follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11, Phase 12.
+B1, B2, N1, N2, S1 and S2 are done; see the fix results below.
 
 ### Fix result (B1, B2)
 
@@ -2076,9 +2084,104 @@ an X11 runtime check of the menu (no X server in this checkout) and a Windows
 run.
 
 Still missing from R19: the tab menu's Duplicate starts the same profile
-instead of the same *session*, and Rename asks for a whole new title (FOX has
-no input dialog with a preset value) and is overwritten by the next OSC title
-from the child.
+instead of the same *session* (it does carry the live encoding of the session
+it was made from, see N2), and Rename asks for a whole new title (FOX has no
+input dialog with a preset value) and is overwritten by the next OSC title from
+the child.
+
+### Fix result (N2)
+
+Fixed on the Wayland target (`FOX_WAYLAND_TARGET=foxterm
+./scripts/build-fox2-wayland.sh`), clean build, no new warnings in the
+terminal files. `terminalmodel` and `pty` pass, and the new gate passes all
+four phases (see below).
+
+What is there now:
+
+- `fox2/lib/fxterminalcharset.{h,cpp}`: `FXTerminalCharset` holds the encoding
+  of one session and answers three questions: which encodings exist (UTF-8,
+  ISO-8859-1, ISO-8859-2, ISO-8859-15, Windows-1250, Windows-1251,
+  Windows-1252, KOI8-R, CP437, CP850, with aliases such as `latin1`, `cp850`,
+  `885915`; names are matched case and separator blind and an unknown name
+  falls back to UTF-8), what a high byte decodes to, and which byte (if any) a
+  codepoint encodes to. ISO-8859-1, ISO-8859-2, Windows-1252 and KOI8-R
+  delegate to the `FXTextCodec` classes the library already had (their tables
+  were checked against the reference mappings and round-trip exactly);
+  ISO-8859-15, Windows-1250, Windows-1251, CP437 and CP850 carry a 128 entry
+  table for 0x80..0xFF, with 0xFFFF for a byte the set leaves empty. Bytes
+  below 0x80 are ASCII in every supported set and never reach the charset.
+- `FXTerminalParser` takes an optional charset and has `setCharset()` plus a
+  `flush()` that drops a partial escape or UTF-8 sequence. In a single byte
+  encoding every byte above ASCII is decoded in the GROUND state, *before* the
+  eight bit C1 forms, so 0x9B is a CSI sequence in UTF-8 and a character in
+  CP437. `resetParser()` is now `flush()` plus the DEC character set reset.
+- `FXTerminalScreen::putCell()`: a character of a single byte encoding is one
+  cell, never wide and never combining, whatever the Unicode width table says
+  about it (U+00AD, the soft hyphen, is zero width there and still takes a
+  cell here). `putChar()` and `putCell()` share `putGlyph()`. This is the width
+  rule of the plan: all 128 high bytes of every single byte encoding produce
+  one cell each, and `terminalmodel` checks it for every set.
+- `FXTerminal`: `setEncoding()`, `getEncoding()`, `getSupportedEncodingCount()`,
+  `getSupportedEncodingName()`, `findEncoding()`; `sendText()` encodes keys,
+  paste and IME text through the session charset and notifies
+  `ID_ENCODING_LOSS` (as `SEL_CHANGED`) when a character had to become '?';
+  `send()` still writes raw bytes for terminal responses. The parser and the
+  screen are not reset by a switch, so drawn cells keep their codepoints and
+  the child keeps running. A switch drops only a partial sequence.
+- `foxterm`: the view menu has one `FXMenuRadio` per supported encoding,
+  built from the static list; the update handler puts the check on the encoding
+  of the active tab (a `SEL_UPDATE` handler must check and uncheck its own
+  sender, a return value does not do it) and disables the entries when there is
+  no tab. `onCmdEncoding()` switches and reports `Encoding: <name>` in the
+  status line; `onCmdEncodingLoss()` reports the '?' substitution. `addTab()`
+  applies the profile encoding before the child starts, and Duplicate keeps the
+  live encoding of the session it copies. The profile dialog has an Encoding
+  combo, `[PROFILE] encoding` is loaded, validated and saved, and both
+  built-in profiles default to UTF-8.
+- The run of one `drawText` call per equal-attribute span (visual step S1) was
+  unsafe for any glyph whose advance is not the cell: `Cascadia Mono` advances
+  U+FFFD fifteen pixels against an eight pixel cell, so a malformed byte
+  shifted the rest of the line by one column. `FXTerminal::onPaint()` now draws
+  such a cell on its own, clipped to its cells, like a fallback glyph, and
+  caches the codepoints that need it (`oddadvance`, cleared when the font
+  metrics change).
+
+Gate: `scripts/gate-wayland-foxterm-encoding.sh`, four phases on headless sway
+with `tools/wlxinject.c` and `scripts/wlclip.c`:
+
+1. a child prints the byte 0xE4 on every line it reads; the byte is a
+   replacement character in UTF-8, and one menu choice later the same byte is
+   'ä' in ISO-8859-1 while the rows that were already on the screen stay
+   pixel-identical; the difference between the two byte lines is confined to
+   the eight pixel wide cell of the byte; switching back to UTF-8 draws the
+   next line like the first one;
+2. typing "zä" sends `7a c3 a4` in UTF-8 and `7a e4` in Latin-1, read back from
+   the child with `od`, so the inverse mapping is checked on the wire and not
+   on the screen;
+3. pasting a CJK character into a Latin-1 session reaches the child as `3f`
+   ('?') and the status line says so, while the same paste in UTF-8 sends
+   `e4 b8 ad` and says nothing;
+4. a profile with `encoding=ISO-8859-1` renders the byte exactly like the live
+   switch did.
+
+The gate reads the popup position of the encoding submenu from the Wayland
+trace, so no menu coordinate is guessed, and it uses the status line as the
+witness that a menu entry really ran.
+
+Result: the gate passes, and the surrounding gates still pass on the same
+build: `gate-wayland-foxterm`, `-metrics`, `-chrome` and `-context`, plus
+`terminalmodel` and `pty`. The X11 build (`scripts/build-fox2-linux.sh`) is
+clean and the new and changed library sources compile for Win32 with
+`x86_64-w64-mingw32-g++`. Not run: an X11 runtime check of the encoding menu
+(no X server in this checkout) and a real Windows or ConPTY run; on Windows the
+PTY output is UTF-8 by construction (section 7.3), so a single byte encoding
+there only affects how already decoded text is redrawn, which is why the
+Windows profile default stays UTF-8.
+
+Still missing from R20: a grapheme the set cannot express is reported once per
+event, not once per character, and the status line of a lossy paste can be
+covered by a later message. The child's locale is inherited by design (section
+7.2), so a legacy profile does not tell the shell which charset to write.
 
 ## 14. Tests and verification
 
@@ -2105,6 +2208,13 @@ Cover at least:
 13. Resize reflow: soft wrap joins and splits, hard wrap stays.
 14. VT100 profile ignores xterm-only modes and colors are reduced.
 15. Invalid and unknown sequences never print their parameters.
+16. The character encoding of a session (R20, N2): every supported name and
+    alias resolves, an unknown name falls back to UTF-8, one sample byte per
+    encoding decodes to its reference codepoint, every graphic high byte of
+    every single byte encoding takes exactly one cell and encodes back to its
+    own byte, an unmappable character becomes '?' on input, a live switch keeps
+    drawn cells and decodes the next byte with the new set, and a switch drops
+    a partial escape sequence.
 
 Use table-driven cases in the test source. Keep a few recorded escape streams in
 `fox2/tests/data/terminal/` with `.ans` input and expected text/attribute
@@ -2153,6 +2263,9 @@ the test cannot overwrite a developer profile.
 The gates assert:
 
 - A known output string appears in the terminal.
+- The character encoding menu decodes a byte differently, and encodes a typed
+  or pasted character differently, without restarting the child
+  (`scripts/gate-wayland-foxterm-encoding.sh` covers this).
 - The tab title changes after an OSC title sequence.
 - `Ctrl+Shift+T` creates a tab; `Ctrl+Shift+W` closes it.
 - Detaching keeps the same process ID and the same screen contents.
