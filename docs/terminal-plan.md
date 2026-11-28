@@ -990,19 +990,22 @@ struct TerminalTab {
 
 `TerminalWindow::detachTab(index,screenX,screenY)`:
 
+0. Refuse when the window has a single tab and keep both Detach entries disabled
+   there: a detach would only move the session into a new window and close this
+   one, and the view would have to survive its window (review bug B6).
 1. Validate the tab and remember its `TerminalTab`, `FXTerminal` and switcher
    index.
 2. Create a new `TerminalWindow` without any tab. Build its widgets, call
    `create()`, call `hide()`, and place it at `screenX,screenY`, clamped to the
    visible work area.
 3. Remove the tab metadata from the old window's vector.
-4. Call `view->reparent(newWindow->switcher)`. Both windows are already
-   created, so the native reparent is legal.
+4. Retarget the view to the new window (`FXTerminal::setNotifyTarget()`) and
+   call `view->reparent(newWindow->switcher)`. Both windows are already created,
+   so the native reparent is legal.
 5. Add the tab metadata to the new window, insert it in the new tab bar,
    `setCurrent(0)`, call `layout()` and `show()`.
-6. Refresh the old tab bar. If it has no tabs left, close and delete the old
-   window after the new one is visible. If it still has tabs, activate the
-   neighbor.
+6. Refresh the old tab bar and activate the neighbor. The old window always
+   keeps a tab, so it is never deleted by a detach.
 7. Call `view->setFocus()` on the new window.
 
 The PTY, parser, scrollback, selection and search state stay with the
@@ -1418,8 +1421,10 @@ Acceptance:
 - Detaching a running tab creates a window with the same session, screen,
   scrollback, selection and search state; the child is not restarted.
 - The old window remains if it has other tabs and closes if it was the last.
-- Detaching the last tab of the last window leaves the application with one
-  window, not zero.
+- A window keeps at least one tab: `Detach Tab` (view menu, strip menu and
+  Ctrl+Shift+M) is disabled and refused while the window has a single tab, so a
+  detach never leaves a window without one. (Changed in review B6; the earlier
+  text allowed detaching the last tab and closing the old window.)
 - Cancel/lost-grab paths leave the tab in place.
 - The context menu detach works on Wayland where a drag may be unusual.
 
@@ -1652,6 +1657,16 @@ Bugs and gaps found in review:
   Windows. The new `scripts/gate-wayland-foxterm.sh` covers the tab and window
   lifetime on headless sway; see "Fix result (B1, B2)" below.
 
+- **B6 Detaching the last tab, then right-clicking, crashes. FIXED.** `Detach
+  Tab` was enabled with a single tab, so `detachTab()` moved the session into a
+  new window and deleted the old one. The moved `FXTerminal` kept reporting to
+  the window it came from, so the next right click, title change or child exit
+  dereferenced a deleted window and took SIGSEGV in
+  `FXTerminal::onRightBtnPress`. A window now keeps at least one tab: both
+  Detach entries are disabled with one tab and `detachTab()` refuses, and a
+  detached view is retargeted to its new window. The same dump showed a second
+  defect: the menus of a window built after `FXApp::create()` never appeared at
+  all. See "Fix result (B6)" below.
 - **B5 Missing glyphs draw as `.notdef` boxes (no font fallback).** Seen in
   `tmp/foders.png`: `eza`/`ll` icons (Nerd Font private-use codepoints such as
   U+F07B folder) show as a box in `foxterm`; Konsole shows the icons. Cause:
@@ -1954,7 +1969,7 @@ Acceptance for the visual goals:
 
 Next steps in order: visual Steps S3 to S5, B4 gate script, Phase 5 and 6
 follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11, Phase 12.
-B1, B2, N1, N2, S1 and S2 are done; see the fix results below.
+B1, B2, B6, N1, N2, S1 and S2 are done; see the fix results below.
 
 ### Fix result (B1, B2)
 
@@ -2182,6 +2197,59 @@ Still missing from R20: a grapheme the set cannot express is reported once per
 event, not once per character, and the status line of a lossy paste can be
 covered by a later message. The child's locale is inherited by design (section
 7.2), so a legacy profile does not tell the shell which charset to write.
+
+### Fix result (B6)
+
+Fixed on the Wayland target (`FOX_WAYLAND_TARGET=foxterm
+./scripts/build-fox2-wayland.sh`), clean build, no new warnings. The foxterm
+gates pass (`gate-wayland-foxterm`, `-metrics`, `-chrome`, `-context` and
+`-encoding`), plus `terminalmodel` and `pty`.
+
+Two defects, one report:
+
+- **The crash.** `FXTerminal` reports title, bell, exit, clipboard and the right
+  press to `priv->notify`, which the constructor takes from its target. A
+  detach reparented the widget but left that pointer on the window it came from;
+  when the old window was the last-tab window it was deleted through a chore, so
+  the next right click called `tryHandle()` on freed memory. `FXTerminal` gained
+  `setNotifyTarget()`/`getNotifyTarget()` (the widget keeps its notifications
+  out of `FXObject::target`, so `FXWindow`'s default event forwarding stays off),
+  and `detachTab()` retargets the view before the reparent.
+- **The rule.** `Detach Tab` was enabled with a single tab. A window now keeps
+  at least one: `onUpdDetach()` disables the view-menu entry, `onUpdTabMenuDetach()`
+  disables the strip-menu entry, and `detachTab()` returns early when
+  `tabs.size()<2`, so the Ctrl+Shift+M accelerator is a no-op as well. The
+  `tabs.empty()` window cleanup in `detachTab()` is gone with it.
+
+The dump also exposed a second, unrelated defect: after a detach, no menu of the
+new window opened - not the right-click menu, not even the Menu button. Cause:
+every `FXShell` is a child of the *root* window, not of its owner, so a window
+built after `FXApp::create()` does not create its own popup panes. The panes the
+app hangs off an `FXMenuButton` or `FXMenuCascade` are created by those parents
+(`FXMenuButton::create()` creates its pane), which is why the profile and main
+menus survived, while `contextmenu`, `encodingmenu` and `tabmenu` are posted only
+by handlers and had no native window at all: `FXPopup::popup()` showed a window
+with `xid==0`, which sets `FLAG_SHOWN` and draws nothing, and every later popup
+was skipped for the same reason. `TerminalWindow::create()` now creates those
+three panes, and `rebuildProfileMenu()` creates the replacement profile pane when
+its button already exists (`setMenu()` does not create it).
+
+Gates that cover the report:
+
+- `scripts/gate-wayland-foxterm.sh` phase 7: `Ctrl+Shift+M` on the only tab of a
+  window twice leaves one window and the application running, and Ctrl+Q still
+  quits it.
+- `scripts/gate-wayland-foxterm-context.sh` phase 6: the Detach entries of the
+  view menu and the strip menu are drawn disabled with one tab and enabled with
+  two. Phase 7 detaches with `Ctrl+Shift+M`, then right-clicks in the detached
+  window: the menu posts, the application stays up, and the old crash path is
+  gone.
+
+Observed while verifying, not fixed: after the profile dialog has been accepted,
+the first click on the profile drop-down of that window is hit-tested to the tab
+strip behind it, so the profile menu does not open. Reproduced on the commit
+before this fix, so it is not part of it; it needs its own look at how the child
+window table is updated when a dialog closes.
 
 ## 14. Tests and verification
 
