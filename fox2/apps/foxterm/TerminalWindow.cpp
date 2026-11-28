@@ -52,6 +52,8 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_TAB,TerminalWindow::onCmdNewTab),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_WINDOW,TerminalWindow::onCmdNewWindow),
   FXMAPFUNC(SEL_CHORE,TerminalWindow::ID_CLOSE_ON_EXIT,TerminalWindow::onChoreCloseTab),
+  FXMAPFUNC(SEL_PAINT,TerminalWindow::ID_RULE,TerminalWindow::onPaintRule),
+  FXMAPFUNC(SEL_TIMEOUT,TerminalWindow::ID_STATUSHIDE,TerminalWindow::onStatusTimeout),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_CLOSE_CURRENT,TerminalWindow::onCmdCloseCurrent),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_DETACH,TerminalWindow::onCmdDetach),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND,TerminalWindow::onCmdFind),
@@ -79,7 +81,7 @@ FXIMPLEMENT(TerminalWindow,FXMainWindow,TerminalWindowMap,ARRAYNUMBER(TerminalWi
 
 // Construct
 TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString& active,FXbool withtab):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),activeprofile(active),current(-1),autostart(withtab){
-  contents=new FXVerticalFrame(this,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0);
+  contents=new FXVerticalFrame(this,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0,0,0);
   tabrow=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0,0,0);
   tabbar=new TerminalTabBar(tabrow,this,0,LAYOUT_FILL_X|LAYOUT_CENTER_Y,0,0,0,0,2,2,2,2);
   newbutton=new FXButton(tabrow,"+",nullptr,this,ID_NEW_TAB,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y);
@@ -114,7 +116,8 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXMenuCommand(mainmenu,"&About",nullptr,this,ID_ABOUT);
   new FXMenuCommand(mainmenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT)|LAYOUT_CENTER_Y|MENUBUTTON_DOWN);
-  switcher=new FXSwitcher(contents,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_SUNKEN|FRAME_THICK,0,0,0,0,0,0,0,0);
+  rule=new FXCanvas(contents,this,ID_RULE,LAYOUT_FILL_X|FRAME_NONE,0,0,0,1);
+  switcher=new FXSwitcher(contents,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_NONE,0,0,0,0,0,0,0,0);
   findbar=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,2,2,1,1);
   new FXLabel(findbar,"Find:",nullptr,LAYOUT_CENTER_Y);
   findfield=new FXTextField(findbar,20,this,ID_FIND,FXuint(TEXTFIELD_NORMAL)|FXuint(FRAME_SUNKEN)|FXuint(FRAME_THICK)|FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_CENTER_Y));
@@ -123,7 +126,8 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXButton(findbar,"Close",nullptr,this,ID_FIND_CLOSE,FRAME_RAISED|FRAME_THICK|LAYOUT_CENTER_Y);
   findstatus=new FXLabel(findbar,"",nullptr,LAYOUT_CENTER_Y);
   findbar->hide();
-  status=new FXLabel(contents,"Starting...",nullptr,FXuint(JUSTIFY_LEFT)|FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,4,4,1,1);
+  status=new FXLabel(contents,"",nullptr,FXuint(JUSTIFY_LEFT)|FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,6,6,3,3);
+  status->hide();
   opacity=FXCLAMP(0,a->reg().readIntEntry("APPEARANCE","opacity",100),100);
   terminalwindows.push_back(this);
   }
@@ -137,7 +141,7 @@ void TerminalWindow::create(){
   if(isOpacitySupported()) setOpacity(opacity);
   if(autostart && tabs.empty()){
     if(!addTab(launch)){
-      status->setText("Could not start the shell");
+      showStatus("Could not start the shell");
       return;
       }
     }
@@ -158,7 +162,7 @@ FXint TerminalWindow::findTab(FXObject* view) const {
 FXbool TerminalWindow::addTab(const FXTerminalLaunch& l,const FXString& profileid){
   FXString error;
   TerminalTab tab;
-  FXTerminal *view=new FXTerminal(switcher,this,0,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,2,2,2,2);
+  FXTerminal *view=new FXTerminal(switcher,this,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
   view->create();
   tab.view=view;
   tab.launch=l;
@@ -173,6 +177,7 @@ FXbool TerminalWindow::addTab(const FXTerminalLaunch& l,const FXString& profilei
   switcher->layout();
   view->layout();
   if(!view->start(l,error)){
+    showStatus(FXString("Could not start the shell: ")+error);
     FXMessageBox::error(this,MBOX_OK,"Terminal Error","%s",error.text());
     closeTab((FXint)tabs.size()-1,true);
     return false;
@@ -212,7 +217,6 @@ void TerminalWindow::selectTab(FXint index){
   for(FXint i=0; i<(FXint)tabs.size(); i++) tabs[i].view->setDefault(i==index);
   tabs[index].view->setFocus();
   setTitle(FXString("FoxTerm - ")+tabs[index].title);
-  status->setText(tabs[index].launch.shell);
   }
 
 
@@ -286,7 +290,7 @@ long TerminalWindow::onCmdExited(FXObject* sender,FXSelector,void*){
   updateTabTitle(index);
   FXString text;
   text.format("Process exited with code %d",tabs[index].exitcode);
-  status->setText(text);
+  showStatus(text);
   return 1;
   }
 
@@ -303,7 +307,7 @@ long TerminalWindow::onChoreCloseTab(FXObject*,FXSelector,void* ptr){
 long TerminalWindow::onCmdClipboard(FXObject* sender,FXSelector,void*){
   FXint index=findTab(sender);
   if(index>=0 && !tabs[index].view->takeClipboardRequest().empty()){
-    status->setText("Clipboard request blocked");
+    showStatus("Clipboard request blocked");
     }
   return 1;
   }
@@ -408,6 +412,48 @@ void TerminalWindow::saveGeometry(){
   }
 
 
+// Show the status line; a transient text hides itself again after a while
+void TerminalWindow::showStatus(const FXString& text,FXbool transient){
+  status->setText(text);
+  if(!status->shown()){
+    status->show();
+    contents->recalc();
+    layout();
+    }
+  getApp()->removeTimeout(this,ID_STATUSHIDE);
+  if(transient) getApp()->addTimeout(this,FXSEL(SEL_TIMEOUT,ID_STATUSHIDE),FXTime(4000000000LL));
+  }
+
+
+// Hide the status line
+void TerminalWindow::hideStatus(){
+  getApp()->removeTimeout(this,ID_STATUSHIDE);
+  if(status->shown()){
+    status->hide();
+    contents->recalc();
+    layout();
+    }
+  }
+
+
+// Hide the transient status line
+long TerminalWindow::onStatusTimeout(FXObject*,FXSelector,void*){
+  hideStatus();
+  return 1;
+  }
+
+
+// Paint the hairline between the tab strip and the grid; the theme decides
+// the color, so a live theme change needs no extra bookkeeping
+long TerminalWindow::onPaintRule(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  FXDCWindow dc(rule,event);
+  dc.setForeground(getApp()->getTheme()->color(ROLE_BORDER));
+  dc.fillRectangle(event->rect.x,event->rect.y,event->rect.w,event->rect.h);
+  return 1;
+  }
+
+
 // Ask once for every running session of the process
 FXbool TerminalWindow::confirmQuit(){
   FXint running=0;
@@ -460,6 +506,7 @@ long TerminalWindow::onSignalQuit(FXObject*,FXSelector,void*){
 // Show find bar
 long TerminalWindow::onCmdFind(FXObject*,FXSelector,void*){
   findbar->show();
+  showStatus("Find: type a pattern, Enter for the next match",false);
   recalc();
   findfield->setFocus();
   if(!findfield->getText().empty()) onCmdFindNext(nullptr,0,nullptr);
@@ -483,6 +530,7 @@ long TerminalWindow::onCmdFindNext(FXObject*,FXSelector,void*){
   FXString text;
   text.format("%d matches",count);
   findstatus->setText(text);
+  if(findbar->shown()) showStatus(text,false);
   return 1;
   }
 
@@ -503,6 +551,7 @@ long TerminalWindow::onCmdFindPrev(FXObject*,FXSelector,void*){
   FXString text;
   text.format("%d matches",count);
   findstatus->setText(text);
+  if(findbar->shown()) showStatus(text,false);
   return 1;
   }
 
@@ -510,6 +559,7 @@ long TerminalWindow::onCmdFindPrev(FXObject*,FXSelector,void*){
 // Hide find bar
 long TerminalWindow::onCmdFindClose(FXObject*,FXSelector,void*){
   findbar->hide();
+  hideStatus();
   recalc();
   if(0<=current && current<(FXint)tabs.size()) tabs[current].view->setFocus();
   return 1;
@@ -632,13 +682,13 @@ long TerminalWindow::onCmdOpacity(FXObject*,FXSelector sel,void*){
   FXint index=(FXint)FXSELID(sel)-ID_OPACITY0;
   if(index<0 || index>4) return 1;
   if(!isOpacitySupported()){
-    status->setText("Opacity is not supported by this display");
+    showStatus("Opacity is not supported by this display");
     return 1;
     }
   setOpacity(values[index]);
   FXString text;
   text.format("Opacity: %d%%",values[index]);
-  status->setText(text);
+  showStatus(text);
   return 1;
   }
 
@@ -656,8 +706,9 @@ TerminalWindow::~TerminalWindow(){
     if(terminalwindows[i]==this){ terminalwindows.erase(terminalwindows.begin()+i); break; }
     }
 
-  // A queued chore must not outlive its target
+  // A queued chore or timer must not outlive its target
   getApp()->removeChore(this);
+  getApp()->removeTimeout(this);
 
   // Menu panes are owned, not children; delete every one before the window
   // goes, or their commands keep a target that no longer exists

@@ -1763,6 +1763,34 @@ recaptured by V7.
   exit, on error and while the find bar is open. Konsole has no status bar and
   Windows Terminal has none.
 
+**Step S2 result (done).**
+
+- `FXTerminal` has `setPadding()` and `getPadding()`. The padding is
+  `FXMAX(6, theme->metric(METRIC_PADDING))` (so the display scale carries), it
+  applies to all four sides, and it is recomputed by `applyTheme()`. Explicit
+  margins passed to the constructor still win (`getPadding()` returns -1), and
+  all-zero margins select the theme padding; the background fills it while
+  selection stays inside the cells.
+- The switcher lost `FRAME_SUNKEN|FRAME_THICK` and the vertical frame's
+  `DEFAULT_SPACING` of 4, which left a light 4 px band above and below the
+  hairline. The separation is one `FXCanvas` row painted at paint time with
+  `ROLE_BORDER`, so a live theme change needs no bookkeeping.
+- The status line starts hidden. `showStatus()` shows it and arms a 4 s timeout,
+  `hideStatus()` clears that timeout and hides it, and the find bar keeps it up
+  (find count included) until the bar closes. Child exit, a startup error, a
+  blocked clipboard request and an opacity change use the transient form.
+  Showing or hiding it re-lays the frame out explicitly, because a Wayland
+  tree is only laid out on a configure event.
+
+Gate: `scripts/gate-wayland-foxterm-chrome.sh` measures committed frames:
+strip 26 rows, exactly one separator row, first grid row 27; first glyph ink at
+x=15 and 10 rows below the hairline (6 px padding plus bearings); the bottom
+row is terminal background (no reserved status bar); select-all keeps the
+padding columns at the terminal background while the cell under test is
+selected; with `closeonexit=false` a child that exits brings the status line in
+and it is gone 4.5 s later. Restoring the old 4 px frame spacing makes the gate
+fail.
+
 **Step S3: Windows Terminal style tab strip (`TerminalTabBar.cpp`).**
 Paint everything in `onPaint` from theme roles; no child widgets per tab.
 - Strip background: `ROLE_WINDOW_BG` darkened 8 percent (the Windows Terminal
@@ -1852,9 +1880,9 @@ Acceptance for the visual goals:
   the targets are limited to: native title bar (V6 above) and font
   availability.
 
-Next steps in order: N1, N2, visual Steps S2 to S5, B4 gate script, Phase 5
+Next steps in order: N1, N2, visual Steps S3 to S5, B4 gate script, Phase 5
 and 6 follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11,
-Phase 12. B1 and B2 are done, and so is S1; see the fix result below.
+Phase 12. B1, B2, S1 and S2 are done; see the fix result below.
 
 ### Fix result (B1, B2)
 
@@ -1874,6 +1902,8 @@ Changes:
   key is encoded for the child, including the shifted form of a letter.
 - `fox2/apps/foxterm/foxterm.1`: tabs, detach, close-on-exit, confirmation and
   `--opacity` documented.
+- `scripts/gate-wayland-foxterm-chrome.sh`: visual step S2 gate; strip,
+  hairline, padding, padding under selection and the transient status line.
 - `scripts/gate-wayland-foxterm-metrics.sh`: visual step S1 gate; two rows of
   80 `M` in a committed frame must show 80 glyph blobs on one 8 px pitch with
   gaps of at most 2 px, ink spanning 80 pitches, and the cell height as the row

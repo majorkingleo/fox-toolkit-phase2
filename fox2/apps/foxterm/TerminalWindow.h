@@ -66,6 +66,7 @@ protected:
   FXMenuButton     *menubutton;
   FXMenuPane       *mainmenu;
   FXMenuPane       *opacitymenu;
+  FXCanvas         *rule;
   FXSwitcher       *switcher;
   FXLabel          *status;
   FXHorizontalFrame *findbar;
@@ -88,6 +89,8 @@ protected:
   void detachTab(FXint index);
   void rebuildProfileMenu();
   void terminateTabs();
+  void showStatus(const FXString& text,FXbool transient=true);
+  void hideStatus();
   const TerminalProfile& tabProfile(FXint index) const;
   FXbool confirmCloseTab(FXint index);
   FXbool confirmQuit();
@@ -113,6 +116,12 @@ public:
 
   /// Quit without the close confirmation, for a termination signal
   long onSignalQuit(FXObject*,FXSelector,void*);
+
+  /// Paint the hairline between the tab strip and the grid
+  long onPaintRule(FXObject*,FXSelector,void*);
+
+  /// Hide the transient status line
+  long onStatusTimeout(FXObject*,FXSelector,void*);
 
   /// Report a blocked clipboard request
   long onCmdClipboard(FXObject*,FXSelector,void*);
@@ -179,6 +188,8 @@ public:
     ID_BELL,
     ID_EXITED,
     ID_CLOSE_ON_EXIT,
+    ID_RULE,
+    ID_STATUSHIDE,
     ID_CLIPBOARD,
     ID_NEW_TAB,
     ID_NEW_WINDOW,

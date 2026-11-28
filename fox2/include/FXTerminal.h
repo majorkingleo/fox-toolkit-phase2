@@ -97,8 +97,9 @@ public:
     };
 public:
 
-  /// Construct a terminal view
-  FXTerminal(FXComposite *p,FXObject* tgt=nullptr,FXSelector sel=0,FXuint opts=0,FXint x=0,FXint y=0,FXint w=0,FXint h=0,FXint pl=3,FXint pr=3,FXint pt=2,FXint pb=2);
+  /// Construct a terminal view; explicit margins replace the theme padding,
+  /// all zero selects the theme padding on all four sides
+  FXTerminal(FXComposite *p,FXObject* tgt=nullptr,FXSelector sel=0,FXuint opts=0,FXint x=0,FXint y=0,FXint w=0,FXint h=0,FXint pl=0,FXint pr=0,FXint pt=0,FXint pb=0);
 
   /// Create server-side resources
   virtual void create() override;
@@ -124,8 +125,14 @@ public:
   /// Return true because a terminal can receive focus
   virtual FXbool canFocus() const override;
 
-  /// Re-apply the theme font and colors
+  /// Re-apply the theme font, padding and colors
   virtual void applyTheme(FXTheme* theme) override;
+
+  /// Change the padding on all four sides; negative restores the theme padding
+  void setPadding(FXint pad);
+
+  /// Return the padding; -1 when the constructor gave explicit margins
+  FXint getPadding() const;
 
   /// Start a shell on a new pseudo terminal
   FXbool start(const FXTerminalLaunch& launch);

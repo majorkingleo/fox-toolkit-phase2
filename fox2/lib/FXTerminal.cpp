@@ -78,6 +78,7 @@ struct FXTerminalPrivate {
   FXint                 cellw;
   FXint                 cellh;
   FXint                 ascent;
+  FXint                 padding;
   FXint                 marginleft;
   FXint                 marginright;
   FXint                 margintop;
@@ -114,7 +115,7 @@ struct FXTerminalPrivate {
   FXColor               cursorcolor;
   FXColor               selbackcolor;
   FXColor               seltextcolor;
-  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
+  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),padding(-1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
   };
 
 
@@ -422,6 +423,12 @@ static void updateMetrics(FXTerminalPrivate *p){
   }
 
 
+// Padding used when the constructor did not ask for explicit margins
+static FXint defaultPadding(FXApp* app){
+  return FXMAX(6,app->getTheme()->metric(METRIC_PADDING));
+  }
+
+
 // Return the text of a selected cell range
 static FXString selectedText(FXTerminalPrivate *p){
   FXint r1,c1,r2,c2;
@@ -466,10 +473,19 @@ FXTerminal::FXTerminal():FXScrollArea(),priv(nullptr){
 // Construct and initialize
 FXTerminal::FXTerminal(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,FXint x,FXint y,FXint w,FXint h,FXint pl,FXint pr,FXint pt,FXint pb):FXScrollArea(p,opts,x,y,w,h){
   priv=new FXTerminalPrivate();
-  priv->marginleft=pl;
-  priv->marginright=pr;
-  priv->margintop=pt;
-  priv->marginbottom=pb;
+
+  // Explicit margins replace the theme padding; otherwise every side gets the
+  // theme padding, which already carries the display scale
+  if(pl || pr || pt || pb){
+    priv->marginleft=pl;
+    priv->marginright=pr;
+    priv->margintop=pt;
+    priv->marginbottom=pb;
+    }
+  else{
+    priv->padding=defaultPadding(getApp());
+    priv->marginleft=priv->marginright=priv->margintop=priv->marginbottom=priv->padding;
+    }
   priv->font=getApp()->getRoleFont(FONT_MONO);
   priv->term="xterm-256color";
   updateMetrics(priv);
@@ -480,8 +496,8 @@ FXTerminal::FXTerminal(FXComposite *p,FXObject* tgt,FXSelector sel,FXuint opts,F
   flags|=FLAG_ENABLED;
   defaultCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
   dragCursor=getApp()->getDefaultCursor(DEF_TEXT_CURSOR);
-  priv->contentwidth=pl+pr+80*priv->cellw;
-  priv->contentheight=pt+pb+24*priv->cellh;
+  priv->contentwidth=priv->marginleft+priv->marginright+80*priv->cellw;
+  priv->contentheight=priv->margintop+priv->marginbottom+24*priv->cellh;
   }
 
 
@@ -830,6 +846,27 @@ FXFont* FXTerminal::getFont() const {
   }
 
 
+// Change the padding on all four sides; the background fills it and the grid
+// starts inside it, so the padding never moves a cell
+void FXTerminal::setPadding(FXint pad){
+  if(!priv) return;
+  priv->padding=(0<=pad) ? pad : -1;
+  if(pad<0) pad=defaultPadding(getApp());
+  if(priv->marginleft!=pad || priv->marginright!=pad || priv->margintop!=pad || priv->marginbottom!=pad){
+    priv->marginleft=priv->marginright=priv->margintop=priv->marginbottom=pad;
+    recalc();
+    layout();
+    update();
+    }
+  }
+
+
+// Return the padding; -1 when the constructor gave explicit margins
+FXint FXTerminal::getPadding() const {
+  return priv ? priv->padding : 0;
+  }
+
+
 // Update title/bell/clipboard notifications
 void FXTerminal::updateNotifications(){
   FXString request;
@@ -1011,6 +1048,10 @@ void FXTerminal::applyTheme(FXTheme* theme){
   if(!priv) return;
   priv->font=getApp()->retargetRoleFont(priv->font,FONT_MONO,getWindowDPI());
   updateMetrics(priv);
+  if(0<=priv->padding){
+    priv->padding=defaultPadding(getApp());
+    priv->marginleft=priv->marginright=priv->margintop=priv->marginbottom=priv->padding;
+    }
   priv->selbackcolor=theme->color(ROLE_SELECTION_BG);
   priv->seltextcolor=theme->color(ROLE_SELECTION_TEXT);
   recalc();
