@@ -70,7 +70,10 @@ struct FXAPI FXTerminalLaunch {
 * maintained by FXTerminalScreen. Keys and IME text go to the child; selection,
 * copy, paste, scrolling, cursor blinking and mouse reporting are handled here.
 * The widget does not display dialogs or decide process-close policy; it sends
-* ID_EXITED, ID_BELL, ID_TITLE and ID_CLIPBOARD to its target.
+* ID_EXITED, ID_BELL, ID_TITLE and ID_CLIPBOARD to its target.  A right press
+* that does not belong to the child is forwarded to the target as
+* SEL_RIGHTBUTTONPRESS, so the menu it posts can use the event's root position
+* and no selector of the widget has to be invented for it.
 */
 class FXAPI FXTerminal : public FXScrollArea {
   FXDECLARE(FXTerminal)
@@ -188,6 +191,9 @@ public:
   /// Return retained scrollback lines
   FXint getScrollbackLines() const;
 
+  /// Return the number of retained scrollback rows
+  FXint getScrollbackCount() const;
+
   /// Change retained scrollback lines
   void setScrollbackLines(FXint lines);
 
@@ -221,6 +227,15 @@ public:
   /// Paste clipboard text to the child
   FXbool pasteClipboard();
 
+  /// Return true when a selection exists, so a menu can enable Copy
+  FXbool hasSelection() const;
+
+  /// Drop the retained scrollback rows, keeping the screen
+  void clearScrollback();
+
+  /// Reset the emulator: clear screen and scrollback, reset modes and cursor
+  void reset();
+
   /// Take the pending OSC 52 clipboard request
   FXString takeClipboardRequest();
 
@@ -250,6 +265,12 @@ public:
 
   /// Handle left mouse release
   long onLeftBtnRelease(FXObject*,FXSelector,void*);
+
+  /// Handle right mouse press; reports to the child or forwards the event
+  long onRightBtnPress(FXObject*,FXSelector,void*);
+
+  /// Handle right mouse release
+  long onRightBtnRelease(FXObject*,FXSelector,void*);
 
   /// Handle mouse motion
   long onMotion(FXObject*,FXSelector,void*);

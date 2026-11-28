@@ -430,6 +430,9 @@ public:
   /// Set the scrollback capacity, trimming the oldest rows
   void setScrollbackLines(FXint lines);
 
+  /// Drop the retained scrollback rows, keeping the screen and the capacity
+  void clearScrollback();
+
   /// Return true if the cell is a wide continuation
   FXbool isContinuation(FXint row,FXint col) const;
 

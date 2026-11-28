@@ -93,6 +93,7 @@ struct FXTerminalPrivate {
   FXint                 anchorcol;
   FXint                 mousemode;
   FXbool                mousereport;
+  FXbool                rightreport;
   FXbool                follow;
   FXbool                blinkon;
   FXbool                fixedpitch;
@@ -115,7 +116,7 @@ struct FXTerminalPrivate {
   FXColor               cursorcolor;
   FXColor               selbackcolor;
   FXColor               seltextcolor;
-  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),padding(-1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
+  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),padding(-1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),rightreport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
   };
 
 
@@ -125,6 +126,8 @@ FXDEFMAP(FXTerminal) FXTerminalMap[]={
   FXMAPFUNC(SEL_KEYPRESS,0,FXTerminal::onKeyPress),
   FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,FXTerminal::onLeftBtnPress),
   FXMAPFUNC(SEL_LEFTBUTTONRELEASE,0,FXTerminal::onLeftBtnRelease),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,0,FXTerminal::onRightBtnPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONRELEASE,0,FXTerminal::onRightBtnRelease),
   FXMAPFUNC(SEL_MOTION,0,FXTerminal::onMotion),
   FXMAPFUNC(SEL_MOUSEWHEEL,0,FXTerminal::onMouseWheel),
   FXMAPFUNC(SEL_FOCUSIN,0,FXTerminal::onFocusIn),
@@ -788,6 +791,12 @@ FXint FXTerminal::getScrollbackLines() const {
   }
 
 
+// Return the number of retained scrollback rows
+FXint FXTerminal::getScrollbackCount() const {
+  return priv ? priv->screen.getScrollbackCount() : 0;
+  }
+
+
 // Change scrollback capacity
 void FXTerminal::setScrollbackLines(FXint lines){
   if(priv){
@@ -943,6 +952,62 @@ FXbool FXTerminal::pasteClipboard(){
     return sendText(text);
     }
   return false;
+  }
+
+
+// Return true when a selection exists, so a menu can enable Copy
+FXbool FXTerminal::hasSelection() const {
+  return priv && priv->selstartrow>=0 && priv->selendrow>=0;
+  }
+
+
+// Drop the retained scrollback rows and keep the screen; a selection that sat
+// in the dropped rows goes with them, one that reached the screen moves up
+void FXTerminal::clearScrollback(){
+  FXTerminalPrivate *p=priv;
+  FXint count;
+  if(!p) return;
+  count=p->screen.getScrollbackCount();
+  if(count<=0) return;
+  p->screen.clearScrollback();
+  if(p->selendrow>=0 && p->selendrow<count){
+    p->selstartrow=p->selstartcol=p->selendrow=p->selendcol=-1;
+    p->anchorrow=p->anchorcol=-1;
+    }
+  else{
+    if(p->selstartrow>=0) p->selstartrow=FXMAX(0,p->selstartrow-count);
+    if(p->selendrow>=0) p->selendrow=FXMAX(0,p->selendrow-count);
+    if(p->anchorrow>=0) p->anchorrow=FXMAX(0,p->anchorrow-count);
+    }
+  for(FXTerminalFind& match : p->matches) match.row=FXMAX(0,match.row-count);
+  if(p->findindex>=(FXint)p->matches.size()) p->findindex=-1;
+  p->follow=true;
+  recalc();
+  layout();
+  update();
+  }
+
+
+// Reset the emulator; this is the RIS the child can send as ESC c as well
+void FXTerminal::reset(){
+  FXTerminalPrivate *p=priv;
+  if(!p) return;
+  p->screen.reset(p->kind);
+  p->parser.reset();
+  p->matches.clear();
+  p->findindex=-1;
+  p->findpattern.clear();
+  p->findflags=0;
+  p->selstartrow=p->selstartcol=p->selendrow=p->selendcol=-1;
+  p->anchorrow=p->anchorcol=-1;
+  p->clipboardrequest.clear();
+  p->follow=true;
+  p->lasttitle=p->screen.getTitle();
+  p->lastdirectory=p->screen.getWorkingDirectory();
+  p->lastbell=p->screen.getBellCount();
+  recalc();
+  layout();
+  update();
   }
 
 
@@ -1347,6 +1412,45 @@ long FXTerminal::onLeftBtnRelease(FXObject*,FXSelector,void* ptr){
     ungrab();
     }
   priv->mousemode=0;
+  return 1;
+  }
+
+
+// Handle right mouse press.  With mouse reporting active the child owns the
+// button, and Shift is the escape hatch that still opens the menu; without it
+// the press is forwarded to the target as SEL_RIGHTBUTTONPRESS, so the
+// application posts the menu (with the event's root position) and the widget
+// itself never displays UI.  A selector of the widget's own enum is not used
+// here: FXScrollArea::ID_LAST and FXMainWindow::ID_LAST differ, so such an id
+// collides with one of the window's own (ID_CONTEXTMENU landed on ID_EXITED).
+long FXTerminal::onRightBtnPress(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  FXint row;
+  FXint col;
+  if(!priv) return 0;
+  handle(this,FXSEL(SEL_FOCUS_SELF,0),ptr);
+  cellAtPoint(this,priv,event->win_x,event->win_y,row,col);
+  if(priv->screen.getMouseMode() && !(event->state&SHIFTMASK)){
+    sendMouseReport(priv,this,2,row,col,false);
+    priv->rightreport=true;
+    return 1;
+    }
+  if(priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_RIGHTBUTTONPRESS,0),ptr);
+  return 1;
+  }
+
+
+// Handle right mouse release
+long FXTerminal::onRightBtnRelease(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  FXint row;
+  FXint col;
+  if(!priv) return 0;
+  if(priv->rightreport){
+    cellAtPoint(this,priv,event->win_x,event->win_y,row,col);
+    sendMouseReport(priv,this,2,row,col,true);
+    priv->rightreport=false;
+    }
   return 1;
   }
 

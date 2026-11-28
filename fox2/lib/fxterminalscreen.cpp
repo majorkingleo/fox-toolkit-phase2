@@ -1152,6 +1152,12 @@ void FXTerminalScreen::setScrollbackLines(FXint capacity){
   while((FXint)scrollback.size()>scrollcap) scrollback.pop_front();
   }
 
+
+// Drop the retained scrollback rows; the screen and the capacity stay
+void FXTerminalScreen::clearScrollback(){
+  scrollback.clear();
+  }
+
 }
 
 /*******************************************************************************/
