@@ -67,6 +67,30 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNCS(SEL_COMMAND,TerminalWindow::ID_OPACITY0,TerminalWindow::ID_OPACITY_LAST,TerminalWindow::onCmdOpacity),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_COPY,TerminalWindow::onCmdCopy),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PASTE,TerminalWindow::onCmdPaste),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_SELECT_ALL,TerminalWindow::onCmdSelectAll),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_CLEAR_SCROLLBACK,TerminalWindow::onCmdClearScrollback),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_RESET_TERMINAL,TerminalWindow::onCmdResetTerminal),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,0,TerminalWindow::onCmdContextMenu),
+  FXMAPFUNC(SEL_COMMAND,TerminalTabBar::ID_CONTEXT_TAB,TerminalWindow::onCmdTabMenu),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_DUP_TAB,TerminalWindow::onCmdDupTab),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_RENAME_TAB,TerminalWindow::onCmdRenameTab),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_TABMENU_DETACH,TerminalWindow::onCmdDetachTabMenu),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_TABMENU_CLOSE,TerminalWindow::onCmdCloseMenuTab),
+  FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_CLOSE_OTHERS,TerminalWindow::onCmdCloseOthers),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_COPY,TerminalWindow::onUpdCopy),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_PASTE,TerminalWindow::onUpdPaste),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_SELECT_ALL,TerminalWindow::onUpdHasTab),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_FIND,TerminalWindow::onUpdHasTab),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_DETACH,TerminalWindow::onUpdHasTab),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLOSE_CURRENT,TerminalWindow::onUpdHasTab),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_RESET_TERMINAL,TerminalWindow::onUpdHasTab),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLEAR_SCROLLBACK,TerminalWindow::onUpdClearScrollback),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_DUP_TAB,TerminalWindow::onUpdTabMenu),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_RENAME_TAB,TerminalWindow::onUpdTabMenu),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_DETACH,TerminalWindow::onUpdTabMenu),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_CLOSE,TerminalWindow::onUpdTabMenu),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLOSE_OTHERS,TerminalWindow::onUpdCloseOthers),
+  FXMAPFUNCS(SEL_UPDATE,TerminalWindow::ID_ENCODING0,TerminalWindow::ID_ENCODING_LAST,TerminalWindow::onUpdEncoding),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_QUIT,TerminalWindow::onCmdQuit),
   FXMAPFUNC(SEL_SIGNAL,TerminalWindow::ID_QUIT,TerminalWindow::onSignalQuit),
@@ -80,7 +104,7 @@ FXIMPLEMENT(TerminalWindow,FXMainWindow,TerminalWindowMap,ARRAYNUMBER(TerminalWi
 
 
 // Construct
-TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString& active,FXbool withtab):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),activeprofile(active),current(-1),autostart(withtab){
+TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString& active,FXbool withtab):FXMainWindow(a,"FoxTerm",nullptr,nullptr,DECOR_ALL,settingInt(a,"x",80),settingInt(a,"y",80),settingInt(a,"w",900),settingInt(a,"h",620)),launch(l),activeprofile(active),current(-1),contexttab(-1),autostart(withtab){
   contents=new FXVerticalFrame(this,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0,0,0);
   tabrow=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,0,0,0,0,0,0);
   tabbar=new TerminalTabBar(tabrow,this,0,LAYOUT_FILL_X|LAYOUT_CENTER_Y,0,0,0,0,2,2,2,2);
@@ -118,6 +142,37 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXMenuCommand(mainmenu,"&About",nullptr,this,ID_ABOUT);
   new FXMenuCommand(mainmenu,"&Quit\tCtl-Q",nullptr,this,ID_QUIT);
   menubutton=new FXMenuButton(tabrow,"Menu",nullptr,mainmenu,FXuint(JUSTIFY_NORMAL)|FXuint(ICON_BEFORE_TEXT)|FXuint(FRAME_RAISED)|FXuint(FRAME_THICK)|FXuint(LAYOUT_RIGHT)|FXuint(LAYOUT_CENTER_Y)|FXuint(MENUBUTTON_DOWN));
+
+  // Context menu of the terminal view (requirements R19).  The entries that
+  // cannot act are disabled through SEL_UPDATE handlers, never hidden.
+  contextmenu=new FXMenuPane(this);
+  new FXMenuCommand(contextmenu,"&Copy\tCtl-Shift-C",nullptr,this,ID_COPY);
+  new FXMenuCommand(contextmenu,"&Paste\tCtl-Shift-V",nullptr,this,ID_PASTE);
+  new FXMenuCommand(contextmenu,"Select &All\tCtl-Shift-A",nullptr,this,ID_SELECT_ALL);
+  new FXMenuCommand(contextmenu,"&Find...\tCtl-Shift-F",nullptr,this,ID_FIND);
+  new FXMenuSeparator(contextmenu);
+  new FXMenuCommand(contextmenu,"Clear Scroll&back",nullptr,this,ID_CLEAR_SCROLLBACK);
+  new FXMenuCommand(contextmenu,"&Reset Terminal",nullptr,this,ID_RESET_TERMINAL);
+  {
+    FXMenuRadio *utf8;
+    encodingmenu=new FXMenuPane(this);
+    utf8=new FXMenuRadio(encodingmenu,"UTF-8",this,ID_ENCODING0);
+    utf8->setCheck(true);
+    new FXMenuCascade(contextmenu,"Character &Encoding",nullptr,encodingmenu);
+    }
+  new FXMenuSeparator(contextmenu);
+  new FXMenuCommand(contextmenu,"New &Tab\tCtl-Shift-T",nullptr,this,ID_NEW_TAB);
+  new FXMenuCommand(contextmenu,"&Detach Tab\tCtl-Shift-M",nullptr,this,ID_DETACH);
+  new FXMenuCommand(contextmenu,"&Close Tab\tCtl-Shift-W",nullptr,this,ID_CLOSE_CURRENT);
+
+  // Context menu of the tab strip (requirements R19)
+  tabmenu=new FXMenuPane(this);
+  new FXMenuCommand(tabmenu,"&Duplicate",nullptr,this,ID_DUP_TAB);
+  new FXMenuCommand(tabmenu,"&Rename...",nullptr,this,ID_RENAME_TAB);
+  new FXMenuCommand(tabmenu,"D&etach",nullptr,this,ID_TABMENU_DETACH);
+  new FXMenuSeparator(tabmenu);
+  new FXMenuCommand(tabmenu,"&Close",nullptr,this,ID_TABMENU_CLOSE);
+  new FXMenuCommand(tabmenu,"Close &Others",nullptr,this,ID_CLOSE_OTHERS);
   rule=new FXCanvas(contents,this,ID_RULE,LAYOUT_FILL_X|FRAME_NONE,0,0,0,1);
   switcher=new FXSwitcher(contents,LAYOUT_FILL_X|LAYOUT_FILL_Y|FRAME_NONE,0,0,0,0,0,0,0,0);
   findbar=new FXHorizontalFrame(contents,FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,2,2,1,1);
@@ -160,8 +215,10 @@ FXint TerminalWindow::findTab(FXObject* view) const {
   }
 
 
-// Add one tab and start it
-FXbool TerminalWindow::addTab(const FXTerminalLaunch& l,const FXString& profileid){
+// Add one tab and start it.  The launch comes by value: the vector of tabs
+// reallocates in the middle of this function and a reference into it would
+// dangle, which is what a duplicate of a tab used to crash on.
+FXbool TerminalWindow::addTab(FXTerminalLaunch l,FXString profileid){
   FXString error;
   TerminalTab tab;
   FXTerminal *view=new FXTerminal(switcher,this,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
@@ -395,6 +452,154 @@ long TerminalWindow::onCmdCopy(FXObject*,FXSelector,void*){
 long TerminalWindow::onCmdPaste(FXObject*,FXSelector,void*){
   if(0<=current && current<(FXint)tabs.size()) tabs[current].view->pasteClipboard();
   return 1;
+  }
+
+
+// Select the whole retained screen
+long TerminalWindow::onCmdSelectAll(FXObject*,FXSelector,void*){
+  if(0<=current && current<(FXint)tabs.size()) tabs[current].view->selectAll();
+  return 1;
+  }
+
+
+// Drop the scrollback of the active tab
+long TerminalWindow::onCmdClearScrollback(FXObject*,FXSelector,void*){
+  FXint lines;
+  if(0>current || current>=(FXint)tabs.size()) return 1;
+  lines=tabs[current].view->getScrollbackCount();
+  tabs[current].view->clearScrollback();
+  FXString text;
+  text.format("Cleared %d scrollback %s",lines,lines==1 ? "line" : "lines");
+  showStatus(text);
+  return 1;
+  }
+
+
+// Reset the emulator of the active tab; RIS clears the scrollback as well
+long TerminalWindow::onCmdResetTerminal(FXObject*,FXSelector,void*){
+  if(0>current || current>=(FXint)tabs.size()) return 1;
+  tabs[current].view->reset();
+  showStatus("Terminal reset");
+  return 1;
+  }
+
+
+// The widget forwarded a right press that does not belong to the child; the
+// popup opens where the press happened, in root coordinates
+long TerminalWindow::onCmdContextMenu(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  contextmenu->popup(nullptr,event->root_x,event->root_y);
+  return 1;
+  }
+
+
+// The strip posted its menu; the entries act on the tab it was posted for
+long TerminalWindow::onCmdTabMenu(FXObject*,FXSelector,void* ptr){
+  FXint x=0;
+  FXint y=0;
+  FXuint buttons=0;
+  contexttab=(FXint)(FXival)ptr;
+  getRoot()->getCursorPosition(x,y,buttons);
+  tabmenu->popup(nullptr,x,y);
+  return 1;
+  }
+
+
+// Duplicate the tab the strip menu was posted for
+long TerminalWindow::onCmdDupTab(FXObject*,FXSelector,void*){
+  if(contexttab<0 || contexttab>=(FXint)tabs.size()) return 1;
+  addTab(tabs[contexttab].launch,tabs[contexttab].profileid);
+  return 1;
+  }
+
+
+// Rename the tab the strip menu was posted for
+long TerminalWindow::onCmdRenameTab(FXObject*,FXSelector,void*){
+  FXString name;
+  if(contexttab<0 || contexttab>=(FXint)tabs.size()) return 1;
+  if(!FXInputDialog::getString(name,this,"Rename Tab","Tab title:")) return 1;
+  if(name.empty()) return 1;
+  tabs[contexttab].title=name;
+  updateTabTitle(contexttab);
+  return 1;
+  }
+
+
+// Detach the tab the strip menu was posted for
+long TerminalWindow::onCmdDetachTabMenu(FXObject*,FXSelector,void*){
+  if(contexttab<0 || contexttab>=(FXint)tabs.size()) return 1;
+  detachTab(contexttab);
+  return 1;
+  }
+
+
+// Close the tab the strip menu was posted for
+long TerminalWindow::onCmdCloseMenuTab(FXObject*,FXSelector,void*){
+  if(contexttab<0 || contexttab>=(FXint)tabs.size()) return 1;
+  closeTab(contexttab);
+  return 1;
+  }
+
+
+// Close every other tab of this window
+long TerminalWindow::onCmdCloseOthers(FXObject*,FXSelector,void*){
+  FXint keep=contexttab;
+  if(keep<0 || keep>=(FXint)tabs.size()) return 1;
+  for(FXint i=(FXint)tabs.size()-1; i>keep; i--) closeTab(i);
+  for(FXint i=keep-1; i>=0; i--) closeTab(i);
+  if(!tabs.empty()) selectTab(0);
+  return 1;
+  }
+
+
+// Enable or disable the widget that sent the update.  A SEL_UPDATE handler has
+// to do this itself: the return value only says the update was handled, and
+// a menu entry without MENU_AUTOGRAY never grays on it.
+static long setEnabled(FXObject* sender,FXObject* self,FXbool enabled){
+  sender->handle(self,FXSEL(SEL_COMMAND,enabled ? FXWindow::ID_ENABLE : FXWindow::ID_DISABLE),nullptr);
+  return 1;
+  }
+
+
+// Copy is only possible with a selection
+long TerminalWindow::onUpdCopy(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=current && current<(FXint)tabs.size() && tabs[current].view->hasSelection());
+  }
+
+
+// Paste is only possible while the child accepts input
+long TerminalWindow::onUpdPaste(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=current && current<(FXint)tabs.size() && tabs[current].view->isRunning());
+  }
+
+
+// Entries that need a live tab
+long TerminalWindow::onUpdHasTab(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=current && current<(FXint)tabs.size());
+  }
+
+
+// Clear Scrollback is only possible with retained rows
+long TerminalWindow::onUpdClearScrollback(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=current && current<(FXint)tabs.size() && tabs[current].view->getScrollbackCount()>0);
+  }
+
+
+// The tab entries need the tab the strip menu was posted for
+long TerminalWindow::onUpdTabMenu(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=contexttab && contexttab<(FXint)tabs.size());
+  }
+
+
+// Close Others needs a second tab
+long TerminalWindow::onUpdCloseOthers(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=contexttab && contexttab<(FXint)tabs.size() && tabs.size()>1);
+  }
+
+
+// Encoding switching is N2; the submenu shows the active encoding, disabled
+long TerminalWindow::onUpdEncoding(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,false);
   }
 
 
@@ -714,6 +919,9 @@ TerminalWindow::~TerminalWindow(){
 
   // Menu panes are owned, not children; delete every one before the window
   // goes, or their commands keep a target that no longer exists
+  delete tabmenu;
+  delete encodingmenu;
+  delete contextmenu;
   delete opacitymenu;
   delete profilemenu;
   delete mainmenu;

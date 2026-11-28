@@ -21,6 +21,15 @@ sets \fBcloseonexit\fR; otherwise the tab keeps the final screen and its title
 gains the suffix \fB[exited]\fR. Closing the last tab of the last window ends
 the application, and closing a window that still has running tabs asks once for
 all of them. A termination signal quits without a confirmation dialog.
+.PP
+A right click in the terminal view opens a context menu with Copy, Paste,
+Select All, Find, Clear Scrollback, Reset Terminal, the character encoding (not
+yet selectable), New Tab, Detach Tab and Close Tab. An entry that cannot act is
+disabled, not hidden. While the child has mouse reporting on, the right button
+belongs to the child and Shift+right click still opens the menu. A right click
+on a tab opens Duplicate, Rename, Detach, Close and Close Others for that tab;
+the entries are disabled when the press is on the empty part of the strip.
+\fBReset Terminal\fR clears the scrollback as the terminal reset sequence does.
 .SH OPTIONS
 .TP
 .B --profile \fIname\fR

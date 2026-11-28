@@ -30,6 +30,7 @@ namespace FX {
 FXDEFMAP(TerminalTabBar) TerminalTabBarMap[]={
   FXMAPFUNC(SEL_PAINT,0,TerminalTabBar::onPaint),
   FXMAPFUNC(SEL_LEFTBUTTONPRESS,0,TerminalTabBar::onLeftBtnPress),
+  FXMAPFUNC(SEL_RIGHTBUTTONPRESS,0,TerminalTabBar::onRightBtnPress),
   FXMAPFUNC(SEL_MOTION,0,TerminalTabBar::onMotion),
   FXMAPFUNC(SEL_LEAVE,0,TerminalTabBar::onLeave),
   };
@@ -153,6 +154,16 @@ long TerminalTabBar::onLeftBtnPress(FXObject*,FXSelector,void* ptr){
       if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_TAB),(void*)(FXival)index);
       }
     }
+  return 1;
+  }
+
+
+// Post the tab menu; a press on the empty part of the strip posts the same
+// menu with an index of -1, so its entries are shown disabled, not hidden
+long TerminalTabBar::onRightBtnPress(FXObject*,FXSelector,void* ptr){
+  FXEvent* event=(FXEvent*)ptr;
+  FXint index=tabAt(event->win_x);
+  if(target) target->tryHandle(this,FXSEL(SEL_COMMAND,ID_CONTEXT_TAB),(void*)(FXival)index);
   return 1;
   }
 

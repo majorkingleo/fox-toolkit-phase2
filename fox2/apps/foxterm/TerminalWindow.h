@@ -65,6 +65,9 @@ protected:
   FXMenuPane       *profilemenu;
   FXMenuButton     *menubutton;
   FXMenuPane       *mainmenu;
+  FXMenuPane       *contextmenu;
+  FXMenuPane       *encodingmenu;
+  FXMenuPane       *tabmenu;
   FXMenuPane       *opacitymenu;
   FXCanvas         *rule;
   FXSwitcher       *switcher;
@@ -77,12 +80,15 @@ protected:
   Profiles          profiles;
   FXString          activeprofile;
   FXint             current;
+  FXint             contexttab;        // tab the tab strip menu belongs to
   FXbool            autostart;
 protected:
   TerminalWindow(){}
   void saveGeometry();
   FXint findTab(FXObject* view) const;
-  FXbool addTab(const FXTerminalLaunch& l,const FXString& profileid=FXString::null);
+  /// Add a tab and start it; the launch is copied because the vector of tabs
+  /// reallocates while the new tab is being started
+  FXbool addTab(FXTerminalLaunch l,FXString profileid=FXString::null);
   void selectTab(FXint index);
   void closeTab(FXint index,FXbool force=false);
   void updateTabTitle(FXint index);
@@ -180,6 +186,57 @@ public:
   /// Apply whole-window opacity
   long onCmdOpacity(FXObject*,FXSelector,void*);
 
+  /// Show the context menu of the terminal view, posted by the widget
+  long onCmdContextMenu(FXObject*,FXSelector,void*);
+
+  /// Show the tab strip menu, posted by the strip
+  long onCmdTabMenu(FXObject*,FXSelector,void*);
+
+  /// Select the whole retained screen
+  long onCmdSelectAll(FXObject*,FXSelector,void*);
+
+  /// Drop the scrollback of the active tab
+  long onCmdClearScrollback(FXObject*,FXSelector,void*);
+
+  /// Reset the emulator of the active tab
+  long onCmdResetTerminal(FXObject*,FXSelector,void*);
+
+  /// Duplicate the tab the strip menu was posted for
+  long onCmdDupTab(FXObject*,FXSelector,void*);
+
+  /// Rename the tab the strip menu was posted for
+  long onCmdRenameTab(FXObject*,FXSelector,void*);
+
+  /// Detach the tab the strip menu was posted for
+  long onCmdDetachTabMenu(FXObject*,FXSelector,void*);
+
+  /// Close the tab the strip menu was posted for
+  long onCmdCloseMenuTab(FXObject*,FXSelector,void*);
+
+  /// Close every other tab of this window
+  long onCmdCloseOthers(FXObject*,FXSelector,void*);
+
+  /// Enable Copy only with a selection
+  long onUpdCopy(FXObject*,FXSelector,void*);
+
+  /// Enable Paste only while the child runs
+  long onUpdPaste(FXObject*,FXSelector,void*);
+
+  /// Enable entries that need a live tab
+  long onUpdHasTab(FXObject*,FXSelector,void*);
+
+  /// Enable Clear Scrollback only when there is scrollback
+  long onUpdClearScrollback(FXObject*,FXSelector,void*);
+
+  /// Enable the tab entries only for a tab of the strip
+  long onUpdTabMenu(FXObject*,FXSelector,void*);
+
+  /// Enable Close Others only with more than one tab
+  long onUpdCloseOthers(FXObject*,FXSelector,void*);
+
+  /// Encoding switching awaits N2
+  long onUpdEncoding(FXObject*,FXSelector,void*);
+
   /// Show About
   long onCmdAbout(FXObject*,FXSelector,void*);
 public:
@@ -208,6 +265,16 @@ public:
     ID_OPACITY_LAST=ID_OPACITY0+4,
     ID_COPY,
     ID_PASTE,
+    ID_SELECT_ALL,
+    ID_CLEAR_SCROLLBACK,
+    ID_RESET_TERMINAL,
+    ID_ENCODING0,
+    ID_ENCODING_LAST=ID_ENCODING0+31,
+    ID_DUP_TAB,
+    ID_RENAME_TAB,
+    ID_TABMENU_DETACH,
+    ID_TABMENU_CLOSE,
+    ID_CLOSE_OTHERS,
     ID_ABOUT,
     ID_QUIT,
     ID_LAST

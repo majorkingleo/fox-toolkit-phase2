@@ -32,8 +32,8 @@ namespace FX {
 
 /**
 * A compact tab strip. The strip paints the titles, highlights the active tab,
-* and sends ID_TAB or ID_CLOSE_TAB to its target. Overflow scrolling and drag
-* reorder are added by the next phase.
+* and sends ID_TAB, ID_CLOSE_TAB or ID_CONTEXT_TAB to its target. Overflow
+* scrolling and drag reorder are added by the next phase.
 */
 class TerminalTabBar : public FXPacker {
   FXDECLARE(TerminalTabBar)
@@ -51,6 +51,7 @@ public:
   enum {
     ID_TAB=FXPacker::ID_LAST,
     ID_CLOSE_TAB,
+    ID_CONTEXT_TAB,
     ID_LAST
     };
 public:
@@ -75,6 +76,9 @@ public:
 
   /// Select a tab or its close box
   long onLeftBtnPress(FXObject*,FXSelector,void*);
+
+  /// Post the tab menu for the tab under the pointer
+  long onRightBtnPress(FXObject*,FXSelector,void*);
 
   /// Track the close box under the pointer
   long onMotion(FXObject*,FXSelector,void*);
