@@ -1509,6 +1509,50 @@ has to come back afterwards.  The old build asks for no image cursor at all.
   hands out the motion with a position outside the surface and the window
   follows, sway does not.  Not investigated yet.
 
+## A press inside a popup and the press that dismisses it
+
+A context menu is a popup that appears **under** the pointer and takes the
+pointer grab itself (`FXPopup::popup(nullptr,x,y)`).  On X11 two things happen
+that Wayland has to be given explicitly, and both were missing until the FoxTerm
+context menus were built (`docs/terminal-plan.md`, requirements R19):
+
+- **A press inside the popup belongs to the widget under the pointer.**  FOX
+  releases its own pointer grab as soon as the pointer is over the popup
+  (`FXPopup::onMap`, `onEnter`, `onMotion`: "window appeared under the cursor"),
+  and on X11 the server-side grab routes the press to the menu entry anyway.
+  With no server-side grab the backend sent every press to the grab window, and
+  a press on an entry reached the popup itself, which unposts instead of
+  activating the entry: the menu closed and nothing happened.
+- **A press outside the popup dismisses it.**  On X11 the grab delivers that
+  press to the popup, whose `onButtonPress` unposts it.  On Wayland the press
+  goes to the widget under the pointer (the terminal view, say), the popup is
+  never told, and it stays on screen for good - a click outside did nothing.
+
+Both are now handled in the dispatch of `lib/FXApp_wayland.cpp`, next to the
+button case:
+
+- `pointerTarget()` picks the target of a grabbed press: the widget under the
+  pointer when the grab window is a **popup** and the pointer is inside it (the
+  table flag `WINMAP_POPUP`), the grab window otherwise.  Any other grab - the
+  one an MDI window keeps while it is dragged - still receives every event, so
+  the drag gates are unaffected.
+- A press outside the shown popup of the client (`FXApp::popupWindow`) unposts
+  that popup through `ID_UNPOST` and is used up by it, exactly as the X11 grab
+  swallows it.  A press on a menu button whose menu is up therefore closes the
+  menu and does not reach the button.
+
+`lib/FXPopup.cpp` is deliberately left alone: the grab dance above is what X11
+needs, and a platform-neutral change to it would break the X11 menus instead.
+The tool tip is unaffected in both directions - it never calls `popup()` and so
+never becomes `FXApp::popupWindow`, and its gate still shows a popup
+"without grab".
+
+Gate: `scripts/gate-wayland-foxterm-context.sh` (menu posted, click outside
+dismisses it, an entry copied the screen to a peer, mouse reporting owns the
+right button, tab strip menu), and the existing `gate-wayland-menu`,
+`gate-wayland-tooltip`, `gate-wayland-clipboard`, `gate-wayland-dnd`,
+`gate-wayland-repaint` and `gate-wayland-mdi-drag` still pass.
+
 ## Risks
 
 - **Virtual child windows (phase 4)** are the largest structural risk. The

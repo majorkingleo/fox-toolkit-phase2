@@ -134,6 +134,15 @@ which is what happens for the first window of an application.
 - **No grabs.** The pointer stays with the surface that received the press.
   Interactive move/resize go through `xdg_toplevel_move/resize` with the seat
   and the serial of the press.
+- **A client-side pointer grab is not a server grab.** `FXApp::mouseGrabWindow`
+  only redirects what the backend dispatches, so anything the X server used to
+  do on its own has to be reproduced in `lib/FXApp_wayland.cpp`.  The popup case
+  is the expensive one: a menu posted at the pointer appears under the cursor,
+  FOX drops its own grab there, and the press that has to dismiss the menu lands
+  on the widget below it instead.  Presses inside a grabbing popup go to the
+  widget under the pointer, presses outside unpost the popup (see
+  `docs/wayland-plan.md`, "A press inside a popup and the press that dismisses
+  it").
 - **Hiding a window** means attaching a null buffer and committing; there is no
   unmap request.
 - **A toplevel surface is the whole window, decorations included.** With a
@@ -261,6 +270,14 @@ which is what happens for the first window of an application.
 - `scripts/gate-wayland-clipboard.sh` — `tests/clipboard` plus `scripts/wlclip.c`
   as the peer, in both directions (FOX copies, peer reads; peer writes, FOX
   pastes). wlclip uses `zwlr_data_control_v1`.
+- `scripts/gate-wayland-foxterm-context.sh` — the two context menus of
+  `apps/foxterm`: a right click posts a grabbing popup, a click outside
+  dismisses it, Copy really puts the screen on the clipboard (read back with
+  `wlclip`), mouse reporting owns the right button while `Shift` still opens the
+  menu, and Duplicate of the tab menu adds a tab. The child of the reporting
+  phase needs `stty -icanon`: without it the mouse report waits in the line
+  discipline for a newline. `Shift` is held by `wtype -M shift -s 1200` while
+  `wlxinject` clicks.
 - `scripts/gate-wayland-dnd.sh` — `tests/dnd` and the same injector: press on the
   source, `move:` out of its surface, `move:` onto the target, release. The
   intermediate moves are required, because the compositor only starts delivering

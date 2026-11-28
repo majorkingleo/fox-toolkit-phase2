@@ -1589,8 +1589,9 @@ clean for the terminal files. `terminalmodel` and `pty` pass. `foxterm --help`
 runs, and `foxterm --execute /bin/sh -c ...` starts on the live Wayland session.
 
 Done: Phase 1, Phase 2 (POSIX), most of Phase 3, Phase 4, the core of Phase 5,
-the in-process detach of Phase 6, the core of Phases 7 to 9, and `window` mode
-of Phase 10. Phase 11 and Phase 12 are not started.
+the in-process detach of Phase 6, the core of Phases 7 to 9, `window` mode
+of Phase 10, and N1 (the right-click context menus). Phase 11 and Phase 12 are
+not started.
 
 Bugs and gaps found in review:
 
@@ -1695,8 +1696,11 @@ Steps S1 to S9 in "Visual plan" below fix V1 to V7 and B5.
 New requests, now R19 and R20 in section 1 and in the Phase 8 and Phase 9
 acceptance lists:
 
-- **N1 Context menu.** Not implemented. There is no `ID_CONTEXT`, no right-click
-  handler in `FXTerminal`, and no tab menu.
+- **N1 Context menu. DONE.** `FXTerminal` forwards a right press it does not
+  report to the child as `SEL_RIGHTBUTTONPRESS`, `TerminalWindow` posts the view
+  menu and the strip menu, and the entries are enabled or disabled through
+  `SEL_UPDATE` handlers. The Encoding submenu shows UTF-8 and stays disabled
+  until N2. Details and the platform fix in "Fix result (N1)" below.
 - **N2 Encoding switch.** Not implemented. `FXTerminalParser` decodes only UTF-8
   (`PARSER_UTF8`) and `Profiles` has no encoding field. FOX already has
   `FX88591Codec`, `FX88592Codec`, `FXCP1252Codec` and `FXKOI8RCodec` to reuse;
@@ -1940,9 +1944,9 @@ Acceptance for the visual goals:
   the targets are limited to: native title bar (V6 above) and font
   availability.
 
-Next steps in order: N1, N2, visual Steps S3 to S5, B4 gate script, Phase 5
+Next steps in order: N2, visual Steps S3 to S5, B4 gate script, Phase 5
 and 6 follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11,
-Phase 12. B1, B2, S1 and S2 are done; see the fix result below.
+Phase 12. B1, B2, N1, S1 and S2 are done; see the fix results below.
 
 ### Fix result (B1, B2)
 
@@ -1982,6 +1986,99 @@ Result: `terminalmodel` and `pty` pass, the gate passes all six phases, and the
 failures in this checkout are unrelated to the change: `raster` segfaults in
 `FXRaster::fillPolyspan`, and `half`, `math` and `variant` fail their numeric
 or platform comparisons; neither touches the terminal files.
+
+### Fix result (N1)
+
+Fixed on the Wayland target (`FOX_WAYLAND_TARGET=foxterm
+./scripts/build-fox2-wayland.sh`), clean build, no new warnings in the terminal
+files.
+
+Requirements R19. What is there now:
+
+- `FXTerminal` has `onRightBtnPress`/`onRightBtnRelease`. With mouse reporting
+  on, the press goes to the child as button two (xterm numbering) and `Shift`
+  is the escape hatch that still opens the menu, the same rule the left button
+  has for selection. Otherwise the event is forwarded to the target as
+  `SEL_RIGHTBUTTONPRESS`, so the application posts the menu and the widget
+  stays free of UI.
+- `FXTerminal` gained `hasSelection()`, `getScrollbackCount()`,
+  `clearScrollback()` and `reset()` (RIS, which also clears the scrollback, as
+  the reset sequence does). `FXTerminalScreen` gained `clearScrollback()`.
+- `TerminalWindow` has a view menu (Copy, Paste, Select All, Find, Clear
+  Scrollback, Reset Terminal, Character Encoding, New Tab, Detach Tab, Close
+  Tab) and a strip menu (Duplicate, Rename, Detach, Close, Close Others). Both
+  are members, deleted in the destructor (the B2b lesson). Every entry is
+  enabled or disabled by a `SEL_UPDATE` handler: Copy needs a selection, Paste
+  a running child, Clear Scrollback retained rows, the tab entries a tab under
+  the press, Close Others a second tab, Detach Tab and Close Tab a live tab.
+  Nothing is hidden. The handlers send `ID_ENABLE` or `ID_DISABLE` to the
+  sender themselves (`setEnabled()` in `TerminalWindow.cpp`): the return value
+  of a `SEL_UPDATE` handler only says the update was handled, and a menu entry
+  created without `MENU_AUTOGRAY` never grays on it. The first version returned
+  0 or 1 only, so every entry was drawn enabled; phase 6 of the gate caught it. The Encoding submenu is one disabled, checked
+  UTF-8 entry until N2.
+- `TerminalTabBar` has `onRightBtnPress` and posts `ID_CONTEXT_TAB` with the
+  index, or -1 for the empty part of the strip (the entries then disable).
+- `TerminalWindow::addTab()` takes the launch by value: the vector of tabs
+  reallocates while a duplicate is being started, and a reference into it
+  dangled - duplicating a tab crashed the application before this.
+
+The platform side had to be fixed as well, and that is the part worth reading
+before touching popups again:
+
+- A menu posted at the pointer is a grabbing popup that appears under the
+  cursor. `FXPopup::onMap`/`onEnter`/`onMotion` release the FOX-level pointer
+  grab in exactly that case ("window appeared under the cursor"), which is
+  harmless on X11 because the server-side grab still routes the press to the
+  popup, and fatal on Wayland where that grab is all there is: the press that
+  should dismiss the menu went to the widget below it and the menu stayed up.
+  The fix is in `docs/wayland-plan.md`, section "A press inside a popup and the
+  press that dismisses it": the backend routes a grabbed press that lands
+  inside a grabbing popup to the widget under the pointer (as the X11 server
+  does) and unposts the topmost popup when the press lands outside it, using up
+  the press as X11 does. `FXPopup` itself is unchanged.
+- A selector of `FXTerminal`'s own enum cannot be used for a notification:
+  `FXScrollArea::ID_LAST` is 56 and `FXMainWindow::ID_LAST` is 60, so
+  `FXTerminal::ID_CONTEXTMENU` (56+6) is `TerminalWindow::ID_EXITED` (60+2) and
+  the right press closed the tab. The notification uses
+  `SEL_RIGHTBUTTONPRESS` with an id of 0 instead. Note that
+  `FXTerminal::ID_TRANSPARENCY` (60) and `ID_TERMINAL_SEARCH_CHANGED` (61)
+  already collide with `TerminalWindow::ID_TITLE` and `ID_BELL`; neither is
+  sent today, but a sender would have to be added with care.
+
+Gate: `scripts/gate-wayland-foxterm-context.sh`, six phases on headless sway
+with `tools/wlxinject.c` (the injector needed a `stty -icanon` in the child:
+without it a mouse report waits in the line discipline for a newline):
+
+1. A right click in the grid posts a menu that becomes a grabbing popup.
+2. A click outside dismisses it and the application keeps running.
+3. Select All from the keyboard plus Copy from the menu, read back with
+   `scripts/wlclip.c`: the peer gets the marked line, so the entry really acts.
+4. With mouse reporting on, the child receives `ESC [ M 34 ...` (button two)
+   and no menu appears; `Shift`+right click still opens the menu (the shift is
+   held by `wtype -M shift` while the injector clicks).
+5. A right click on a tab posts the strip menu, Duplicate really adds a tab
+   (detaching it then opens a second window, which detaching one tab cannot
+   do), and a right click on the empty part of the strip posts the same menu.
+6. Entries that cannot act are drawn disabled and come back when they can,
+   read from a `grim` screenshot of the popup (menu text is black, a disabled
+   entry gray): Copy without and with a selection, Clear Scrollback without
+   rows, with rows and after it emptied them, every tab entry on the empty
+   strip, Close Others on a single tab.
+
+Result: the gate passes all six phases. The surrounding gates still pass on
+the same build: `gate-wayland-menu`, `gate-wayland-tooltip`,
+`gate-wayland-clipboard`, `gate-wayland-dnd`, `gate-wayland-repaint`,
+`gate-wayland-mdi-drag`, `gate-wayland-foxterm`, `-metrics` and `-chrome`, plus
+`terminalmodel` and `pty`. The X11 build (`scripts/build-fox2-linux.sh`) is
+clean; its runtime behaviour is unchanged, `FXPopup` was not modified. Not run:
+an X11 runtime check of the menu (no X server in this checkout) and a Windows
+run.
+
+Still missing from R19: the tab menu's Duplicate starts the same profile
+instead of the same *session*, and Rename asks for a whole new title (FOX has
+no input dialog with a preset value) and is overwritten by the next OSC title
+from the child.
 
 ## 14. Tests and verification
 
