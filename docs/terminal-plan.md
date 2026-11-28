@@ -1644,6 +1644,16 @@ Bugs and gaps found in review:
   Windows. The new `scripts/gate-wayland-foxterm.sh` covers the tab and window
   lifetime on headless sway; see "Fix result (B1, B2)" below.
 
+- **B5 Missing glyphs draw as `.notdef` boxes (no font fallback).** Seen in
+  `tmp/foders.png`: `eza`/`ll` icons (Nerd Font private-use codepoints such as
+  U+F07B folder) show as a box in `foxterm`; Konsole shows the icons. Cause:
+  `FXGlyphs` (`lib/FXGlyphs.cpp`) uses one FreeType face and calls
+  `FT_Load_Glyph(f,FT_Get_Char_Index(f,ch),...)` (line 258). When the face has
+  no glyph, the index is 0 and the face's `.notdef` box is drawn. The default
+  mono face (`Noto Sans Mono`) has no private-use icons, although the system has
+  85 fonts that do (the Meslo Nerd Fonts). Konsole asks fontconfig for a
+  fallback font per missing codepoint. Fix is Step S9.
+
 Visual review (screenshots, not re-captured in this review):
 `screenshots/tests/fox2/wayland/foxterm.png` and
 `x11/foxterm-tabs.png` date from 26 Nov, before the later theme work. They were
@@ -1680,7 +1690,7 @@ Plasma:
 - **V7 Re-capture** all screenshots on the current tree and add `foxterm-menu`
   (context menu) and `foxterm-latin1` shots. The method is in Step S8 below.
 
-Steps S1 to S8 in "Visual plan" below fix V1 to V7.
+Steps S1 to S9 in "Visual plan" below fix V1 to V7 and B5.
 
 New requests, now R19 and R20 in section 1 and in the Phase 8 and Phase 9
 acceptance lists:
@@ -1854,6 +1864,48 @@ Paint everything in `onPaint` from theme roles; no child widgets per tab.
   submenu with radio marks.
 - The Settings dialog uses a left list (`Profiles`, `Appearance`, `Encoding`)
   and a right pane in Windows Terminal style; no nested tab books.
+
+**Step S9: per-glyph font fallback (fixes B5).**
+Status: the Wayland part is done. `FXGlyphs` opens up to 8 fallback faces through
+`FcFontSort` (Nerd Font and Symbols faces first for private-use codepoints),
+remembers codepoints no font covers, and `tests/glyphs` checks it. `FXTerminal`
+draws a fallback glyph on its own, after its row, clipped to its cells plus a
+following blank cell, and keeps it out of text runs. Screenshot:
+`screenshots/tests/fox2/wayland/foxterm-icons.png`. Not done: the X11 (Xft) and
+Win32 font code still have no fallback, glyphs are not scaled down to the cell
+(they are clipped), box-drawing characters come from the font (the terminal
+does not draw them itself yet), and a codepoint nobody covers still shows the
+main face's `.notdef` box.
+Library change in `FXGlyphs`/`FXFont_wayland.cpp` (and the matching X11 and
+Win32 font code), not in `FXTerminal`, so every widget benefits.
+- When `FT_Get_Char_Index()` returns 0 for a codepoint, ask fontconfig for a
+  font that covers it: build a pattern with the primary family, `FC_CHARSET`
+  containing the codepoint, `FC_SPACING=FC_MONO` when the primary face is mono,
+  then `FcFontSort`/`FcFontMatch` and take the first font whose charset has it.
+  Win32 uses `IDWriteFontFallback`/`GDI` font linking; X11 uses Xft with the same
+  fontconfig query.
+- Keep a small list of fallback faces per `FXGlyphs` (maximum 8), opened lazily
+  at the same pixel size, and a per-codepoint miss cache so a codepoint with no
+  provider is searched once. Glyphs from a fallback face are cached under the
+  codepoint like normal glyphs.
+- For `FXTerminal` a fallback glyph is scaled to the cell: advance is forced to
+  `cellw` (two cells for width 2), the glyph is clipped to its cells, and a glyph
+  wider than the cell is shrunk to fit. Nerd Font icons are single-width in
+  `... Nerd Font Mono` faces and slightly wider in the plain faces, so the shrink
+  rule matters.
+- Search order for private-use codepoints (U+E000..U+F8FF, U+F0000..): fonts
+  whose family name contains `Nerd Font` or `Symbols`, then fontconfig order.
+  Add `Symbols Nerd Font Mono` to the recommended packages in `docs/terminal.md`.
+- When no font covers a codepoint, draw the replacement box once per cell, not
+  the primary face's `.notdef` (which may be blank or ugly).
+- Do not fall back for box-drawing, block and Braille characters
+  (U+2500..U+259F, U+2800..U+28FF): `FXTerminal` draws them itself so lines join
+  without gaps in every font. This is also what Konsole and Windows Terminal do.
+- Test: `terminalmodel` stays display-free; add a display test that feeds
+  U+F07B, U+E5FF, U+1F4C1 and `ä`, and checks that the first three differ from
+  the `.notdef` bitmap when a covering font is installed, and that the cell
+  pitch does not change. Add the folder icon row to the `foxterm-ls`
+  screenshot in Step S8.
 
 **Step S8: verification (answers V7).**
 - Add `scripts/gate-wayland-foxterm.sh` on the model of

@@ -1060,6 +1060,22 @@ void FXTerminal::applyTheme(FXTheme* theme){
   }
 
 
+// True if the main font lacks the character of a simple cell, so a fallback
+// font draws it; such a glyph may have another advance than the cell
+static FXbool usesFallback(FXTerminalPrivate *p,const FXTerminalCell& cell){
+  return cell.cluster==0 && cell.ch>=0x80 && !p->font->hasChar(cell.ch);
+  }
+
+
+// A glyph drawn after its row, so that the background of the next cell does not cover it
+struct FXTerminalDeferred {
+  FXint     x;
+  FXint     width;
+  FXColor   color;
+  FXString  text;
+  };
+
+
 // Paint the terminal
 long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
   FXEvent* event=(FXEvent*)ptr;
@@ -1075,6 +1091,7 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
   FXColor fg;
   FXColor bg;
   FXString text;
+  std::vector<FXTerminalDeferred> deferred;
   if(!priv) return 0;
   dc.setFont(priv->font);
   dc.setForeground(priv->defaultbg);
@@ -1087,11 +1104,13 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
     const FXTerminalRow& row=rowAt(priv,r);
     y=getContentY()+priv->margintop+(r-firstrow)*priv->cellh;
     if(y+priv->cellh<event->rect.y || y>event->rect.y+event->rect.h) continue;
+    deferred.clear();
     for(c=0; c<priv->screen.getColumns(); ){
       const FXTerminalCell& cell=(c<(FXint)row.cells.size()) ? row.cells[c] : priv->screen.getCell(0,0);
       FXint span=cell.width;
       FXint cells=span;
       FXbool drawable=(cell.attr&TERMATTR_HIDDEN)==0;
+      FXbool fallback;
       if(span==0){ c++; continue; }
       x=priv->marginleft+c*priv->cellw;
       if(x+span*priv->cellw<event->rect.x){ c+=span; continue; }
@@ -1105,7 +1124,8 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
       // Collect a run of cells with one rendition, so a word is a single text
       // call; only for a fixed pitch face, where the call advances exactly one
       // cell per character, and only over simple one cell glyphs
-      if(priv->fixedpitch && span==1 && cell.cluster==0 && drawable){
+      fallback=usesFallback(priv,cell);
+      if(priv->fixedpitch && span==1 && cell.cluster==0 && drawable && !fallback){
         FXint c2=c+1;
         while(c2<priv->screen.getColumns()){
           const FXTerminalCell& neighbor=(c2<(FXint)row.cells.size()) ? row.cells[c2] : priv->screen.getCell(0,0);
@@ -1115,6 +1135,7 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
           if(neighbor.width!=1 || neighbor.cluster!=0) break;
           if(neighbor.attr!=cell.attr) break;
           if(neighbor.attr&TERMATTR_HIDDEN) break;
+          if(usesFallback(priv,neighbor)) break;
           nfg=resolveColor(priv,neighbor.fg,priv->defaultfg);
           nbg=resolveColor(priv,neighbor.bg,priv->defaultbg);
           if(neighbor.attr&TERMATTR_REVERSE){ FXColor t=nfg; nfg=nbg; nbg=t; }
@@ -1129,7 +1150,23 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
         }
       dc.setForeground(bg);
       dc.fillRectangle(x,y,cells*priv->cellw,priv->cellh);
-      if(!text.empty() && drawable){
+      if(!text.empty() && drawable && fallback){
+        // Draw later, clipped to its cells; a blank cell after it may be used
+        // too, as the icon fonts draw glyphs a little wider than the cell
+        FXTerminalDeferred item;
+        FXint nextc=c+span;
+        FXbool blank=true;
+        if(nextc<(FXint)row.cells.size()){
+          const FXTerminalCell& next=row.cells[nextc];
+          blank=(next.cluster==0 && (next.ch==0 || next.ch==' ') && !isSelected(priv,r,nextc));
+          }
+        item.x=x;
+        item.width=span*priv->cellw+(blank ? priv->cellw : 0);
+        item.color=fg;
+        item.text=text;
+        deferred.push_back(item);
+        }
+      else if(!text.empty() && drawable){
         dc.setForeground(fg);
         dc.drawText(x,y+priv->ascent,text);
         }
@@ -1146,6 +1183,12 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
         dc.drawLine(x,y+priv->cellh/2,x+cells*priv->cellw-1,y+priv->cellh/2);
         }
       c+=cells;
+      }
+    for(size_t i=0; i<deferred.size(); i++){
+      dc.setClipRectangle(deferred[i].x,y,deferred[i].width,priv->cellh);
+      dc.setForeground(deferred[i].color);
+      dc.drawText(deferred[i].x,y+priv->ascent,deferred[i].text);
+      dc.clearClipRectangle();
       }
     }
   if(hasFocus() && priv->screen.getPrivateMode(25)){
