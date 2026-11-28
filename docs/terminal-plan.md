@@ -1866,16 +1866,22 @@ Paint everything in `onPaint` from theme roles; no child widgets per tab.
   and a right pane in Windows Terminal style; no nested tab books.
 
 **Step S9: per-glyph font fallback (fixes B5).**
-Status: the Wayland part is done. `FXGlyphs` opens up to 8 fallback faces through
-`FcFontSort` (Nerd Font and Symbols faces first for private-use codepoints),
-remembers codepoints no font covers, and `tests/glyphs` checks it. `FXTerminal`
-draws a fallback glyph on its own, after its row, clipped to its cells plus a
-following blank cell, and keeps it out of text runs. Screenshot:
-`screenshots/tests/fox2/wayland/foxterm-icons.png`. Not done: the X11 (Xft) and
-Win32 font code still have no fallback, glyphs are not scaled down to the cell
-(they are clipped), box-drawing characters come from the font (the terminal
-does not draw them itself yet), and a codepoint nobody covers still shows the
-main face's `.notdef` box.
+Status: done on Wayland, X11 and Win32 (Win32 only cross-compiled, not run on
+real Windows). `FXGlyphs` (Wayland) opens up to 8 fallback faces through
+`FcFontSort`; the Xft path (`fxXftDrawUtf8` in `FXFont_x11.cpp`) does the same
+per character run and also measures with the fallback font; the GDI path
+(`fxWin32Text` in `FXFont_win32.cpp`) enumerates the installed families, ranks
+icon fonts first for private-use codepoints, and `FXFont::hasChar` now asks
+`GetGlyphIndicesW`. Nerd Font and Symbols faces (Mono first) are preferred for
+private-use codepoints on all three; a codepoint nobody covers is remembered.
+`tests/glyphs` checks the Wayland cache; X11 was checked by drawing U+F07B into
+an `FXImage`. `FXTerminal` draws a fallback glyph on its own, after its row,
+clipped to its cells plus a following blank cell, and keeps it out of text runs.
+Screenshot: `screenshots/tests/fox2/wayland/foxterm-icons.png`. Not done: glyphs
+are not scaled down to the cell (they are clipped), box-drawing characters come
+from the font (the terminal does not draw them itself yet), a codepoint nobody
+covers still shows the main face's `.notdef` box, and the Win32 path needs a run
+on Windows 10/11 with a Nerd Font installed.
 Library change in `FXGlyphs`/`FXFont_wayland.cpp` (and the matching X11 and
 Win32 font code), not in `FXTerminal`, so every widget benefits.
 - When `FT_Get_Char_Index()` returns 0 for a codepoint, ask fontconfig for a

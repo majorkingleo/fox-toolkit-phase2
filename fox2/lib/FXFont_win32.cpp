@@ -44,6 +44,9 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include <vector>
+#include <string>
+#include <algorithm>
 
 #if defined(WIN32)
 
@@ -519,11 +522,176 @@ FXbool FXFont::listFonts(FXFontDesc*& fonts,FXuint& numfonts,const FXString& fac
   }
 
 
+/*
+  Font fallback for GDI.  GDI draws with one font, so a character the font
+  lacks would show as a box.  For such a character the installed families are
+  tried in a preferred order (icon fonts first for private use characters); the
+  first that has the glyph is created at the size of the main font and kept.
+  A character no family has is remembered, so the search runs once.  The fonts
+  are shared by all FXFont objects of the same height, weight and slant and live
+  until the program ends.
+*/
+
+struct FXWinFallback {
+  LONG                   height;
+  LONG                   weight;
+  BYTE                   italic;
+  std::vector<HFONT>     fonts;
+  std::vector<FXwchar>   misses;
+  };
+
+static std::vector<FXWinFallback*> winFallbacks;
+static std::vector<std::wstring>   winFaceNames;
+static HDC                         winScratch=nullptr;
+
+
+// Collect the family names once
+static int CALLBACK winEnumFaces(const LOGFONTW* lf,const TEXTMETRICW*,DWORD,LPARAM){
+  if(lf->lfFaceName[0] && lf->lfFaceName[0]!=L'@') winFaceNames.push_back(lf->lfFaceName);
+  return 1;
+  }
+
+
+// True if the font has a glyph for each UTF-16 unit of the character
+static FXbool winHasGlyph(HDC hdc,FXwchar ch){
+  WORD index[2];
+  WCHAR w[2];
+  DWORD n=1;
+  if(ch<0x10000){ w[0]=(WCHAR)ch; }
+  else{ w[0]=(WCHAR)((ch>>10)+LEAD_OFFSET); w[1]=(WCHAR)((ch&0x3FF)+TAIL_OFFSET); n=2; }
+  if(GetGlyphIndicesW(hdc,w,n,index,GGI_MARK_NONEXISTING_GLYPHS)==GDI_ERROR) return false;
+  return index[0]!=0xFFFF && (n==1 || index[1]!=0xFFFF);
+  }
+
+
+// True if the family is a good source for the character; lower ranks are tried first
+static FXint winRankFamily(FXwchar ch,const std::wstring& name){
+  if((0xE000<=ch && ch<=0xF8FF) || ch>=0xF0000){
+    FXbool icons=name.find(L"Nerd Font")!=std::wstring::npos || name.find(L"Symbols")!=std::wstring::npos;
+    FXbool mono=name.find(L"Mono")!=std::wstring::npos;
+    if(icons && mono) return 0;
+    if(icons) return 1;
+    if(name.find(L"Segoe")!=std::wstring::npos) return 2;
+    return 3;
+    }
+  if(name==L"Segoe UI Symbol" || name==L"Segoe UI Emoji" || name==L"Arial Unicode MS" || name==L"Microsoft YaHei" || name==L"MS Gothic" || name==L"Yu Gothic" || name==L"Malgun Gothic") return 1;
+  return 3;
+  }
+
+
+// Return a font that has the character, or nullptr; primary is the main font
+static HFONT winFallbackFont(HFONT primary,FXwchar ch){
+  LOGFONTW lf;
+  FXWinFallback* entry=nullptr;
+  HGDIOBJ old;
+  size_t i;
+  FXint rank;
+  if(!primary || !GetObjectW(primary,sizeof(lf),&lf)) return nullptr;
+  if(!winScratch) winScratch=CreateCompatibleDC(nullptr);
+  if(!winScratch) return nullptr;
+  for(i=0; i<winFallbacks.size(); i++){
+    if(winFallbacks[i]->height==lf.lfHeight && winFallbacks[i]->weight==lf.lfWeight && winFallbacks[i]->italic==lf.lfItalic){ entry=winFallbacks[i]; break; }
+    }
+  if(!entry){
+    entry=new FXWinFallback;
+    entry->height=lf.lfHeight;
+    entry->weight=lf.lfWeight;
+    entry->italic=lf.lfItalic;
+    winFallbacks.push_back(entry);
+    }
+  for(i=0; i<entry->fonts.size(); i++){
+    old=SelectObject(winScratch,entry->fonts[i]);
+    FXbool has=winHasGlyph(winScratch,ch);
+    SelectObject(winScratch,old);
+    if(has) return entry->fonts[i];
+    }
+  for(i=0; i<entry->misses.size(); i++){
+    if(entry->misses[i]==ch) return nullptr;
+    }
+  if(entry->fonts.size()<8){
+    if(winFaceNames.empty()){
+      LOGFONTW query;
+      memset(&query,0,sizeof(query));
+      query.lfCharSet=DEFAULT_CHARSET;
+      EnumFontFamiliesExW(winScratch,&query,(FONTENUMPROCW)winEnumFaces,0,0);
+      std::sort(winFaceNames.begin(),winFaceNames.end());
+      winFaceNames.erase(std::unique(winFaceNames.begin(),winFaceNames.end()),winFaceNames.end());
+      }
+    for(rank=0; rank<4; rank++){
+      for(i=0; i<winFaceNames.size(); i++){
+        if(winRankFamily(ch,winFaceNames[i])!=rank) continue;
+        LOGFONTW want=lf;
+        wcsncpy(want.lfFaceName,winFaceNames[i].c_str(),LF_FACESIZE-1);
+        want.lfFaceName[LF_FACESIZE-1]=0;
+        want.lfCharSet=DEFAULT_CHARSET;
+        want.lfPitchAndFamily=DEFAULT_PITCH|FF_DONTCARE;
+        HFONT font=CreateFontIndirectW(&want);
+        if(!font) continue;
+        old=SelectObject(winScratch,font);
+        FXbool has=winHasGlyph(winScratch,ch);
+        SelectObject(winScratch,old);
+        if(has){ entry->fonts.push_back(font); return font; }
+        DeleteObject(font);
+        }
+      }
+    }
+  if(entry->misses.size()<256) entry->misses.push_back(ch);
+  return nullptr;
+  }
+
+
+// Draw (draw true) or measure (draw false) UTF-16 text with the main font selected into hdc;
+// characters the main font lacks come from fallback fonts; return the advance
+FXint fxWin32Text(HDC hdc,HFONT primary,FXint x,FXint y,const FXnchar* text,FXint count,FXbool draw){
+  FXint start=0,i=0,n,total=0;
+  FXwchar ch;
+  SIZE size;
+  FXbool plain=true;
+  for(i=0; i<count; i++){ if(text[i]>=0x80){ plain=false; break; } }
+  if(plain){
+    if(draw) TextOutW(hdc,x,y,text,count);
+    GetTextExtentPoint32W(hdc,text,count,&size);
+    return size.cx;
+    }
+  i=0;
+  while(i<count){
+    ch=text[i];
+    n=1;
+    if(0xD800<=ch && ch<0xDC00 && i+1<count && 0xDC00<=text[i+1] && text[i+1]<0xE000){
+      ch=((ch-0xD800)<<10)+(text[i+1]-0xDC00)+0x10000;
+      n=2;
+      }
+    if(ch>=0x80 && !winHasGlyph(hdc,ch)){
+      HFONT alt=winFallbackFont(primary,ch);
+      if(alt){
+        if(i>start){
+          if(draw) TextOutW(hdc,x+total,y,text+start,i-start);
+          GetTextExtentPoint32W(hdc,text+start,i-start,&size);
+          total+=size.cx;
+          }
+        SelectObject(hdc,alt);
+        if(draw) TextOutW(hdc,x+total,y,text+i,n);
+        GetTextExtentPoint32W(hdc,text+i,n,&size);
+        total+=size.cx;
+        SelectObject(hdc,primary);
+        start=i+n;
+        }
+      }
+    i+=n;
+    }
+  if(i>start){
+    if(draw) TextOutW(hdc,x+total,y,text+start,i-start);
+    GetTextExtentPoint32W(hdc,text+start,i-start,&size);
+    total+=size.cx;
+    }
+  return total;
+  }
+
+
 // Does font have given character glyph?
 FXbool FXFont::hasChar(FXwchar ch) const {
   if(font){
-    // FIXME may want to use GetGlyphIndices()
-    return ((TEXTMETRIC*)font)->tmFirstChar<=ch && ch<=((TEXTMETRIC*)font)->tmLastChar;
+    return winHasGlyph((HDC)dc,ch);
     }
   return false;
   }
@@ -640,8 +808,7 @@ FXint FXFont::getCharWidth(const FXwchar ch) const {
     FXnchar sbuffer[2]; SIZE size;
     if(ch<0xFFFF){
       sbuffer[0]=ch;
-      GetTextExtentPoint32W((HDC)dc,sbuffer,1,&size);
-      return size.cx;
+      return fxWin32Text((HDC)dc,(HFONT)xid,0,0,sbuffer,1,false);
       }
     sbuffer[0]=(ch>>10)+LEAD_OFFSET;    // Deal with surrogate pair
     sbuffer[1]=(ch&0x3FF)+TAIL_OFFSET;
@@ -661,13 +828,13 @@ FXint FXFont::getTextWidth(const FXchar *string,FXuint length) const {
     if(length<=4096){
       FXnchar sbuffer[4096];
       count=utf2ncs(sbuffer,string,4096,length);
-      GetTextExtentPoint32W((HDC)dc,sbuffer,count,&size);
+      return fxWin32Text((HDC)dc,(HFONT)xid,0,0,sbuffer,count,false);
       }
     else{
       FXnchar* dbuffer=nullptr;
       if(!allocElms(dbuffer,length)){ throw FXResourceException("unable allocate memory in FXFont."); }
       count=utf2ncs(dbuffer,string,length,length);
-      GetTextExtentPoint32W((HDC)dc,dbuffer,count,&size);
+      size.cx=fxWin32Text((HDC)dc,(HFONT)xid,0,0,dbuffer,count,false);
       freeElms(dbuffer);
       }
     return size.cx;

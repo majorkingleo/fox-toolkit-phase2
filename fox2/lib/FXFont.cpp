@@ -133,6 +133,14 @@
 #define TOPIC_CREATION  1001
 #define TOPIC_DETAIL    1012
 
+#if defined(WIN32)
+namespace FX { FXint fxWin32Text(HDC hdc,HFONT primary,FXint x,FXint y,const FXnchar* text,FXint count,FXbool draw); }
+#endif
+
+#if defined(HAVE_XFT_H) && !defined(WIN32)
+namespace FX { void fxXftDrawUtf8(Display* display,XftDraw* draw,const XftColor* color,XftFont* primary,FXint x,FXint y,const FcChar8* string,FXint length); }
+#endif
+
 using namespace FX;
 
 /*******************************************************************************/
@@ -355,7 +363,7 @@ void FXFont::drawText(FXDC* dc,FXint x,FXint y,const FXchar* string,FXuint lengt
   FXint iBkMode=SetBkMode((HDC)dc->ctx,TRANSPARENT);
   FXint count=utf2ncs(sbuffer,string,ARRAYNUMBER(sbuffer),FXMIN(length,4096));
   FXASSERT(count<=length);
-  TextOutW((HDC)dc->ctx,x,y,sbuffer,count);
+  fxWin32Text((HDC)dc->ctx,(HFONT)id(),x,y,sbuffer,count,true);
   SetBkMode((HDC)dc->ctx,iBkMode);
   }
 
@@ -369,7 +377,7 @@ void FXFont::drawText(FXDC* dc,FXint x,FXint y,const FXchar* string,FXuint lengt
   color.color.green=FXGREENVAL(((FXDCWindow*)dc)->fg)*257;
   color.color.blue=FXBLUEVAL(((FXDCWindow*)dc)->fg)*257;
   color.color.alpha=FXALPHAVAL(((FXDCWindow*)dc)->fg)*257;
-  XftDrawStringUtf8((XftDraw*)((FXDCWindow*)dc)->xftDraw,&color,(XftFont*)((FXDCWindow*)dc)->font->font,x,y,(const FcChar8*)string,length);
+  fxXftDrawUtf8((Display*)getApp()->getDisplay(),(XftDraw*)((FXDCWindow*)dc)->xftDraw,&color,(XftFont*)((FXDCWindow*)dc)->font->font,x,y,(const FcChar8*)string,length);
   }
 
 #else                           ///// XLFD /////

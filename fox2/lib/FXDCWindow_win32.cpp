@@ -72,6 +72,8 @@
   - Platform implementation of FXDCWindow, the device context for painting on a window; it is implemented on GDI for Windows and on Xlib/Xft for X11.  The design notes stay in FXDCWindow.cpp.
 */
 
+namespace FX { FXint fxWin32Text(HDC hdc,HFONT primary,FXint x,FXint y,const FXnchar* text,FXint count,FXbool draw); }
+
 using namespace FX;
 
 /*******************************************************************************/
@@ -747,13 +749,13 @@ void FXDCWindow::drawText(FXint x,FXint y,const FXchar* string,FXuint length){
     if(length<4096){
       FXnchar sbuffer[4096];
       count=utf2ncs(sbuffer,string,4096,length);
-      ::TextOutW((HDC)ctx,x,y,sbuffer,count);
+      fxWin32Text((HDC)ctx,(HFONT)font->id(),x,y,sbuffer,count,true);
       }
     else{
       FXnchar* dbuffer=nullptr;
       if(!allocElms(dbuffer,length)){ throw FXResourceException("unable allocate memory in FXDCWindow."); }
       count=utf2ncs(dbuffer,string,length,length);
-      ::TextOutW((HDC)ctx,x,y,dbuffer,count);
+      fxWin32Text((HDC)ctx,(HFONT)font->id(),x,y,dbuffer,count,true);
       freeElms(dbuffer);
       }
     ::SetBkMode((HDC)ctx,bkmode);
@@ -771,13 +773,13 @@ void FXDCWindow::drawImageText(FXint x,FXint y,const FXchar* string,FXuint lengt
     if(length<4096){
       FXnchar sbuffer[4096];
       count=utf2ncs(sbuffer,string,4096,length);
-      ::TextOutW((HDC)ctx,x,y,sbuffer,count);
+      fxWin32Text((HDC)ctx,(HFONT)font->id(),x,y,sbuffer,count,true);
       }
     else{
       FXnchar* dbuffer=nullptr;
       if(!allocElms(dbuffer,length)){ throw FXResourceException("unable allocate memory in FXDCWindow."); }
       count=utf2ncs(dbuffer,string,length,length);
-      ::TextOutW((HDC)ctx,x,y,dbuffer,count);
+      fxWin32Text((HDC)ctx,(HFONT)font->id(),x,y,dbuffer,count,true);
       freeElms(dbuffer);
       }
     ::SetBkMode((HDC)ctx,bkmode);

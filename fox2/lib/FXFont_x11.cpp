@@ -44,6 +44,7 @@
 #include "FXWindow.h"
 #include "FXDCWindow.h"
 #include "FXApp.h"
+#include <vector>
 
 #if defined(FOX_X11)
 
@@ -1359,6 +1360,179 @@ next: continue;
 #endif
 
 
+#if defined(HAVE_XFT_H)       ///// XFT /////
+
+/*
+  Font fallback for Xft.  Xft draws with one font, so a character the main font
+  lacks would show as a box.  For such a character fontconfig is asked for the
+  installed fonts sorted by how well they match the main font and cover the
+  character; the first that has it is opened at the main font size and kept.
+  The fonts are shared by all FXFont objects that have the same family, size,
+  weight and slant, and live until the program ends.  A character that no font
+  has is remembered, so the search runs once.
+*/
+
+struct FXXftFallbackSet {
+  FXString              key;
+  std::vector<XftFont*> fonts;
+  std::vector<FcChar32> misses;
+  };
+
+static std::vector<FXXftFallbackSet*> xftFallbackSets;
+
+
+// Find or make the fallback set that belongs to a main font
+static FXXftFallbackSet* xftFallbackSetFor(XftFont* primary){
+  FcChar8* family=nullptr;
+  FXdouble size=0.0;
+  FXint weight=0,slant=0;
+  FXString key;
+  FcPatternGetString(primary->pattern,FC_FAMILY,0,&family);
+  FcPatternGetDouble(primary->pattern,FC_PIXEL_SIZE,0,&size);
+  FcPatternGetInteger(primary->pattern,FC_WEIGHT,0,&weight);
+  FcPatternGetInteger(primary->pattern,FC_SLANT,0,&slant);
+  key.format("%s|%.2f|%d|%d",family?(const FXchar*)family:"",size,weight,slant);
+  for(size_t i=0; i<xftFallbackSets.size(); i++){
+    if(xftFallbackSets[i]->key==key) return xftFallbackSets[i];
+    }
+  FXXftFallbackSet* set=new FXXftFallbackSet;
+  set->key=key;
+  xftFallbackSets.push_back(set);
+  return set;
+  }
+
+
+// Rank a family for a character; lower is better
+static FXint xftRankFamily(FcChar32 ch,const FXchar* family){
+  if((0xE000<=ch && ch<=0xF8FF) || ch>=0xF0000){
+    FXbool icons=(strstr(family,"Nerd Font")!=nullptr) || (strstr(family,"Symbols")!=nullptr);
+    FXbool mono=(strstr(family,"Mono")!=nullptr);
+    if(icons && mono) return 0;
+    if(icons) return 1;
+    }
+  return 2;
+  }
+
+
+// Return a font that has the character, or nullptr
+static XftFont* xftFallbackFor(Display* display,XftFont* primary,FcChar32 ch){
+  FXXftFallbackSet* set=xftFallbackSetFor(primary);
+  FcPattern* pattern;
+  FcCharSet* chars;
+  FcFontSet* sorted;
+  FcResult result;
+  FcPattern* chosen=nullptr;
+  FcCharSet* coverage;
+  size_t i;
+  FXint pass,k;
+  for(i=0; i<set->fonts.size(); i++){
+    if(XftCharExists(display,set->fonts[i],ch)) return set->fonts[i];
+    }
+  for(i=0; i<set->misses.size(); i++){
+    if(set->misses[i]==ch) return nullptr;
+    }
+  if(set->fonts.size()<8){
+    pattern=FcPatternDuplicate(primary->pattern);
+    chars=FcCharSetCreate();
+    FcCharSetAddChar(chars,ch);
+    FcPatternDel(pattern,FC_CHARSET);
+    FcPatternAddCharSet(pattern,FC_CHARSET,chars);
+    FcCharSetDestroy(chars);
+    FcPatternDel(pattern,FC_SPACING);
+    FcPatternAddInteger(pattern,FC_SPACING,FC_MONO);
+    FcConfigSubstitute(nullptr,pattern,FcMatchPattern);
+    FcDefaultSubstitute(pattern);
+    sorted=FcFontSort(nullptr,pattern,FcTrue,nullptr,&result);
+    if(sorted){
+      for(pass=0; pass<3 && !chosen; pass++){
+        for(k=0; k<sorted->nfont; k++){
+          FcChar8* family;
+          if(FcPatternGetCharSet(sorted->fonts[k],FC_CHARSET,0,&coverage)!=FcResultMatch) continue;
+          if(!FcCharSetHasChar(coverage,ch)) continue;
+          if(FcPatternGetString(sorted->fonts[k],FC_FAMILY,0,&family)!=FcResultMatch) continue;
+          if(xftRankFamily(ch,(const FXchar*)family)<=pass){
+            chosen=FcFontRenderPrepare(nullptr,pattern,sorted->fonts[k]);
+            break;
+            }
+          }
+        }
+      FcFontSetDestroy(sorted);
+      }
+    FcPatternDestroy(pattern);
+    if(chosen){
+      XftFont* font;
+      FcPatternDel(chosen,FC_PIXEL_SIZE);
+      FcPatternAddDouble(chosen,FC_PIXEL_SIZE,[&]{ FXdouble s=0.0; FcPatternGetDouble(primary->pattern,FC_PIXEL_SIZE,0,&s); return s; }());
+      font=XftFontOpenPattern(display,chosen);       // takes the pattern on success
+      if(font){
+        if(XftCharExists(display,font,ch)){
+          set->fonts.push_back(font);
+          return font;
+          }
+        XftFontClose(display,font);
+        }
+      else{
+        FcPatternDestroy(chosen);
+        }
+      }
+    }
+  if(set->misses.size()<256) set->misses.push_back(ch);
+  return nullptr;
+  }
+
+
+// True if the text has bytes outside ASCII
+static FXbool xftNeedsScan(const FcChar8* string,FXint length){
+  for(FXint i=0; i<length; i++){ if(string[i]>=0x80) return true; }
+  return false;
+  }
+
+
+// Draw UTF-8 text; characters the main font lacks come from fallback fonts
+void fxXftDrawUtf8(Display* display,XftDraw* draw,const XftColor* color,XftFont* primary,FXint x,FXint y,const FcChar8* string,FXint length){
+  FXint start=0,p=0,n;
+  FcChar32 ch;
+  XGlyphInfo extents;
+  if(length<=0) return;
+  if(!xftNeedsScan(string,length)){
+    XftDrawStringUtf8(draw,color,primary,x,y,string,length);
+    return;
+    }
+  while(p<length){
+    n=FcUtf8ToUcs4(string+p,&ch,length-p);
+    if(n<=0){ p++; continue; }
+    if(ch>=0x80 && !XftCharExists(display,primary,ch)){
+      XftFont* alt=xftFallbackFor(display,primary,ch);
+      if(alt){
+        if(p>start){
+          XftDrawStringUtf8(draw,color,primary,x,y,string+start,p-start);
+          XftTextExtentsUtf8(display,primary,string+start,p-start,&extents);
+          x+=extents.xOff;
+          }
+        XftDrawString32(draw,color,alt,x,y,&ch,1);
+        XftTextExtents32(display,alt,&ch,1,&extents);
+        x+=extents.xOff;
+        start=p+n;
+        }
+      }
+    p+=n;
+    }
+  if(p>start) XftDrawStringUtf8(draw,color,primary,x,y,string+start,p-start);
+  }
+
+
+// Return the font to measure a character with
+XftFont* fxXftFontFor(Display* display,XftFont* primary,FcChar32 ch){
+  if(ch>=0x80 && !XftCharExists(display,primary,ch)){
+    XftFont* alt=xftFallbackFor(display,primary,ch);
+    if(alt) return alt;
+    }
+  return primary;
+  }
+
+#endif
+
+
 // Does font have given character glyph?
 FXbool FXFont::hasChar(FXwchar ch) const {
   if(font){
@@ -1577,7 +1751,7 @@ FXint FXFont::getCharWidth(const FXwchar ch) const {
   if(font){
 #if defined(HAVE_XFT_H)       ///// XFT /////
     XGlyphInfo extents;
-    XftTextExtents32(DISPLAY(getApp()),(XftFont*)font,(const FcChar32*)&ch,1,&extents);
+    XftTextExtents32(DISPLAY(getApp()),fxXftFontFor(DISPLAY(getApp()),(XftFont*)font,ch),(const FcChar32*)&ch,1,&extents);
     return extents.xOff;
 #else                           ///// XLFD /////
     const XFontStruct *fs=(XFontStruct*)font;
@@ -1616,7 +1790,7 @@ FXint FXFont::getTextWidth(const FXchar *string,FXuint length) const {
     XGlyphInfo extents;
     while(ptr<end){
       ch=wcnxt(ptr);
-      XftTextExtents32(DISPLAY(getApp()),(XftFont*)font,(const FcChar32*)&ch,1,&extents);
+      XftTextExtents32(DISPLAY(getApp()),fxXftFontFor(DISPLAY(getApp()),(XftFont*)font,ch),(const FcChar32*)&ch,1,&extents);
       width+=extents.xOff;
       }
     return width;

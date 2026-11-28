@@ -65,6 +65,10 @@
   - Platform implementation of FXDCWindow, the device context for painting on a window; it is implemented on GDI for Windows and on Xlib/Xft for X11.  The design notes stay in FXDCWindow.cpp.
 */
 
+#ifdef HAVE_XFT_H
+namespace FX { void fxXftDrawUtf8(Display* display,XftDraw* draw,const XftColor* color,XftFont* primary,FXint x,FXint y,const FcChar8* string,FXint length); }
+#endif
+
 using namespace FX;
 
 /*******************************************************************************/
@@ -643,7 +647,7 @@ void FXDCWindow::drawText(FXint x,FXint y,const FXchar* string,FXuint length){
   color.color.green=FXGREENVAL(fg)*257;
   color.color.blue=FXBLUEVAL(fg)*257;
   color.color.alpha=FXALPHAVAL(fg)*257;
-  XftDrawStringUtf8((XftDraw*)xftDraw,&color,(XftFont*)font->font,x,y,(const FcChar8*)string,length);
+  fxXftDrawUtf8((Display*)getApp()->getDisplay(),(XftDraw*)xftDraw,&color,(XftFont*)font->font,x,y,(const FcChar8*)string,length);
 #else
   FXint count,escapement,defwidth,ww,size,i;
   FXdouble ang,ux,uy;
@@ -711,7 +715,7 @@ void FXDCWindow::drawImageText(FXint x,FXint y,const FXchar* string,FXuint lengt
   XftDrawRect((XftDraw*)xftDraw,&bgcolor,x,y-font->getFontAscent(),extents.width,extents.height);
 //XftDrawRect((XftDraw*)xftDraw,&bgcolor,x+cache->xoff,y-xftfs->ascent,cache->x2off-cache->xoff,xftfs->ascent+xftfs->descent);
 //XftDrawRect((XftDraw*)xftDraw,&bgcolor,x+cache->xoff,y-((XftFont*)font->font)->ascent,cache->x2off-cache->xoff,((XftFont*)font->font)->ascent+((XftFont*)font->font)->descent);
-  XftDrawStringUtf8((XftDraw*)xftDraw,&fgcolor,(XftFont*)font->font,x,y,(const FcChar8*)string,length);
+  fxXftDrawUtf8((Display*)getApp()->getDisplay(),(XftDraw*)xftDraw,&fgcolor,(XftFont*)font->font,x,y,(const FcChar8*)string,length);
 #else
   FXint count,escapement,defwidth,ww,size,i;
   FXdouble ang,ux,uy;
