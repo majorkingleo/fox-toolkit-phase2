@@ -6,13 +6,21 @@ foxterm \- FOX terminal emulator
 [\fB--profile\fR \fIname\fR]
 [\fB--term\fR \fIvt100\fR|\fIxterm\fR]
 [\fB--working-directory\fR \fIdir\fR]
+[\fB--opacity\fR \fIpercent\fR]
 [\fB--execute\fR \fIcommand\fR [\fIarg\fR ...]]
 .SH DESCRIPTION
 .B foxterm
 opens a native window with a terminal view. It starts the default shell on a
 pseudo terminal and accepts text, keys, mouse reporting, selection and clipboard
-operations. The initial implementation uses one tab per window; multiple tabs
-and tear-off are added by the terminal workstream.
+operations. A window holds one tab per session in a tab strip; a tab can be
+detached into its own window without interrupting the running child.
+
+Closing a tab whose child is still running asks for confirmation when the
+profile sets \fBconfirm\fR. A child that exits closes its tab when the profile
+sets \fBcloseonexit\fR; otherwise the tab keeps the final screen and its title
+gains the suffix \fB[exited]\fR. Closing the last tab of the last window ends
+the application, and closing a window that still has running tabs asks once for
+all of them. A termination signal quits without a confirmation dialog.
 .SH OPTIONS
 .TP
 .B --profile \fIname\fR
@@ -26,6 +34,11 @@ Start the child in \fIdir\fR.
 .TP
 .B --execute \fIcommand\fR [\fIarg\fR ...]
 Run \fIcommand\fR directly, without a shell.
+.TP
+.B --opacity \fIpercent\fR
+Set the whole-window opacity, 0 to 100. The backend must support it; see
+\fBisOpacitySupported\fR in the FOX manual. The value is stored in the
+application registry.
 .TP
 .B --help
 Show usage information.

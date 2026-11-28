@@ -35,6 +35,11 @@ static FXint settingInt(FXApp* app,const FXchar* key,FXint fallback){
   }
 
 
+// Live terminal windows of this process, so quit and the last-window check
+// never depend on the order in which the windows are created or destroyed
+static std::vector<TerminalWindow*> terminalwindows;
+
+
 FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_TITLE,TerminalWindow::onCmdTitle),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_BELL,TerminalWindow::onCmdBell),
@@ -46,6 +51,7 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,FXTerminal::ID_CLIPBOARD,TerminalWindow::onCmdClipboard),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_TAB,TerminalWindow::onCmdNewTab),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_NEW_WINDOW,TerminalWindow::onCmdNewWindow),
+  FXMAPFUNC(SEL_CHORE,TerminalWindow::ID_CLOSE_ON_EXIT,TerminalWindow::onChoreCloseTab),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_CLOSE_CURRENT,TerminalWindow::onCmdCloseCurrent),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_DETACH,TerminalWindow::onCmdDetach),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_FIND,TerminalWindow::onCmdFind),
@@ -61,7 +67,7 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_PASTE,TerminalWindow::onCmdPaste),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_QUIT,TerminalWindow::onCmdQuit),
-  FXMAPFUNC(SEL_SIGNAL,TerminalWindow::ID_QUIT,TerminalWindow::onCmdQuit),
+  FXMAPFUNC(SEL_SIGNAL,TerminalWindow::ID_QUIT,TerminalWindow::onSignalQuit),
   FXMAPFUNC(SEL_CLOSE,0,TerminalWindow::onCmdQuit),
   FXMAPFUNC(SEL_COMMAND,FXTopWindow::ID_CLOSE,TerminalWindow::onCmdQuit),
   FXMAPFUNC(SEL_COMMAND,TerminalTabBar::ID_TAB,TerminalWindow::onCmdTab),
@@ -87,11 +93,11 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXMenuCommand(mainmenu,"New &Tab\tCtl-Shift-T",nullptr,this,ID_NEW_TAB);
   new FXMenuCommand(mainmenu,"New &Window\tCtl-Shift-N",nullptr,this,ID_NEW_WINDOW);
   new FXMenuCommand(mainmenu,"&Close Tab\tCtl-Shift-W",nullptr,this,ID_CLOSE_CURRENT);
-  new FXMenuCommand(mainmenu,"&Detach Tab",nullptr,this,ID_DETACH);
+  new FXMenuCommand(mainmenu,"&Detach Tab\tCtl-Shift-M",nullptr,this,ID_DETACH);
   new FXMenuCommand(mainmenu,"&Find...\tCtl-Shift-F",nullptr,this,ID_FIND);
   new FXMenuCommand(mainmenu,"&Settings...",nullptr,this,ID_SETTINGS);
   {
-    FXMenuPane *opacitymenu=new FXMenuPane(this);
+    opacitymenu=new FXMenuPane(this);
     new FXMenuCommand(opacitymenu,"100%",nullptr,this,ID_OPACITY0);
     new FXMenuCommand(opacitymenu,"85%",nullptr,this,ID_OPACITY0+1);
     new FXMenuCommand(opacitymenu,"70%",nullptr,this,ID_OPACITY0+2);
@@ -119,6 +125,7 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   findbar->hide();
   status=new FXLabel(contents,"Starting...",nullptr,FXuint(JUSTIFY_LEFT)|FXuint(LAYOUT_FILL_X)|FXuint(FRAME_NONE),0,0,0,0,4,4,1,1);
   opacity=FXCLAMP(0,a->reg().readIntEntry("APPEARANCE","opacity",100),100);
+  terminalwindows.push_back(this);
   }
 
 
@@ -148,13 +155,14 @@ FXint TerminalWindow::findTab(FXObject* view) const {
 
 
 // Add one tab and start it
-FXbool TerminalWindow::addTab(const FXTerminalLaunch& l){
+FXbool TerminalWindow::addTab(const FXTerminalLaunch& l,const FXString& profileid){
   FXString error;
   TerminalTab tab;
   FXTerminal *view=new FXTerminal(switcher,this,0,LAYOUT_FILL_X|LAYOUT_FILL_Y,0,0,0,0,2,2,2,2);
   view->create();
   tab.view=view;
   tab.launch=l;
+  tab.profileid=profileid.empty() ? activeprofile : profileid;
   tab.title="Terminal";
   tab.directory=l.directory;
   tab.exited=false;
@@ -166,10 +174,30 @@ FXbool TerminalWindow::addTab(const FXTerminalLaunch& l){
   view->layout();
   if(!view->start(l,error)){
     FXMessageBox::error(this,MBOX_OK,"Terminal Error","%s",error.text());
-    closeTab((FXint)tabs.size()-1);
+    closeTab((FXint)tabs.size()-1,true);
     return false;
     }
   return true;
+  }
+
+
+// Return the profile a tab was created from
+const TerminalProfile& TerminalWindow::tabProfile(FXint index) const {
+  FXint p=profiles.find(tabs[index].profileid);
+  if(p<0) p=profiles.find(activeprofile);
+  if(p<0) p=profiles.find(profiles.getActive());
+  if(p<0) p=0;
+  return profiles.at(p);
+  }
+
+
+// Ask before closing a tab whose child is still running
+FXbool TerminalWindow::confirmCloseTab(FXint index){
+  FXString prompt;
+  if(!tabProfile(index).confirmClose) return true;
+  if(!tabs[index].view->isRunning()) return true;
+  prompt.format("The session \"%s\" is still running.\nClose the tab anyway?",tabs[index].title.text());
+  return FXMessageBox::question(this,MBOX_OK_CANCEL,"Close Tab","%s",prompt.text())==MBOX_CLICKED_OK;
   }
 
 
@@ -189,14 +217,23 @@ void TerminalWindow::selectTab(FXint index){
 
 
 // Close one tab
-void TerminalWindow::closeTab(FXint index){
+void TerminalWindow::closeTab(FXint index,FXbool force){
+  FXbool islast;
+  TerminalTab tab;
   if(index<0 || index>=(FXint)tabs.size()) return;
-  TerminalTab tab=tabs[index];
+  if(!force && !confirmCloseTab(index)) return;
+  tab=tabs[index];
   tabs.erase(tabs.begin()+index);
   tabbar->removeTitle(index);
   delete tab.view;
   if(tabs.empty()){
-    getApp()->exit(0);
+    saveGeometry();
+    islast=true;
+    for(FXint i=0; i<(FXint)terminalwindows.size(); i++){
+      if(terminalwindows[i]!=this && !terminalwindows[i]->tabs.empty()) islast=false;
+      }
+    if(islast) getApp()->exit(0);
+    else getApp()->addChore(this,FXWindow::ID_DELETE);
     return;
     }
   if(current>=index && current>0) current--;
@@ -234,15 +271,30 @@ long TerminalWindow::onCmdBell(FXObject*,FXSelector,void*){
 // Process exit
 long TerminalWindow::onCmdExited(FXObject* sender,FXSelector,void*){
   FXint index=findTab(sender);
-  if(index>=0){
-    tabs[index].exited=true;
-    tabs[index].exitcode=tabs[index].view->getExitCode();
-    if(tabs[index].title.find(" [exited]")<0) tabs[index].title+=" [exited]";
-    updateTabTitle(index);
-    FXString text;
-    text.format("Process exited with code %d",tabs[index].exitcode);
-    status->setText(text);
+  if(index<0) return 1;
+  tabs[index].exited=true;
+  tabs[index].exitcode=tabs[index].view->getExitCode();
+
+  // Close-on-exit policy: close the tab, or keep the final screen with an
+  // [exited] suffix.  The widget is still inside its own read callback here,
+  // so the tab must not be destroyed before the callback returns.
+  if(tabProfile(index).closeOnExit){
+    getApp()->addChore(this,FXSEL(SEL_CHORE,ID_CLOSE_ON_EXIT),tabs[index].view);
+    return 1;
     }
+  if(tabs[index].title.find(" [exited]")<0) tabs[index].title+=" [exited]";
+  updateTabTitle(index);
+  FXString text;
+  text.format("Process exited with code %d",tabs[index].exitcode);
+  status->setText(text);
+  return 1;
+  }
+
+
+// Close a tab whose child exited, once the widget callback has returned
+long TerminalWindow::onChoreCloseTab(FXObject*,FXSelector,void* ptr){
+  FXint index=findTab((FXObject*)ptr);
+  if(index>=0) closeTab(index,true);
   return 1;
   }
 
@@ -356,10 +408,50 @@ void TerminalWindow::saveGeometry(){
   }
 
 
+// Ask once for every running session of the process
+FXbool TerminalWindow::confirmQuit(){
+  FXint running=0;
+  FXint asked=0;
+  for(FXint w=0; w<(FXint)terminalwindows.size(); w++){
+    TerminalWindow *window=terminalwindows[w];
+    for(FXint i=0; i<(FXint)window->tabs.size(); i++){
+      if(window->tabs[i].view->isRunning()){
+        running++;
+        if(window->tabProfile(i).confirmClose) asked++;
+        }
+      }
+    }
+  if(asked==0) return true;
+  FXString prompt;
+  prompt.format("%d session%s still running.\nQuit FoxTerm anyway?",running,running==1 ? " is" : "s are");
+  return FXMessageBox::question(this,MBOX_QUIT_CANCEL,"Quit FoxTerm","%s",prompt.text())==MBOX_CLICKED_QUIT;
+  }
+
+
+// Terminate every child this window owns
+void TerminalWindow::terminateTabs(){
+  for(FXint i=0; i<(FXint)tabs.size(); i++) tabs[i].view->terminate();
+  }
+
+
 // Quit
 long TerminalWindow::onCmdQuit(FXObject*,FXSelector,void*){
-  saveGeometry();
-  for(FXint i=0; i<(FXint)tabs.size(); i++) tabs[i].view->terminate();
+  if(!confirmQuit()) return 1;
+  for(FXint w=0; w<(FXint)terminalwindows.size(); w++){
+    terminalwindows[w]->saveGeometry();
+    terminalwindows[w]->terminateTabs();
+    }
+  getApp()->exit(0);
+  return 1;
+  }
+
+
+// Quit on a termination signal without a dialog
+long TerminalWindow::onSignalQuit(FXObject*,FXSelector,void*){
+  for(FXint w=0; w<(FXint)terminalwindows.size(); w++){
+    terminalwindows[w]->saveGeometry();
+    terminalwindows[w]->terminateTabs();
+    }
   getApp()->exit(0);
   return 1;
   }
@@ -560,6 +652,16 @@ long TerminalWindow::onCmdAbout(FXObject*,FXSelector,void*){
 
 // Destructor
 TerminalWindow::~TerminalWindow(){
+  for(FXint i=0; i<(FXint)terminalwindows.size(); i++){
+    if(terminalwindows[i]==this){ terminalwindows.erase(terminalwindows.begin()+i); break; }
+    }
+
+  // A queued chore must not outlive its target
+  getApp()->removeChore(this);
+
+  // Menu panes are owned, not children; delete every one before the window
+  // goes, or their commands keep a target that no longer exists
+  delete opacitymenu;
   delete profilemenu;
   delete mainmenu;
   }

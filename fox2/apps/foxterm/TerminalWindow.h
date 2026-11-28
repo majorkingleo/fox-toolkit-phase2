@@ -42,6 +42,7 @@ class TerminalTabBar;
 struct TerminalTab {
   FXTerminal       *view;
   FXTerminalLaunch  launch;
+  FXString          profileid;
   FXString          title;
   FXString          directory;
   FXbool            exited;
@@ -64,6 +65,7 @@ protected:
   FXMenuPane       *profilemenu;
   FXMenuButton     *menubutton;
   FXMenuPane       *mainmenu;
+  FXMenuPane       *opacitymenu;
   FXSwitcher       *switcher;
   FXLabel          *status;
   FXHorizontalFrame *findbar;
@@ -79,12 +81,16 @@ protected:
   TerminalWindow(){}
   void saveGeometry();
   FXint findTab(FXObject* view) const;
-  FXbool addTab(const FXTerminalLaunch& l);
+  FXbool addTab(const FXTerminalLaunch& l,const FXString& profileid=FXString::null);
   void selectTab(FXint index);
-  void closeTab(FXint index);
+  void closeTab(FXint index,FXbool force=false);
   void updateTabTitle(FXint index);
   void detachTab(FXint index);
   void rebuildProfileMenu();
+  void terminateTabs();
+  const TerminalProfile& tabProfile(FXint index) const;
+  FXbool confirmCloseTab(FXint index);
+  FXbool confirmQuit();
 public:
 
   /// Construct a terminal window; autostart adds the first tab in create()
@@ -99,8 +105,14 @@ public:
   /// Ring the bell
   long onCmdBell(FXObject*,FXSelector,void*);
 
-  /// Show process exit state
+  /// Show process exit state, and apply the close-on-exit policy
   long onCmdExited(FXObject*,FXSelector,void*);
+
+  /// Close a tab whose child exited; deferred out of the widget callback
+  long onChoreCloseTab(FXObject*,FXSelector,void*);
+
+  /// Quit without the close confirmation, for a termination signal
+  long onSignalQuit(FXObject*,FXSelector,void*);
 
   /// Report a blocked clipboard request
   long onCmdClipboard(FXObject*,FXSelector,void*);
@@ -166,6 +178,7 @@ public:
     ID_TITLE=FXMainWindow::ID_LAST,
     ID_BELL,
     ID_EXITED,
+    ID_CLOSE_ON_EXIT,
     ID_CLIPBOARD,
     ID_NEW_TAB,
     ID_NEW_WINDOW,

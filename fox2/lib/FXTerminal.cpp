@@ -1096,10 +1096,26 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
 // Handle a key press
 long FXTerminal::onKeyPress(FXObject*,FXSelector,void* ptr){
   FXEvent* event=(FXEvent*)ptr;
+  FXWindow *shell;
   FXString text;
   FXchar control;
   FXint page;
   if(!priv) return 0;
+
+  // Shortcuts of the owning window come first; otherwise Ctrl+Shift+W would
+  // reach the child as 0x17 and the tab and quit accelerators never act.
+  // A Ctrl+Shift+letter carries the unshifted keysym on Wayland while the
+  // menu label parses to the shifted code, so both forms are tried.
+  shell=getShell();
+  if(shell && shell->getAccelTable()){
+    FXEvent hotkey=*event;
+    if(shell->getAccelTable()->handle(this,FXSEL(SEL_KEYPRESS,0),&hotkey)) return 1;
+    if((hotkey.state&SHIFTMASK) && hotkey.code>='a' && hotkey.code<='z'){
+      hotkey.code=hotkey.code-'a'+'A';
+      if(shell->getAccelTable()->handle(this,FXSEL(SEL_KEYPRESS,0),&hotkey)) return 1;
+      }
+    }
+
   if((event->state&CONTROLMASK) && (event->state&SHIFTMASK)){
     if(event->code==KEY_c){ copySelection(); return 1; }
     if(event->code==KEY_v){ pasteClipboard(); return 1; }
