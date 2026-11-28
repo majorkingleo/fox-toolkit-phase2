@@ -42,6 +42,7 @@
 #include "FXEvent.h"
 #include "FXWindow.h"
 #include "FXRootWindow.h"
+#include "FXPopup.h"
 #include "FXCursor.h"
 #include "FXApp.h"
 #include "fxapppriv.h"
@@ -811,6 +812,22 @@ static FXWindow* widgetAt(FXApp* foxapp,FXWaylandApp* app,FXID shell,FXint x,FXi
   }
 
 
+// Where a grabbed pointer event goes.  A popup that took the pointer grab itself
+// (a menu posted without an owner, a context menu) has to let the widget under
+// the pointer inside it see the pointer: on X11 the popup drops that grab before
+// such a press arrives, and this backend has to deliver inside the popup the way
+// the server would.  A press outside the popup goes to the popup, which is what
+// dismisses it.  Any other grab window, such as an MDI window a drag left hold
+// of the pointer, keeps every event
+static FXWindow* pointerTarget(FXWaylandApp* app,FXWindow* grabwindow,FXWindow* window){
+  const FXWinEntry* entry;
+  if(!grabwindow || !window || grabwindow==window) return grabwindow ? grabwindow : window;
+  entry=app->childmap.getEntry((FXID)grabwindow->id());
+  if(!entry || !(entry->flags&WINMAP_POPUP)) return grabwindow;
+  return window->isChildOf(grabwindow) ? window : grabwindow;
+  }
+
+
 // Post a paint for a window and for every window below it, clipped to the area
 // that the paint of another window took away from them.  The tree is posted
 // here in the order it has to paint, parents before children, so the paints
@@ -1093,6 +1110,17 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
       if((window=findWindowWithId(ev.id))==nullptr) return false;
       shellsurface=fxwaylandShellSurface(app,ev.data[0]);
 
+      // A press outside the popups of the client dismisses the topmost one.  On
+      // X11 the pointer grab that a popup takes sends that press to the popup
+      // itself, which is what unposts it; there is no such grab on Wayland and
+      // the compositor hands the press to the widget under the pointer, so the
+      // dismissal is done here and the press is used up by it, as it is on X11
+      if(ev.code==FXXWL_BUTTON && ev.data[1] && popupWindow && window!=popupWindow && !window->isChildOf(popupWindow)){
+        popupWindow->handle(this,FXSEL(SEL_COMMAND,FXWindow::ID_UNPOST),nullptr);
+        refresh();
+        return true;
+        }
+
       // A press inside the client side title bar moves the window or uses one
       // of its buttons; nothing below the bar ever sees it.  A window behind a
       // modal dialog has no title bar actions either, including its close
@@ -1178,8 +1206,9 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         event.code=0;
         if((FXABS(event.root_x-event.rootclick_x)>=dragDelta) || (FXABS(event.root_y-event.rootclick_y)>=dragDelta)) event.moved=1;
         if(mouseGrabWindow){
-          window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
-          if(mouseGrabWindow->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
+          FXWindow *target=pointerTarget(app,mouseGrabWindow,window);
+          window->translateCoordinatesTo(event.win_x,event.win_y,target,event.win_x,event.win_y);
+          if(target->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
           }
         else if(modalAllows(this,window) && window->handle(this,FXSEL(SEL_MOTION,0),&event)) refresh();
         event.last_x=event.win_x;
@@ -1220,8 +1249,9 @@ FXbool FXApp::dispatchEvent(FXRawEvent& ev){
         if(ev.button==3){ event.type=SEL_RIGHTBUTTONRELEASE; event.state&=~RIGHTBUTTONMASK; }
         }
       if(mouseGrabWindow){
-        window->translateCoordinatesTo(event.win_x,event.win_y,mouseGrabWindow,event.win_x,event.win_y);
-        if(mouseGrabWindow->handle(this,FXSEL(event.type,0),&event)) refresh();
+        FXWindow *target=pointerTarget(app,mouseGrabWindow,window);
+        if(target!=window) window->translateCoordinatesTo(event.win_x,event.win_y,target,event.win_x,event.win_y);
+        if(target->handle(this,FXSEL(event.type,0),&event)) refresh();
         }
       else if(modalAllows(this,window)){
         if(window->handle(this,FXSEL(event.type,0),&event)) refresh();
