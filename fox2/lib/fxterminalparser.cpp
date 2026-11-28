@@ -25,6 +25,7 @@
 #include "fxunicode.h"
 #include "fxterminalwidth.h"
 #include "fxterminalscreen.h"
+#include "fxterminalcharset.h"
 #include "fxterminalparser.h"
 
 #include <vector>
@@ -74,7 +75,7 @@ static FXuint rgbColor(FXint r,FXint g,FXint b){
 
 
 // Constructor
-FXTerminalParser::FXTerminalParser(FXTerminalScreen& targetscreen):screen(targetscreen){
+FXTerminalParser::FXTerminalParser(FXTerminalScreen& targetscreen,FXTerminalCharset *textcharset):screen(targetscreen),charset(textcharset),narrow(textcharset && !textcharset->isUTF8()){
   resetParser();
   }
 
@@ -84,8 +85,8 @@ FXTerminalParser::~FXTerminalParser(){
   }
 
 
-// Reset the parser only
-void FXTerminalParser::resetParser(){
+// Drop a partial sequence, keeping the screen and the DEC character sets
+void FXTerminalParser::flush(){
   state=PARSER_GROUND;
   csi.clear();
   string.clear();
@@ -95,14 +96,28 @@ void FXTerminalParser::resetParser(){
   csiOverflow=false;
   stringOverflow=false;
   charsetTarget=0;
+  utf8need=0;
+  utf8have=0;
+  utf8code=0;
+  }
+
+
+// Reset the parser only
+void FXTerminalParser::resetParser(){
+  flush();
   charsets[0]='B';
   charsets[1]='B';
   charsets[2]='B';
   charsets[3]='B';
   gl=0;
-  utf8need=0;
-  utf8have=0;
-  utf8code=0;
+  }
+
+
+// Decode output through another character encoding
+void FXTerminalParser::setCharset(FXTerminalCharset *textcharset){
+  charset=textcharset;
+  narrow=(textcharset && !textcharset->isUTF8());
+  flush();
   }
 
 
@@ -662,6 +677,12 @@ void FXTerminalParser::feed(const FXchar* data,FXint length){
       continue;
       }
     if(state==PARSER_GROUND){
+      // A single byte encoding owns every byte above ASCII, so it is decoded
+      // here, before the eight bit C1 forms below
+      if(narrow && ch>=0x80){
+        screen.putCell(charset->decode(ch));
+        continue;
+        }
       if(ch==0x1B){
         state=PARSER_ESCAPE;
         continue;

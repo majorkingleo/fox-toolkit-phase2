@@ -48,6 +48,7 @@
 #include "FXTheme.h"
 #include "FXTerminal.h"
 #include "fxterminalscreen.h"
+#include "fxterminalcharset.h"
 #include "fxterminalparser.h"
 #include "fxpty.h"
 
@@ -70,6 +71,7 @@ struct FXTerminalFind {
 // Private terminal state
 struct FXTerminalPrivate {
   FXTerminalScreen      screen;
+  FXTerminalCharset     charset;
   FXTerminalParser      parser;
   FXPty                 pty;
   FXFont               *font;
@@ -106,6 +108,7 @@ struct FXTerminalPrivate {
   FXString              clipboardrequest;
   FXString              findpattern;
   FXuint                findflags;
+  std::vector<FXwchar>  oddadvance;
   FXint                 findindex;
   std::vector<FXTerminalFind> matches;
   FXString              lasttitle;
@@ -116,7 +119,7 @@ struct FXTerminalPrivate {
   FXColor               cursorcolor;
   FXColor               selbackcolor;
   FXColor               seltextcolor;
-  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),padding(-1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),rightreport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
+  FXTerminalPrivate():parser(screen,&charset),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),padding(-1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),rightreport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
   };
 
 
@@ -423,6 +426,9 @@ static void updateMetrics(FXTerminalPrivate *p){
   // A run of equal attribute cells is drawn with one text call, which is only
   // exact when ten glyphs advance ten cells
   p->fixedpitch=p->font->isFontMono() && p->font->getTextWidth("MMMMMMMMMM",10)==10*p->cellw;
+
+  // Which glyphs advance one cell depends on the face and the size
+  p->oddadvance.clear();
   }
 
 
@@ -719,9 +725,52 @@ FXbool FXTerminal::send(const FXString& bytes){
   }
 
 
-// Send text
+// Send text; keys, pasted text and IME text go through the encoding of the
+// session, so a single byte session sends one byte per character and reports
+// the characters it cannot express
 FXbool FXTerminal::sendText(const FXString& text){
-  return send(text);
+  FXbool lossy=false;
+  FXString bytes;
+  if(!priv) return false;
+  bytes=priv->charset.encode(text,lossy);
+  if(lossy && priv->notify) priv->notify->tryHandle(this,FXSEL(SEL_CHANGED,ID_ENCODING_LOSS),nullptr);
+  return send(bytes);
+  }
+
+
+// Select the character encoding of this session
+FXString FXTerminal::setEncoding(const FXString& name){
+  if(!priv) return FXString("UTF-8");
+  FXString selected=priv->charset.setName(name);
+  // Switching the encoding drops a partial escape or UTF-8 sequence but keeps
+  // the screen, so already drawn cells keep their codepoints and the child is
+  // not restarted
+  priv->parser.setCharset(&priv->charset);
+  return selected;
+  }
+
+
+// Return the character encoding of this session
+FXString FXTerminal::getEncoding() const {
+  return priv ? FXString(priv->charset.getName()) : FXString("UTF-8");
+  }
+
+
+// Number of supported character encodings
+FXint FXTerminal::getSupportedEncodingCount(){
+  return FXTerminalCharset::count();
+  }
+
+
+// Canonical name of a supported character encoding
+FXString FXTerminal::getSupportedEncodingName(FXint index){
+  return FXString(FXTerminalCharset::name(index));
+  }
+
+
+// Index of an encoding name or alias
+FXint FXTerminal::findEncoding(const FXString& name){
+  return FXTerminalCharset::find(name);
   }
 
 
@@ -1132,6 +1181,23 @@ static FXbool usesFallback(FXTerminalPrivate *p,const FXTerminalCell& cell){
   }
 
 
+// True if a glyph the main font has advances exactly one cell.  A face is
+// fixed pitch only for the characters it was designed for: U+FFFD advances
+// fifteen pixels here against an eight pixel cell, and drawing such a glyph in
+// a run of one text call would shift the text after it.
+static FXbool advancesOneCell(FXTerminalPrivate *p,const FXTerminalCell& cell){
+  if(cell.cluster!=0 || cell.ch<0x80) return true;
+  for(size_t i=0; i<p->oddadvance.size(); i++){
+    if(p->oddadvance[i]==(FXwchar)cell.ch) return false;
+    }
+  if(p->font->getCharWidth(cell.ch)!=p->cellw){
+    if(p->oddadvance.size()<256) p->oddadvance.push_back(cell.ch);
+    return false;
+    }
+  return true;
+  }
+
+
 // A glyph drawn after its row, so that the background of the next cell does not cover it
 struct FXTerminalDeferred {
   FXint     x;
@@ -1175,7 +1241,7 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
       FXint span=cell.width;
       FXint cells=span;
       FXbool drawable=(cell.attr&TERMATTR_HIDDEN)==0;
-      FXbool fallback;
+      FXbool alone;
       if(span==0){ c++; continue; }
       x=priv->marginleft+c*priv->cellw;
       if(x+span*priv->cellw<event->rect.x){ c+=span; continue; }
@@ -1188,9 +1254,11 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
 
       // Collect a run of cells with one rendition, so a word is a single text
       // call; only for a fixed pitch face, where the call advances exactly one
-      // cell per character, and only over simple one cell glyphs
-      fallback=usesFallback(priv,cell);
-      if(priv->fixedpitch && span==1 && cell.cluster==0 && drawable && !fallback){
+      // cell per character, and only over simple one cell glyphs.  A glyph the
+      // face cannot draw, or draws with another advance than the cell, gets its
+      // own call instead, so the rest of the row keeps its columns
+      alone=usesFallback(priv,cell) || !advancesOneCell(priv,cell);
+      if(priv->fixedpitch && span==1 && cell.cluster==0 && drawable && !alone){
         FXint c2=c+1;
         while(c2<priv->screen.getColumns()){
           const FXTerminalCell& neighbor=(c2<(FXint)row.cells.size()) ? row.cells[c2] : priv->screen.getCell(0,0);
@@ -1200,7 +1268,7 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
           if(neighbor.width!=1 || neighbor.cluster!=0) break;
           if(neighbor.attr!=cell.attr) break;
           if(neighbor.attr&TERMATTR_HIDDEN) break;
-          if(usesFallback(priv,neighbor)) break;
+          if(usesFallback(priv,neighbor) || !advancesOneCell(priv,neighbor)) break;
           nfg=resolveColor(priv,neighbor.fg,priv->defaultfg);
           nbg=resolveColor(priv,neighbor.bg,priv->defaultbg);
           if(neighbor.attr&TERMATTR_REVERSE){ FXColor t=nfg; nfg=nbg; nbg=t; }
@@ -1215,7 +1283,7 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
         }
       dc.setForeground(bg);
       dc.fillRectangle(x,y,cells*priv->cellw,priv->cellh);
-      if(!text.empty() && drawable && fallback){
+      if(!text.empty() && drawable && alone){
         // Draw later, clipped to its cells; a blank cell after it may be used
         // too, as the icon fonts draw glyphs a little wider than the cell
         FXTerminalDeferred item;
@@ -1359,7 +1427,7 @@ long FXTerminal::onKeyPress(FXObject*,FXSelector,void* ptr){
       FXString prefix="\x1b";
       text=prefix+text;
       }
-    return send(text) ? 1 : 0;
+    return sendText(text) ? 1 : 0;
     }
   return 0;
   }

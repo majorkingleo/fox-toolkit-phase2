@@ -7,6 +7,7 @@
 *********************************************************************************/
 #include "fx.h"
 #include "fxterminalscreen.h"
+#include "fxterminalcharset.h"
 #include "fxterminalparser.h"
 #include <stdio.h>
 #include <string.h>
@@ -372,6 +373,181 @@ static void testcharset(){
   check(screen.getCursorRow()==2 && screen.getCursorColumn()==9,"cursor clamped");
   }
 
+// Character encodings: names, decoding, input mapping and the live switch
+static void testencoding(){
+  FXTerminalScreen screen;
+  FXTerminalCharset charset;
+  FXTerminalParser parser(screen,&charset);
+  FXTerminalCharset input;
+  FXString text;
+  FXbool lossy;
+  FXchar byte;
+  FXwchar wc;
+  FXint index;
+
+  // Names and aliases
+  check(FXTerminalCharset::count()>=10,"encoding count");
+  check(FXString(FXTerminalCharset::name(0))==FXString("UTF-8"),"encoding order");
+  check(FXTerminalCharset::find("utf-8")==0,"alias utf8");
+  check(FXTerminalCharset::find("ISO_8859_1")==1,"alias latin-1");
+  check(FXTerminalCharset::find("latin9")==3,"alias latin-9");
+  check(FXTerminalCharset::find("cp1252")==6,"alias cp1252");
+  check(FXTerminalCharset::find("koi8r")==7,"alias koi8-r");
+  check(FXTerminalCharset::find("ibm850")==9,"alias cp850");
+  check(FXTerminalCharset::find("no-such-set")==-1,"unknown encoding");
+  check(FXTerminalCharset::find("")==-1,"empty encoding name");
+  check(charset.setName("cp437")==FXString("CP437"),"select cp437");
+  check(!charset.isUTF8(),"cp437 is single byte");
+  check(charset.setName("nonsense")==FXString("UTF-8"),"unsupported name falls back");
+  check(charset.isUTF8(),"fallback is utf-8");
+
+  // One sample per encoding, decoded through the parser
+  charset.setName("ISO-8859-1");
+  fresh(screen,parser,10,3);
+  parser.setCharset(&charset);
+  parser.feed("\xE4\xA4",2);
+  check(screen.getCell(0,0).ch==0xE4 && screen.getCell(0,1).ch==0xA4,"latin-1 decode");
+  checkrow(screen,0,"\xC3\xA4\xC2\xA4","latin-1 text");
+  charset.setName("ISO-8859-2");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\xE4\xA1",2);
+  check(screen.getCell(0,0).ch==0xE4 && screen.getCell(0,1).ch==0x104,"iso-8859-2 decode");
+  charset.setName("ISO-8859-15");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\xA4\xBD",2);
+  check(screen.getCell(0,0).ch==0x20AC && screen.getCell(0,1).ch==0x153,"iso-8859-15 decode");
+  charset.setName("Windows-1250");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\x8A\x9F",2);
+  check(screen.getCell(0,0).ch==0x160 && screen.getCell(0,1).ch==0x17A,"windows-1250 decode");
+  charset.setName("Windows-1251");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\xC0\xB8",2);
+  check(screen.getCell(0,0).ch==0x410 && screen.getCell(0,1).ch==0x451,"windows-1251 decode");
+  charset.setName("Windows-1252");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\x80\x9C",2);
+  check(screen.getCell(0,0).ch==0x20AC && screen.getCell(0,1).ch==0x153,"windows-1252 decode");
+  charset.setName("KOI8-R");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\xC1\xE4",2);
+  check(screen.getCell(0,0).ch==0x430 && screen.getCell(0,1).ch==0x414,"koi8-r decode");
+  charset.setName("CP437");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\x80\xB0\xE4",3);
+  check(screen.getCell(0,0).ch==0xC7 && screen.getCell(0,1).ch==0x2591 && screen.getCell(0,2).ch==0x3A3,"cp437 decode");
+  charset.setName("CP850");
+  parser.setCharset(&charset);
+  fresh(screen,parser,10,3);
+  parser.feed("\x80\xB0\xE4",3);
+  check(screen.getCell(0,0).ch==0xC7 && screen.getCell(0,1).ch==0x2591 && screen.getCell(0,2).ch==0xF5,"cp850 decode");
+
+  // Every graphic high byte takes exactly one cell; 0x80..0x9F are C1 controls
+  // in the ISO-8859 family and print nothing there, so the count per set is the
+  // number of bytes that decode to a graphic codepoint
+  for(index=1; index<FXTerminalCharset::count(); index++){
+    FXint expected=0;
+    FXchar raw;
+    charset.setName(FXTerminalCharset::name(index));
+    parser.setCharset(&charset);
+    fresh(screen,parser,200,3);
+    for(FXint b=0x80; b<0x100; b++){
+      wc=charset.decode((FXuchar)b);
+      if(wc>=0xA0) expected++;
+      raw=(FXchar)(FXuchar)b;
+      parser.feed(&raw,1);
+      }
+    check(screen.getCursorColumn()==expected,"high bytes are one cell");
+    for(FXint c=0; c<expected; c++) check(screen.getCell(0,c).width==1,"high byte cell width");
+    }
+
+  // Round trip: every graphic codepoint encodes back to its own byte
+  for(index=1; index<FXTerminalCharset::count(); index++){
+    charset.setName(FXTerminalCharset::name(index));
+    FXint bad=0;
+    for(FXint b=0x80; b<0x100; b++){
+      wc=charset.decode((FXuchar)b);
+      if(wc==0xFFFD || wc<0xA0) continue;
+      byte=0;
+      if(!charset.encode(wc,byte) || (FXuchar)byte!=(FXuchar)b){ bad++; printf("  %s: U+%04X does not encode back to 0x%02X\n",charset.getName(),(unsigned)wc,(unsigned)b); }
+      }
+    check(bad==0,"encoding round trip");
+    }
+
+  // The soft hyphen is zero width in the Unicode width table, but a single
+  // byte session draws every character in one cell and never combines it
+  charset.setName("ISO-8859-1");
+  parser.setCharset(&charset);
+  fresh(screen,parser,20,3);
+  parser.feed("a\xAD" "b",3);
+  check(screen.getCell(0,1).ch==0xAD && screen.getCell(0,1).width==1,"soft hyphen takes one cell");
+  checkrow(screen,0,"a\xC2\xAD" "b","soft hyphen is not a cluster");
+
+  // Input mapping: a character becomes one byte of the session encoding
+  input.setName("CP437");
+  text=input.encode(FXString("h\xC3\xA4llo"),lossy);
+  check(!lossy && text.length()==5 && text[1]==(FXchar)0x84,"cp437 encodes an umlaut");
+  text=input.encode(FXString("\xE4\xB8\xAD"),lossy);
+  check(lossy && text==FXString("?"),"unmappable input becomes ?");
+  text=input.encode(FXString("a\xE2\x82\xAC b"),lossy);
+  check(lossy && text==FXString("a? b"),"only the unmappable character is replaced");
+  input.setName("UTF-8");
+  text=input.encode(FXString("\xE4\xB8\xAD"),lossy);
+  check(!lossy && text==FXString("\xE4\xB8\xAD"),"utf-8 input is a pass-through");
+
+  // A live switch keeps the screen and only changes later output; a byte that
+  // starts an incomplete UTF-8 sequence reports a replacement for the sequence
+  charset.setName("UTF-8");
+  parser.setCharset(&charset);
+  fresh(screen,parser,20,3);
+  feed(parser,"abc");
+  parser.feed("\xE4z",2);
+  checkrow(screen,0,"abc\xEF\xBF\xBDz","utf-8 byte above ascii is a replacement");
+  charset.setName("ISO-8859-1");
+  parser.setCharset(&charset);
+  fresh(screen,parser,20,3);
+  feed(parser,"abc");
+  parser.feed("\xE4",1);
+  checkrow(screen,0,"abc\xC3\xA4","latin-1 byte above ascii is a character");
+  check(screen.getCell(0,0).ch=='a',"switch keeps drawn cells");
+  charset.setName("UTF-8");
+  parser.setCharset(&charset);
+  parser.feed("\xE4z",2);
+  checkrow(screen,0,"abc\xC3\xA4\xEF\xBF\xBDz","switch back decodes the next byte as utf-8");
+  check(screen.getCell(0,3).ch==0xE4,"switch back keeps the decoded cell");
+
+  // Switching drops a partial escape sequence instead of printing it
+  charset.setName("UTF-8");
+  parser.setCharset(&charset);
+  fresh(screen,parser,20,3);
+  feed(parser,"\x1b[");
+  charset.setName("ISO-8859-1");
+  parser.setCharset(&charset);
+  feed(parser,"1m");
+  checkrow(screen,0,"1m","switch drops a partial sequence");
+
+  // Eight bit C1 escape forms belong to UTF-8 and are characters in a single
+  // byte encoding
+  charset.setName("UTF-8");
+  parser.setCharset(&charset);
+  fresh(screen,parser,20,3);
+  parser.feed("\x9B" "1m",3);
+  checkrow(screen,0,"","eight bit CSI in utf-8");
+  charset.setName("ISO-8859-1");
+  parser.setCharset(&charset);
+  fresh(screen,parser,20,3);
+  parser.feed("\x9B",1);
+  checkrow(screen,0,"","latin-1 C1 control is not a CSI");
+  check(screen.getCursorColumn()==0,"C1 control does not print");
+  }
+
 // Bounded parser stress and limits
 static void testlimits(){
   FXTerminalScreen screen;
@@ -421,6 +597,7 @@ int main(){
   testresize();
   testvt100();
   testcharset();
+  testencoding();
   testlimits();
   if(failures){
     printf("%d terminal model failure(s)\n",failures);

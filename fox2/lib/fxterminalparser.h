@@ -37,11 +37,18 @@
 namespace FX {
 
 
+class FXTerminalCharset;
+
+
 /**
 * The FXTerminalParser consumes UTF-8 bytes and ANSI/VT100/xterm escape
 * sequences and dispatches the resulting operations to an FXTerminalScreen.
 * It is incremental: a sequence may be split across any number of feed()
 * calls. All buffers and parameter counts are bounded.
+*
+* Output is decoded through an optional FXTerminalCharset.  UTF-8 is the fast
+* path; in a single byte encoding every byte above ASCII is one codepoint, so
+* the eight bit C1 escape forms are not recognized there.
 */
 class FXAPI FXTerminalParser {
 protected:
@@ -57,6 +64,8 @@ protected:
     };
 protected:
   FXTerminalScreen& screen;       // Screen receiving the operations
+  FXTerminalCharset *charset;     // Character encoding, or NULL for UTF-8
+  FXbool             narrow;      // Encoding is single byte
   FXint             state;        // Parser state
   FXString          csi;          // Current CSI parameters
   FXString          string;       // Current OSC/DCS string
@@ -88,8 +97,16 @@ private:
   FXTerminalParser& operator=(const FXTerminalParser&);
 public:
 
-  /// Construct a parser writing to the given screen
-  FXTerminalParser(FXTerminalScreen& screen);
+  /// Construct a parser writing to the given screen, decoding through the
+  /// given character encoding; NULL selects UTF-8
+  FXTerminalParser(FXTerminalScreen& screen,FXTerminalCharset *charset=nullptr);
+
+  /// Decode output through a character encoding; NULL selects UTF-8
+  void setCharset(FXTerminalCharset *charset);
+
+  /// Drop a partial escape or UTF-8 sequence; the screen and the DEC character
+  /// sets are kept
+  void flush();
 
   /// Reset the incremental parser state, not the screen
   void reset();

@@ -165,6 +165,7 @@ protected:
   FXTerminalRow blankRow() const;
   FXTerminalCell blankCell(FXbool erase) const;
   FXTerminalCell makeCell(FXwchar ch,FXuint fg,FXuint bg,FXushort attr,FXushort width=1) const;
+  void putGlyph(FXwchar ch,FXint width);
   FXuint normalizeColor(FXuint color) const;
   FXint contentLength(const FXTerminalRow& row) const;
   FXint clusterIndex(const FXString& cluster);
@@ -258,6 +259,10 @@ public:
 
   /// Print one Unicode codepoint
   void putChar(FXwchar ch);
+
+  /// Print one character of a single byte encoding: exactly one cell, never
+  /// combining and never wide
+  void putCell(FXwchar ch);
 
   /// Execute a C0 control
   void execute(FXuint ch);

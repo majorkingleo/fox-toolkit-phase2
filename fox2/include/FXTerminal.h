@@ -70,8 +70,12 @@ struct FXAPI FXTerminalLaunch {
 * maintained by FXTerminalScreen. Keys and IME text go to the child; selection,
 * copy, paste, scrolling, cursor blinking and mouse reporting are handled here.
 * The widget does not display dialogs or decide process-close policy; it sends
-* ID_EXITED, ID_BELL, ID_TITLE and ID_CLIPBOARD to its target.  A right press
-* that does not belong to the child is forwarded to the target as
+* ID_EXITED, ID_BELL, ID_TITLE and ID_CLIPBOARD to its target as SEL_COMMAND,
+* and ID_ENCODING_LOSS as SEL_CHANGED when a key or a paste had to reach the
+* child as '?' because the encoding cannot express it.  A different selector
+* type keeps the notification out of the id space the window uses for its own
+* menu commands.  The effective encoding is the return value of setEncoding().
+* A right press that does not belong to the child is forwarded to the target as
 * SEL_RIGHTBUTTONPRESS, so the menu it posts can use the event's root position
 * and no selector of the widget has to be invented for it.
 */
@@ -93,6 +97,7 @@ public:
     ID_CLIPBOARD,
     ID_TRANSPARENCY,
     ID_TERMINAL_SEARCH_CHANGED,
+    ID_ENCODING_LOSS,
     ID_READ,
     ID_WRITE,
     ID_BLINK,
@@ -158,7 +163,8 @@ public:
   /// Send raw bytes to the child
   FXbool send(const FXString& bytes);
 
-  /// Send UTF-8 text to the child
+  /// Send UTF-8 text to the child, encoded for the session; characters the
+  /// encoding cannot express are sent as '?' and reported as ID_ENCODING_LOSS
   FXbool sendText(const FXString& text);
 
   /// Parse bytes as if they came from the child
@@ -172,6 +178,22 @@ public:
 
   /// Return the TERM value
   FXString getTerm() const;
+
+  /// Select the character encoding of this session by name or alias; returns
+  /// the canonical name that is in effect, which is UTF-8 for an unknown name
+  FXString setEncoding(const FXString& name);
+
+  /// Return the character encoding of this session
+  FXString getEncoding() const;
+
+  /// Return the number of supported character encodings; index zero is UTF-8
+  static FXint getSupportedEncodingCount();
+
+  /// Return the canonical name of a supported character encoding
+  static FXString getSupportedEncodingName(FXint index);
+
+  /// Return the index of an encoding name or alias; -1 when unsupported
+  static FXint findEncoding(const FXString& name);
 
   /// Return the terminal kind
   FXint getTerminalKind() const;

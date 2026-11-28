@@ -528,7 +528,19 @@ FXbool FXTerminalScreen::takeResponse(FXString& reply){
 
 // Print one codepoint
 void FXTerminalScreen::putChar(FXwchar ch){
-  FXint width;
+  putGlyph(ch,fxterminalCharWidth(ch));
+  }
+
+
+// Print one character of a single byte encoding
+void FXTerminalScreen::putCell(FXwchar ch){
+  putGlyph(ch,1);
+  }
+
+
+// Print one codepoint; width zero combines with the previous cell, one fills a
+// cell and two fills a cell and its continuation
+void FXTerminalScreen::putGlyph(FXwchar ch,FXint width){
   FXint idx;
   FXTerminalCell cell;
   FXString cluster;
@@ -539,7 +551,6 @@ void FXTerminalScreen::putChar(FXwchar ch){
     execute(ch);
     return;
     }
-  width=fxterminalCharWidth(ch);
   if(width==2 && columns<2) width=1;
   if(width==0){
     if(lastValid && lastRow>=0 && lastRow<(FXint)lines.size() && lastCol>=0 && lastCol<(FXint)lines[lastRow].cells.size()){
