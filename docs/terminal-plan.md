@@ -29,6 +29,8 @@ document are closed unless a build or test proves one of them impossible.
 | R16 | Background transparency is opt-in through `transparencyMode` (`off`, `window`, `background`) and `backgroundOpacity` (0..100). The default is opaque. |
 | R17 | In `background` mode the terminal cell backgrounds are translucent while text, cursor and selection foregrounds stay opaque. The tab strip, menus and other chrome stay opaque. |
 | R18 | Every backend advertises which transparency modes it supports. An unsupported mode downgrades to the next lower mode, is reported in the settings dialog and never produces corrupted output. |
+| R19 | Right-click context menu in the terminal view: Copy, Paste, Select All, Find, Clear Scrollback, Reset Terminal, Character Encoding submenu, New Tab, Detach Tab, Close Tab. A right-click context menu on a tab offers Duplicate, Rename, Detach, Close, Close Others. When mouse reporting is active, Shift+right-click opens the menu. Items that cannot act are disabled, not hidden. |
+| R20 | The character encoding of each session is selectable at run time, not only in the profile. Switching between UTF-8 and Latin-1 takes one menu choice and applies to output decoding, keyboard/paste encoding and cell width. It does not restart the child or clear the screen. The set includes at least UTF-8, ISO-8859-1 (Latin-1), ISO-8859-2, ISO-8859-15, Windows-1250, Windows-1251, Windows-1252, KOI8-R, CP437 and CP850. A profile sets the default encoding. The `LANG`/`LC_ALL` value given to the child follows the profile, not the live choice. |
 
 ## 2. Decisions
 
@@ -69,6 +71,19 @@ document are closed unless a build or test proves one of them impossible.
   `conpty.dll` is vendored.
 - **No session restore across restart.** Only geometry, profiles and appearance
   are restored.
+- **Encoding is a view setting.** The parser decodes bytes through a private
+  `FXTerminalCharset` layer in front of the UTF-8 state machine. UTF-8 stays the
+  default and the fast path. Single-byte encodings map each byte to a codepoint
+  through the table of an `FXTextCodec` (`FX88591Codec`, `FX88592Codec`,
+  `FXCP1252Codec`, `FXKOI8RCodec`) or a small built-in table for the codecs the
+  library lacks (ISO-8859-15, Windows-1250, Windows-1251, CP437, CP850). Input
+  (keys, paste, IME) goes through the inverse mapping; an unmappable character
+  becomes `?` and the status line says so once. Multi-byte legacy encodings
+  (Shift_JIS, EUC-JP, GBK, Big5) are out of scope for now. Changing the encoding
+  never resets the screen model, so already drawn cells keep their codepoints.
+- **Context menus are a view feature.** `FXTerminal` sends a context request to
+  its target and the application builds the menu, so the library widget holds no
+  menu policy.
 - **Transparency is compositor-backed, not desktop capture.** The terminal never
   screenshots the desktop or wallpaper to fake transparency. The desktop shows
   through only where the window system supports alpha.
@@ -256,6 +271,8 @@ size from the visible area and font metrics. Its API must include:
 - `getSupportedTransparencyModes()` returning a bit mask of the three modes.
   The mask is queried after the widget is created and may change when the
   window is moved to a different compositor or display.
+- `setEncoding(const FXString& name)`, `getEncoding()` and
+  `getSupportedEncodings()` for the run-time character encoding (R20).
 - `search()`, `findNext()`, `findPrev()`, `clearSearch()`.
 - `selectAll()`, `copySelection()`, `pasteClipboard()`.
 - `getSelectedText()`.
@@ -271,6 +288,8 @@ Notification selectors from the widget to its target:
 | `ID_EXITED` | The child exited. The target calls `getExitCode()` and applies the profile's close-on-exit policy. |
 | `ID_CLIPBOARD` | The child requested a clipboard read or write through OSC 52. The application decides whether to allow it. |
 | `ID_TERMINAL_SEARCH_CHANGED` | Search result count changed; optional for the search bar. |
+| `ID_CONTEXT` | The user right-clicked, or pressed the menu key or Shift+F10. The data pointer holds the position and whether a selection exists; the target pops up the menu (R19). |
+| `ID_ENCODING` | The effective encoding changed, for example after an unsupported name fell back to UTF-8. |
 | `ID_TRANSPARENCY` | The effective transparency mode changed, for example after a capability query or a move to another compositor. The target calls `getTransparencyMode()` and the supported-mask getter. |
 
 `FXWindow` gains `setOpacity(FXint percent)`, `getOpacity()` and
@@ -1440,6 +1459,9 @@ auto-scroll on selection drag, font zoom and wheel behavior.
 
 Acceptance:
 
+- Right-click opens the terminal context menu of R19 and a tab right-click
+  opens the tab menu; Shift+right-click works while a child has mouse reporting
+  on; the menu key and Shift+F10 open it at the cursor.
 - IME commits correctly on X11 and Windows.
 - Multi-line paste warning appears and Cancel sends nothing.
 - Bracketed paste is used only when the child enabled it.
@@ -1461,6 +1483,10 @@ and `PreferencesDialog`.
 
 Acceptance:
 
+- Switching a live tab from UTF-8 to Latin-1 and back through the context
+  menu or the Settings dialog changes how bytes 0x80..0xFF display (`printf
+  '\xe4'` shows `ä` in Latin-1 and U+FFFD in UTF-8) without restarting the
+  child; the profile stores the default (`[PROFILE] encoding`).
 - Built-in profiles and schemes are available on a fresh registry.
 - Editing a profile and creating a tab uses the new values.
 - Appearance changes apply live to open terminals.
@@ -1554,6 +1580,96 @@ Acceptance:
 - Screenshots exist for X11, Wayland and Windows, including one transparent
   background and one whole-window opacity shot per supported backend.
 - No new compiler warnings in the new files under the project warning flags.
+
+### Status review (Wayland build)
+
+Reviewed against the tree on the `foxterm` Wayland target
+(`FOX_WAYLAND_TARGET=foxterm ./scripts/build-fox2-wayland.sh`). The build is
+clean for the terminal files. `terminalmodel` and `pty` pass. `foxterm --help`
+runs, and `foxterm --execute /bin/sh -c ...` starts on the live Wayland session.
+
+Done: Phase 1, Phase 2 (POSIX), most of Phase 3, Phase 4, the core of Phase 5,
+the in-process detach of Phase 6, the core of Phases 7 to 9, and `window` mode
+of Phase 10. Phase 11 and Phase 12 are not started.
+
+Bugs and gaps found in review:
+
+- **B1 `closeOnExit` is never applied.** `Profiles` loads and saves
+  `closeOnExit`, but `TerminalWindow::onCmdExited()` only appends `[exited]`.
+  A tab whose child exits stays open under the default policy (`true`). Fix:
+  close the tab on exit when the policy is set, close the window when it was
+  the last tab, and keep the tab with the `[exited]` suffix otherwise
+  (section 10.3).
+- **B2 `confirmClose` is never applied.** Closing a tab or window with a live
+  child does not ask for confirmation (section 10.5).
+- **B3 No docs or screenshots for Wayland tabs and opacity.** `docs/terminal.md`
+  does not exist; `foxterm.1` exists but is not checked against the options.
+- **B4 Phase 3 gates are unverified:** `stty size` after resize, Ctrl+C,
+  `vim`/`less` alternate-screen round trip, selection drag, and a real Wayland
+  frame of the interactive shell.
+- **Missing, Phase 5:** overflow scrolling, drag reorder, duplicate, rename,
+  Ctrl+Tab cycling (only Next/Previous menu items exist), the 20-tab gate.
+- **Missing, Phase 6:** drag tear-off, tab context menu, Ctrl+Shift+M,
+  lost-grab cancel.
+- **Missing, Phase 8:** multi-line paste confirmation, OSC 52 policy (requests
+  are only blocked and reported in the status line), IME gate, font zoom.
+- **Missing, Phase 9:** color schemes, font and cursor fields, profile
+  create/delete, live appearance updates.
+- **Missing, Phase 10:** capability label in the settings dialog, detach and
+  restart opacity gates, pixel gates from section 14.5.
+- **Missing, whole plan:** no automated `gate-wayland-foxterm.sh`; the Windows
+  ConPTY run is still untested on real Windows.
+
+Visual review (screenshots, not re-captured in this review):
+`screenshots/tests/fox2/wayland/foxterm.png` and
+`x11/foxterm-tabs.png` date from 26 Nov, before the later theme work. They were
+compared with the two targets, Windows Terminal on Windows 11 and Konsole on KDE
+Plasma:
+
+- **V1 Cell spacing is wrong.** The prompt `sh-5.3$` is drawn with a wide gap
+  between glyphs; the cell width is larger than the glyph advance, so text looks
+  letter-spaced. Windows Terminal and Konsole pack cells tightly. Check
+  `getTextWidth()` rounding and the font choice (`FONT_MONO` must be a true
+  fixed-pitch face).
+- **V2 Tab strip is not Windows Terminal style.** The X11 strip has a plain white
+  background and a hard-edged tab; Windows Terminal uses a darker strip, a
+  rounded-top active tab that merges into the terminal background, a subtle
+  hover state and a close button visible only on hover or on the active tab.
+  Konsole uses a flat bar with a thin accent line. Use the theme roles (the
+  Wayland frame already uses a dark strip with a blue accent line).
+- **V3 Buttons look like 1990s FOX.** `+`, `Default`, `Menu` are bordered raised
+  buttons with caret glyphs overlapping the text. Windows Terminal shows
+  flat `+` and chevron buttons that highlight on hover; use flat toolbar
+  buttons with separate drop-down arrows.
+- **V4 Chrome carries too much.** The Wayland frame has no padding around the
+  grid (text touches the left edge) and a tall status line. Windows Terminal and
+  Konsole pad the grid by 4 to 8 px and Konsole hides the status bar. Add a
+  grid padding metric and make the status line optional (hidden by default,
+  shown on exit or error).
+- **V5 No scrollbar, cursor or selection shown** in any screenshot. Konsole and
+  Windows Terminal both show a thin overlay scrollbar; capture a frame with a
+  visible cursor, a selection and a scrollbar.
+- **V6 Native title bar is intentional** (section 2). Windows 11 shows tabs in
+  the title bar; this stays a documented difference.
+- **V7 Re-capture** all screenshots on the current tree and add `foxterm-menu`
+  (context menu) and `foxterm-latin1` shots.
+
+New requests, now R19 and R20 in section 1 and in the Phase 8 and Phase 9
+acceptance lists:
+
+- **N1 Context menu.** Not implemented. There is no `ID_CONTEXT`, no right-click
+  handler in `FXTerminal`, and no tab menu.
+- **N2 Encoding switch.** Not implemented. `FXTerminalParser` decodes only UTF-8
+  (`PARSER_UTF8`) and `Profiles` has no encoding field. FOX already has
+  `FX88591Codec`, `FX88592Codec`, `FXCP1252Codec` and `FXKOI8RCodec` to reuse;
+  ISO-8859-15, Windows-1250/1251, CP437 and CP850 need small tables. Work
+  items: `FXTerminalCharset` in `lib/`, `FXTerminal::setEncoding()`, inverse
+  mapping for keys and paste, width rule for single-byte sets (all one cell),
+  an Encoding submenu with a check on the active entry, a profile field, and
+  a `terminalmodel` test per encoding.
+
+Next steps in order: B1, B2, N1, N2, V1 to V4, B4 gate script, Phase 5 and 6 follow-ups,
+Phase 8 follow-ups, Phase 9 color schemes, Phase 11, Phase 12.
 
 ## 14. Tests and verification
 
