@@ -94,6 +94,7 @@ struct FXTerminalPrivate {
   FXbool                mousereport;
   FXbool                follow;
   FXbool                blinkon;
+  FXbool                fixedpitch;
   FXbool                readwatch;
   FXbool                writewatch;
   FXbool                exitnotified;
@@ -113,7 +114,7 @@ struct FXTerminalPrivate {
   FXColor               cursorcolor;
   FXColor               selbackcolor;
   FXColor               seltextcolor;
-  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
+  FXTerminalPrivate():parser(screen),font(nullptr),notify(nullptr),notifyselector(0),cellw(1),cellh(1),ascent(1),marginleft(0),marginright(0),margintop(0),marginbottom(0),contentwidth(1),contentheight(1),selstartrow(-1),selstartcol(-1),selendrow(-1),selendcol(-1),anchorrow(-1),anchorcol(-1),mousemode(0),mousereport(false),follow(true),blinkon(true),fixedpitch(false),readwatch(false),writewatch(false),exitnotified(false),kind(TERMINAL_XTERM),findflags(0),findindex(-1),lastbell(0),defaultfg(FXRGB(204,204,204)),defaultbg(FXRGB(12,12,12)),cursorcolor(FXRGB(255,255,255)),selbackcolor(FXRGB(38,79,120)),seltextcolor(FXRGB(255,255,255)){ }
   };
 
 
@@ -399,11 +400,25 @@ static FXbool sendKeySequence(FXTerminalPrivate *p,FXTerminal *term,FXEvent *eve
 
 // Update the terminal content metrics
 static void updateMetrics(FXTerminalPrivate *p){
+  FXchar digit;
+  FXint advance;
   if(!p->font) return;
-  p->cellw=p->font->getTextWidth("M",1);
-  if(p->cellw<=0) p->cellw=FXMAX(1,p->font->getTextWidth("0",1));
-  p->cellh=FXMAX(1,p->font->getFontHeight());
-  p->ascent=p->font->getFontAscent();
+
+  // A cell holds the widest glyph of the grid; a fixed pitch face makes every
+  // advance equal, so a run of cells cannot drift away from the column grid
+  advance=FXMAX(1,p->font->getTextWidth("M",1));
+  advance=FXMAX(advance,p->font->getTextWidth("W",1));
+  for(digit='0'; digit<='9'; digit++) advance=FXMAX(advance,p->font->getTextWidth(&digit,1));
+  p->cellw=advance;
+
+  // No extra leading: the cell is the ascent plus the descent, so rows pack
+  // the way the terminal targets do
+  p->ascent=FXMAX(0,p->font->getFontAscent());
+  p->cellh=FXMAX(1,p->ascent+FXMAX(0,p->font->getFontDescent()));
+
+  // A run of equal attribute cells is drawn with one text call, which is only
+  // exact when ten glyphs advance ten cells
+  p->fixedpitch=p->font->isFontMono() && p->font->getTextWidth("MMMMMMMMMM",10)==10*p->cellw;
   }
 
 
@@ -486,6 +501,10 @@ FXTerminal::~FXTerminal(){
 void FXTerminal::create(){
   FXScrollArea::create();
   if(priv && priv->font) priv->font->create();
+
+  // The metrics taken in the constructor came from a font that was not
+  // realized yet; take them again from the real face
+  if(priv) updateMetrics(priv);
   createComposeContext();
   if(getComposeContext() && priv && priv->font) getComposeContext()->setFont(priv->font);
   recalc();
@@ -1027,34 +1046,65 @@ long FXTerminal::onPaint(FXObject*,FXSelector,void* ptr){
     const FXTerminalRow& row=rowAt(priv,r);
     y=getContentY()+priv->margintop+(r-firstrow)*priv->cellh;
     if(y+priv->cellh<event->rect.y || y>event->rect.y+event->rect.h) continue;
-    for(c=0; c<priv->screen.getColumns(); c++){
+    for(c=0; c<priv->screen.getColumns(); ){
       const FXTerminalCell& cell=(c<(FXint)row.cells.size()) ? row.cells[c] : priv->screen.getCell(0,0);
-      if(cell.width==0) continue;
+      FXint span=cell.width;
+      FXint cells=span;
+      FXbool drawable=(cell.attr&TERMATTR_HIDDEN)==0;
+      if(span==0){ c++; continue; }
       x=priv->marginleft+c*priv->cellw;
-      if(x+priv->cellw<event->rect.x || x>event->rect.x+event->rect.w) continue;
+      if(x+span*priv->cellw<event->rect.x){ c+=span; continue; }
+      if(x>event->rect.x+event->rect.w) break;
       fg=resolveColor(priv,cell.fg,priv->defaultfg);
       bg=resolveColor(priv,cell.bg,priv->defaultbg);
       if(cell.attr&TERMATTR_REVERSE){ FXColor t=fg; fg=bg; bg=t; }
       if(isSelected(priv,r,c)){ fg=priv->seltextcolor; bg=priv->selbackcolor; }
-      dc.setForeground(bg);
-      dc.fillRectangle(x,y,priv->cellw,priv->cellh);
       text=cellTextAt(priv,r,c);
-      if(!text.empty() && !(cell.attr&TERMATTR_HIDDEN)){
+
+      // Collect a run of cells with one rendition, so a word is a single text
+      // call; only for a fixed pitch face, where the call advances exactly one
+      // cell per character, and only over simple one cell glyphs
+      if(priv->fixedpitch && span==1 && cell.cluster==0 && drawable){
+        FXint c2=c+1;
+        while(c2<priv->screen.getColumns()){
+          const FXTerminalCell& neighbor=(c2<(FXint)row.cells.size()) ? row.cells[c2] : priv->screen.getCell(0,0);
+          FXColor nfg;
+          FXColor nbg;
+          FXString piece;
+          if(neighbor.width!=1 || neighbor.cluster!=0) break;
+          if(neighbor.attr!=cell.attr) break;
+          if(neighbor.attr&TERMATTR_HIDDEN) break;
+          nfg=resolveColor(priv,neighbor.fg,priv->defaultfg);
+          nbg=resolveColor(priv,neighbor.bg,priv->defaultbg);
+          if(neighbor.attr&TERMATTR_REVERSE){ FXColor t=nfg; nfg=nbg; nbg=t; }
+          if(isSelected(priv,r,c2)){ nfg=priv->seltextcolor; nbg=priv->selbackcolor; }
+          if(nfg!=fg || nbg!=bg) break;
+          piece=cellTextAt(priv,r,c2);
+          if(piece.empty()) text+=' ';
+          else text+=piece;
+          cells++;
+          c2++;
+          }
+        }
+      dc.setForeground(bg);
+      dc.fillRectangle(x,y,cells*priv->cellw,priv->cellh);
+      if(!text.empty() && drawable){
         dc.setForeground(fg);
         dc.drawText(x,y+priv->ascent,text);
         }
-      if(cell.attr&TERMATTR_UNDERLINE){
+      if(drawable && (cell.attr&TERMATTR_UNDERLINE)){
         dc.setForeground(fg);
-        dc.drawLine(x,y+priv->cellh-2,x+priv->cellw-1,y+priv->cellh-2);
+        dc.drawLine(x,y+priv->cellh-2,x+cells*priv->cellw-1,y+priv->cellh-2);
         }
-      if(cell.attr&TERMATTR_OVERLINE){
+      if(drawable && (cell.attr&TERMATTR_OVERLINE)){
         dc.setForeground(fg);
-        dc.drawLine(x,y+1,x+priv->cellw-1,y+1);
+        dc.drawLine(x,y+1,x+cells*priv->cellw-1,y+1);
         }
-      if(cell.attr&TERMATTR_STRIKE){
+      if(drawable && (cell.attr&TERMATTR_STRIKE)){
         dc.setForeground(fg);
-        dc.drawLine(x,y+priv->cellh/2,x+priv->cellw-1,y+priv->cellh/2);
+        dc.drawLine(x,y+priv->cellh/2,x+cells*priv->cellw-1,y+priv->cellh/2);
         }
+      c+=cells;
       }
     }
   if(hasFocus() && priv->screen.getPrivateMode(25)){

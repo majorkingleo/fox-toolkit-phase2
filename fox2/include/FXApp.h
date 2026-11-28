@@ -248,6 +248,8 @@ private:
   FXColor          selMenuBackColor;    // Select background color in menus
   FXTheme          theme;               // Semantic colors and metrics
   FXStyle          style;               // Chrome renderer for the theme
+  FXFontDesc       monodesc;            // Fixed pitch role when the theme leaves it open
+  FXbool           monodescset;         // monodesc has been resolved
   FXuint           allowedThemes;       // Built-in themes permitted by this application
   FXuint           defaultTheme;        // Fallback built-in theme when selection is disallowed
   FXbool           restrictThemes;      // Restrict registry theme selection to built-ins
@@ -399,6 +401,10 @@ protected:
 
   /// Destroy and forget the cached theme role fonts
   void releaseRoleFonts();
+
+  /// Return the description of a font role; the fixed pitch role falls back
+  /// to a face that is really fixed pitch when the theme leaves it open
+  const FXFontDesc& roleFontDesc(FXint role);
 
   /// Return true if an event arrives within blocking nanoseconds
   virtual FXbool getNextEvent(FXRawEvent& ev,FXTime blocking=forever);

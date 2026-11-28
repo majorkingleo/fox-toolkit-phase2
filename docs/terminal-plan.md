@@ -1717,6 +1717,42 @@ advance, every cell is too wide. Work:
   tr ' ' M` and checks the row is exactly `80*cellw` px wide, and a screenshot
   where `sh-5.3$` touches no gap wider than 1 px.
 
+**Step S1 result (done).** The cause was one level below the widget: no preset
+sets a font role, so `FXTheme::font(FONT_MONO)` was empty and
+`FXApp::getRoleFont(FONT_MONO)` inherited the interface font. On this machine
+that is `Noto Sans` with `i=3, M=11, W=12, 0=7`, while the terminal sized a cell
+from `M`: 11 px cells for an 8 px grid, which is the letter spacing of V1.
+
+- `FXApp::roleFontDesc()` resolves the fixed pitch role when the theme leaves it
+  open: `Cascadia Mono`, `Consolas`, `DejaVu Sans Mono`, `Liberation Mono`,
+  `Noto Sans Mono`, `monospace` are tried in order, and a candidate is only
+  accepted when `FXFont::isFontMono()` reports fixed pitch. The result is cached
+  and re-resolved by `releaseRoleFonts()` on a theme change. `FXText`,
+  `FXConsole` and `FXTerminal` all asked for the mono role and all silently got
+  the proportional face; they now get `Noto Sans Mono` with an 8 px advance on
+  both backends.
+- `FXTerminal` metrics: `cellw` is the widest advance of `0`..`9`, `M` and `W`
+  (equal for a fixed pitch face), `cellh` is `ascent+descent` with no leading,
+  metrics are taken again in `create()` once the font is realized, and
+  `fixedpitch` records whether ten glyphs really advance ten cells.
+- `FXTerminal::onPaint()` draws a run of cells that share foreground,
+  background and attributes with one `drawText()`, plus one underline,
+  overline or strike line per run. Runs are only joined for a fixed pitch face
+  and only over one-cell glyphs with no cluster, so a wide or clustered cell
+  keeps its own call. This also paints the second half of a wide cell.
+
+Gate: `scripts/gate-wayland-foxterm-metrics.sh` starts a shell that prints two
+rows of 80 `M` and measures the committed frame: 80 separate blobs, one pitch,
+largest gap 1 px, ink 639 px against 80 pitches of 640 px, row pitch 18 px
+(= ascent 14 + descent 4). With the old resolution the same gate fails
+(proportional face, 222 blobs). The `gate-wayland-foxterm.sh` phases,
+`terminalmodel`, `pty` and the X11 CMake target still pass.
+
+Not in S1: CJK still renders as boxes on this backend through a mono face
+without CJK coverage (the same happens with the proportional face, so it is a
+font fallback topic, not a metric defect); the committed screenshots are
+recaptured by V7.
+
 **Step S2: grid padding and chrome density.**
 - Add a `padding` property to `FXTerminal` (default `METRIC_PADDING`, at least
   6 px, scaled by DPI) applied to all four sides; the background fills the
@@ -1816,9 +1852,9 @@ Acceptance for the visual goals:
   the targets are limited to: native title bar (V6 above) and font
   availability.
 
-Next steps in order: N1, N2, visual Steps S1 to S5, B4 gate script, Phase 5
+Next steps in order: N1, N2, visual Steps S2 to S5, B4 gate script, Phase 5
 and 6 follow-ups, Phase 8 follow-ups, Phase 9 color schemes, Phase 11,
-Phase 12. B1 and B2 are done; see the fix result below.
+Phase 12. B1 and B2 are done, and so is S1; see the fix result below.
 
 ### Fix result (B1, B2)
 
@@ -1838,6 +1874,10 @@ Changes:
   key is encoded for the child, including the shifted form of a letter.
 - `fox2/apps/foxterm/foxterm.1`: tabs, detach, close-on-exit, confirmation and
   `--opacity` documented.
+- `scripts/gate-wayland-foxterm-metrics.sh`: visual step S1 gate; two rows of
+  80 `M` in a committed frame must show 80 glyph blobs on one 8 px pitch with
+  gaps of at most 2 px, ink spanning 80 pitches, and the cell height as the row
+  pitch.
 - `scripts/gate-wayland-foxterm.sh`: new headless-sway gate with six phases:
   default close-on-exit closes the process; `closeonexit=false` keeps the tab
   with `[exited]`; SIGINT quits without a dialog; Ctrl+Shift+W on a live child

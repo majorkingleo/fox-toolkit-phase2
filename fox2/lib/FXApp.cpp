@@ -432,6 +432,7 @@ FXApp::FXApp(const FXString& name,const FXString& vendor):registry(name,vendor),
 
   // Theme font roles inherit the normal font until a theme names one
   clearElms(roleFonts,FONT_LAST);
+  monodescset=false;
 
   // We delete the stock font
   stockFont=normalFont;
@@ -1532,6 +1533,7 @@ void FXApp::destroy(){
 void FXApp::releaseRoleFonts(){
   FXFontSet *set;
   FXint i;
+  monodescset=false;
   for(i=0; i<FONT_LAST; i++){
     if(roleFonts[i] && roleFonts[i]!=normalFont){
       roleFonts[i]->destroy();
@@ -1561,9 +1563,61 @@ void FXApp::destroyFontSets(){
   }
 
 
+// Face names tried, in order, when the theme leaves the fixed pitch role open
+static const FXchar* const monofaces[]={
+  "Cascadia Mono","Consolas","DejaVu Sans Mono","Liberation Mono","Noto Sans Mono","monospace"
+  };
+
+
+// Resolve the fixed pitch role; a proportional face makes every cell wider
+// than the glyph advance, so a face whose 'i' and 'M' advances differ is
+// rejected and the next one is tried
+static void resolveMonoDesc(FXApp* app,const FXFontDesc& base,FXFontDesc& desc){
+  FXFont *font;
+  FXbool mono;
+  FXint i;
+  desc=base;
+  for(i=0; i<(FXint)ARRAYNUMBER(monofaces); i++){
+    fxstrlcpy(desc.face,monofaces[i],sizeof(desc.face));
+    font=new FXFont(app,desc);
+    font->create();
+    mono=font->isFontMono();
+    font->destroy();
+    delete font;
+    if(mono) return;
+    }
+  desc.face[0]=0;
+  }
+
+
+// Return the description of a theme font role.  The fixed pitch role must not
+// inherit the proportional interface font, because the terminal grid sizes a
+// cell from it; it is resolved once to a face the platform really reports as
+// fixed pitch.
+const FXFontDesc& FXApp::roleFontDesc(FXint role){
+  if(role<0 || FONT_LAST<=role) return theme.font(FONT_UI);
+  if(theme.font(role).face[0]) return theme.font(role);
+  if(role!=FONT_MONO) return theme.font(role);
+  if(!monodescset){
+
+    // Probing needs a display; before init() take the first candidate and
+    // resolve again once the application is initialized
+    if(isInitialized()){
+      resolveMonoDesc(this,basefontdesc,monodesc);
+      monodescset=true;
+      }
+    else{
+      monodesc=basefontdesc;
+      fxstrlcpy(monodesc.face,monofaces[0],sizeof(monodesc.face));
+      }
+    }
+  return monodesc;
+  }
+
+
 // Return font for the given theme font role; inherits the normal font when the theme leaves the role open
 FXFont* FXApp::getRoleFont(FXint role){
-  const FXFontDesc& desc=theme.font(role);
+  const FXFontDesc& desc=roleFontDesc(role);
 
   // Unknown role or a role the theme did not fill in
   if(role<0 || FONT_LAST<=role || desc.face[0]==0) return normalFont;
@@ -1587,7 +1641,7 @@ FXFont* FXApp::getRoleFont(FXint role,FXint dpivalue){
   FXdouble factor;
   FXint i;
   if(dpivalue<=0 || dpivalue==dpi) return getRoleFont(role);
-  desc=theme.font(role);
+  desc=roleFontDesc(role);
   if(role<0 || FONT_LAST<=role || desc.face[0]==0) return getNormalFont(dpivalue);
   for(set=fontsets; set && set->dpi!=dpivalue; set=set->next){}
   if(!set){
