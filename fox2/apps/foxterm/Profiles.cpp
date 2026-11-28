@@ -32,6 +32,7 @@ Profiles::Profiles():active("default"){
   def.name="Default";
   def.shell=defaultShell();
   def.term="xterm-256color";
+  def.encoding="UTF-8";
   def.kind=TERMINAL_XTERM;
   def.scrollback=10000;
   def.cursor=0;
@@ -41,6 +42,7 @@ Profiles::Profiles():active("default"){
   vt.name="VT100";
   vt.shell=def.shell;
   vt.term="vt100";
+  vt.encoding="UTF-8";
   vt.kind=TERMINAL_VT100;
   vt.scrollback=10000;
   vt.cursor=0;
@@ -73,6 +75,8 @@ void Profiles::load(FXRegistry& reg){
     entries[i].arguments=reg.readStringEntry(key,"args",entries[i].arguments.text());
     entries[i].directory=reg.readStringEntry(key,"dir",entries[i].directory.text());
     entries[i].term=reg.readStringEntry(key,"term",entries[i].term.text());
+    entries[i].encoding=reg.readStringEntry(key,"encoding",entries[i].encoding.text());
+    if(FXTerminal::findEncoding(entries[i].encoding)<0) entries[i].encoding="UTF-8";
     entries[i].kind=reg.readIntEntry(key,"kind",entries[i].kind)==TERMINAL_VT100 ? TERMINAL_VT100 : TERMINAL_XTERM;
     if(entries[i].kind==TERMINAL_VT100 && entries[i].term.find("vt100")<0) entries[i].term="vt100";
     if(entries[i].kind==TERMINAL_XTERM && entries[i].term.empty()) entries[i].term="xterm-256color";
@@ -96,6 +100,7 @@ void Profiles::save(FXRegistry& reg) const {
     reg.writeStringEntry(key,"args",entries[i].arguments.text());
     reg.writeStringEntry(key,"dir",entries[i].directory.text());
     reg.writeStringEntry(key,"term",entries[i].term.text());
+    reg.writeStringEntry(key,"encoding",entries[i].encoding.text());
     reg.writeIntEntry(key,"kind",entries[i].kind);
     reg.writeIntEntry(key,"scrollback",entries[i].scrollback);
     reg.writeIntEntry(key,"cursor",entries[i].cursor);

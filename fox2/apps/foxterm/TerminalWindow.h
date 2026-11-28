@@ -87,8 +87,9 @@ protected:
   void saveGeometry();
   FXint findTab(FXObject* view) const;
   /// Add a tab and start it; the launch is copied because the vector of tabs
-  /// reallocates while the new tab is being started
-  FXbool addTab(FXTerminalLaunch l,FXString profileid=FXString::null);
+  /// reallocates while the new tab is being started.  An empty encoding takes
+  /// the one of the profile
+  FXbool addTab(FXTerminalLaunch l,FXString profileid=FXString::null,const FXString& encoding=FXString::null);
   void selectTab(FXint index);
   void closeTab(FXint index,FXbool force=false);
   void updateTabTitle(FXint index);
@@ -234,8 +235,14 @@ public:
   /// Enable Close Others only with more than one tab
   long onUpdCloseOthers(FXObject*,FXSelector,void*);
 
-  /// Encoding switching awaits N2
+  /// Select the character encoding of the active tab
+  long onCmdEncoding(FXObject*,FXSelector,void*);
+
+  /// Check the active encoding and enable the entries that can act
   long onUpdEncoding(FXObject*,FXSelector,void*);
+
+  /// Report text the active encoding cannot express
+  long onCmdEncodingLoss(FXObject*,FXSelector,void*);
 
   /// Show About
   long onCmdAbout(FXObject*,FXSelector,void*);

@@ -34,6 +34,7 @@ struct TerminalProfile {
   FXString arguments;
   FXString directory;
   FXString term;
+  FXString encoding;            // character encoding of a new session
   FXint    kind;
   FXint    scrollback;
   FXint    cursor;

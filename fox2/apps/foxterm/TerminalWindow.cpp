@@ -90,7 +90,9 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_DETACH,TerminalWindow::onUpdTabMenu),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_CLOSE,TerminalWindow::onUpdTabMenu),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLOSE_OTHERS,TerminalWindow::onUpdCloseOthers),
+  FXMAPFUNCS(SEL_COMMAND,TerminalWindow::ID_ENCODING0,TerminalWindow::ID_ENCODING_LAST,TerminalWindow::onCmdEncoding),
   FXMAPFUNCS(SEL_UPDATE,TerminalWindow::ID_ENCODING0,TerminalWindow::ID_ENCODING_LAST,TerminalWindow::onUpdEncoding),
+  FXMAPFUNC(SEL_CHANGED,FXTerminal::ID_ENCODING_LOSS,TerminalWindow::onCmdEncodingLoss),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_ABOUT,TerminalWindow::onCmdAbout),
   FXMAPFUNC(SEL_COMMAND,TerminalWindow::ID_QUIT,TerminalWindow::onCmdQuit),
   FXMAPFUNC(SEL_SIGNAL,TerminalWindow::ID_QUIT,TerminalWindow::onSignalQuit),
@@ -154,10 +156,12 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
   new FXMenuCommand(contextmenu,"Clear Scroll&back",nullptr,this,ID_CLEAR_SCROLLBACK);
   new FXMenuCommand(contextmenu,"&Reset Terminal",nullptr,this,ID_RESET_TERMINAL);
   {
-    FXMenuRadio *utf8;
+    // One radio per supported encoding; the update handler puts the check on
+    // the encoding the active tab really uses
     encodingmenu=new FXMenuPane(this);
-    utf8=new FXMenuRadio(encodingmenu,"UTF-8",this,ID_ENCODING0);
-    utf8->setCheck(true);
+    for(FXint i=0; i<FXTerminal::getSupportedEncodingCount() && i<=ID_ENCODING_LAST-ID_ENCODING0; i++){
+      new FXMenuRadio(encodingmenu,FXTerminal::getSupportedEncodingName(i),this,ID_ENCODING0+i);
+      }
     new FXMenuCascade(contextmenu,"Character &Encoding",nullptr,encodingmenu);
     }
   new FXMenuSeparator(contextmenu);
@@ -218,9 +222,10 @@ FXint TerminalWindow::findTab(FXObject* view) const {
 // Add one tab and start it.  The launch comes by value: the vector of tabs
 // reallocates in the middle of this function and a reference into it would
 // dangle, which is what a duplicate of a tab used to crash on.
-FXbool TerminalWindow::addTab(FXTerminalLaunch l,FXString profileid){
+FXbool TerminalWindow::addTab(FXTerminalLaunch l,FXString profileid,const FXString& encoding){
   FXString error;
   TerminalTab tab;
+  FXint found;
   FXTerminal *view=new FXTerminal(switcher,this,0,LAYOUT_FILL_X|LAYOUT_FILL_Y);
   view->create();
   tab.view=view;
@@ -230,6 +235,10 @@ FXbool TerminalWindow::addTab(FXTerminalLaunch l,FXString profileid){
   tab.directory=l.directory;
   tab.exited=false;
   tab.exitcode=-1;
+  // The profile selects the encoding of a new session; a duplicate may keep the
+  // encoding of the session it was made from
+  found=profiles.find(tab.profileid);
+  view->setEncoding(encoding.empty() ? (found>=0 ? profiles.at(found).encoding : FXString("UTF-8")) : encoding);
   tabs.push_back(tab);
   tabbar->addTitle(tab.title);
   selectTab((FXint)tabs.size()-1);
@@ -508,7 +517,7 @@ long TerminalWindow::onCmdTabMenu(FXObject*,FXSelector,void* ptr){
 // Duplicate the tab the strip menu was posted for
 long TerminalWindow::onCmdDupTab(FXObject*,FXSelector,void*){
   if(contexttab<0 || contexttab>=(FXint)tabs.size()) return 1;
-  addTab(tabs[contexttab].launch,tabs[contexttab].profileid);
+  addTab(tabs[contexttab].launch,tabs[contexttab].profileid,tabs[contexttab].view->getEncoding());
   return 1;
   }
 
@@ -597,9 +606,40 @@ long TerminalWindow::onUpdCloseOthers(FXObject* sender,FXSelector,void*){
   }
 
 
-// Encoding switching is N2; the submenu shows the active encoding, disabled
-long TerminalWindow::onUpdEncoding(FXObject* sender,FXSelector,void*){
-  return setEnabled(sender,this,false);
+// Select the character encoding of the active tab; the session and its screen
+// keep running, only the decoding of further output and the encoding of input
+// change
+long TerminalWindow::onCmdEncoding(FXObject*,FXSelector sel,void*){
+  FXint index=(FXint)FXSELID(sel)-ID_ENCODING0;
+  FXString selected;
+  FXString text;
+  if(current<0 || current>=(FXint)tabs.size()) return 1;
+  if(index<0 || index>=FXTerminal::getSupportedEncodingCount()) return 1;
+  selected=tabs[current].view->setEncoding(FXTerminal::getSupportedEncodingName(index));
+  text.format("Encoding: %s",selected.text());
+  showStatus(text);
+  return 1;
+  }
+
+
+// The check follows the encoding of the active tab, so a switch made in one
+// tab does not mark the entry for the others
+long TerminalWindow::onUpdEncoding(FXObject* sender,FXSelector sel,void*){
+  FXString active;
+  FXint index=(FXint)FXSELID(sel)-ID_ENCODING0;
+  FXbool hasTab=0<=current && current<(FXint)tabs.size();
+  if(hasTab) active=tabs[current].view->getEncoding();
+  sender->handle(this,((hasTab && active==FXTerminal::getSupportedEncodingName(index)) ? FXSEL(SEL_COMMAND,FXWindow::ID_CHECK) : FXSEL(SEL_COMMAND,FXWindow::ID_UNCHECK)),nullptr);
+  return setEnabled(sender,this,hasTab);
+  }
+
+
+// Report text the session could not express; the child received '?'
+long TerminalWindow::onCmdEncodingLoss(FXObject*,FXSelector,void*){
+  FXString text;
+  text.format("Some characters are not in %s; sent '?'",current>=0 && current<(FXint)tabs.size() ? tabs[current].view->getEncoding().text() : "the encoding");
+  showStatus(text);
+  return 1;
   }
 
 
@@ -828,6 +868,7 @@ long TerminalWindow::onCmdSettings(FXObject*,FXSelector,void*){
   FXTextField *termfield;
   FXSpinner *scrollback;
   FXComboBox *kindcombo;
+  FXComboBox *encodingcombo;
   if(index<0) index=0;
   profile=&profiles.at(index);
   body=new FXVerticalFrame(&dialog,FXuint(LAYOUT_FILL_X)|FXuint(LAYOUT_FILL_Y),0,0,0,0,8,8,8,8,6,6);
@@ -856,6 +897,11 @@ long TerminalWindow::onCmdSettings(FXObject*,FXSelector,void*){
   kindcombo->appendItem("vt100");
   kindcombo->setCurrentItem(profile->kind==TERMINAL_VT100 ? 1 : 0);
   row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
+  new FXLabel(row,"Encoding:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
+  encodingcombo=new FXComboBox(row,14,nullptr,0,FXuint(COMBOBOX_NORMAL)|FXuint(LAYOUT_CENTER_Y));
+  for(FXint i=0; i<FXTerminal::getSupportedEncodingCount(); i++) encodingcombo->appendItem(FXTerminal::getSupportedEncodingName(i));
+  encodingcombo->setCurrentItem(FXMAX(0,FXTerminal::findEncoding(profile->encoding)));
+  row=new FXHorizontalFrame(body,LAYOUT_FILL_X);
   new FXLabel(row,"Scrollback:",nullptr,FXuint(LAYOUT_CENTER_Y)|FXuint(JUSTIFY_RIGHT),0,0,110,0);
   scrollback=new FXSpinner(row,7,nullptr,0,FXuint(SPIN_NORMAL)|FXuint(LAYOUT_CENTER_Y));
   scrollback->setRange(0,100000);
@@ -872,6 +918,7 @@ long TerminalWindow::onCmdSettings(FXObject*,FXSelector,void*){
     profile->kind=kindcombo->getCurrentItem()==1 ? TERMINAL_VT100 : TERMINAL_XTERM;
     if(profile->kind==TERMINAL_VT100) profile->term="vt100";
     else if(profile->term.empty()) profile->term="xterm-256color";
+    profile->encoding=FXTerminal::getSupportedEncodingName(FXMAX(0,encodingcombo->getCurrentItem()));
     profile->scrollback=scrollback->getValue();
     profiles.save(getApp()->reg());
     getApp()->reg().write();

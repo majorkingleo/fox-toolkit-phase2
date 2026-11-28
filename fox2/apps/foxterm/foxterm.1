@@ -23,13 +23,34 @@ the application, and closing a window that still has running tabs asks once for
 all of them. A termination signal quits without a confirmation dialog.
 .PP
 A right click in the terminal view opens a context menu with Copy, Paste,
-Select All, Find, Clear Scrollback, Reset Terminal, the character encoding (not
-yet selectable), New Tab, Detach Tab and Close Tab. An entry that cannot act is
-disabled, not hidden. While the child has mouse reporting on, the right button
+Select All, Find, Clear Scrollback, Reset Terminal, the character encoding, New
+Tab, Detach Tab and Close Tab. An entry that cannot act is disabled, not
+hidden. While the child has mouse reporting on, the right button
 belongs to the child and Shift+right click still opens the menu. A right click
 on a tab opens Duplicate, Rename, Detach, Close and Close Others for that tab;
 the entries are disabled when the press is on the empty part of the strip.
 \fBReset Terminal\fR clears the scrollback as the terminal reset sequence does.
+.SH CHARACTER ENCODING
+The Character Encoding submenu selects the encoding of the active session. The
+default is UTF-8. The set is UTF-8, ISO-8859-1, ISO-8859-2, ISO-8859-15,
+Windows-1250, Windows-1251, Windows-1252, KOI8-R, CP437 and CP850; the checked
+entry is the encoding the tab uses. A switch takes effect at once: further
+output is decoded with the new set, keys, pasted text and IME text are encoded
+with it, and the screen is neither cleared nor re-decoded, so text that is
+already on the screen keeps its characters. The child is not restarted and is
+not told about the change.
+.PP
+A single byte encoding decodes each byte above 0x7F to one character and draws
+it in one cell; a byte the set leaves empty becomes the replacement character.
+In a single byte encoding there are no eight bit control sequences, so a byte
+like 0x9B is a character and not the start of a control sequence. Keys and
+pastes are converted to the session encoding; a character the encoding cannot
+express is sent as B?R and the status line reports it.
+.PP
+Every profile stores the encoding a new tab starts with in
+B[PROFILE.IidB] encodingR. The profile dialog edits it. The encoding
+belongs to the view, not to the child: the locale the child inherits, and so
+the charset it writes, is the one the session was started with.
 .SH OPTIONS
 .TP
 .B --profile \fIname\fR
