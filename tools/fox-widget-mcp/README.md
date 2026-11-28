@@ -33,13 +33,19 @@ Resources: `fox://widgets` (catalog JSON) and `fox://theme-checklist`.
 
 ## Install
 
+For an agent: run `./install.sh` (registers, then verifies), and read
+[`AGENTS.md`](AGENTS.md) for the tool reference. The rest of this section is the
+same thing by hand.
+
 There is no packaging convention beyond what pi already standardises, and pi
 supports two of them. Use whichever fits:
 
 ### 1. `mcp.json` entry (standard for any MCP client)
 
 ```sh
-pi mcp add fox-widgets -- node /home/martin/programs/fox2/tools/fox-widget-mcp/server.mjs
+pi mcp add fox-widgets -- node "$PWD/server.mjs"      # from this directory
+# or
+./install.sh                                          # same, plus verification
 ```
 
 That writes a user-level entry to `~/.pi/agent/mcp.json`:
@@ -49,7 +55,7 @@ That writes a user-level entry to `~/.pi/agent/mcp.json`:
   "mcpServers": {
     "fox-widgets": {
       "command": "node",
-      "args": ["/home/martin/programs/fox2/tools/fox-widget-mcp/server.mjs"],
+      "args": ["/absolute/path/to/fox-toolkit-phase2/tools/fox-widget-mcp/server.mjs"],
       "description": "FOX 1.7.95 and FOX 2 widget oracle: class hierarchy, headers, implementations, theme coverage, diffs"
     }
   }
@@ -68,14 +74,15 @@ The same JSON block works unchanged in Claude Code, Cursor and other clients.
 `pi.registerMcpServer()` on load:
 
 ```sh
-pi install /home/martin/programs/fox2/tools/fox-widget-mcp
+pi install ./            # from this directory
 ```
 
 Now the server appears in every session without an `mcp.json` entry, and the
 registration is not saved anywhere outside the checkout. A `mcp.json` server of
 the same name wins, so both paths can coexist.
 
-Removal: `pi mcp remove fox-widgets` or `pi remove /home/…/fox-widget-mcp`.
+Removal: `./install.sh --uninstall` (or `pi mcp remove fox-widgets`), or
+`pi remove ./` for the package path.
 
 ## Configuration
 
