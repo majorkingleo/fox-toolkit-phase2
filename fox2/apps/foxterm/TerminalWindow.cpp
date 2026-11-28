@@ -81,13 +81,13 @@ FXDEFMAP(TerminalWindow) TerminalWindowMap[]={
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_PASTE,TerminalWindow::onUpdPaste),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_SELECT_ALL,TerminalWindow::onUpdHasTab),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_FIND,TerminalWindow::onUpdHasTab),
-  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_DETACH,TerminalWindow::onUpdHasTab),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_DETACH,TerminalWindow::onUpdDetach),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLOSE_CURRENT,TerminalWindow::onUpdHasTab),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_RESET_TERMINAL,TerminalWindow::onUpdHasTab),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLEAR_SCROLLBACK,TerminalWindow::onUpdClearScrollback),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_DUP_TAB,TerminalWindow::onUpdTabMenu),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_RENAME_TAB,TerminalWindow::onUpdTabMenu),
-  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_DETACH,TerminalWindow::onUpdTabMenu),
+  FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_DETACH,TerminalWindow::onUpdTabMenuDetach),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_TABMENU_CLOSE,TerminalWindow::onUpdTabMenu),
   FXMAPFUNC(SEL_UPDATE,TerminalWindow::ID_CLOSE_OTHERS,TerminalWindow::onUpdCloseOthers),
   FXMAPFUNCS(SEL_COMMAND,TerminalWindow::ID_ENCODING0,TerminalWindow::ID_ENCODING_LAST,TerminalWindow::onCmdEncoding),
@@ -197,6 +197,13 @@ TerminalWindow::TerminalWindow(FXApp* a,const FXTerminalLaunch& l,const FXString
 // Create and add first tab
 void TerminalWindow::create(){
   FXMainWindow::create();
+  // Panes that no menu button or cascade owns are children of the root window,
+  // not of this one, so creating this window does not create them: the menus
+  // of the first window were created by FXApp::create(), but a window built
+  // later, like a detached one, has to create its own or popup() shows nothing
+  contextmenu->create();
+  encodingmenu->create();
+  tabmenu->create();
   show(PLACEMENT_SCREEN);
   raise();
   if(isOpacitySupported()) setOpacity(opacity);
@@ -417,29 +424,31 @@ long TerminalWindow::onCmdNewWindow(FXObject*,FXSelector,void*){
   }
 
 
-// Detach active tab into a new window
+// Detach active tab into a new window.  A window keeps at least one tab: with
+// a single tab the session would only move to a new window and this one would
+// close, so the action is refused here as well as disabled in the menus.
 void TerminalWindow::detachTab(FXint index){
   TerminalTab tab;
   TerminalWindow *window;
   if(index<0 || index>=(FXint)tabs.size()) return;
+  if(tabs.size()<2) return;
   tab=tabs[index];
   tabs.erase(tabs.begin()+index);
   tabbar->removeTitle(index);
   window=new TerminalWindow(getApp(),tab.launch,activeprofile,false);
   window->create();
   window->move(FXMAX(0,getX()+24),FXMAX(0,getY()+24));
+  // The view reports to the window it lives in; without the retarget its title,
+  // bell, exit and menu notifications would reach the window it came from, and
+  // a crash when that window is gone
+  tab.view->setNotifyTarget(window);
   tab.view->reparent(window->switcher);
   window->tabs.push_back(tab);
   window->tabbar->addTitle(tab.title);
   window->selectTab((FXint)window->tabs.size()-1);
   window->raise();
-  if(tabs.empty()){
-    getApp()->addChore(this,FXWindow::ID_DELETE);
-    }
-  else{
-    if(current>=index && current>0) current--;
-    selectTab(FXCLAMP(0,current,(FXint)tabs.size()-1));
-    }
+  if(current>=index && current>0) current--;
+  selectTab(FXCLAMP(0,current,(FXint)tabs.size()-1));
   }
 
 
@@ -588,6 +597,12 @@ long TerminalWindow::onUpdHasTab(FXObject* sender,FXSelector,void*){
   }
 
 
+// Detach Tab needs a second tab, because a window keeps at least one
+long TerminalWindow::onUpdDetach(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=current && current<(FXint)tabs.size() && tabs.size()>1);
+  }
+
+
 // Clear Scrollback is only possible with retained rows
 long TerminalWindow::onUpdClearScrollback(FXObject* sender,FXSelector,void*){
   return setEnabled(sender,this,0<=current && current<(FXint)tabs.size() && tabs[current].view->getScrollbackCount()>0);
@@ -602,6 +617,13 @@ long TerminalWindow::onUpdTabMenu(FXObject* sender,FXSelector,void*){
 
 // Close Others needs a second tab
 long TerminalWindow::onUpdCloseOthers(FXObject* sender,FXSelector,void*){
+  return setEnabled(sender,this,0<=contexttab && contexttab<(FXint)tabs.size() && tabs.size()>1);
+  }
+
+
+// The Detach entry of the strip menu needs a tab under the press and a second
+// tab to leave behind
+long TerminalWindow::onUpdTabMenuDetach(FXObject* sender,FXSelector,void*){
   return setEnabled(sender,this,0<=contexttab && contexttab<(FXint)tabs.size() && tabs.size()>1);
   }
 
@@ -836,7 +858,12 @@ void TerminalWindow::rebuildProfileMenu(){
   for(FXint i=0; i<profiles.count() && i<16; i++){
     new FXMenuCommand(profilemenu,profiles.at(i).name,nullptr,this,ID_PROFILE0+i);
     }
-  if(profilebutton) profilebutton->setMenu(profilemenu);
+  if(profilebutton){
+    profilebutton->setMenu(profilemenu);
+    // When the pane replaces one the button already created, setMenu() leaves it
+    // without a native window and popup() would show nothing
+    if(profilebutton->id()) profilemenu->create();
+    }
   }
 
 

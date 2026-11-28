@@ -93,6 +93,7 @@ protected:
   void selectTab(FXint index);
   void closeTab(FXint index,FXbool force=false);
   void updateTabTitle(FXint index);
+  /// Move a tab into its own window; refused when it is the only tab
   void detachTab(FXint index);
   void rebuildProfileMenu();
   void terminateTabs();
@@ -226,6 +227,9 @@ public:
   /// Enable entries that need a live tab
   long onUpdHasTab(FXObject*,FXSelector,void*);
 
+  /// Enable Detach Tab only when a second tab stays behind
+  long onUpdDetach(FXObject*,FXSelector,void*);
+
   /// Enable Clear Scrollback only when there is scrollback
   long onUpdClearScrollback(FXObject*,FXSelector,void*);
 
@@ -234,6 +238,9 @@ public:
 
   /// Enable Close Others only with more than one tab
   long onUpdCloseOthers(FXObject*,FXSelector,void*);
+
+  /// Enable the strip menu's Detach only with a second tab
+  long onUpdTabMenuDetach(FXObject*,FXSelector,void*);
 
   /// Select the character encoding of the active tab
   long onCmdEncoding(FXObject*,FXSelector,void*);

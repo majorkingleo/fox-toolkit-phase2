@@ -170,6 +170,11 @@ popups(){
   grep -c "create popup for window" "$RUN/app.log" 2>/dev/null || true
   }
 
+# Number of popups created since a mark
+popups_since(){
+  tail -n +"$1" "$RUN/app.log" | grep -c "create popup"
+  }
+
 # A popup is dismissed when its surface goes away or the compositor says so
 dismissed_since(){
   tail -n +"$1" "$RUN/app.log" | grep -Eq "destroy surface of window .* \(popup\)|popup done"
@@ -349,9 +354,9 @@ expect_entry "$RUN/view-none.png" "$gx" "$gy" view 82 yes     # Find
 expect_entry "$RUN/view-none.png" "$gx" "$gy" view 107 no     # Clear Scrollback: none retained
 expect_entry "$RUN/view-none.png" "$gx" "$gy" view 130 yes    # Reset Terminal
 expect_entry "$RUN/view-none.png" "$gx" "$gy" view 178 yes    # New Tab
-expect_entry "$RUN/view-none.png" "$gx" "$gy" view 201 yes    # Detach Tab
+expect_entry "$RUN/view-none.png" "$gx" "$gy" view 201 no     # Detach Tab: a single tab stays
 expect_entry "$RUN/view-none.png" "$gx" "$gy" view 224 yes    # Close Tab
-echo "    view menu without selection or scrollback: Copy and Clear Scrollback gray"
+echo "    view menu without selection or scrollback: Copy, Clear Scrollback and Detach gray"
 
 focus_app
 wtype -s 250 -M ctrl -M shift -k a -m shift -m ctrl
@@ -390,17 +395,62 @@ for off in 13 36 59 84 107; do
   done
 echo "    strip menu on the empty strip: all five entries gray"
 
-# On the only tab: all but Close Others are enabled
+# On the only tab: Detach and Close Others need a second tab
 tx=${TAB%,*}; ty=${TAB#*,}
 rightclick "$TAB"
 shot "$RUN/strip-tab.png"
 click "$OUTSIDE"
-for off in 13 36 59 84; do
+for off in 13 36 84; do
   expect_entry "$RUN/strip-tab.png" "$tx" "$ty" tab "$off" yes
   done
-expect_entry "$RUN/strip-tab.png" "$tx" "$ty" tab 107 no
-echo "    strip menu on the only tab: Close Others gray, the rest enabled"
-alive || note "the application ended during the disabled-state checks"
+expect_entry "$RUN/strip-tab.png" "$tx" "$ty" tab 59 no   # Detach: a single tab stays
+expect_entry "$RUN/strip-tab.png" "$tx" "$ty" tab 107 no  # Close Others
+echo "    strip menu on the only tab: Detach and Close Others gray"
+
+# With a second tab both Detach entries act, and the detached window posts its
+# own menus: the view is retargeted to the window it moves into, and a window
+# built after the application is up has to create its menu panes itself.
+echo "==> phase 7: Detach needs and gets a second tab"
+wtype -s 250 -M ctrl -M shift -k t -m shift -m ctrl
+sleep 1.0
+focus_app
+rightclick "$GRID"
+shot "$RUN/view-two.png"
+click "$OUTSIDE"
+expect_entry "$RUN/view-two.png" "$gx" "$gy" view 201 yes  # Detach Tab with a second tab
+rightclick "$TAB"
+shot "$RUN/strip-two.png"
+click "$OUTSIDE"
+expect_entry "$RUN/strip-two.png" "$tx" "$ty" tab 59 yes  # Detach with a second tab
+echo "    both Detach entries are enabled with two tabs"
+
+wtype -s 250 -M ctrl -M shift -k m -m shift -m ctrl
+sleep 1.5
+if [ "$(window_count)" = 2 ]; then
+  echo "    Ctrl+Shift+M detached the tab into a second window"
+else
+  note "expected two windows after the detach, found $(window_count)"
+  fi
+alive || note "the application ended with the detach"
+
+# The detached window is the focused one; its menu must post and must act on
+# that window.  Right after the detach the pointer may still report its old
+# place, so the click is repeated once if nothing happened.
+dx=800; dy=120
+before=$(marks)
+rightclick "$dx,$dy"
+if [ "$(popups_since "$before")" -eq 0 ]; then
+  rightclick "$dx,$dy"
+  fi
+if [ "$(popups_since "$before")" -ge 1 ]; then
+  echo "    the detached window posts its own context menu"
+else
+  note "the detached window did not post a context menu"
+  fi
+shot "$RUN/detached-menu.png"
+alive || note "the application crashed on the menu of the detached window"
+click "$OUTSIDE"
+alive || note "the application crashed after the menu of the detached window"
 
 if [ "$fail" -ne 0 ]; then
   echo "FAIL: see $RUN/app.log" >&2

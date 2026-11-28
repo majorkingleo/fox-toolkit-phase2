@@ -22,6 +22,11 @@ gains the suffix \fB[exited]\fR. Closing the last tab of the last window ends
 the application, and closing a window that still has running tabs asks once for
 all of them. A termination signal quits without a confirmation dialog.
 .PP
+A tab can be detached into a window of its own without interrupting the running
+child. Detaching needs a second tab in the window and the entry is disabled
+while the window has only one: a window always keeps a tab, because detaching
+the last one would only move the session and close this window.
+.PP
 A right click in the terminal view opens a context menu with Copy, Paste,
 Select All, Find, Clear Scrollback, Reset Terminal, the character encoding, New
 Tab, Detach Tab and Close Tab. An entry that cannot act is disabled, not

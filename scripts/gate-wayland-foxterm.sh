@@ -380,6 +380,56 @@ else
   echo "FAIL: the process did not quit" >&2
   fi
 
+# --- Phase 7: a window keeps at least one tab -----------------------------
+# Detaching the only tab of a window used to move the session to a new window
+# and delete the old one, and the moved view kept reporting to the window that
+# was gone, so the next right click or title change crashed.  Detach is now
+# refused (and disabled in both menus) while the window has a single tab.
+echo "==> phase 7: the last tab cannot be detached"
+rm -f -- "$RUN/typed.txt"
+export FOXTERM_GATE_OUT="$RUN/typed.txt"
+start_app "$RUN/home-keep" --execute /bin/sh -c 'read line; sleep 300'
+if wait_title "FoxTerm - Terminal" 80; then
+  :
+else
+  fail=1
+  echo "FAIL: no terminal window for the detach phase" >&2
+  fi
+swaymsg '[title="FoxTerm - Terminal"] focus' >/dev/null 2>&1
+sleep 0.4
+before=$(window_count)
+wtype -s 250 -M ctrl -M shift -k m -m shift -m ctrl
+sleep 1.2
+wtype -s 250 -M ctrl -M shift -k m -m shift -m ctrl
+sleep 1.2
+if [ "$(window_count)" = "$before" ]; then
+  echo "    Ctrl+Shift+M on the last tab leaves one window"
+else
+  fail=1
+  echo "FAIL: detaching the last tab produced $(window_count) windows" >&2
+  fi
+if alive; then
+  echo "    the process is still up"
+else
+  fail=1
+  echo "FAIL: the process ended on the refused detach" >&2
+  fi
+
+echo "    Ctrl+Q quits it"
+wtype -s 250 -M ctrl -k q -m ctrl
+if wait_title "Quit FoxTerm" 60; then
+  wtype -s 250 -k Return
+else
+  fail=1
+  echo "FAIL: no quit confirmation for the kept window" >&2
+  fi
+if wait_exit 100; then
+  echo "    the process quit"
+else
+  fail=1
+  echo "FAIL: the process did not quit after the detach phase" >&2
+  fi
+
 if [ "$fail" -ne 0 ]; then
   echo "FAIL: see $RUN/app.log" >&2
   exit 1
